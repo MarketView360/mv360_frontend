@@ -6,7 +6,6 @@ import { z } from "zod";
 
 import Link from "next/link";
 
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -223,7 +222,7 @@ async function CompanyContent({ ticker }: { ticker: string }) {
           <CompanyHero data={data} />
 
           {/* Action Tabs */}
-          <ActionTabs />
+          <ActionTabs ticker={ticker} />
 
           {/* Main Grid */}
           <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
@@ -513,41 +512,30 @@ function CompanyHero({ data }: { data: CompanyViewModel }) {
 }
 
 // Component: Action Tabs
-function ActionTabs() {
+function ActionTabs({ ticker }: Readonly<{ ticker: string }>) {
   const tabs = [
-    { id: "overview", label: "Overview", active: true },
-    { id: "financials", label: "Financials" },
-    { id: "analysis", label: "Analysis" },
-    { id: "peers", label: "Peers" },
-    { id: "news", label: "News" },
-    { id: "holders", label: "Holders" },
+    { id: "overview", label: "Overview", href: `/company/${ticker}`, active: true },
+    { id: "financials", label: "Financials", href: `/company/${ticker}/financials` },
+    { id: "technicals", label: "Technicals", href: `/company/${ticker}/technicals` },
   ];
 
   return (
     <div className="sticky top-16 z-40 backdrop-blur bg-white/60 dark:bg-slate-900/60 border-y border-slate-200 dark:border-slate-800 -mt-4">
-      <div className="flex items-center justify-between py-3 overflow-x-auto">
-        <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="border-b border-transparent">
-            {tabs.map((tab) => (
-              <TabsTrigger
-                key={tab.id}
-                value={tab.id}
-                className="data-[state=active]:border-b data-[state=active]:border-brand"
-              >
-                {tab.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-
-        <div className="flex gap-2 ml-4 flex-shrink-0">
-          <Button size="sm" variant="outline">
-            Trade
-          </Button>
-          <Button size="sm">
-            <TrendingUp className="w-4 h-4 mr-2" />
-            Buy
-          </Button>
+      <div className="flex items-center py-1 overflow-x-auto">
+        <div className="flex gap-1">
+          {tabs.map((tab) => (
+            <Link
+              key={tab.id}
+              href={tab.href}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                tab.active
+                  ? "bg-brand/10 text-brand border-b-2 border-brand"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+              }`}
+            >
+              {tab.label}
+            </Link>
+          ))}
         </div>
       </div>
     </div>

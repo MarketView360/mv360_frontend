@@ -175,8 +175,10 @@ export function FinancialsSection({ ticker }: FinancialsSectionProps) {
           <CardTitle>Financial Statements</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            {error || "No financial data available. Run the financials sync to populate data."}
+          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md">
+            {error
+              ? "We couldn\'t load this company\'s financial statements right now. Please refresh the page or try again shortly."
+              : "Financial statements for this company aren\'t available yet. They\'ll appear here once reporting data has been processed."}
           </p>
         </CardContent>
       </Card>
