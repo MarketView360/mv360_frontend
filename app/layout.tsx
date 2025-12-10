@@ -1,0 +1,70 @@
+"use client";
+
+import { Inter, Lexend_Mega } from "next/font/google";
+import { usePathname } from "next/navigation";
+
+import "./globals.css";
+import { cn } from "@/lib/utils";
+import { Footer } from "@/components/Footer";
+import { NetworkStatusWatcher } from "@/components/NetworkStatusWatcher";
+import { ThemeProvider } from "./providers";
+import NavigationBar from "@/components/NavigationBar";
+import { AiChatWidget } from "@/components/AiChatWidget";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const lexend = Lexend_Mega({
+  subsets: ["latin"],
+  variable: "--font-lexend",
+  display: "swap",
+});
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  const pathname = usePathname();
+
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={cn(
+          "min-h-screen bg-white dark:bg-slate-950 font-sans antialiased flex flex-col transition-colors duration-300 overflow-x-hidden",
+          inter.variable,
+          lexend.variable
+        )}
+      >
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var stored = window.localStorage.getItem('theme');
+                  var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                  var theme = stored || (prefersDark ? 'dark' : 'light');
+                  if (theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                  } else {
+                    document.documentElement.classList.remove('dark');
+                  }
+                } catch (e) {}
+              })();
+            `,
+          }}
+        />
+        <ThemeProvider>
+          <NavigationBar />
+          <main className="flex-1 w-full">{children}</main>
+          <NetworkStatusWatcher />
+          {pathname !== "/jovan-chat" && <Footer />}
+          {pathname !== "/jovan-chat" && <AiChatWidget />}
+        </ThemeProvider>
+      </body>
+    </html>
+  );
+}
