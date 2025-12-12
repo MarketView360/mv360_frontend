@@ -275,12 +275,12 @@ function MarketPageContent() {
               <div className="h-6 w-1/3 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
               <div className="h-32 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
             </div>
-);
-
-export default function MarketPage() {
-return (
-<Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950"><div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-brand" /></div>}>
-<MarketPageContent />
-</Suspense>
-);
+          </div>
+        ) : (
+          <MarketOverview refreshToken={refreshToken} />
+        )}
+      </div>
+    </div>
+    </div>
+  );
 }
