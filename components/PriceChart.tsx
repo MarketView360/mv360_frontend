@@ -72,6 +72,21 @@ export function PriceChart({ data }: PriceChartProps) {
     return enriched.slice(-windowSize);
   }, [enriched, range]);
 
+  const formatDateLabel = React.useCallback((dateStr: string) => {
+    const date = new Date(dateStr);
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const month = months[date.getMonth()];
+    const year = date.getFullYear().toString().slice(-2);
+    
+    if (range === "1M") {
+      return `${month} ${date.getDate()}`;
+    } else if (range === "6M" || range === "1Y") {
+      return `${month} '${year}`;
+    } else {
+      return `${month} '${year}`;
+    }
+  }, [range]);
+
   return (
     <Card className="w-full border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 transition-colors duration-300">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b border-slate-100 dark:border-slate-800 transition-colors duration-300">
@@ -169,9 +184,14 @@ export function PriceChart({ data }: PriceChartProps) {
               <XAxis
                 dataKey="date"
                 stroke={isDark ? "#94a3b8" : "#64748b"}
-                fontSize={12}
+                fontSize={11}
                 tickLine={false}
                 axisLine={false}
+                tickFormatter={formatDateLabel}
+                interval="preserveStartEnd"
+                angle={-45}
+                textAnchor="end"
+                height={50}
               />
               <YAxis
                 yAxisId="price"

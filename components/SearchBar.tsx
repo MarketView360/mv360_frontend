@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Search, X, Clock, TrendingUp } from "lucide-react";
-import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -700,14 +699,35 @@ function searchTickers(query: string) {
 /* ------------------------------------------------------------------ */
 /* Component                                                          */
 /* ------------------------------------------------------------------ */
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+
 export default function SearchBar() {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [recent, setRecent] = useLocalStorage<RecentItem[]>("search-recent", []);
+  const [dataDate, setDataDate] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Fetch latest data date for freshness indicator
+  useEffect(() => {
+    async function fetchDataDate() {
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/company/AAPL`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.metrics?.date) {
+            setDataDate(data.metrics.date);
+          }
+        }
+      } catch {
+        // Ignore errors
+      }
+    }
+    fetchDataDate();
+  }, []);
 
   const suggestions = searchTickers(query);
   const showSuggestions = open && query.length > 0;
@@ -837,6 +857,16 @@ export default function SearchBar() {
         </Button>
       </form>
 
+      {/* Data freshness indicator */}
+      {dataDate && (
+        <div className="flex justify-center mt-2">
+          <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            Data as of {new Date(dataDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          </span>
+        </div>
+      )}
+
       {/* dropdown */}
       {(showSuggestions || showRecents) && (
         <div
@@ -889,20 +919,6 @@ export default function SearchBar() {
           )}
         </div>
       )}
-
-      {/* helper text */}
-      <div className="flex justify-center mt-2">
-        <span className="text-xs text-slate-500 dark:text-slate-400 mr-2">Press</span>
-        <KbdGroup>
-          <Kbd>/</Kbd>
-        </KbdGroup>
-        <span className="text-xs text-slate-500 dark:text-slate-400 mx-2">to focus</span>
-        <KbdGroup>
-          <Kbd>↑</Kbd>
-          <Kbd>↓</Kbd>
-        </KbdGroup>
-        <span className="text-xs text-slate-500 dark:text-slate-400 ml-2">to navigate</span>
-      </div>
     </div>
   );
 }

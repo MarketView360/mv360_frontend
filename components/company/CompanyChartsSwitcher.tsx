@@ -74,10 +74,30 @@ export function CompanyChartsSwitcher({
       Max: "max",
     };
     const windowSize = map[range];
-    if (windowSize === "max" || valuationHistory.length <= windowSize) {
-      return valuationHistory;
+    let filtered = valuationHistory;
+    if (windowSize !== "max" && valuationHistory.length > windowSize) {
+      filtered = valuationHistory.slice(-windowSize);
     }
-    return valuationHistory.slice(-windowSize);
+    
+    // Normalize the data for better visualization
+    const prices = filtered.map(p => p.price).filter((p): p is number => p !== null);
+    const pes = filtered.map(p => p.pe_ratio).filter((p): p is number => p !== null);
+    
+    if (prices.length === 0 || pes.length === 0) return filtered;
+    
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    const minPe = Math.min(...pes);
+    const maxPe = Math.max(...pes);
+    
+    const priceRange = maxPrice - minPrice || 1;
+    const peRange = maxPe - minPe || 1;
+    
+    return filtered.map(point => ({
+      ...point,
+      price_normalized: point.price !== null ? ((point.price - minPrice) / priceRange) * 100 : null,
+      pe_normalized: point.pe_ratio !== null ? ((point.pe_ratio - minPe) / peRange) * 100 : null,
+    }));
   }, [valuationHistory, range]);
 
   const isDark =
@@ -156,7 +176,18 @@ export function CompanyChartsSwitcher({
       )}
       {mode === "price_pe" && (
         <div className="space-y-3">
-          <div className="flex justify-end gap-1 text-[11px]">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4 text-xs">
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-0.5 bg-[#0f766e] rounded" />
+                <span className="text-slate-600 dark:text-slate-400">Price (normalized)</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-0.5 bg-[#f97316] rounded" />
+                <span className="text-slate-600 dark:text-slate-400">P/E Ratio (normalized)</span>
+              </div>
+            </div>
+            <div className="flex gap-1 text-[11px]">
             {(["1Y", "3Y", "5Y", "Max"] as const).map((r) => (
               <button
                 key={r}
@@ -172,6 +203,7 @@ export function CompanyChartsSwitcher({
                 {r}
               </button>
             ))}
+            </div>
           </div>
           <div className={cn(heightClass, "w-full")}>
             {hasPeHistory ? (
@@ -191,26 +223,28 @@ export function CompanyChartsSwitcher({
                   <XAxis
                     dataKey="date"
                     stroke={isDark ? "#94a3b8" : "#64748b"}
-                    fontSize={12}
+                    fontSize={11}
                     tickLine={false}
                     axisLine={false}
+                    tickFormatter={(dateStr: string) => {
+                      const date = new Date(dateStr);
+                      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                      return `${months[date.getMonth()]} '${date.getFullYear().toString().slice(-2)}`;
+                    }}
+                    interval="preserveStartEnd"
+                    angle={-45}
+                    textAnchor="end"
+                    height={50}
                   />
                   <YAxis
-                    yAxisId="price"
+                    yAxisId="normalized"
                     stroke={isDark ? "#94a3b8" : "#64748b"}
                     fontSize={12}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(value) => `$${(value as number).toFixed(0)}`}
-                  />
-                  <YAxis
-                    yAxisId="pe"
-                    orientation="right"
-                    stroke={isDark ? "#cbd5e1" : "#94a3b8"}
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(value) => `${(value as number).toFixed(0)}x`}
+                    domain={[0, 100]}
+                    tickFormatter={() => ""}
+                    hide
                   />
                   <Tooltip
                     contentStyle={{
@@ -218,31 +252,34 @@ export function CompanyChartsSwitcher({
                       borderRadius: 8,
                       border: `1px solid ${isDark ? "#475569" : "#e2e8f0"}`,
                     }}
-                    formatter={(value: any, name) => {
-                      if (name === "price") {
-                        return [`$${(value as number).toFixed(2)}`, "Price"];
+                    formatter={(value: any, name: string, props: any) => {
+                      const item = props.payload;
+                      if (name === "price_normalized" && item?.price != null) {
+                        return [`$${item.price.toFixed(2)}`, "Price"];
                       }
-                      if (name === "pe_ratio") {
-                        return [`${(value as number).toFixed(2)}x`, "P/E"];
+                      if (name === "pe_normalized" && item?.pe_ratio != null) {
+                        return [`${item.pe_ratio.toFixed(2)}x`, "P/E"];
                       }
                       return [value, name];
                     }}
                   />
                   <Area
-                    yAxisId="price"
+                    yAxisId="normalized"
                     type="monotone"
-                    dataKey="price"
+                    dataKey="price_normalized"
                     stroke="#0f766e"
                     fill="url(#colorPricePe)"
                     strokeWidth={2}
+                    name="price_normalized"
                   />
                   <Line
-                    yAxisId="pe"
+                    yAxisId="normalized"
                     type="monotone"
-                    dataKey="pe_ratio"
+                    dataKey="pe_normalized"
                     stroke="#f97316"
                     strokeWidth={2}
                     dot={false}
+                    name="pe_normalized"
                   />
                 </ComposedChart>
               </ResponsiveContainer>
@@ -290,14 +327,13 @@ export function CompanyChartsSwitcher({
             size="sm"
             className={cn(
               "h-6 px-3 rounded-full text-[11px]",
-              mode === "valuations"
+              mode === "price_pe"
                 ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
                 : "text-slate-500 dark:text-slate-400"
             )}
-            onClick={() => setMode("valuations")}
-            disabled={!hasValuations}
+            onClick={() => setMode("price_pe")}
           >
-            Valuations
+            Price & P/E
           </Button>
           <Button
             type="button"
@@ -305,13 +341,14 @@ export function CompanyChartsSwitcher({
             size="sm"
             className={cn(
               "h-6 px-3 rounded-full text-[11px]",
-              mode === "price_pe"
+              mode === "valuations"
                 ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
                 : "text-slate-500 dark:text-slate-400"
             )}
-            onClick={() => setMode("price_pe")}
-            >
-              Price & P/E
+            onClick={() => setMode("valuations")}
+            disabled={!hasValuations}
+          >
+            Valuation
           </Button>
           </div>
           <button

@@ -49,22 +49,23 @@ export function Footer() {
                   href="/screens"
                   className="hover:text-brand transition-colors"
                 >
-                  Stock Screens
+                  Stock Screener
                 </Link>
               </li>
               <li>
-                <Link href="#" className="hover:text-brand transition-colors">
-                  Market Heatmap
+                <Link
+                  href="/market"
+                  className="hover:text-brand transition-colors"
+                >
+                  Market Overview
                 </Link>
               </li>
               <li>
-                <Link href="#" className="hover:text-brand transition-colors">
-                  Earnings Calendar
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="hover:text-brand transition-colors">
-                  Pricing
+                <Link
+                  href="/news"
+                  className="hover:text-brand transition-colors"
+                >
+                  Market News
                 </Link>
               </li>
             </ul>
@@ -76,23 +77,18 @@ export function Footer() {
             </h3>
             <ul className="space-y-3 text-sm text-slate-500 dark:text-slate-400">
               <li>
-                <Link href="#" className="hover:text-brand transition-colors">
+                <Link href="/coming-soon" className="hover:text-brand transition-colors">
                   Blog
                 </Link>
               </li>
               <li>
-                <Link href="#" className="hover:text-brand transition-colors">
+                <Link href="/coming-soon" className="hover:text-brand transition-colors">
                   Documentation
                 </Link>
               </li>
               <li>
-                <Link href="#" className="hover:text-brand transition-colors">
+                <Link href="/coming-soon" className="hover:text-brand transition-colors">
                   Help Center
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="hover:text-brand transition-colors">
-                  API Reference
                 </Link>
               </li>
             </ul>
@@ -104,22 +100,12 @@ export function Footer() {
             </h3>
             <ul className="space-y-3 text-sm text-slate-500 dark:text-slate-400">
               <li>
-                <Link href="#" className="hover:text-brand transition-colors">
+                <Link href="/coming-soon" className="hover:text-brand transition-colors">
                   About
                 </Link>
               </li>
               <li>
-                <Link href="#" className="hover:text-brand transition-colors">
-                  Careers
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="hover:text-brand transition-colors">
-                  Legal
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="hover:text-brand transition-colors">
+                <Link href="/coming-soon" className="hover:text-brand transition-colors">
                   Contact
                 </Link>
               </li>

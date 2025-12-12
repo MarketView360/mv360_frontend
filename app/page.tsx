@@ -3,39 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import MarketOverview from "@/components/MarketOverview";
 import SearchBar from "@/components/SearchBar";
 
-const BACKEND_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
-
-async function fetchTopNews() {
-  try {
-    const res = await fetch(`${BACKEND_URL}/api/news?limit=4`, {
-      next: { revalidate: 300 },
-    });
-    if (!res.ok)
-      return [] as {
-        date: string;
-        title: string;
-        content: string;
-        link: string;
-      }[];
-    return (await res.json()) as {
-      date: string;
-      title: string;
-      content: string;
-      link: string;
-    }[];
-  } catch {
-    return [] as {
-      date: string;
-      title: string;
-      content: string;
-      link: string;
-    }[];
-  }
-}
-
 export default async function Home() {
-  const topNews = await fetchTopNews();
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans selection:bg-brand/20 transition-colors duration-300">
       {/* Hero Section */}
@@ -57,13 +25,12 @@ export default async function Home() {
           <div className="space-y-4 max-w-4xl">
             <h1 className="text-5xl md:text-7xl font-bold font-heading tracking-tight text-slate-900 dark:text-white leading-[1.1]">
               Analyze US Stocks <br className="hidden md:inline" />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand to-blue-600">
+              <span className="text-brand">
                 Like a Pro.
               </span>
             </h1>
             <p className="text-xl text-slate-600 dark:text-slate-300 md:text-2xl max-w-[800px] mx-auto leading-relaxed">
-              Marketview360 is the fastest way to screen, analyze, and track US
-              equities. Real-time data, powerful ratios, and clean design.
+              Real-time US equity insights delivered with speed, clarity, and analytical depth.
             </p>
           </div>
 
