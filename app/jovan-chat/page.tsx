@@ -756,17 +756,3 @@ function SidebarItem({
     </div>
   );
 }
-
-export default function JovanChatPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-brand" />
-        </div>
-      }
-    >
-      <JovanChatPageContent />
-    </Suspense>
-  );
-}
