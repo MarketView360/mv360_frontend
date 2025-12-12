@@ -84,8 +84,6 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-<<<<<<< HEAD
-=======
 export default function ResultsPage() {
   return (
     <Suspense fallback={<ResultsPageSkeleton />}>
@@ -102,7 +100,6 @@ function ResultsPageSkeleton() {
   );
 }
 
->>>>>>> ca975cc7d9a76f7c6659051e8e491236766105db
 function ResultsPageContent() {
   const sp = useSearchParams();
   const router = useRouter();

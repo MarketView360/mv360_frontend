@@ -87,8 +87,6 @@ Market Capitalization > 500`,
   },
 ];
 
-<<<<<<< HEAD
-=======
 export default function ScreensPage() {
   return (
     <Suspense fallback={<ScreensPageSkeleton />}>
@@ -105,7 +103,6 @@ function ScreensPageSkeleton() {
   );
 }
 
->>>>>>> ca975cc7d9a76f7c6659051e8e491236766105db
 function ScreensPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();

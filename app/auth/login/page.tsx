@@ -7,8 +7,6 @@ import { useAuth } from "@/providers/AuthProvider";
 import { SocialAuthButtons, OrDivider } from "@/components/auth/SocialAuthButtons";
 import { Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, Sparkles } from "lucide-react";
 
-<<<<<<< HEAD
-=======
 export default function LoginPage() {
   return (
     <Suspense fallback={<LoginPageSkeleton />}>
@@ -25,7 +23,6 @@ function LoginPageSkeleton() {
   );
 }
 
->>>>>>> ca975cc7d9a76f7c6659051e8e491236766105db
 function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();

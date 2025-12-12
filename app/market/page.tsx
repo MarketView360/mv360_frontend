@@ -28,8 +28,6 @@ const RANGE_OPTIONS = [
 type Range = typeof RANGE_OPTIONS[number]["value"];
 
 /* ---------- main ---------- */
-<<<<<<< HEAD
-=======
 export default function MarketPage() {
   return (
     <Suspense fallback={<MarketPageSkeleton />}>
@@ -46,7 +44,6 @@ function MarketPageSkeleton() {
   );
 }
 
->>>>>>> ca975cc7d9a76f7c6659051e8e491236766105db
 function MarketPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();

@@ -35,8 +35,6 @@ import type { AIModel } from "@/lib/utils/jovan/models";
 
 const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000";
 
-<<<<<<< HEAD
-=======
 export default function JovanChatPage() {
   return (
     <Suspense fallback={<JovanChatSkeleton />}>
@@ -53,7 +51,6 @@ function JovanChatSkeleton() {
   );
 }
 
->>>>>>> ca975cc7d9a76f7c6659051e8e491236766105db
 function JovanChatPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
