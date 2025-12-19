@@ -30,111 +30,351 @@ export interface FieldDef {
 // Backend field mapping - mirrors backend's FIELD_MAP for consistency
 // This maps frontend display names to actual database column names
 export const BACKEND_FIELD_MAP: Record<string, string> = {
-  // Price & Market Data
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PRICE & MARKET DATA (EODHD: Highlights, EOD API)
+  // ═══════════════════════════════════════════════════════════════════════════
   "market capitalization": "market_cap",
   "market cap": "market_cap",
   marketcap: "market_cap",
   mcap: "market_cap",
   "current price": "price",
   price: "price",
+  "stock price": "price",
+  "share price": "price",
   volume: "volume",
+  "trading volume": "volume",
   "avg volume": "avg_volume_200d",
   "average volume": "avg_volume_200d",
+  "6 month average volume": "avg_volume_200d",
   "1d change %": "refund_1d_p",
   "5d change %": "refund_5d_p",
+  "price change 1d": "price_change_1d",
+  "price change 1y": "price_change_1y",
+  "price movement": "price_change_1d",
 
-  // Valuation
+  // ═══════════════════════════════════════════════════════════════════════════
+  // VALUATION METRICS (EODHD: Highlights, Valuation)
+  // ═══════════════════════════════════════════════════════════════════════════
   pe: "pe",
+  "pe ratio": "pe",
   "price to earning": "pe",
+  "price to earnings": "pe",
+  "price/earning": "pe",
+  "price/earnings": "pe",
+  "p/e": "pe",
+  "trailing pe": "pe",
   "forward pe": "forward_pe",
   "forward p/e": "forward_pe",
   peg: "peg",
   "peg ratio": "peg",
+  "price earnings growth": "peg",
+  "price to book": "pb",
   "price to book value": "pb",
+  "price/book": "pb",
   "p/b": "pb",
   pb: "pb",
-  "dividend yield": "dividend_yield",
-  "ev/ebitda": "ev_ebitda",
-  "price to sales": "price_to_sales",
-  "p/s": "price_to_sales",
+  "book value": "book_value",
+  "enterprise value": "enterprise_value",
+  ev: "enterprise_value",
+  "ev/revenue": "ev_revenue",
   "ev/sales": "ev_sales",
   "ev/ sales": "ev_sales",
+  "enterprise value revenue": "ev_revenue",
+  "ev/ebitda": "ev_ebitda",
+  "ev to ebitda": "ev_ebitda",
+  "enterprise value ebitda": "ev_ebitda",
+  "price to sales": "price_to_sales",
+  "price/sales": "price_to_sales",
+  "p/s": "price_to_sales",
+  ps: "price_to_sales",
   "price to cash flow": "price_to_cash_flow",
+  "price/cash flow": "price_to_cash_flow",
   "p/c": "price_to_cash_flow",
+  pcf: "price_to_cash_flow",
+  "dividend yield": "dividend_yield",
+  "div yield": "dividend_yield",
+  "forward dividend yield": "dividend_yield",
+  "dividend share": "dividend_share",
+  "dividend per share": "dividend_share",
+  "payout ratio": "payout_ratio",
+  "dividend payout ratio": "payout_ratio",
+  "fcf yield": "fcf_yield",
 
-  // Profitability
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PROFITABILITY METRICS (EODHD: Highlights)
+  // ═══════════════════════════════════════════════════════════════════════════
   roe: "roe",
   "return on equity": "roe",
+  "roe ttm": "roe",
   roce: "roce",
   "return on capital employed": "roce",
   roa: "roa",
   "return on assets": "roa",
+  "roa ttm": "roa",
+  roic: "roic",
+  "return on invested capital": "roic",
   opm: "opm",
   "operating profit margin": "opm",
+  "operating margin": "opm",
+  "operating margin ttm": "opm",
   "net margin": "net_margin",
+  "net profit margin": "net_margin",
+  "profit margin": "net_margin",
+  "gross margin": "gross_margin",
+  "gross profit margin": "gross_margin",
+  "ebitda margin": "ebitda_margin",
 
-  // Growth
-  "sales growth 3years": "sales_cagr_3y",
-  "profit growth 5years": "profit_cagr_5y",
-  "eps growth 3years": "eps_cagr_3y",
+  // ═══════════════════════════════════════════════════════════════════════════
+  // GROWTH METRICS
+  // ═══════════════════════════════════════════════════════════════════════════
   "revenue growth 1year": "revenue_growth_1y",
+  "revenue growth 1y": "revenue_growth_1y",
+  "sales growth 1year": "revenue_growth_1y",
+  "sales growth 3years": "sales_cagr_3y",
+  "sales growth 3y": "sales_cagr_3y",
+  "revenue growth 3years": "sales_cagr_3y",
+  "sales growth 5years": "sales_cagr_5y",
+  "sales growth 5y": "sales_cagr_5y",
+  "revenue growth 5years": "sales_cagr_5y",
+  "sales growth 7years": "sales_cagr_7y",
+  "sales growth 10years": "sales_cagr_10y",
   "profit growth 1year": "profit_growth_1y",
+  "profit growth 1y": "profit_growth_1y",
+  "profit growth 3years": "profit_cagr_3y",
+  "profit growth 3y": "profit_cagr_3y",
+  "profit growth 5years": "profit_cagr_5y",
+  "profit growth 5y": "profit_cagr_5y",
+  "profit growth 7years": "profit_cagr_7y",
+  "profit growth 10years": "profit_cagr_10y",
+  "eps growth 3years": "eps_cagr_3y",
+  "eps growth 3y": "eps_cagr_3y",
+  "eps growth 5years": "eps_cagr_5y",
+  "eps growth 5y": "eps_cagr_5y",
+  "earnings per share growth": "eps_cagr_3y",
+  "quarterly revenue growth": "quarterly_revenue_growth_yoy",
+  "quarterly earnings growth": "quarterly_earnings_growth_yoy",
+  "quarterly revenue growth yoy": "quarterly_revenue_growth_yoy",
+  "quarterly earnings growth yoy": "quarterly_earnings_growth_yoy",
+  "return over 3years": "perf_3y_p",
+  "return 3years": "perf_3y_p",
+  perf3y: "perf_3y_p",
+  "3y return": "perf_3y_p",
+  "return over 5years": "perf_5y_p",
+  "return 5years": "perf_5y_p",
+  perf5y: "perf_5y_p",
+  "5y return": "perf_5y_p",
+  "return over 1year": "perf_1y_p",
+  "return 1year": "perf_1y_p",
+  "1y return": "perf_1y_p",
+  "return over 6months": "perf_6m_p",
+  "6m return": "perf_6m_p",
+  "return over 2years": "perf_2y_p",
+  "2y return": "perf_2y_p",
 
-  // Leverage & Quality
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LEVERAGE & SOLVENCY METRICS
+  // ═══════════════════════════════════════════════════════════════════════════
   "debt to equity": "debt_to_equity",
+  "debt/equity": "debt_to_equity",
+  "d/e": "debt_to_equity",
+  de: "debt_to_equity",
   "lt debt to equity": "lt_debt_to_equity",
-  "interest coverage": "interest_coverage",
-  "current ratio": "current_ratio",
-  "quick ratio": "quick_ratio",
+  "long term debt to equity": "lt_debt_to_equity",
+  "debt to assets": "debt_to_assets",
   "total debt": "total_debt",
   totaldebt: "total_debt",
+  "long term debt": "long_term_debt",
+  "short term debt": "short_term_debt",
+  "net debt": "net_debt",
+  "interest coverage": "interest_coverage",
+  "times interest earned": "interest_coverage",
+  "debt to ebitda": "debt_to_ebitda",
+  "debt/ebitda": "debt_to_ebitda",
+  "debt to fcf": "debt_to_fcf",
+  "current ratio": "current_ratio",
+  "quick ratio": "quick_ratio",
+  "acid test": "quick_ratio",
   "cash and equivalents": "cash_equivalents",
   "cash equivalents": "cash_equivalents",
   "cash and cash equivalents": "cash_equivalents",
   cashequivalents: "cash_equivalents",
   cashandequivalents: "cash_equivalents",
+  cash: "cash_equivalents",
 
-  // Cash Flow
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CASH FLOW METRICS
+  // ═══════════════════════════════════════════════════════════════════════════
   "operating cash flow": "operating_cf",
+  "cash from operations": "operating_cf",
+  ocf: "operating_cf",
   "free cash flow": "free_cf",
+  fcf: "free_cf",
+  "capital expenditure": "capex",
+  capex: "capex",
   "cash flow margin": "cf_margin",
+  "fcf per share": "fcf_per_share",
+  "capex to sales": "capex_to_sales",
 
-  // Technicals
+  // ═══════════════════════════════════════════════════════════════════════════
+  // WORKING CAPITAL METRICS
+  // ═══════════════════════════════════════════════════════════════════════════
+  "debtor days": "debtor_days",
+  "days sales outstanding": "debtor_days",
+  dso: "debtor_days",
+  "inventory days": "inventory_days",
+  "days inventory": "inventory_days",
+  dio: "inventory_days",
+  "days payable": "days_payable",
+  "days payable outstanding": "days_payable",
+  dpo: "days_payable",
+  "working capital days": "working_capital_days",
+  "cash conversion cycle": "cash_conversion_cycle",
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ASSET EFFICIENCY METRICS
+  // ═══════════════════════════════════════════════════════════════════════════
+  "asset turnover": "asset_turnover",
+  "asset turnover ratio": "asset_turnover",
+  "fixed asset turnover": "fixed_asset_turnover",
+  "total assets": "total_assets",
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TECHNICAL INDICATORS
+  // ═══════════════════════════════════════════════════════════════════════════
   beta: "beta",
+  "stock beta": "beta",
   rsi: "rsi",
+  "relative strength index": "rsi",
   sma20: "sma20",
+  "sma 20": "sma20",
+  "20 day moving average": "sma20",
+  "20dma": "sma20",
   sma50: "ma50",
   ma50: "ma50",
+  "sma 50": "ma50",
   "moving average 50": "ma50",
+  "50 day moving average": "ma50",
+  "50dma": "ma50",
+  "50 dma": "ma50",
   sma200: "ma200",
   ma200: "ma200",
+  "sma 200": "ma200",
   "moving average 200": "ma200",
-  "price change 1d": "price_change_1d",
-  "price change 1y": "price_change_1y",
+  "200 day moving average": "ma200",
+  "200dma": "ma200",
+  "200 dma": "ma200",
+  "52 week high": "week_52_high",
+  "52w high": "week_52_high",
+  "52wk high": "week_52_high",
+  "52 week low": "week_52_low",
+  "52w low": "week_52_low",
+  "52wk low": "week_52_low",
+  "down from 52w high": "down_from_52w_high",
+  "up from 52w low": "up_from_52w_low",
+  "short ratio": "short_ratio",
+  "short percent": "short_percent",
+  "shares short": "shares_short",
 
-  // Earnings & Revenue
+  // ═══════════════════════════════════════════════════════════════════════════
+  // EARNINGS & EPS METRICS
+  // ═══════════════════════════════════════════════════════════════════════════
   eps: "eps_ttm",
   "earnings per share": "eps_ttm",
+  "eps ttm": "eps_ttm",
   "diluted eps": "diluted_eps_ttm",
+  "diluted eps ttm": "diluted_eps_ttm",
+  "eps estimate current year": "eps_estimate_current_year",
+  "eps estimate next year": "eps_estimate_next_year",
+  "eps estimate current quarter": "eps_estimate_current_quarter",
+  "eps estimate next quarter": "eps_estimate_next_quarter",
   revenue: "revenue_ttm",
+  "revenue ttm": "revenue_ttm",
   sales: "revenue_ttm",
+  "total revenue": "revenue_ttm",
+  "revenue per share": "revenue_per_share",
   earnings: "earnings_ttm",
+  "net income": "earnings_ttm",
+  "ttm net income": "earnings_ttm",
+  ebitda: "ebitda",
+  "gross profit": "gross_profit",
 
-  // Performance
-  "return over 3years": "perf_3y_p",
-  perf3y: "perf_3y_p",
-  "return over 5years": "perf_5y_p",
-  perf5y: "perf_5y_p",
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BALANCE SHEET METRICS
+  // ═══════════════════════════════════════════════════════════════════════════
+  "total liabilities": "total_liabilities",
+  "shareholder equity": "shareholder_equity",
+  "shareholders equity": "shareholder_equity",
+  "stockholders equity": "shareholder_equity",
+  inventory: "inventory",
+  receivables: "receivables",
+  "net receivables": "receivables",
+  "accounts receivable": "receivables",
+  payables: "payables",
+  "accounts payable": "payables",
+  "current assets": "current_assets",
+  "total current assets": "current_assets",
+  "current liabilities": "current_liabilities",
+  "total current liabilities": "current_liabilities",
+  "property plant equipment": "ppe",
+  ppe: "ppe",
+  "net block": "ppe",
+  "fixed assets": "ppe",
 
-  // Company Info
+  // ═══════════════════════════════════════════════════════════════════════════
+  // OWNERSHIP & INSIDER METRICS
+  // ═══════════════════════════════════════════════════════════════════════════
+  "shares outstanding": "shares_outstanding",
+  "shares float": "shares_float",
+  float: "shares_float",
+  "insider ownership": "insider_ownership",
+  "percent insiders": "insider_ownership",
+  "% insiders": "insider_ownership",
+  "institutional ownership": "institutional_ownership",
+  "percent institutions": "institutional_ownership",
+  "% institutions": "institutional_ownership",
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FINANCIAL HEALTH SCORES
+  // ═══════════════════════════════════════════════════════════════════════════
+  "piotroski score": "piotroski_score",
+  "piotroski f score": "piotroski_score",
+  "f score": "piotroski_score",
+  "altman z score": "altman_z_score",
+  "z score": "altman_z_score",
+  "quality of earnings": "quality_of_earnings",
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // COMPANY CLASSIFICATION
+  // ═══════════════════════════════════════════════════════════════════════════
   sector: "sector",
   industry: "industry",
+  "gic sector": "gic_sector",
+  "gic industry": "gic_industry",
+  "gic sub industry": "gic_sub_industry",
   exchange: "exchange",
   code: "code",
+  ticker: "code",
   symbol: "code",
   name: "name",
+  "company name": "name",
   country: "country",
   currency: "currency",
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // OTHER METRICS
+  // ═══════════════════════════════════════════════════════════════════════════
+  "interest expense": "interest_expense",
+  "interest income": "interest_income",
+  "tax rate": "effective_tax_rate",
+  "effective tax rate": "effective_tax_rate",
+  depreciation: "depreciation",
+  "depreciation and amortization": "depreciation",
+  "book value per share": "book_value_per_share",
+  employees: "employees",
+  "full time employees": "employees",
+  "wall street target price": "target_price",
+  "target price": "target_price",
+  "analyst target": "target_price",
 };
 
 // Helper function to get backend field name
@@ -728,6 +968,625 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       backendField: "avg_volume_200d",
     },
   ],
+  // ═══════════════════════════════════════════════════════════════════════════
+  // NEW CATEGORIES FROM EODHD API
+  // ═══════════════════════════════════════════════════════════════════════════
+  "Quarterly Metrics": [
+    {
+      name: "Quarterly Revenue Growth",
+      description:
+        "Year-over-year quarterly revenue growth (EODHD: Highlights.QuarterlyRevenueGrowthYOY)",
+      unit: "%",
+      keywords: ["quarterly revenue growth", "qoq revenue", "yoy revenue"],
+      example: "Quarterly Revenue Growth > 10",
+      backendField: "quarterly_revenue_growth_yoy",
+    },
+    {
+      name: "Quarterly Earnings Growth",
+      description:
+        "Year-over-year quarterly earnings growth (EODHD: Highlights.QuarterlyEarningsGrowthYOY)",
+      unit: "%",
+      keywords: ["quarterly earnings growth", "qoq earnings", "yoy earnings"],
+      example: "Quarterly Earnings Growth > 15",
+      backendField: "quarterly_earnings_growth_yoy",
+    },
+  ],
+  "Working Capital": [
+    {
+      name: "Debtor Days",
+      description:
+        "Days sales outstanding - collection period (Calculated: netReceivables / totalRevenue * 365)",
+      unit: "days",
+      keywords: [
+        "debtor days",
+        "dso",
+        "days sales outstanding",
+        "collection period",
+      ],
+      example: "Debtor Days < 60",
+      backendField: "debtor_days",
+    },
+    {
+      name: "Inventory Days",
+      description:
+        "Days inventory outstanding (Calculated: inventory / costOfRevenue * 365)",
+      unit: "days",
+      keywords: ["inventory days", "dio", "days inventory"],
+      example: "Inventory Days < 90",
+      backendField: "inventory_days",
+    },
+    {
+      name: "Days Payable",
+      description:
+        "Days payable outstanding (Calculated: accountPayables / costOfRevenue * 365)",
+      unit: "days",
+      keywords: ["days payable", "dpo", "payable days"],
+      example: "Days Payable > 30",
+      backendField: "days_payable",
+    },
+    {
+      name: "Cash Conversion Cycle",
+      description: "Working capital cycle: DIO + DSO - DPO",
+      unit: "days",
+      keywords: ["cash conversion cycle", "ccc", "working capital days"],
+      example: "Cash Conversion Cycle < 100",
+      backendField: "cash_conversion_cycle",
+    },
+  ],
+  "Asset Efficiency": [
+    {
+      name: "Asset Turnover",
+      description: "Revenue / Total Assets - measures asset utilization",
+      unit: "x",
+      keywords: ["asset turnover", "asset efficiency"],
+      example: "Asset Turnover > 0.5",
+      backendField: "asset_turnover",
+    },
+    {
+      name: "Fixed Asset Turnover",
+      description: "Revenue / Fixed Assets (PPE)",
+      unit: "x",
+      keywords: ["fixed asset turnover", "ppe turnover"],
+      example: "Fixed Asset Turnover > 2",
+      backendField: "fixed_asset_turnover",
+    },
+    {
+      name: "Total Assets",
+      description:
+        "Total assets from balance sheet (EODHD: Financials.Balance_Sheet.totalAssets)",
+      unit: "USD",
+      keywords: ["total assets", "assets"],
+      example: "Total Assets > 1000000000",
+      backendField: "total_assets",
+    },
+  ],
+  "Ownership & Insiders": [
+    {
+      name: "Insider Ownership",
+      description:
+        "Percentage held by insiders (EODHD: SharesStats.PercentInsiders)",
+      unit: "%",
+      keywords: ["insider ownership", "percent insiders", "insider holdings"],
+      example: "Insider Ownership > 5",
+      backendField: "insider_ownership",
+    },
+    {
+      name: "Institutional Ownership",
+      description:
+        "Percentage held by institutions (EODHD: SharesStats.PercentInstitutions)",
+      unit: "%",
+      keywords: [
+        "institutional ownership",
+        "percent institutions",
+        "institutional holdings",
+      ],
+      example: "Institutional Ownership > 50",
+      backendField: "institutional_ownership",
+    },
+    {
+      name: "Shares Outstanding",
+      description:
+        "Total shares outstanding (EODHD: SharesStats.SharesOutstanding)",
+      unit: "shares",
+      keywords: ["shares outstanding", "outstanding shares"],
+      example: "Shares Outstanding > 100000000",
+      backendField: "shares_outstanding",
+    },
+    {
+      name: "Shares Float",
+      description:
+        "Shares available for trading (EODHD: SharesStats.SharesFloat)",
+      unit: "shares",
+      keywords: ["shares float", "float", "tradeable shares"],
+      example: "Shares Float > 50000000",
+      backendField: "shares_float",
+    },
+    {
+      name: "Short Ratio",
+      description:
+        "Days to cover short positions (EODHD: Technicals.ShortRatio)",
+      unit: "days",
+      keywords: ["short ratio", "days to cover"],
+      example: "Short Ratio < 5",
+      backendField: "short_ratio",
+    },
+    {
+      name: "Short Percent",
+      description:
+        "Percentage of float shorted (EODHD: Technicals.ShortPercent)",
+      unit: "%",
+      keywords: ["short percent", "short interest"],
+      example: "Short Percent < 10",
+      backendField: "short_percent",
+    },
+  ],
+  "52 Week Range": [
+    {
+      name: "52 Week High",
+      description:
+        "Highest price in past 52 weeks (EODHD: Technicals.52WeekHigh)",
+      unit: "$",
+      keywords: ["52 week high", "52w high", "year high"],
+      example: "Price > 52 Week High * 0.9",
+      backendField: "week_52_high",
+    },
+    {
+      name: "52 Week Low",
+      description:
+        "Lowest price in past 52 weeks (EODHD: Technicals.52WeekLow)",
+      unit: "$",
+      keywords: ["52 week low", "52w low", "year low"],
+      example: "Price < 52 Week Low * 1.1",
+      backendField: "week_52_low",
+    },
+    {
+      name: "Down from 52W High",
+      description: "Percentage below 52-week high (Calculated)",
+      unit: "%",
+      keywords: ["down from high", "below 52w high"],
+      example: "Down from 52W High < 20",
+      backendField: "down_from_52w_high",
+    },
+    {
+      name: "Up from 52W Low",
+      description: "Percentage above 52-week low (Calculated)",
+      unit: "%",
+      keywords: ["up from low", "above 52w low"],
+      example: "Up from 52W Low > 50",
+      backendField: "up_from_52w_low",
+    },
+  ],
+  "Balance Sheet": [
+    {
+      name: "Total Liabilities",
+      description:
+        "Total liabilities (EODHD: Financials.Balance_Sheet.totalLiab)",
+      unit: "USD",
+      keywords: ["total liabilities", "liabilities"],
+      example: "Total Liabilities < 5000000000",
+      backendField: "total_liabilities",
+    },
+    {
+      name: "Shareholder Equity",
+      description:
+        "Total stockholders equity (EODHD: Financials.Balance_Sheet.totalStockholderEquity)",
+      unit: "USD",
+      keywords: ["shareholder equity", "stockholders equity", "book value"],
+      example: "Shareholder Equity > 1000000000",
+      backendField: "shareholder_equity",
+    },
+    {
+      name: "Inventory",
+      description:
+        "Current inventory (EODHD: Financials.Balance_Sheet.inventory)",
+      unit: "USD",
+      keywords: ["inventory", "stock"],
+      example: "Inventory < 500000000",
+      backendField: "inventory",
+    },
+    {
+      name: "Receivables",
+      description:
+        "Net receivables (EODHD: Financials.Balance_Sheet.netReceivables)",
+      unit: "USD",
+      keywords: ["receivables", "accounts receivable"],
+      example: "Receivables < 1000000000",
+      backendField: "receivables",
+    },
+    {
+      name: "Payables",
+      description:
+        "Accounts payable (EODHD: Financials.Balance_Sheet.accountPayables)",
+      unit: "USD",
+      keywords: ["payables", "accounts payable"],
+      example: "Payables < 500000000",
+      backendField: "payables",
+    },
+    {
+      name: "Current Assets",
+      description:
+        "Total current assets (EODHD: Financials.Balance_Sheet.totalCurrentAssets)",
+      unit: "USD",
+      keywords: ["current assets", "short term assets"],
+      example: "Current Assets > 2000000000",
+      backendField: "current_assets",
+    },
+    {
+      name: "Current Liabilities",
+      description:
+        "Total current liabilities (EODHD: Financials.Balance_Sheet.totalCurrentLiabilities)",
+      unit: "USD",
+      keywords: ["current liabilities", "short term liabilities"],
+      example: "Current Liabilities < 1000000000",
+      backendField: "current_liabilities",
+    },
+    {
+      name: "Long Term Debt",
+      description:
+        "Long-term debt (EODHD: Financials.Balance_Sheet.longTermDebt)",
+      unit: "USD",
+      keywords: ["long term debt", "lt debt"],
+      example: "Long Term Debt < 2000000000",
+      backendField: "long_term_debt",
+    },
+    {
+      name: "Short Term Debt",
+      description:
+        "Short-term debt (EODHD: Financials.Balance_Sheet.shortTermDebt)",
+      unit: "USD",
+      keywords: ["short term debt", "st debt", "current debt"],
+      example: "Short Term Debt < 500000000",
+      backendField: "short_term_debt",
+    },
+    {
+      name: "Net Debt",
+      description: "Total Debt - Cash and Equivalents",
+      unit: "USD",
+      keywords: ["net debt"],
+      example: "Net Debt < 1000000000",
+      backendField: "net_debt",
+    },
+    {
+      name: "Property Plant Equipment",
+      description:
+        "Net PPE / Fixed Assets (EODHD: Financials.Balance_Sheet.propertyPlantEquipment)",
+      unit: "USD",
+      keywords: [
+        "ppe",
+        "property plant equipment",
+        "fixed assets",
+        "net block",
+      ],
+      example: "Property Plant Equipment > 500000000",
+      backendField: "ppe",
+    },
+  ],
+  "Income Statement": [
+    {
+      name: "EBITDA",
+      description:
+        "Earnings before interest, tax, depreciation & amortization (EODHD: Highlights.EBITDA)",
+      unit: "USD",
+      keywords: ["ebitda"],
+      example: "EBITDA > 1000000000",
+      backendField: "ebitda",
+    },
+    {
+      name: "Gross Profit",
+      description: "Gross profit (EODHD: Highlights.GrossProfitTTM)",
+      unit: "USD",
+      keywords: ["gross profit"],
+      example: "Gross Profit > 500000000",
+      backendField: "gross_profit",
+    },
+    {
+      name: "Interest Expense",
+      description:
+        "Interest expense (EODHD: Financials.Income_Statement.interestExpense)",
+      unit: "USD",
+      keywords: ["interest expense"],
+      example: "Interest Expense < 100000000",
+      backendField: "interest_expense",
+    },
+    {
+      name: "Revenue Per Share",
+      description:
+        "Revenue per share TTM (EODHD: Highlights.RevenuePerShareTTM)",
+      unit: "$",
+      keywords: ["revenue per share", "sales per share"],
+      example: "Revenue Per Share > 50",
+      backendField: "revenue_per_share",
+    },
+    {
+      name: "Gross Margin",
+      description: "Gross profit as % of revenue (Calculated)",
+      unit: "%",
+      keywords: ["gross margin", "gross profit margin"],
+      example: "Gross Margin > 30",
+      backendField: "gross_margin",
+    },
+    {
+      name: "EBITDA Margin",
+      description: "EBITDA as % of revenue (Calculated)",
+      unit: "%",
+      keywords: ["ebitda margin"],
+      example: "EBITDA Margin > 20",
+      backendField: "ebitda_margin",
+    },
+  ],
+  "Financial Health Scores": [
+    {
+      name: "Piotroski Score",
+      description: "9-point financial strength score (0-9)",
+      unit: "",
+      keywords: ["piotroski score", "f score", "piotroski f score"],
+      example: "Piotroski Score >= 7",
+      backendField: "piotroski_score",
+    },
+    {
+      name: "Altman Z Score",
+      description: "Bankruptcy risk score (>2.99 safe, <1.81 distress)",
+      unit: "",
+      keywords: ["altman z score", "z score", "bankruptcy score"],
+      example: "Altman Z Score > 2.99",
+      backendField: "altman_z_score",
+    },
+    {
+      name: "Quality of Earnings",
+      description: "Operating Cash Flow / Net Income (>1.0 is higher quality)",
+      unit: "x",
+      keywords: ["quality of earnings", "earnings quality"],
+      example: "Quality of Earnings > 1",
+      backendField: "quality_of_earnings",
+    },
+  ],
+  "Debt Coverage": [
+    {
+      name: "Debt to EBITDA",
+      description: "Total Debt / EBITDA - leverage multiple",
+      unit: "x",
+      keywords: ["debt to ebitda", "debt/ebitda", "leverage multiple"],
+      example: "Debt to EBITDA < 3",
+      backendField: "debt_to_ebitda",
+    },
+    {
+      name: "Debt to FCF",
+      description: "Total Debt / Free Cash Flow - debt repayment years",
+      unit: "x",
+      keywords: ["debt to fcf", "debt coverage"],
+      example: "Debt to FCF < 5",
+      backendField: "debt_to_fcf",
+    },
+    {
+      name: "Debt to Assets",
+      description: "Total Debt / Total Assets",
+      unit: "x",
+      keywords: ["debt to assets", "debt ratio"],
+      example: "Debt to Assets < 0.4",
+      backendField: "debt_to_assets",
+    },
+  ],
+  "Additional Valuation": [
+    {
+      name: "Enterprise Value",
+      description:
+        "Market cap + debt - cash (EODHD: Valuation.EnterpriseValue)",
+      unit: "USD",
+      keywords: ["enterprise value", "ev"],
+      example: "Enterprise Value > 10000000000",
+      backendField: "enterprise_value",
+    },
+    {
+      name: "EV/Revenue",
+      description:
+        "Enterprise Value / Revenue (EODHD: Valuation.EnterpriseValueRevenue)",
+      unit: "x",
+      keywords: ["ev/revenue", "ev to revenue"],
+      example: "EV/Revenue < 5",
+      backendField: "ev_revenue",
+    },
+    {
+      name: "Book Value",
+      description: "Book value per share (EODHD: Highlights.BookValue)",
+      unit: "$",
+      keywords: ["book value", "bvps"],
+      example: "Book Value > 20",
+      backendField: "book_value",
+    },
+    {
+      name: "FCF Yield",
+      description: "Free Cash Flow / Market Cap",
+      unit: "%",
+      keywords: ["fcf yield", "free cash flow yield"],
+      example: "FCF Yield > 5",
+      backendField: "fcf_yield",
+    },
+    {
+      name: "Payout Ratio",
+      description:
+        "Dividend per share / EPS (EODHD: SplitsDividends.PayoutRatio)",
+      unit: "%",
+      keywords: ["payout ratio", "dividend payout"],
+      example: "Payout Ratio < 60",
+      backendField: "payout_ratio",
+    },
+  ],
+  "Additional Profitability": [
+    {
+      name: "Return on Invested Capital",
+      description: "NOPAT / Invested Capital (Calculated)",
+      unit: "%",
+      keywords: ["roic", "return on invested capital"],
+      example: "Return on Invested Capital > 15",
+      backendField: "roic",
+    },
+  ],
+  "EPS Estimates": [
+    {
+      name: "EPS Estimate Current Year",
+      description:
+        "Analyst estimate for current year (EODHD: Highlights.EPSEstimateCurrentYear)",
+      unit: "$",
+      keywords: ["eps estimate current year", "eps estimate"],
+      example: "EPS Estimate Current Year > 5",
+      backendField: "eps_estimate_current_year",
+    },
+    {
+      name: "EPS Estimate Next Year",
+      description:
+        "Analyst estimate for next year (EODHD: Highlights.EPSEstimateNextYear)",
+      unit: "$",
+      keywords: ["eps estimate next year", "next year eps"],
+      example: "EPS Estimate Next Year > 6",
+      backendField: "eps_estimate_next_year",
+    },
+    {
+      name: "EPS Estimate Current Quarter",
+      description:
+        "Analyst estimate for current quarter (EODHD: Highlights.EPSEstimateCurrentQuarter)",
+      unit: "$",
+      keywords: ["eps estimate current quarter", "quarterly eps estimate"],
+      example: "EPS Estimate Current Quarter > 1",
+      backendField: "eps_estimate_current_quarter",
+    },
+    {
+      name: "Wall Street Target Price",
+      description:
+        "Analyst consensus target price (EODHD: Highlights.WallStreetTargetPrice)",
+      unit: "$",
+      keywords: ["target price", "analyst target", "wall street target"],
+      example: "Wall Street Target Price > Price * 1.2",
+      backendField: "target_price",
+    },
+  ],
+  "Extended Growth": [
+    {
+      name: "Sales Growth 5Years",
+      description: "5-year revenue CAGR (Calculated from historical)",
+      unit: "%",
+      keywords: ["sales growth 5y", "5 year revenue growth"],
+      example: "Sales Growth 5Years > 10",
+      backendField: "sales_cagr_5y",
+    },
+    {
+      name: "Sales Growth 7Years",
+      description: "7-year revenue CAGR (Calculated from historical)",
+      unit: "%",
+      keywords: ["sales growth 7y", "7 year revenue growth"],
+      example: "Sales Growth 7Years > 8",
+      backendField: "sales_cagr_7y",
+    },
+    {
+      name: "Sales Growth 10Years",
+      description: "10-year revenue CAGR (Calculated from historical)",
+      unit: "%",
+      keywords: ["sales growth 10y", "10 year revenue growth"],
+      example: "Sales Growth 10Years > 5",
+      backendField: "sales_cagr_10y",
+    },
+    {
+      name: "Profit Growth 3Years",
+      description: "3-year net income CAGR (Calculated from historical)",
+      unit: "%",
+      keywords: ["profit growth 3y", "3 year profit growth"],
+      example: "Profit Growth 3Years > 15",
+      backendField: "profit_cagr_3y",
+    },
+    {
+      name: "Profit Growth 7Years",
+      description: "7-year net income CAGR (Calculated from historical)",
+      unit: "%",
+      keywords: ["profit growth 7y", "7 year profit growth"],
+      example: "Profit Growth 7Years > 10",
+      backendField: "profit_cagr_7y",
+    },
+    {
+      name: "Profit Growth 10Years",
+      description: "10-year net income CAGR (Calculated from historical)",
+      unit: "%",
+      keywords: ["profit growth 10y", "10 year profit growth"],
+      example: "Profit Growth 10Years > 8",
+      backendField: "profit_cagr_10y",
+    },
+    {
+      name: "EPS Growth 5Years",
+      description: "5-year EPS CAGR (Calculated from historical)",
+      unit: "%",
+      keywords: ["eps growth 5y", "5 year eps growth"],
+      example: "EPS Growth 5Years > 12",
+      backendField: "eps_cagr_5y",
+    },
+  ],
+  "Performance Returns": [
+    {
+      name: "Return 6 Months",
+      description: "6-month stock return (Calculated from price history)",
+      unit: "%",
+      keywords: ["6m return", "6 month return"],
+      example: "Return 6 Months > 10",
+      backendField: "perf_6m_p",
+    },
+    {
+      name: "Return 1 Year",
+      description: "1-year stock return (Calculated from price history)",
+      unit: "%",
+      keywords: ["1y return", "1 year return"],
+      example: "Return 1 Year > 15",
+      backendField: "perf_1y_p",
+    },
+    {
+      name: "Return 2 Years",
+      description: "2-year stock return (Calculated from price history)",
+      unit: "%",
+      keywords: ["2y return", "2 year return"],
+      example: "Return 2 Years > 30",
+      backendField: "perf_2y_p",
+    },
+  ],
+  "Additional Cash Flow": [
+    {
+      name: "Capital Expenditure",
+      description: "CapEx (EODHD: Financials.Cash_Flow.capitalExpenditures)",
+      unit: "USD",
+      keywords: ["capex", "capital expenditure"],
+      example: "Capital Expenditure < 500000000",
+      backendField: "capex",
+    },
+    {
+      name: "FCF Per Share",
+      description: "Free Cash Flow / Shares Outstanding",
+      unit: "$",
+      keywords: ["fcf per share", "free cash flow per share"],
+      example: "FCF Per Share > 5",
+      backendField: "fcf_per_share",
+    },
+    {
+      name: "CapEx to Sales",
+      description: "Capital Expenditure as % of Revenue",
+      unit: "%",
+      keywords: ["capex to sales", "capital intensity"],
+      example: "CapEx to Sales < 10",
+      backendField: "capex_to_sales",
+    },
+  ],
+  "Other Info": [
+    {
+      name: "Employees",
+      description: "Full-time employees (EODHD: General.FullTimeEmployees)",
+      unit: "",
+      keywords: ["employees", "full time employees"],
+      example: "Employees > 10000",
+      backendField: "employees",
+    },
+    {
+      name: "Effective Tax Rate",
+      description: "Income Tax Expense / Income Before Tax",
+      unit: "%",
+      keywords: ["tax rate", "effective tax rate"],
+      example: "Effective Tax Rate < 25",
+      backendField: "effective_tax_rate",
+    },
+  ],
 };
 
 export const OPERATORS = [
@@ -1079,8 +1938,73 @@ export const searchSuggestions = (
 };
 
 // Detect if left side of a condition is an arithmetic expression (contains +, -, *, /)
+// Also handles expressions wrapped in parentheses
 const isArithmeticExpression = (text: string): boolean => {
-  return /[+\-*/]/.test(text);
+  // Strip leading/trailing parentheses for checking
+  const stripped = text.replace(/^\(+/, "").replace(/\)+$/, "").trim();
+  return /[+\-*/]/.test(stripped);
+};
+
+// Extract field names from an arithmetic expression for validation
+const extractFieldsFromArithmetic = (text: string): string[] => {
+  // Remove parentheses
+  const stripped = text.replace(/[()]/g, " ");
+  // Split by arithmetic operators
+  const parts = stripped.split(/[+\-*/]/);
+  // Filter and clean field names (exclude pure numbers)
+  return parts
+    .map((p) => p.trim())
+    .filter((p) => p && !/^\d+(\.\d+)?$/.test(p));
+};
+
+// Split query by logical operators (AND/OR) but only when NOT inside parentheses
+// This prevents incorrectly splitting field names like "Cash and Equivalents"
+const splitByLogicalOperators = (query: string): string[] => {
+  const results: string[] = [];
+  let current = "";
+  let parenDepth = 0;
+  let i = 0;
+
+  while (i < query.length) {
+    const char = query[i];
+
+    if (char === "(") {
+      parenDepth++;
+      current += char;
+      i++;
+    } else if (char === ")") {
+      parenDepth--;
+      current += char;
+      i++;
+    } else if (parenDepth === 0) {
+      // Check for AND/OR only when NOT inside parentheses
+      const remaining = query.slice(i);
+      // Match AND/OR with optional leading whitespace (for start of string) and required trailing whitespace
+      const andMatch = remaining.match(/^(\s*AND\s+)/i);
+      const orMatch = remaining.match(/^(\s*OR\s+)/i);
+
+      if (andMatch && (i === 0 || /\s$/.test(current))) {
+        if (current.trim()) results.push(current.trim());
+        results.push("AND");
+        current = "";
+        i += andMatch[1].length;
+      } else if (orMatch && (i === 0 || /\s$/.test(current))) {
+        if (current.trim()) results.push(current.trim());
+        results.push("OR");
+        current = "";
+        i += orMatch[1].length;
+      } else {
+        current += char;
+        i++;
+      }
+    } else {
+      current += char;
+      i++;
+    }
+  }
+
+  if (current.trim()) results.push(current.trim());
+  return results;
 };
 
 // Enhanced query validation that properly handles multi-word field names and multi-line queries
@@ -1088,6 +2012,15 @@ export const validateQuery = (query: string): QueryValidationError[] => {
   const errors: QueryValidationError[] = [];
   const lines = query.split("\n");
   const fieldNames = getAllFields().map((f) => f.name);
+  
+  // Also get all keywords from fields for validation
+  const allKeywords = getAllFields().flatMap((f) => f.keywords || []);
+  
+  // Also include BACKEND_FIELD_MAP keys as valid field names
+  const backendFieldKeys = Object.keys(BACKEND_FIELD_MAP);
+  
+  // Combine all valid field identifiers (use Array.from for compatibility)
+  const allValidFields = Array.from(new Set([...fieldNames, ...allKeywords, ...backendFieldKeys]));
 
   // First, let's check the entire query as a whole for multi-line validation
   // const fullQuery = query.replace(/\n/g, ' ').trim();
@@ -1125,8 +2058,9 @@ export const validateQuery = (query: string): QueryValidationError[] => {
       });
     }
 
-    // Split by AND/OR to get individual conditions
-    const conditions = trimmedLine.split(/\s+(AND|OR)\s+/i);
+    // Split by AND/OR to get individual conditions, but only when NOT inside parentheses
+    // This prevents splitting "Cash and Equivalents" incorrectly
+    const conditions = splitByLogicalOperators(trimmedLine);
 
     conditions.forEach((condition) => {
       // Skip the AND/OR operators themselves
@@ -1141,7 +2075,7 @@ export const validateQuery = (query: string): QueryValidationError[] => {
       if (!operatorMatch) {
         // No operator found - decide if this is a known or unknown field fragment
         if (conditionTrimmed.length > 0) {
-          const isKnownField = fieldNames.some(
+          const isKnownField = allValidFields.some(
             (field) => field.toLowerCase() === conditionTrimmed.toLowerCase()
           );
 
@@ -1184,13 +2118,13 @@ export const validateQuery = (query: string): QueryValidationError[] => {
       // Validate field name
       if (fieldPart) {
         const isArithmetic = isArithmeticExpression(fieldPart);
-        const isValidField = fieldNames.some(
+        const isValidField = allValidFields.some(
           (field) => field.toLowerCase() === fieldPart.toLowerCase()
         );
 
         if (!isValidField && !isArithmetic) {
           // Try to find a close match
-          const closeMatch = fieldNames.find((field) => {
+          const closeMatch = allValidFields.find((field) => {
             const fieldLower = field.toLowerCase();
             const fieldPartLower = fieldPart.toLowerCase();
 
@@ -1208,9 +2142,9 @@ export const validateQuery = (query: string): QueryValidationError[] => {
             const fieldWords = fieldLower.split(/\s+/);
             const inputWords = fieldPartLower.split(/\s+/);
 
-            return inputWords.every((inputWord) =>
+            return inputWords.every((inputWord: string) =>
               fieldWords.some(
-                (fieldWord) =>
+                (fieldWord: string) =>
                   fieldWord.includes(inputWord) || inputWord.includes(fieldWord)
               )
             );
@@ -1309,6 +2243,9 @@ export const validateQuery = (query: string): QueryValidationError[] => {
 export const tokenizeQuery = (query: string) => {
   const tokens = [];
   const fieldNames = getAllFields().map((f) => f.name);
+  const allKeywords = getAllFields().flatMap((f) => f.keywords || []);
+  const backendFieldKeys = Object.keys(BACKEND_FIELD_MAP);
+  const allValidFields = Array.from(new Set([...fieldNames, ...allKeywords, ...backendFieldKeys]));
   const operatorSymbols = OPERATORS.map((o) => o.symbol);
   const functionNames = FUNCTIONS.map((f) => f.name);
 
@@ -1333,7 +2270,7 @@ export const tokenizeQuery = (query: string) => {
     // Determine token type
     if (/^\s+$/.test(matchedText)) {
       type = "whitespace";
-    } else if (fieldNames.includes(matchedText)) {
+    } else if (allValidFields.some((f) => f.toLowerCase() === matchedText.toLowerCase())) {
       type = "field";
     } else if (operatorSymbols.includes(matchedText)) {
       type = "operator";
@@ -1347,7 +2284,7 @@ export const tokenizeQuery = (query: string) => {
       type = "punctuation";
     } else if (matchedText.length > 1) {
       // Check if it's a partial field name match
-      const partialMatch = fieldNames.find((name) =>
+      const partialMatch = allValidFields.find((name) =>
         name.toLowerCase().includes(matchedText.toLowerCase())
       );
       if (partialMatch) {
