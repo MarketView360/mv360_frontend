@@ -26,6 +26,7 @@ import { ModelSelector } from "@/components/jovan/ModelSelector";
 
 import { SettingsPanel } from "@/components/jovan/SettingsPanel";
 import { FullQuotaBar } from "@/components/jovan/QuotaBar";
+import { AiComingSoon } from "@/components/jovan/AiComingSoon";
 
 import { useAuth } from "@/providers/AuthProvider";
 import { useAIModels } from "@/hooks/useAIModels";
@@ -34,8 +35,14 @@ import type { ChatMessage, SessionSummary } from "@/lib/utils/jovan/types";
 import type { AIModel } from "@/lib/utils/jovan/models";
 
 const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000";
+const AI_ENABLED = process.env.NEXT_PUBLIC_AI_ENABLED === "true";
 
 export default function JovanChatPage() {
+  // Show coming soon page if AI is disabled
+  if (!AI_ENABLED) {
+    return <AiComingSoon />;
+  }
+
   return (
     <Suspense fallback={<JovanChatSkeleton />}>
       <JovanChatPageContent />
