@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/providers/AuthProvider";
 import { useTheme } from "@/app/providers";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,7 +28,6 @@ import {
   Key,
   Trash2,
   Shield,
-  FileText,
   AlertTriangle,
   Eye,
   EyeOff,
@@ -42,9 +42,6 @@ import {
   LayoutGrid,
   MessageSquare,
   Lock,
-  HelpCircle,
-  Scale,
-  BookOpen,
   Calendar,
   Clock,
   CheckCircle,
@@ -93,13 +90,12 @@ const DEFAULT_SETTINGS: UserSettings = {
 
 export default function SettingsPage() {
   const { user, session, loading: authLoading, resetPassword } = useAuth();
-  const { theme: currentTheme, setTheme: applyTheme } = useTheme();
+  const { setTheme: applyTheme } = useTheme();
   const router = useRouter();
 
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
   const [accountInfo, setAccountInfo] = useState<AccountInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -119,6 +115,10 @@ export default function SettingsPage() {
 
   // Password reset
   const [resetEmailSent, setResetEmailSent] = useState(false);
+
+  const authProvider = (accountInfo?.provider || user?.app_metadata?.provider || "email").toLowerCase();
+  const isOAuthUser = authProvider !== "email";
+  const providerLabel = authProvider.charAt(0).toUpperCase() + authProvider.slice(1);
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -144,7 +144,7 @@ export default function SettingsPage() {
         const data = await accountRes.json();
         setAccountInfo(data);
       }
-    } catch (err) {
+    } catch {
       setError("Failed to load settings");
     } finally {
       setLoading(false);
@@ -285,6 +285,11 @@ export default function SettingsPage() {
 
   const handlePasswordReset = async () => {
     if (!user?.email) return;
+
+    if (isOAuthUser) {
+      setError(`You signed in with ${providerLabel}. Password changes are managed by your sign-in provider.`);
+      return;
+    }
 
     try {
       await resetPassword(user.email);
@@ -537,7 +542,7 @@ export default function SettingsPage() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <Label className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                  <img src="https://groq.com/favicon.ico" alt="Groq" className="h-4 w-4" onError={(e) => (e.currentTarget.style.display = 'none')} />
+                  <div className="h-4 w-4 bg-purple-600 rounded" />
                   Groq API Key
                   {settings.has_groq_key && (
                     <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
@@ -893,24 +898,44 @@ export default function SettingsPage() {
             )}
 
             {/* Password Reset */}
-            <div className="flex items-center justify-between p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-              <div className="flex items-center gap-3">
-                <Lock className="h-5 w-5 text-slate-400" />
-                <div>
-                  <p className="font-medium text-slate-900 dark:text-white">Change Password</p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Send a password reset link to your email
-                  </p>
+            {!isOAuthUser ? (
+              <div className="flex items-center justify-between p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Lock className="h-5 w-5 text-slate-400" />
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-white">Change Password</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      Send a password reset link to your email
+                    </p>
+                  </div>
                 </div>
+                <button
+                  onClick={handlePasswordReset}
+                  disabled={resetEmailSent}
+                  className="px-4 py-2 text-sm bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50"
+                >
+                  {resetEmailSent ? "Email Sent" : "Send Reset Link"}
+                </button>
               </div>
-              <button
-                onClick={handlePasswordReset}
-                disabled={resetEmailSent}
-                className="px-4 py-2 text-sm bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50"
-              >
-                {resetEmailSent ? "Email Sent" : "Send Reset Link"}
-              </button>
-            </div>
+            ) : (
+              <div className="flex items-center justify-between p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Lock className="h-5 w-5 text-slate-400" />
+                  <div>
+                    <p className="font-medium text-slate-900 dark:text-white">Password</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      You signed in with {providerLabel}. Manage your password in your {providerLabel} account.
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href="/contact"
+                  className="px-4 py-2 text-sm bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700"
+                >
+                  Contact Support
+                </Link>
+              </div>
+            )}
 
             {/* Auth Provider */}
             {accountInfo && (
@@ -931,71 +956,6 @@ export default function SettingsPage() {
             )}
           </CardContent>
         </Card>
-
-        {/* Legal & Information */}
-        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg text-slate-900 dark:text-white">
-              <FileText className="h-5 w-5" />
-              Legal & Information
-            </CardTitle>
-            <CardDescription>Important documents and information</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-3 md:grid-cols-2">
-              <a
-                href="/legal/privacy"
-                className="flex items-center gap-3 p-4 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-              >
-                <Shield className="h-5 w-5 text-blue-500" />
-                <div>
-                  <p className="font-medium text-slate-900 dark:text-white">Privacy Policy</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">How we handle your data</p>
-                </div>
-                <ExternalLink className="h-4 w-4 text-slate-400 ml-auto" />
-              </a>
-              <a
-                href="/legal/terms"
-                className="flex items-center gap-3 p-4 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-              >
-                <Scale className="h-5 w-5 text-purple-500" />
-                <div>
-                  <p className="font-medium text-slate-900 dark:text-white">Terms of Service</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Usage terms and conditions</p>
-                </div>
-                <ExternalLink className="h-4 w-4 text-slate-400 ml-auto" />
-              </a>
-              <a
-                href="/legal/data-usage"
-                className="flex items-center gap-3 p-4 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-              >
-                <BookOpen className="h-5 w-5 text-green-500" />
-                <div>
-                  <p className="font-medium text-slate-900 dark:text-white">Data Usage</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">How your data is processed</p>
-                </div>
-                <ExternalLink className="h-4 w-4 text-slate-400 ml-auto" />
-              </a>
-              <a
-                href="/help"
-                className="flex items-center gap-3 p-4 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-              >
-                <HelpCircle className="h-5 w-5 text-amber-500" />
-                <div>
-                  <p className="font-medium text-slate-900 dark:text-white">Help & Support</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Get help with your account</p>
-                </div>
-                <ExternalLink className="h-4 w-4 text-slate-400 ml-auto" />
-              </a>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Footer */}
-        <div className="text-center text-sm text-slate-400 dark:text-slate-500 pb-8">
-          <p>MarketView360 v1.0.0</p>
-          <p className="mt-1">© {new Date().getFullYear()} All rights reserved.</p>
-        </div>
       </div>
     </div>
   );
