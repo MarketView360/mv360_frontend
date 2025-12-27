@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import MarketOverview from "@/components/MarketOverview";
 import SearchBar from "@/components/SearchBar";
@@ -39,68 +40,74 @@ export default async function Home() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans selection:bg-brand/20 transition-colors duration-300">
       {/* Hero Section */}
-      <section className="w-full py-24 md:py-32 bg-gradient-to-b from-white dark:from-slate-900 via-slate-50 dark:via-slate-950 to-slate-100 dark:to-slate-900 border-b border-slate-200 dark:border-slate-800 relative overflow-hidden">
-        {/* Background Decorative Elements */}
-        <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-          <div className="absolute -top-[20%] -right-[10%] w-[600px] h-[600px] rounded-full bg-brand/5 blur-3xl opacity-50"></div>
-          <div className="absolute top-[40%] -left-[10%] w-[500px] h-[500px] rounded-full bg-blue-400/5 blur-3xl opacity-50"></div>
-        </div>
+      <section className="relative w-full py-20 md:py-32 overflow-hidden">
+        {/* Abstract Background Elements */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-brand/10 dark:bg-brand/5 rounded-full blur-[120px] -z-10 animate-pulse" />
+        <div className="absolute bottom-0 left-1/3 w-[500px] h-[500px] bg-blue-600/10 dark:bg-blue-600/5 rounded-full blur-[100px] -z-10 animate-pulse delay-700" />
 
-        <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-12 flex flex-col items-center text-center space-y-8 relative z-10">
-          <Badge
-            variant="outline"
-            className="px-4 py-1.5 text-sm font-medium border-brand/20 text-brand bg-brand/5 rounded-full animate-fade-in"
-          >
-            v2.0 is now live
-          </Badge>
+        <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-12">
+          <div className="flex flex-col items-center text-center max-w-5xl mx-auto">
+            <Badge
+              variant="outline"
+              className="mb-8 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.2em] border-brand/30 text-brand bg-brand/5 rounded-full backdrop-blur-md shadow-sm"
+            >
+              v2.0 is now live
+            </Badge>
 
-          <div className="space-y-4 max-w-4xl">
-            <h1 className="text-5xl md:text-7xl font-bold font-heading tracking-tight text-slate-900 dark:text-white leading-[1.1]">
-              Analyze US Stocks <br className="hidden md:inline" />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand to-blue-600">
-                Like a Pro.
-              </span>
-            </h1>
-            <p className="text-xl text-slate-600 dark:text-slate-300 md:text-2xl max-w-[800px] mx-auto leading-relaxed">
-              Marketview360 is the fastest way to screen, analyze, and track US
-              equities. Real-time data, powerful ratios, and clean design.
-            </p>
-          </div>
+            {/* Logo */}
+            <div className="relative h-24 w-96 md:h-32 md:w-[28rem] mb-8">
+              <Image
+                src="/logo.svg"
+                alt="Marketview360"
+                fill
+                className="object-contain dark:hidden"
+                priority
+              />
+              <Image
+                src="/logo-dark.svg"
+                alt="Marketview360"
+                fill
+                className="object-contain hidden dark:block"
+                priority
+              />
+            </div>
 
-          <div className="w-full max-w-2xl relative mt-8">
-            <SearchBar />
-            <div className="mt-6 flex flex-wrap justify-center gap-3 text-sm text-slate-500 dark:text-slate-400">
-              <span className="font-medium text-slate-700 dark:text-slate-300">
-                Popular:
-              </span>
-              <Link
-                href="/company/AAPL"
-                className="px-3 py-1 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-brand dark:hover:border-brand hover:text-brand dark:hover:text-brand transition-colors shadow-sm"
-              >
-                AAPL
-              </Link>
-              <Link
-                href="/company/NVDA"
-                className="px-3 py-1 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-brand dark:hover:border-brand hover:text-brand dark:hover:text-brand transition-colors shadow-sm"
-              >
-                NVDA
-              </Link>
-              <Link
-                href="/company/TSLA"
-                className="px-3 py-1 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-brand dark:hover:border-brand hover:text-brand dark:hover:text-brand transition-colors shadow-sm"
-              >
-                TSLA
-              </Link>
-              <Link
-                href="/company/MSFT"
-                className="px-3 py-1 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-brand dark:hover:border-brand hover:text-brand dark:hover:text-brand transition-colors shadow-sm"
-              >
-                MSFT
-              </Link>
+            <div className="space-y-6 mb-12">
+              <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight text-slate-900 dark:text-white leading-[1.05]">
+                Analyze US Stocks{" "}
+                <br className="hidden md:block" />
+                <span className="text-brand">
+                  Like a Pro.
+                </span>
+              </h1>
+              <p className="text-lg text-slate-600 dark:text-slate-400 md:text-xl max-w-3xl mx-auto leading-relaxed">
+                Real-time US equity insights delivered with speed, clarity, and analytical depth.
+                Marketview360 transforms complex U.S. equity data into actionable intelligence.
+                Source Ideas, value deeper, and trade with conviction.
+              </p>
+            </div>
+
+            <div className="w-full max-w-2xl">
+              <SearchBar />
+              <div className="mt-8 flex flex-wrap justify-center items-center gap-4 text-sm">
+                <span className="font-semibold text-slate-500 dark:text-slate-500 uppercase tracking-widest text-[10px]">
+                  Popular:
+                </span>
+                {['AAPL', 'NVDA', 'TSLA', 'MSFT'].map((ticker) => (
+                  <Link
+                    key={ticker}
+                    href={`/company/${ticker}`}
+                    className="px-4 py-1.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-brand dark:hover:border-brand hover:text-brand dark:hover:text-brand transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5 text-slate-600 dark:text-slate-300 font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+                  >
+                    {ticker}
+                  </Link>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </section>
+
 
       {/* Market Overview Section */}
       <section className="w-full py-16 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
@@ -117,7 +124,7 @@ export default async function Home() {
         </div>
       </section>
 
-      
+
     </div>
   );
 }

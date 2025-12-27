@@ -3,10 +3,13 @@ import { NewsHeader } from "./NewsHeader";
 import { NewsGrid } from "./NewsGrid";
 import { NewsSkeleton } from "./NewsSkeleton";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
-  title: "Market News | Acme Investor",
+  title: "Market News | MarketView360",
   description: "Real-time market headlines with company filtering",
 };
+
 
 export default function NewsPage() {
   return (

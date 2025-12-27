@@ -1,16 +1,28 @@
 import Link from "next/link";
-import { Twitter, Linkedin, Github } from "lucide-react";
+import Image from "next/image";
+import { Linkedin } from "lucide-react";
 
 export function Footer() {
   return (
-    <footer className="bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 pt-16 pb-8 transition-colors duration-300">
+    <footer role="contentinfo" className="bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 pt-16 pb-8 transition-colors duration-300">
       <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
           <div className="space-y-4">
-            <Link href="/" className="flex items-center space-x-2">
-              <span className="font-heading font-bold text-xl text-brand text-black dark:text-white">
-                Marketview360
-              </span>
+            <Link href="/" className="flex items-center">
+              <Image
+                src="/logo.svg"
+                alt="Marketview360"
+                width={280}
+                height={56}
+                className="h-14 w-auto dark:hidden"
+              />
+              <Image
+                src="/logo-dark.svg"
+                alt="Marketview360"
+                width={280}
+                height={56}
+                className="h-14 w-auto hidden dark:block"
+              />
             </Link>
             <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
               The fastest way to screen, analyze, and track US equities.
@@ -19,20 +31,22 @@ export function Footer() {
             </p>
             <div className="flex space-x-4">
               <Link
-                href="#"
-                className="text-slate-400 dark:text-slate-500 hover:text-brand dark:hover:text-brand transition-colors"
+                href="https://x.com/marketview360io"
+                className="text-slate-400 dark:text-slate-500 hover:text-brand dark:hover:text-brand transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:rounded"
+                aria-label="Follow us on X"
+                target="_blank"
+                rel="noopener noreferrer"
               >
-                <Twitter className="w-5 h-5" />
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                </svg>
               </Link>
               <Link
-                href="#"
-                className="text-slate-400 dark:text-slate-500 hover:text-brand dark:hover:text-brand transition-colors"
-              >
-                <Github className="w-5 h-5" />
-              </Link>
-              <Link
-                href="#"
-                className="text-slate-400 dark:text-slate-500 hover:text-brand dark:hover:text-brand transition-colors"
+                href="https://www.linkedin.com/company/marketview360io/"
+                className="text-slate-400 dark:text-slate-500 hover:text-brand dark:hover:text-brand transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:rounded"
+                aria-label="Connect with us on LinkedIn"
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 <Linkedin className="w-5 h-5" />
               </Link>
@@ -53,18 +67,13 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="#" className="hover:text-brand transition-colors">
+                <Link href="/market" className="hover:text-brand transition-colors">
                   Market Heatmap
                 </Link>
               </li>
               <li>
-                <Link href="#" className="hover:text-brand transition-colors">
+                <Link href="/earnings" className="hover:text-brand transition-colors">
                   Earnings Calendar
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="hover:text-brand transition-colors">
-                  Pricing
                 </Link>
               </li>
             </ul>

@@ -3,12 +3,11 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useAuth } from "@/providers/AuthProvider";
 import { SocialAuthButtons, OrDivider } from "@/components/auth/SocialAuthButtons";
 import { Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, Sparkles } from "lucide-react";
 
-<<<<<<< HEAD
-=======
 export default function LoginPage() {
   return (
     <Suspense fallback={<LoginPageSkeleton />}>
@@ -25,14 +24,14 @@ function LoginPageSkeleton() {
   );
 }
 
->>>>>>> ca975cc7d9a76f7c6659051e8e491236766105db
+
 function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirectTo") || "/";
-  
+
   const { signInWithEmail, signInWithMagicLink, loading } = useAuth();
-  
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -47,7 +46,7 @@ function LoginPageContent() {
     setIsLoading(true);
 
     const { error } = await signInWithEmail(email, password);
-    
+
     if (error) {
       setError(error.message);
       setIsLoading(false);
@@ -63,7 +62,7 @@ function LoginPageContent() {
     setIsLoading(true);
 
     const { error } = await signInWithMagicLink(email);
-    
+
     if (error) {
       setError(error.message);
     } else {
@@ -105,7 +104,7 @@ function LoginPageContent() {
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4 py-12">
       <div className="w-full max-w-md">
         {/* Back to home */}
-        <Link 
+        <Link
           href="/"
           className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white mb-8 transition-colors"
         >
@@ -115,11 +114,22 @@ function LoginPageContent() {
 
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8">
           {/* Header */}
-          <div className="text-center mb-8">
+          <div className="text-center mb-6">
             <Link href="/" className="inline-block mb-4">
-              <span className="font-heading font-bold text-2xl tracking-tight text-slate-900 dark:text-white">
-                Marketview<span className="text-blue-600">360</span>
-              </span>
+              <Image
+                src="/logo.svg"
+                alt="Marketview360"
+                width={240}
+                height={56}
+                className="h-14 w-auto mx-auto dark:hidden"
+              />
+              <Image
+                src="/logo-dark.svg"
+                alt="Marketview360"
+                width={240}
+                height={56}
+                className="h-14 w-auto mx-auto hidden dark:block"
+              />
             </Link>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
               Welcome back
@@ -129,32 +139,25 @@ function LoginPageContent() {
             </p>
           </div>
 
-          {/* Social Login */}
-          <SocialAuthButtons mode="login" />
-          
-          <OrDivider />
-
           {/* Toggle between password and magic link */}
           <div className="flex gap-2 mb-6">
             <button
               type="button"
               onClick={() => setMagicLinkMode(false)}
-              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                !magicLinkMode
-                  ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900"
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
-              }`}
+              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${!magicLinkMode
+                ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                }`}
             >
               Password
             </button>
             <button
               type="button"
               onClick={() => setMagicLinkMode(true)}
-              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1 ${
-                magicLinkMode
-                  ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900"
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
-              }`}
+              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1 ${magicLinkMode
+                ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                }`}
             >
               <Sparkles className="h-4 w-4" />
               Magic Link
@@ -168,6 +171,7 @@ function LoginPageContent() {
               <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
             </div>
           )}
+
 
           {/* Email/Password Form */}
           {!magicLinkMode ? (
@@ -187,7 +191,7 @@ function LoginPageContent() {
                       onChange={(e) => setEmail(e.target.value)}
                       required
                       placeholder="you@example.com"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-400 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-colors"
                     />
                   </div>
                 </div>
@@ -198,7 +202,7 @@ function LoginPageContent() {
                     <label htmlFor="password" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                       Password
                     </label>
-                    <Link 
+                    <Link
                       href="/auth/forgot-password"
                       className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
                     >
@@ -214,12 +218,13 @@ function LoginPageContent() {
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       placeholder="Enter your password"
-                      className="w-full pl-10 pr-12 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                      className="w-full pl-10 pr-12 py-2.5 rounded-lg border border-slate-400 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-colors"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:rounded"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
                     >
                       {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
@@ -288,6 +293,10 @@ function LoginPageContent() {
             </form>
           )}
 
+          {/* Alternative Login Methods */}
+          <OrDivider />
+          <SocialAuthButtons mode="login" />
+
           {/* Sign up link */}
           <p className="text-center text-sm text-slate-600 dark:text-slate-400 mt-6">
             Don&apos;t have an account?{" "}
@@ -298,13 +307,5 @@ function LoginPageContent() {
         </div>
       </div>
     </div>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" /></div>}>
-      <LoginPageContent />
-    </Suspense>
   );
 }

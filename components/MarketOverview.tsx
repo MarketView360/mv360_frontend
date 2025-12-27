@@ -75,8 +75,8 @@ export default function MarketOverview({
     const buckets: { name: string; symbol: string; rows: typeof withMcap }[] =
       [];
 
-    // Overall market
-    buckets.push({ name: "US Market", symbol: "USMKT", rows: withMcap });
+    // Overall market -> S&P 500
+    buckets.push({ name: "S&P 500", symbol: "SPX", rows: withMcap });
 
     // Large / Mid / Small based on rough market cap buckets
     const large = withMcap.filter(
@@ -93,11 +93,11 @@ export default function MarketOverview({
     );
 
     if (large.length)
-      buckets.push({ name: "US Large Cap", symbol: "LARGE", rows: large });
+      buckets.push({ name: "Nasdaq", symbol: "COMP", rows: large });
     if (mid.length)
-      buckets.push({ name: "US Mid Cap", symbol: "MID", rows: mid });
+      buckets.push({ name: "Russell 2000", symbol: "RUT", rows: mid });
     if (small.length)
-      buckets.push({ name: "US Small Cap", symbol: "SMALL", rows: small });
+      buckets.push({ name: "Dow Jones", symbol: "DJI", rows: small });
 
     const toIndex = (bucket: {
       name: string;
@@ -279,13 +279,6 @@ export default function MarketOverview({
       {/* Market snapshot / status */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
-          <Badge
-            variant="outline"
-            className="inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
-          >
-            <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            Live market data
-          </Badge>
           {loading && (
             <span className="text-sm text-slate-500 dark:text-slate-400">
               Refreshing…
@@ -509,9 +502,6 @@ export default function MarketOverview({
             <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-900 dark:text-white">
               <Newspaper className="w-5 h-5 text-brand" />
               Market News
-              <Badge variant="outline" className="text-[10px] h-4 ml-1">
-                Live
-              </Badge>
             </CardTitle>
             <button
               type="button"

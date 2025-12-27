@@ -84,25 +84,14 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-<<<<<<< HEAD
-=======
-export default function ResultsPage() {
-  return (
-    <Suspense fallback={<ResultsPageSkeleton />}>
-      <ResultsPageContent />
-    </Suspense>
-  );
-}
-
 function ResultsPageSkeleton() {
   return (
-    <div className="w-full max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 py-4 md:py-6 flex items-center justify-center min-h-[50vh]">
+    <div className="w-full max-w-[1600px] mx-auto px-4 md:px-8 lg:px-12 py-4 md:py-6 flex items-center justify-center min-h-[50vh]">
       <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-brand" />
     </div>
   );
 }
 
->>>>>>> ca975cc7d9a76f7c6659051e8e491236766105db
 function ResultsPageContent() {
   const sp = useSearchParams();
   const router = useRouter();
@@ -334,166 +323,166 @@ function ResultsPageContent() {
         label: string;
         format: (val: unknown) => string | number;
       }[] = [
-        { key: "code", label: "Code", format: (v) => String(v ?? "") },
-        { key: "name", label: "Name", format: (v) => String(v ?? "") },
-        { key: "exchange", label: "Exchange", format: (v) => String(v ?? "") },
-        {
-          key: "adjusted_close",
-          label: "Price",
-          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-        },
-        {
-          key: "market_capitalization",
-          label: "Market Cap",
-          format: (v) => {
-            if (v == null) return "";
-            const n = Number(v);
-            if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
-            if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
-            if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
-            return `$${n.toFixed(0)}`;
+          { key: "code", label: "Code", format: (v) => String(v ?? "") },
+          { key: "name", label: "Name", format: (v) => String(v ?? "") },
+          { key: "exchange", label: "Exchange", format: (v) => String(v ?? "") },
+          {
+            key: "adjusted_close",
+            label: "Price",
+            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
           },
-        },
-        {
-          key: "dividend_yield",
-          label: "Div Yield",
-          format: (v) => (v != null ? `${(Number(v) * 100).toFixed(2)}%` : ""),
-        },
-        {
-          key: "refund_1d_p",
-          label: "1D %",
-          format: (v) => (v != null ? `${Number(v).toFixed(2)}%` : ""),
-        },
-        {
-          key: "refund_5d_p",
-          label: "5D %",
-          format: (v) => (v != null ? `${Number(v).toFixed(2)}%` : ""),
-        },
-        {
-          key: "pe_ratio",
-          label: "P/E",
-          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-        },
-        {
-          key: "forward_pe",
-          label: "Fwd P/E",
-          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-        },
-        {
-          key: "peg",
-          label: "PEG",
-          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-        },
-        {
-          key: "pb",
-          label: "P/B",
-          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-        },
-        {
-          key: "price_to_sales",
-          label: "P/S",
-          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-        },
-        {
-          key: "price_to_cash_flow",
-          label: "P/C",
-          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-        },
-        {
-          key: "ev_ebitda",
-          label: "EV/EBITDA",
-          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-        },
-        {
-          key: "ev_sales",
-          label: "EV/Sales",
-          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-        },
-        {
-          key: "current_ratio",
-          label: "Current Ratio",
-          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-        },
-        {
-          key: "quick_ratio",
-          label: "Quick Ratio",
-          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-        },
-        {
-          key: "debt_to_equity",
-          label: "Debt/Eq",
-          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-        },
-        {
-          key: "lt_debt_to_equity",
-          label: "LT Debt/Eq",
-          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-        },
-        {
-          key: "eps_ttm",
-          label: "EPS (TTM)",
-          format: (v) => (v != null ? `$${Number(v).toFixed(2)}` : ""),
-        },
-        {
-          key: "diluted_eps_ttm",
-          label: "Diluted EPS",
-          format: (v) => (v != null ? `$${Number(v).toFixed(2)}` : ""),
-        },
-        {
-          key: "revenue_ttm",
-          label: "Sales (TTM)",
-          format: (v) => {
-            if (v == null) return "";
-            const n = Number(v);
-            if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
-            if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
-            if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
-            return `$${n.toFixed(0)}`;
+          {
+            key: "market_capitalization",
+            label: "Market Cap",
+            format: (v) => {
+              if (v == null) return "";
+              const n = Number(v);
+              if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+              if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+              if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+              return `$${n.toFixed(0)}`;
+            },
           },
-        },
-        {
-          key: "earnings_ttm",
-          label: "Earnings (TTM)",
-          format: (v) => {
-            if (v == null) return "";
-            const n = Number(v);
-            if (Math.abs(n) >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
-            if (Math.abs(n) >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
-            if (Math.abs(n) >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
-            return `$${n.toFixed(0)}`;
+          {
+            key: "dividend_yield",
+            label: "Div Yield",
+            format: (v) => (v != null ? `${(Number(v) * 100).toFixed(2)}%` : ""),
           },
-        },
-        {
-          key: "sma20",
-          label: "SMA20",
-          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-        },
-        {
-          key: "sma50",
-          label: "SMA50",
-          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-        },
-        {
-          key: "sma200",
-          label: "SMA200",
-          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-        },
-        {
-          key: "beta",
-          label: "Beta",
-          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-        },
-        {
-          key: "perf_3y_p",
-          label: "Perf 3Y %",
-          format: (v) => (v != null ? `${Number(v).toFixed(2)}%` : ""),
-        },
-        {
-          key: "perf_5y_p",
-          label: "Perf 5Y %",
-          format: (v) => (v != null ? `${Number(v).toFixed(2)}%` : ""),
-        },
-      ];
+          {
+            key: "refund_1d_p",
+            label: "1D %",
+            format: (v) => (v != null ? `${Number(v).toFixed(2)}%` : ""),
+          },
+          {
+            key: "refund_5d_p",
+            label: "5D %",
+            format: (v) => (v != null ? `${Number(v).toFixed(2)}%` : ""),
+          },
+          {
+            key: "pe_ratio",
+            label: "P/E",
+            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+          },
+          {
+            key: "forward_pe",
+            label: "Fwd P/E",
+            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+          },
+          {
+            key: "peg",
+            label: "PEG",
+            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+          },
+          {
+            key: "pb",
+            label: "P/B",
+            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+          },
+          {
+            key: "price_to_sales",
+            label: "P/S",
+            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+          },
+          {
+            key: "price_to_cash_flow",
+            label: "P/C",
+            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+          },
+          {
+            key: "ev_ebitda",
+            label: "EV/EBITDA",
+            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+          },
+          {
+            key: "ev_sales",
+            label: "EV/Sales",
+            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+          },
+          {
+            key: "current_ratio",
+            label: "Current Ratio",
+            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+          },
+          {
+            key: "quick_ratio",
+            label: "Quick Ratio",
+            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+          },
+          {
+            key: "debt_to_equity",
+            label: "Debt/Eq",
+            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+          },
+          {
+            key: "lt_debt_to_equity",
+            label: "LT Debt/Eq",
+            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+          },
+          {
+            key: "eps_ttm",
+            label: "EPS (TTM)",
+            format: (v) => (v != null ? `$${Number(v).toFixed(2)}` : ""),
+          },
+          {
+            key: "diluted_eps_ttm",
+            label: "Diluted EPS",
+            format: (v) => (v != null ? `$${Number(v).toFixed(2)}` : ""),
+          },
+          {
+            key: "revenue_ttm",
+            label: "Sales (TTM)",
+            format: (v) => {
+              if (v == null) return "";
+              const n = Number(v);
+              if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+              if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+              if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+              return `$${n.toFixed(0)}`;
+            },
+          },
+          {
+            key: "earnings_ttm",
+            label: "Earnings (TTM)",
+            format: (v) => {
+              if (v == null) return "";
+              const n = Number(v);
+              if (Math.abs(n) >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+              if (Math.abs(n) >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+              if (Math.abs(n) >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+              return `$${n.toFixed(0)}`;
+            },
+          },
+          {
+            key: "sma20",
+            label: "SMA20",
+            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+          },
+          {
+            key: "sma50",
+            label: "SMA50",
+            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+          },
+          {
+            key: "sma200",
+            label: "SMA200",
+            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+          },
+          {
+            key: "beta",
+            label: "Beta",
+            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+          },
+          {
+            key: "perf_3y_p",
+            label: "Perf 3Y %",
+            format: (v) => (v != null ? `${Number(v).toFixed(2)}%` : ""),
+          },
+          {
+            key: "perf_5y_p",
+            label: "Perf 5Y %",
+            format: (v) => (v != null ? `${Number(v).toFixed(2)}%` : ""),
+          },
+        ];
 
       // Filter to only visible columns
       const exportColumns = columnDefs.filter((col) =>
@@ -737,7 +726,7 @@ function ResultsPageContent() {
 
   return (
     <TooltipProvider>
-      <div className="w-full max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 py-4 md:py-6 space-y-4">
+      <div className="w-full max-w-[1600px] mx-auto px-4 md:px-8 lg:px-12 py-4 md:py-6 space-y-4">
         {/* Header */}
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -1339,14 +1328,12 @@ function ResultsPageContent() {
                             key={`${r.code}-${i}`}
                             className={`
                               transition-all duration-150 group
-                              ${
-                                isAccessible
-                                  ? `${
-                                      isEven
-                                        ? "bg-white dark:bg-slate-900"
-                                        : "bg-slate-50/50 dark:bg-slate-800/30"
-                                    } hover:bg-blue-50 dark:hover:bg-slate-700/50 cursor-pointer`
-                                  : "opacity-30 pointer-events-none select-none bg-slate-100/50 dark:bg-slate-800/50"
+                              ${isAccessible
+                                ? `${isEven
+                                  ? "bg-white dark:bg-slate-900"
+                                  : "bg-slate-50/50 dark:bg-slate-800/30"
+                                } hover:bg-blue-50 dark:hover:bg-slate-700/50 cursor-pointer`
+                                : "opacity-30 pointer-events-none select-none bg-slate-100/50 dark:bg-slate-800/50"
                               }
                             `}
                             onClick={() => {
@@ -1400,11 +1387,10 @@ function ResultsPageContent() {
                             {visibleColumns.has("refund_1d_p") && (
                               <td className="px-4 py-3 text-right">
                                 <span
-                                  className={`inline-flex items-center gap-0.5 font-semibold tabular-nums ${
-                                    isPositive1d
-                                      ? "text-emerald-600 dark:text-emerald-400"
-                                      : "text-rose-600 dark:text-rose-400"
-                                  }`}
+                                  className={`inline-flex items-center gap-0.5 font-semibold tabular-nums ${isPositive1d
+                                    ? "text-emerald-600 dark:text-emerald-400"
+                                    : "text-rose-600 dark:text-rose-400"
+                                    }`}
                                 >
                                   {fmtPct(r.refund_1d_p)}
                                   <span className="text-xs">
@@ -1416,11 +1402,10 @@ function ResultsPageContent() {
                             {visibleColumns.has("refund_5d_p") && (
                               <td className="px-4 py-3 text-right">
                                 <span
-                                  className={`inline-flex items-center gap-0.5 font-semibold tabular-nums ${
-                                    isPositive5d
-                                      ? "text-emerald-600 dark:text-emerald-400"
-                                      : "text-rose-600 dark:text-rose-400"
-                                  }`}
+                                  className={`inline-flex items-center gap-0.5 font-semibold tabular-nums ${isPositive5d
+                                    ? "text-emerald-600 dark:text-emerald-400"
+                                    : "text-rose-600 dark:text-rose-400"
+                                    }`}
                                 >
                                   {fmtPct(r.refund_5d_p)}
                                   <span className="text-xs">
@@ -1584,11 +1569,10 @@ function ResultsPageContent() {
                               <td className="px-4 py-3 text-right">
                                 {r.perf_3y_p != null ? (
                                   <span
-                                    className={`font-semibold tabular-nums ${
-                                      r.perf_3y_p >= 0
-                                        ? "text-emerald-600 dark:text-emerald-400"
-                                        : "text-rose-600 dark:text-rose-400"
-                                    }`}
+                                    className={`font-semibold tabular-nums ${r.perf_3y_p >= 0
+                                      ? "text-emerald-600 dark:text-emerald-400"
+                                      : "text-rose-600 dark:text-rose-400"
+                                      }`}
                                   >
                                     {fmtPct(r.perf_3y_p)}
                                   </span>
@@ -1602,11 +1586,10 @@ function ResultsPageContent() {
                               <td className="px-4 py-3 text-right">
                                 {r.perf_5y_p != null ? (
                                   <span
-                                    className={`font-semibold tabular-nums ${
-                                      r.perf_5y_p >= 0
-                                        ? "text-emerald-600 dark:text-emerald-400"
-                                        : "text-rose-600 dark:text-rose-400"
-                                    }`}
+                                    className={`font-semibold tabular-nums ${r.perf_5y_p >= 0
+                                      ? "text-emerald-600 dark:text-emerald-400"
+                                      : "text-rose-600 dark:text-rose-400"
+                                      }`}
                                   >
                                     {fmtPct(r.perf_5y_p)}
                                   </span>

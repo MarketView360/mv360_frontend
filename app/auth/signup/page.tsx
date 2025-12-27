@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useAuth } from "@/providers/AuthProvider";
 import { SocialAuthButtons, OrDivider } from "@/components/auth/SocialAuthButtons";
 import { Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, User, Check, X } from "lucide-react";
@@ -19,7 +20,7 @@ function getPasswordStrength(password: string): PasswordStrength {
   if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
   if (/\d/.test(password)) score++;
   if (/[^a-zA-Z0-9]/.test(password)) score++;
-  
+
   if (score <= 1) return { score, label: "Weak", color: "bg-red-500" };
   if (score <= 2) return { score, label: "Fair", color: "bg-orange-500" };
   if (score <= 3) return { score, label: "Good", color: "bg-yellow-500" };
@@ -29,7 +30,7 @@ function getPasswordStrength(password: string): PasswordStrength {
 
 export default function SignupPage() {
   const { signUpWithEmail, loading } = useAuth();
-  
+
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -67,7 +68,7 @@ export default function SignupPage() {
 
     setIsLoading(true);
     const { error } = await signUpWithEmail(email, password, fullName);
-    
+
     if (error) {
       setError(error.message);
       setIsLoading(false);
@@ -114,7 +115,7 @@ export default function SignupPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4 py-12">
       <div className="w-full max-w-md">
-        <Link 
+        <Link
           href="/"
           className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white mb-8 transition-colors"
         >
@@ -125,9 +126,20 @@ export default function SignupPage() {
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8">
           <div className="text-center mb-8">
             <Link href="/" className="inline-block mb-4">
-              <span className="font-heading font-bold text-2xl tracking-tight text-slate-900 dark:text-white">
-                Marketview<span className="text-blue-600">360</span>
-              </span>
+              <Image
+                src="/logo.svg"
+                alt="Marketview360"
+                width={240}
+                height={56}
+                className="h-14 w-auto mx-auto dark:hidden"
+              />
+              <Image
+                src="/logo-dark.svg"
+                alt="Marketview360"
+                width={240}
+                height={56}
+                className="h-14 w-auto mx-auto hidden dark:block"
+              />
             </Link>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Create your account</h1>
             <p className="text-slate-600 dark:text-slate-400 mt-2">Start analyzing markets for free</p>
@@ -192,7 +204,8 @@ export default function SignupPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:rounded"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -229,14 +242,14 @@ export default function SignupPage() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                     placeholder="Confirm your password"
-                    className={`w-full pl-10 pr-12 py-2.5 rounded-lg border ${
-                      confirmPassword.length > 0 ? (passwordsMatch ? "border-green-500" : "border-red-500") : "border-slate-300 dark:border-slate-600"
-                    } bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                    className={`w-full pl-10 pr-12 py-2.5 rounded-lg border ${confirmPassword.length > 0 ? (passwordsMatch ? "border-green-500" : "border-red-500") : "border-slate-300 dark:border-slate-600"
+                      } bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:rounded"
+                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                   >
                     {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>

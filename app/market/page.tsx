@@ -28,16 +28,6 @@ const RANGE_OPTIONS = [
 type Range = typeof RANGE_OPTIONS[number]["value"];
 
 /* ---------- main ---------- */
-<<<<<<< HEAD
-=======
-export default function MarketPage() {
-  return (
-    <Suspense fallback={<MarketPageSkeleton />}>
-      <MarketPageContent />
-    </Suspense>
-  );
-}
-
 function MarketPageSkeleton() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
@@ -46,7 +36,6 @@ function MarketPageSkeleton() {
   );
 }
 
->>>>>>> ca975cc7d9a76f7c6659051e8e491236766105db
 function MarketPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -238,52 +227,60 @@ function MarketPageContent() {
               </select>
             </div>
             <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setRefreshToken((t) => t + 1)}
-            className="h-8"
-          >
-            <RefreshCw className={cn("h-3 w-3 mr-1.5")} />
-            Refresh
-            <KbdGroup className="ml-2">
-              <Kbd>⌘</Kbd>
-              <Kbd>⇧</Kbd>
-              <Kbd>R</Kbd>
-            </KbdGroup>
-          </Button>
+              variant="outline"
+              size="sm"
+              onClick={() => setRefreshToken((t) => t + 1)}
+              className="h-8"
+            >
+              <RefreshCw className={cn("h-3 w-3 mr-1.5")} />
+              Refresh
+              <KbdGroup className="ml-2">
+                <Kbd>⌘</Kbd>
+                <Kbd>⇧</Kbd>
+                <Kbd>R</Kbd>
+              </KbdGroup>
+            </Button>
+          </div>
+        </div>
+
+        {/* Heatmap */}
+        <div>
+          {loading ? (
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 space-y-4">
+              <div className="h-8 w-1/3 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
+              <div className="h-64 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
+            </div>
+          ) : (
+            <MarketHeatmap sector={sector || undefined} refreshToken={refreshToken} />
+          )}
+        </div>
+
+        {/* Overview: Indices, Movers, News stacked */}
+        <div>
+          {loading ? (
+            <div className="space-y-6">
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 space-y-4">
+                <div className="h-6 w-1/3 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
+                <div className="h-20 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
+              </div>
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 space-y-4">
+                <div className="h-6 w-1/3 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
+                <div className="h-32 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
+              </div>
+            </div>
+          ) : (
+            <MarketOverview refreshToken={refreshToken} />
+          )}
         </div>
       </div>
-
-      {/* Heatmap */}
-      <div>
-        {loading ? (
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 space-y-4">
-            <div className="h-8 w-1/3 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
-            <div className="h-64 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
-          </div>
-        ) : (
-          <MarketHeatmap sector={sector || undefined} refreshToken={refreshToken} />
-        )}
-      </div>
-
-      {/* Overview: Indices, Movers, News stacked */}
-      <div>
-        {loading ? (
-          <div className="space-y-6">
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 space-y-4">
-              <div className="h-6 w-1/3 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
-              <div className="h-20 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
-            </div>
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 space-y-4">
-              <div className="h-6 w-1/3 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
-              <div className="h-32 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
-            </div>
-);
+    </div>
+  );
+}
 
 export default function MarketPage() {
-return (
-<Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950"><div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-brand" /></div>}>
-<MarketPageContent />
-</Suspense>
-);
+  return (
+    <Suspense fallback={<MarketPageSkeleton />}>
+      <MarketPageContent />
+    </Suspense>
+  );
 }

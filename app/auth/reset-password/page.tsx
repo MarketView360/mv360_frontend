@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useAuth } from "@/providers/AuthProvider";
 import { Lock, Eye, EyeOff, AlertCircle, CheckCircle, Check, X } from "lucide-react";
 
@@ -19,7 +20,7 @@ function getPasswordStrength(password: string): PasswordStrength {
   if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
   if (/\d/.test(password)) score++;
   if (/[^a-zA-Z0-9]/.test(password)) score++;
-  
+
   if (score <= 1) return { score, label: "Weak", color: "bg-red-500" };
   if (score <= 2) return { score, label: "Fair", color: "bg-orange-500" };
   if (score <= 3) return { score, label: "Good", color: "bg-yellow-500" };
@@ -30,7 +31,7 @@ function getPasswordStrength(password: string): PasswordStrength {
 export default function ResetPasswordPage() {
   const router = useRouter();
   const { updatePassword } = useAuth();
-  
+
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -66,7 +67,7 @@ export default function ResetPasswordPage() {
 
     setIsLoading(true);
     const { error } = await updatePassword(password);
-    
+
     if (error) {
       setError(error.message);
       setIsLoading(false);
@@ -113,9 +114,20 @@ export default function ResetPasswordPage() {
           {/* Header */}
           <div className="text-center mb-8">
             <Link href="/" className="inline-block mb-4">
-              <span className="font-heading font-bold text-2xl tracking-tight text-slate-900 dark:text-white">
-                Marketview<span className="text-blue-600">360</span>
-              </span>
+              <Image
+                src="/logo.svg"
+                alt="Marketview360"
+                width={240}
+                height={56}
+                className="h-14 w-auto mx-auto dark:hidden"
+              />
+              <Image
+                src="/logo-dark.svg"
+                alt="Marketview360"
+                width={240}
+                height={56}
+                className="h-14 w-auto mx-auto hidden dark:block"
+              />
             </Link>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
               Set new password
@@ -196,9 +208,8 @@ export default function ResetPasswordPage() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                     placeholder="Confirm your password"
-                    className={`w-full pl-10 pr-12 py-2.5 rounded-lg border ${
-                      confirmPassword.length > 0 ? (passwordsMatch ? "border-green-500" : "border-red-500") : "border-slate-300 dark:border-slate-600"
-                    } bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors`}
+                    className={`w-full pl-10 pr-12 py-2.5 rounded-lg border ${confirmPassword.length > 0 ? (passwordsMatch ? "border-green-500" : "border-red-500") : "border-slate-300 dark:border-slate-600"
+                      } bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors`}
                   />
                   <button
                     type="button"

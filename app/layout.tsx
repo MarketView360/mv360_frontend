@@ -1,6 +1,5 @@
 "use client";
 
-import { Inter, Lexend_Mega } from "next/font/google";
 import { usePathname } from "next/navigation";
 
 import "./globals.css";
@@ -11,17 +10,6 @@ import { ThemeProvider } from "./providers";
 import NavigationBar from "@/components/NavigationBar";
 import { AiChatWidget } from "@/components/AiChatWidget";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
-
-const lexend = Lexend_Mega({
-  subsets: ["latin"],
-  variable: "--font-lexend",
-  display: "swap",
-});
 
 export default function RootLayout({
   children,
@@ -33,11 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={cn(
-          "min-h-screen bg-white dark:bg-slate-950 font-sans antialiased flex flex-col transition-colors duration-300 overflow-x-hidden",
-          inter.variable,
-          lexend.variable
-        )}
+        className="min-h-screen bg-white dark:bg-slate-950 font-sans antialiased flex flex-col transition-colors duration-300 overflow-x-hidden"
       >
         <script
           dangerouslySetInnerHTML={{
@@ -58,8 +42,11 @@ export default function RootLayout({
           }}
         />
         <ThemeProvider>
+          <a href="#main-content" className="skip-to-content">
+            Skip to main content
+          </a>
           <NavigationBar />
-          <main className="flex-1 w-full">{children}</main>
+          <main id="main-content" className="flex-1 w-full">{children}</main>
           <NetworkStatusWatcher />
           {pathname !== "/jovan-chat" && <Footer />}
           {pathname !== "/jovan-chat" && <AiChatWidget />}

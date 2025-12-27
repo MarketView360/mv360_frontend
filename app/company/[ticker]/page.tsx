@@ -493,11 +493,10 @@ function CompanyHero({ data }: { data: CompanyViewModel }) {
 
             <Badge
               variant="outline"
-              className={`text-lg font-semibold ${
-                isPositive
+              className={`text-lg font-semibold ${isPositive
                   ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-400 dark:border-green-900"
                   : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900"
-              }`}
+                }`}
             >
               {isPositive ? "+" : ""}
               {data.changePercent != null
@@ -525,7 +524,7 @@ function ActionTabs() {
 
   return (
     <div className="sticky top-16 z-40 backdrop-blur bg-white/60 dark:bg-slate-900/60 border-y border-slate-200 dark:border-slate-800 -mt-4">
-      <div className="flex items-center justify-between py-3 overflow-x-auto">
+      <div className="flex items-center py-3 overflow-x-auto">
         <Tabs defaultValue="overview" className="w-full">
           <TabsList className="border-b border-transparent">
             {tabs.map((tab) => (
@@ -539,20 +538,11 @@ function ActionTabs() {
             ))}
           </TabsList>
         </Tabs>
-
-        <div className="flex gap-2 ml-4 flex-shrink-0">
-          <Button size="sm" variant="outline">
-            Trade
-          </Button>
-          <Button size="sm">
-            <TrendingUp className="w-4 h-4 mr-2" />
-            Buy
-          </Button>
-        </div>
       </div>
     </div>
   );
 }
+
 
 // Component: Key Metrics Card
 function KeyMetricsCard({ metrics }: { metrics: RatioItem[] }) {

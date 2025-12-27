@@ -6,9 +6,12 @@ export async function updateSession(request: NextRequest) {
     request,
   })
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://dummy.supabase.co';
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy-key';
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         getAll() {
@@ -38,12 +41,12 @@ export async function updateSession(request: NextRequest) {
   // Define protected routes that require authentication
   const protectedRoutes = ['/profile', '/settings', '/saved-screens', '/watchlist']
   const authRoutes = ['/auth/login', '/auth/signup', '/auth/forgot-password', '/auth/magic-link']
-  
-  const isProtectedRoute = protectedRoutes.some(route => 
+
+  const isProtectedRoute = protectedRoutes.some(route =>
     request.nextUrl.pathname.startsWith(route)
   )
-  
-  const isAuthRoute = authRoutes.some(route => 
+
+  const isAuthRoute = authRoutes.some(route =>
     request.nextUrl.pathname.startsWith(route)
   )
 

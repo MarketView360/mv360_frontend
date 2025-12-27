@@ -87,8 +87,6 @@ Market Capitalization > 500`,
   },
 ];
 
-<<<<<<< HEAD
-=======
 export default function ScreensPage() {
   return (
     <Suspense fallback={<ScreensPageSkeleton />}>
@@ -105,7 +103,7 @@ function ScreensPageSkeleton() {
   );
 }
 
->>>>>>> ca975cc7d9a76f7c6659051e8e491236766105db
+
 function ScreensPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -176,39 +174,7 @@ function ScreensPageContent() {
           onValueChange={handleTabChange}
           className="w-full"
         >
-          {/* Tab indicator dots */}
-          <div className="flex justify-center mb-6">
-            <div className="flex gap-2">
-              <div
-                className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                  currentTab === "screens"
-                    ? "bg-purple-500 w-8"
-                    : "bg-slate-300 dark:bg-slate-600"
-                }`}
-              ></div>
-              <div
-                className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                  currentTab === "strategies"
-                    ? "bg-emerald-500 w-8"
-                    : "bg-slate-300 dark:bg-slate-600"
-                }`}
-              ></div>
-              <div
-                className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                  currentTab === "builder"
-                    ? "bg-blue-500 w-8"
-                    : "bg-slate-300 dark:bg-slate-600"
-                }`}
-              ></div>
-              <div
-                className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                  currentTab === "community"
-                    ? "bg-amber-500 w-8"
-                    : "bg-slate-300 dark:bg-slate-600"
-                }`}
-              ></div>
-            </div>
-          </div>
+          {/* Tabs List */}
           <div className="flex justify-center mb-12">
             <TabsList className="grid w-full max-w-4xl grid-cols-4 gap-3 h-auto bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
               <TabsTrigger
@@ -439,13 +405,5 @@ function ScreensPageContent() {
         </Tabs>
       </div>
     </div>
-  );
-}
-
-export default function ScreensPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950"><div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-brand" /></div>}>
-      <ScreensPageContent />
-    </Suspense>
   );
 }

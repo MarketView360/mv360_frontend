@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useAuth } from "@/providers/AuthProvider";
 import { Mail, AlertCircle, ArrowLeft, CheckCircle } from "lucide-react";
 
 export default function ForgotPasswordPage() {
   const { resetPassword } = useAuth();
-  
+
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -19,7 +20,7 @@ export default function ForgotPasswordPage() {
     setIsLoading(true);
 
     const { error } = await resetPassword(email);
-    
+
     if (error) {
       setError(error.message);
     } else {
@@ -72,7 +73,7 @@ export default function ForgotPasswordPage() {
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4 py-12">
       <div className="w-full max-w-md">
         {/* Back to login */}
-        <Link 
+        <Link
           href="/auth/login"
           className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white mb-8 transition-colors"
         >
@@ -84,9 +85,20 @@ export default function ForgotPasswordPage() {
           {/* Header */}
           <div className="text-center mb-8">
             <Link href="/" className="inline-block mb-4">
-              <span className="font-heading font-bold text-2xl tracking-tight text-slate-900 dark:text-white">
-                Marketview<span className="text-blue-600">360</span>
-              </span>
+              <Image
+                src="/logo.svg"
+                alt="Marketview360"
+                width={240}
+                height={56}
+                className="h-14 w-auto mx-auto dark:hidden"
+              />
+              <Image
+                src="/logo-dark.svg"
+                alt="Marketview360"
+                width={240}
+                height={56}
+                className="h-14 w-auto mx-auto hidden dark:block"
+              />
             </Link>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
               Forgot your password?

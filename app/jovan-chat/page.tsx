@@ -35,16 +35,6 @@ import type { AIModel } from "@/lib/utils/jovan/models";
 
 const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000";
 
-<<<<<<< HEAD
-=======
-export default function JovanChatPage() {
-  return (
-    <Suspense fallback={<JovanChatSkeleton />}>
-      <JovanChatPageContent />
-    </Suspense>
-  );
-}
-
 function JovanChatSkeleton() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -53,7 +43,6 @@ function JovanChatSkeleton() {
   );
 }
 
->>>>>>> ca975cc7d9a76f7c6659051e8e491236766105db
 function JovanChatPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -493,7 +482,7 @@ function JovanChatPageContent() {
             </Button>
           </div>
 
-          <FullQuotaBar 
+          <FullQuotaBar
             quota={fullQuota ?? {
               standard: { used: 0, limit: 50, unlimited: false },
               reasoning: { used: reasoningQuota.used, limit: reasoningQuota.limit, unlimited: false },
@@ -501,8 +490,8 @@ function JovanChatPageContent() {
               voice: { used: 0, limit: 10, unlimited: false },
               resetsAt: reasoningQuota.resetsAt,
               tier: "free",
-            }} 
-            className="mb-4" 
+            }}
+            className="mb-4"
           />
 
           <div className="space-y-1">
