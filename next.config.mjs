@@ -16,10 +16,7 @@ const nextConfig = {
         ignoreDuringBuilds: true,
     },
     webpack: (config) => {
-        config.resolve.alias = {
-            ...config.resolve.alias,
-            '@': __dirname,
-        };
+        config.resolve.alias['@'] = path.resolve(__dirname, '.');
         return config;
     },
 };
