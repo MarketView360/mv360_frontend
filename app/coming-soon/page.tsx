@@ -9,7 +9,7 @@ export const metadata = {
 
 export default function ComingSoonPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center px-4">
       <div className="text-center max-w-md">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-brand/10 mb-6">
           <Clock className="w-8 h-8 text-brand" />

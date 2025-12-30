@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { CompanyLogo } from "@/components/company/CompanyLogo";
 import { UsdValue } from "@/components/company/UsdValue";
 import { FinancialsPageContent } from "@/components/company/FinancialsPageContent";
+import { CompanyNavigation } from "@/components/company/CompanyNavigation";
 
 // Schemas
 const CompanySchema = z.object({
@@ -50,7 +51,7 @@ const api = {
 // Loading skeleton
 function PageSkeleton() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <div className="h-16 border-b border-slate-200 dark:border-slate-800 animate-pulse bg-white dark:bg-slate-900" />
       <div className="mx-auto max-w-[1600px] py-8 px-4 md:px-8 lg:px-12 space-y-8">
         <div className="h-24 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse" />
@@ -85,7 +86,7 @@ async function FinancialsPageWrapper({ ticker }: { ticker: string }) {
   const { company, metrics } = companyData;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900 pb-20">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-slate-200 dark:border-slate-800">
         <div className="mx-auto max-w-[1600px] py-3 px-4 md:px-8 lg:px-12">
@@ -104,7 +105,7 @@ async function FinancialsPageWrapper({ ticker }: { ticker: string }) {
       <div className="mx-auto max-w-[1600px] py-6 px-4 md:px-8 lg:px-12 space-y-6">
         {/* Company Header */}
         <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-lg">
-          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand to-blue-500" />
+          <div className="absolute inset-x-0 top-0 h-1 bg-brand" />
           <div className="flex flex-col lg:flex-row gap-6 lg:items-center justify-between">
             <div className="flex items-start gap-4">
               <CompanyLogo ticker={company.ticker} name={company.name} />
@@ -126,11 +127,10 @@ async function FinancialsPageWrapper({ ticker }: { ticker: string }) {
                 {metrics?.refund_1d_p != null && (
                   <Badge
                     variant="outline"
-                    className={`text-sm font-semibold ${
-                      metrics.refund_1d_p >= 0
-                        ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-400"
-                        : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400"
-                    }`}
+                    className={`text-sm font-semibold ${metrics.refund_1d_p >= 0
+                      ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-400"
+                      : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400"
+                      }`}
                   >
                     {metrics.refund_1d_p >= 0 ? "+" : ""}{metrics.refund_1d_p.toFixed(2)}%
                   </Badge>
@@ -141,7 +141,7 @@ async function FinancialsPageWrapper({ ticker }: { ticker: string }) {
         </div>
 
         {/* Navigation Tabs */}
-        <NavigationTabs ticker={ticker} currentTab="financials" />
+        <CompanyNavigation ticker={ticker} currentTab="financials" />
 
         {/* Main Financials Content */}
         <FinancialsPageContent ticker={ticker} metrics={metrics} />
@@ -150,32 +150,4 @@ async function FinancialsPageWrapper({ ticker }: { ticker: string }) {
   );
 }
 
-function NavigationTabs({ ticker, currentTab }: { ticker: string; currentTab: string }) {
-  const tabs = [
-    { id: "overview", label: "Overview", href: `/company/${ticker}` },
-    { id: "financials", label: "Financials", href: `/company/${ticker}/financials` },
-    { id: "technicals", label: "Technicals", href: `/company/${ticker}/technicals` },
-  ];
 
-  return (
-    <div className="sticky top-14 z-40 backdrop-blur bg-white/60 dark:bg-slate-900/60 border-y border-slate-200 dark:border-slate-800 -mt-2">
-      <div className="flex items-center py-1 overflow-x-auto">
-        <div className="flex gap-1">
-          {tabs.map((tab) => (
-            <Link
-              key={tab.id}
-              href={tab.href}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                currentTab === tab.id
-                  ? "bg-brand/10 text-brand border-b-2 border-brand"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
-              }`}
-            >
-              {tab.label}
-            </Link>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}

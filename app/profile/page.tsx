@@ -159,7 +159,7 @@ export default function ProfilePage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
         <div className="mx-auto max-w-4xl py-10 px-4 md:px-8 space-y-6">
           <Skeleton className="h-10 w-48" />
           <div className="grid gap-6 md:grid-cols-3">
@@ -179,8 +179,8 @@ export default function ProfilePage() {
 
   const tierConfig = {
     free: { label: "Free", color: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },
-    premium: { label: "Premium", color: "bg-gradient-to-r from-amber-500 to-orange-500 text-white" },
-    pro: { label: "Pro", color: "bg-gradient-to-r from-purple-500 to-pink-500 text-white" },
+    premium: { label: "Premium", color: "bg-amber-500 text-white" },
+    pro: { label: "Pro", color: "bg-purple-600 text-white" },
   };
 
   const tier = (profile?.subscription_tier || "free") as keyof typeof tierConfig;
@@ -188,13 +188,13 @@ export default function ProfilePage() {
 
   const memberSince = stats?.memberSince
     ? new Date(stats.memberSince).toLocaleDateString("en-US", {
-        month: "long",
-        year: "numeric",
-      })
+      month: "long",
+      year: "numeric",
+    })
     : "—";
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <div className="mx-auto max-w-4xl py-10 px-4 md:px-8 space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -207,11 +207,10 @@ export default function ProfilePage() {
           <button
             onClick={handleSave}
             disabled={!hasChanges || saving}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-              hasChanges
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${hasChanges
                 ? "bg-brand text-white hover:bg-brand/90 shadow-lg shadow-brand/25"
                 : "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed"
-            }`}
+              }`}
           >
             {saving ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -293,7 +292,7 @@ export default function ProfilePage() {
                 </div>
               </div>
               {tier === "free" && (
-                <div className="mt-4 p-3 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/10 dark:to-orange-900/10 border border-amber-200 dark:border-amber-800/30 rounded-lg">
+                <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-lg">
                   <p className="text-sm text-amber-800 dark:text-amber-200">
                     <Crown className="h-4 w-4 inline mr-1" />
                     Upgrade to Premium for 20 reasoning queries/day and priority support.
@@ -475,10 +474,10 @@ export default function ProfilePage() {
                 <span className="text-slate-700 dark:text-slate-300 text-xs">
                   {user.created_at
                     ? new Date(user.created_at).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
                     : "—"}
                 </span>
               </div>
@@ -487,10 +486,10 @@ export default function ProfilePage() {
                 <span className="text-slate-700 dark:text-slate-300 text-xs">
                   {profile?.updated_at
                     ? new Date(profile.updated_at).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
                     : "—"}
                 </span>
               </div>

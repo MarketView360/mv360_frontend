@@ -111,8 +111,8 @@ interface FinancialsPageContentProps {
 }
 
 const COLORS = {
-  primary: "#3b82f6",
-  success: "#10b981",
+  primary: "#0087f6", // brand
+  success: "#279b48", // growth
   warning: "#f59e0b",
   danger: "#ef4444",
   purple: "#8b5cf6",
@@ -343,18 +343,17 @@ function KeyHighlights({
               {h.change !== null && (
                 <Badge
                   variant="outline"
-                  className={`text-xs ${
-                    h.change >= 0
-                      ? "bg-green-100 text-green-700 border-green-200"
-                      : "bg-red-100 text-red-700 border-red-200"
-                  }`}
+                  className={`text-xs ${h.change >= 0
+                    ? "bg-green-100 text-green-700 border-green-200"
+                    : "bg-red-100 text-red-700 border-red-200"
+                    }`}
                 >
                   {h.change >= 0 ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <ArrowDownRight className="w-3 h-3 mr-1" />}
                   {Math.abs(h.change).toFixed(1)}%
                 </Badge>
               )}
             </div>
-            <div className="text-2xl font-bold text-slate-900 dark:text-white">{h.value}</div>
+            <div className="text-2xl font-bold font-mono text-slate-900 dark:text-white">{h.value}</div>
             <div className="text-xs text-slate-500 mt-1">{h.label}</div>
           </CardContent>
         </Card>
@@ -803,7 +802,7 @@ function TableRow({
     <tr className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 ${highlight ? "bg-slate-50/50 dark:bg-slate-800/30 font-medium" : ""}`}>
       <td className="py-2 text-slate-700 dark:text-slate-300">{label}</td>
       {data.map((f) => (
-        <td key={f.period_end} className="py-2 text-right text-slate-900 dark:text-white">
+        <td key={f.period_end} className="py-2 text-right text-slate-900 dark:text-white font-mono">
           {format(f[field] as number | null)}
         </td>
       ))}

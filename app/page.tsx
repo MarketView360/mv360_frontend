@@ -36,7 +36,7 @@ export default async function Home() {
 
           <div className="w-full max-w-2xl relative mt-8">
             <SearchBar />
-            <div className="mt-6 flex flex-wrap justify-center gap-3 text-sm text-slate-500 dark:text-slate-400">
+            <div className="mt-6 flex flex-wrap justify-center gap-3 text-sm text-muted-foreground">
               <span className="font-medium text-slate-700 dark:text-slate-300">
                 Popular:
               </span>

@@ -137,19 +137,19 @@ export default function ScreenerQueryBuilder({
         const parsedFav = JSON.parse(fav);
         if (Array.isArray(parsedFav)) setFavoriteFields(parsedFav);
       }
-    } catch {}
+    } catch { }
   }, []);
 
   const persistHistory = useCallback((items: string[]) => {
     try {
       localStorage.setItem("queryHistory", JSON.stringify(items));
-    } catch {}
+    } catch { }
   }, []);
 
   const persistFavorites = useCallback((items: string[]) => {
     try {
       localStorage.setItem("favoriteFields", JSON.stringify(items));
-    } catch {}
+    } catch { }
   }, []);
 
   const toggleFavorite = useCallback(
@@ -199,6 +199,30 @@ export default function ScreenerQueryBuilder({
       // Get all fields for comprehensive search
       const allFields = getAllFields();
 
+      // Value suggestions logic (Ported from searchSuggestions in lib/queryBuilder)
+      const prevWord = words[words.length - 2]?.toLowerCase() || "";
+      const secondPrevWord = words[words.length - 3]?.toLowerCase() || "";
+      const valueField = (["=", "!=", "in", "like", "between"].includes(prevWord) ? secondPrevWord :
+        ["=", "!=", "in", "like", "between"].includes(currentWord) ? prevWord : null);
+
+      const { VALUE_SUGGESTIONS } = require("@/lib/queryBuilder");
+      if (valueField && VALUE_SUGGESTIONS[valueField.toLowerCase()]) {
+        const values = VALUE_SUGGESTIONS[valueField.toLowerCase()];
+        values.forEach((val: string) => {
+          if (val.toLowerCase().includes(currentWord.replace(/['"]/g, '')) || currentWord === "=" || currentWord === "in") {
+            suggestions.push({
+              text: val,
+              type: "value",
+              description: `Value for ${valueField}`,
+              category: "Value",
+              insertText: `"${val}"`,
+              score: 1000,
+            });
+          }
+        });
+        if (suggestions.length > 0) return suggestions.sort((a, b) => (b.score || 0) - (a.score || 0));
+      }
+
       // Enhanced field matching with scoring
       allFields.forEach((field) => {
         const fieldLower = field.name.toLowerCase();
@@ -231,7 +255,9 @@ export default function ScreenerQueryBuilder({
             type: "operator",
             description: op.description,
             category: op.category,
-            insertText: ` ${op.symbol} `,
+            insertText: ["IN", "BETWEEN", "LIKE", "IS NULL", "IS NOT NULL"].includes(op.symbol.toUpperCase())
+              ? ` ${op.symbol.toUpperCase()} `
+              : ` ${op.symbol} `,
             score: op.symbol.toLowerCase().startsWith(currentWord) ? 100 : 50,
           });
         }
@@ -878,15 +904,15 @@ export default function ScreenerQueryBuilder({
   } as unknown as Record<string, FieldDef[]>;
   const baseList = searchTerm
     ? allFields.filter(
-        (field) =>
-          field.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          field.keywords.some((keyword: string) =>
-            keyword.toLowerCase().includes(searchTerm.toLowerCase())
-          )
-      )
+      (field) =>
+        field.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        field.keywords.some((keyword: string) =>
+          keyword.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+    )
     : dataSourceWithFavorites[
-        selectedCategory as keyof typeof dataSourceWithFavorites
-      ] || [];
+    selectedCategory as keyof typeof dataSourceWithFavorites
+    ] || [];
   const filteredRatios = applySort(baseList);
 
   return (
@@ -1084,11 +1110,10 @@ export default function ScreenerQueryBuilder({
                         <div className="w-3 flex justify-center">
                           {hasErrors && (
                             <div
-                              className={`w-2 h-2 rounded-full cursor-pointer ${
-                                lineErrors.some((e) => e.severity === "error")
-                                  ? "bg-red-500"
-                                  : "bg-yellow-500"
-                              }`}
+                              className={`w-2 h-2 rounded-full cursor-pointer ${lineErrors.some((e) => e.severity === "error")
+                                ? "bg-red-500"
+                                : "bg-yellow-500"
+                                }`}
                               title={lineErrors
                                 .map((e) => e.message)
                                 .join(", ")}
@@ -1116,9 +1141,8 @@ export default function ScreenerQueryBuilder({
               {showSyntaxHighlighting && value && (
                 <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
                   <div
-                    className={`p-6 ${
-                      showLineNumbers ? "pl-4" : "pl-6"
-                    } font-mono text-base whitespace-pre-wrap break-words`}
+                    className={`p-6 ${showLineNumbers ? "pl-4" : "pl-6"
+                      } font-mono text-base whitespace-pre-wrap break-words`}
                     style={{
                       transform: `translateY(-${editorScrollTop}px)`,
                       lineHeight: "1.5rem",
@@ -1144,17 +1168,14 @@ export default function ScreenerQueryBuilder({
                     (e.target as HTMLTextAreaElement).scrollTop
                   )
                 }
-                className={`relative z-10 w-full h-64 p-6 ${
-                  showLineNumbers ? "pl-4" : "pl-6"
-                } font-mono text-base ${
-                  showSyntaxHighlighting
+                className={`relative z-10 w-full h-64 p-6 ${showLineNumbers ? "pl-4" : "pl-6"
+                  } font-mono text-base ${showSyntaxHighlighting
                     ? "bg-transparent"
                     : "bg-slate-50/50 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-900"
-                } transition-colors resize-y outline-none border-0 focus:ring-2 focus:ring-blue-500/20 rounded-none ${
-                  showSyntaxHighlighting
+                  } transition-colors resize-y outline-none border-0 focus:ring-2 focus:ring-blue-500/20 rounded-none ${showSyntaxHighlighting
                     ? "text-transparent caret-slate-900 dark:caret-white"
                     : "text-slate-900 dark:text-white"
-                }`}
+                  }`}
                 placeholder="Start typing your query... (e.g., Market Capitalization > 1000 AND PE < 20)"
                 spellCheck={false}
                 style={{
@@ -1219,11 +1240,10 @@ export default function ScreenerQueryBuilder({
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
-                className={`flex items-center gap-1 transition-colors ${
-                  showAdvancedOptions
-                    ? "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
-                    : ""
-                }`}
+                className={`flex items-center gap-1 transition-colors ${showAdvancedOptions
+                  ? "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
+                  : ""
+                  }`}
                 title="Advanced Options"
               >
                 <Settings className="w-4 h-4" />
@@ -1233,11 +1253,10 @@ export default function ScreenerQueryBuilder({
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowHistory(!showHistory)}
-                className={`flex items-center gap-1 transition-colors ${
-                  showHistory
-                    ? "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
-                    : ""
-                }`}
+                className={`flex items-center gap-1 transition-colors ${showHistory
+                  ? "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
+                  : ""
+                  }`}
               >
                 <History className="w-4 h-4" />
                 History ({queryHistory.length})
@@ -1249,11 +1268,10 @@ export default function ScreenerQueryBuilder({
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowPreview(!showPreview)}
-                className={`flex items-center gap-1 transition-colors ${
-                  showPreview
-                    ? "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
-                    : ""
-                }`}
+                className={`flex items-center gap-1 transition-colors ${showPreview
+                  ? "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
+                  : ""
+                  }`}
               >
                 <Lightbulb className="w-4 h-4" />
                 {showPreview ? "Hide" : "Show"} Preview
@@ -1463,11 +1481,10 @@ export default function ScreenerQueryBuilder({
                       setSelectedCategory(category);
                       setSearchTerm("");
                     }}
-                    className={`w-full text-left px-4 py-3 text-sm font-medium transition-all flex items-center justify-between group ${
-                      selectedCategory === category && !searchTerm
-                        ? "bg-blue-100 dark:bg-blue-900/40 text-blue-900 dark:text-blue-300 border-r-2 border-blue-500"
-                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white"
-                    }`}
+                    className={`w-full text-left px-4 py-3 text-sm font-medium transition-all flex items-center justify-between group ${selectedCategory === category && !searchTerm
+                      ? "bg-blue-100 dark:bg-blue-900/40 text-blue-900 dark:text-blue-300 border-r-2 border-blue-500"
+                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white"
+                      }`}
                   >
                     <span>{category}</span>
                     <div className="flex items-center gap-2">

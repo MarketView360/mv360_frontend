@@ -17,6 +17,10 @@ import { cn } from "@/lib/utils";
 interface PriceData {
   date: string;
   price: number;
+  open: number | null;
+  high: number | null;
+  low: number | null;
+  close: number | null;
   volume: number | null;
 }
 
@@ -28,7 +32,7 @@ export function PriceChart({ data }: PriceChartProps) {
   const [range, setRange] = React.useState("1Y");
   const [showVolume, setShowVolume] = React.useState(true);
   const [logScale, setLogScale] = React.useState(false);
-  const [view, setView] = React.useState<"price" | "drawdown">("price");
+  const [view, setView] = React.useState<"price" | "drawdown" | "candlestick">("price");
   const isDark = typeof window !== "undefined" && document.documentElement.classList.contains("dark");
 
   const enriched = React.useMemo(() => {
@@ -77,11 +81,9 @@ export function PriceChart({ data }: PriceChartProps) {
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const month = months[date.getMonth()];
     const year = date.getFullYear().toString().slice(-2);
-    
+
     if (range === "1M") {
       return `${month} ${date.getDate()}`;
-    } else if (range === "6M" || range === "1Y") {
-      return `${month} '${year}`;
     } else {
       return `${month} '${year}`;
     }
@@ -116,6 +118,17 @@ export function PriceChart({ data }: PriceChartProps) {
               )}
             >
               Drawdown
+            </button>
+            <button
+              onClick={() => setView("candlestick")}
+              className={cn(
+                "px-2 py-0.5 rounded-md",
+                view === "candlestick"
+                  ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
+                  : "text-slate-500 dark:text-slate-400"
+              )}
+            >
+              Candle
             </button>
           </div>
         </div>
@@ -167,14 +180,7 @@ export function PriceChart({ data }: PriceChartProps) {
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={filteredData}>
               <defs>
-                <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#0087f6" stopOpacity={0.1} />
-                  <stop offset="95%" stopColor="#0087f6" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="colorVolume" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="#94a3b8" stopOpacity={0} />
-                </linearGradient>
+                {/* Simplified defs - could be removed if no longer used by Area/Bar */}
               </defs>
               <CartesianGrid
                 strokeDasharray="3 3"
@@ -197,6 +203,7 @@ export function PriceChart({ data }: PriceChartProps) {
                 yAxisId="price"
                 stroke={isDark ? "#94a3b8" : "#64748b"}
                 fontSize={12}
+                tick={{ className: "font-mono" }}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(value) =>
@@ -210,6 +217,7 @@ export function PriceChart({ data }: PriceChartProps) {
                 orientation="right"
                 stroke={isDark ? "#64748b" : "#94a3b8"}
                 fontSize={10}
+                tick={{ className: "font-mono" }}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(value) => {
@@ -221,30 +229,114 @@ export function PriceChart({ data }: PriceChartProps) {
                 }}
               />
               <Tooltip
-                contentStyle={{
-                  backgroundColor: isDark ? "#1e293b" : "#fff",
-                  borderRadius: "8px",
-                  border: `1px solid ${isDark ? "#475569" : "#e2e8f0"}`,
-                  boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                content={({ active, payload, label }) => {
+                  if (!active || !payload?.length) return null;
+                  const data = payload[0].payload;
+                  return (
+                    <div className={cn(
+                      "p-3 rounded-lg border shadow-xl transition-colors duration-300",
+                      isDark ? "bg-slate-900 border-slate-700 text-slate-100" : "bg-white border-slate-200 text-slate-900"
+                    )}>
+                      <div className="text-xs font-bold text-slate-500 mb-2 border-b border-slate-100 dark:border-slate-800 pb-1">
+                        {label}
+                      </div>
+                      {view === "candlestick" ? (
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                          <div className="flex justify-between gap-2">
+                            <span className="text-slate-500">O:</span>
+                            <span className="font-mono font-semibold">${data.open?.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between gap-2">
+                            <span className="text-slate-500">H:</span>
+                            <span className="font-mono font-semibold text-green-500">${data.high?.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between gap-2">
+                            <span className="text-slate-500">L:</span>
+                            <span className="font-mono font-semibold text-red-500">${data.low?.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between gap-2">
+                            <span className="text-slate-500">C:</span>
+                            <span className="font-mono font-semibold">${data.close?.toFixed(2)}</span>
+                          </div>
+                          {data.volume && (
+                            <div className="col-span-2 flex justify-between gap-2 mt-1 pt-1 border-t border-slate-100 dark:border-slate-800">
+                              <span className="text-slate-500">Vol:</span>
+                              <span className="font-mono">{(data.volume / 1000000).toFixed(2)}M</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between gap-4">
+                            <span className="text-xs text-slate-500">{view === "price" ? "Price" : "Drawdown"}</span>
+                            <span className="font-mono font-bold">
+                              {view === "price" ? `$${data.price?.toFixed(2)}` : `${data.drawdown?.toFixed(2)}%`}
+                            </span>
+                          </div>
+                          {data.volume && (
+                            <div className="flex items-center justify-between gap-4">
+                              <span className="text-xs text-slate-500">Volume</span>
+                              <span className="font-mono">{(data.volume / 1000000).toFixed(2)}M</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
                 }}
-                itemStyle={{ color: isDark ? "#e2e8f0" : "#0f172a", fontWeight: 600 }}
-                labelStyle={{ color: isDark ? "#cbd5e1" : "#64748b", marginBottom: "4px" }}
               />
-              <Area
-                yAxisId="price"
-                type="monotone"
-                dataKey={view === "price" ? "price" : "drawdown"}
-                stroke={view === "price" ? "#0087f6" : "#f97316"}
-                strokeWidth={2}
-                fillOpacity={1}
-                fill="url(#colorPrice)"
-              />
-              {showVolume && view === "price" && (
+              {view === "candlestick" ? (
+                <Bar
+                  yAxisId="price"
+                  dataKey="close"
+                  shape={(props: any) => {
+                    const { x, y, width, payload } = props;
+                    const { open, close, high, low } = payload;
+                    if (open === null || close === null || high === null || low === null) return <path />;
+
+                    const isUp = close >= open;
+                    const stroke = isUp ? (isDark ? "#22c55e" : "#16a34a") : (isDark ? "#ef4444" : "#dc2626");
+                    const fill = isUp ? (isDark ? "#22c55e" : "#16a34a") : (isDark ? "#ef4444" : "#dc2626");
+
+                    // Handle flat candle (open === close)
+                    const bodyHeight = Math.abs(props.height);
+                    const safeHeight = Math.max(bodyHeight, 1);
+                    const ratio = bodyHeight > 0 ? bodyHeight / Math.abs(close - open) : 1;
+
+                    // For flat candles, we use a default ratio or handle separately
+                    // Since we also need high/low wicks, we need internal scale access to be perfect
+                    // But with standard bar height, we can approximate
+                    const hlRatio = bodyHeight > 0 ? ratio : (safeHeight / 0.1); // Fallback for very flat candles
+
+                    const highY = y - (high - Math.max(open, close)) * hlRatio;
+                    const lowY = y + safeHeight + (Math.min(open, close) - low) * hlRatio;
+
+                    return (
+                      <g key={`candle-${payload.date}`}>
+                        <line x1={x + width / 2} y1={highY} x2={x + width / 2} y2={lowY} stroke={stroke} strokeWidth={1} />
+                        <rect x={x} y={y} width={width} height={safeHeight} fill={fill} stroke={stroke} />
+                      </g>
+                    );
+                  }}
+                />
+              ) : (
+                <Area
+                  yAxisId="price"
+                  type="monotone"
+                  dataKey={view === "price" ? "price" : "drawdown"}
+                  stroke={view === "price" ? "#0087f6" : "#f97316"}
+                  strokeWidth={2}
+                  fillOpacity={0.05}
+                  fill={view === "price" ? "#0087f6" : "#f97316"}
+                />
+              )}
+              {showVolume && view !== "drawdown" && (
                 <Bar
                   yAxisId="volume"
                   dataKey="volume"
-                  barSize={16}
-                  fill="url(#colorVolume)"
+                  barSize={range === "1M" ? 16 : 4}
+                  fill="#94a3b8"
+                  fillOpacity={0.2}
                 />
               )}
             </ComposedChart>

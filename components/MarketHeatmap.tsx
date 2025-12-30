@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { getBulkRealTimePrices } from "@/lib/eodhd";
+import { Treemap, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
 
 // --- Mock Data Structure (to keep sectors) ---
 const SECTORS = [
@@ -40,14 +41,17 @@ const SECTORS = [
 ];
 
 interface MarketItem {
+  name: string;
   ticker: string;
   change: number;
   size: number;
+  sector: string;
 }
 
-interface SectorData {
-  sector: string;
-  stocks: MarketItem[];
+interface TreemapNode {
+  name: string;
+  children?: TreemapNode[] | MarketItem[];
+  sector?: string;
 }
 
 type MarketHeatmapProps = {
@@ -89,15 +93,152 @@ const BACKEND_URL =
   (process.env.NEXT_PUBLIC_BACKEND_URL as string | undefined) ??
   "http://localhost:4000";
 
+const getColor = (change: number) => {
+  if (change >= 3) return "#059669"; // emerald-600
+  if (change >= 1) return "#10b981"; // emerald-500
+  if (change > 0) return "#34d399"; // emerald-400
+  if (change === 0) return "#94a3b8"; // slate-400
+  if (change <= -3) return "#e11d48"; // rose-600
+  if (change <= -1) return "#f43f5e"; // rose-500
+  return "#fb7185"; // rose-400
+};
+
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    const isPositive = data.change >= 0;
+    return (
+      <div className="bg-slate-900 border border-slate-800 p-3 rounded-lg shadow-xl text-white min-w-[160px]">
+        <div className="flex justify-between items-center mb-1">
+          <span className="font-bold text-lg">{data.ticker}</span>
+          <span className={cn("text-sm font-bold", isPositive ? "text-emerald-400" : "text-rose-400")}>
+            {isPositive ? "+" : ""}{data.change.toFixed(2)}%
+          </span>
+        </div>
+        <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-2">{data.sector}</div>
+        <div className="space-y-1 pt-2 border-t border-slate-800">
+          <div className="flex justify-between text-xs">
+            <span className="text-slate-500">Market Cap</span>
+            <span className="font-medium">
+              {data.size >= 1e12
+                ? `$${(data.size / 1e12).toFixed(2)}T`
+                : data.size >= 1e9
+                  ? `$${(data.size / 1e9).toFixed(2)}B`
+                  : `$${(data.size / 1e6).toFixed(2)}M`}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
+const CustomTreemapCell = (props: any) => {
+  const { x, y, width, height, ticker, change, root, name, sector } = props;
+
+  // Don't render if too small
+  if (width < 20 || height < 20) return null;
+
+  const isSectorLabel = childrenCount(props) > 0;
+
+  if (isSectorLabel) {
+    return (
+      <g>
+        <rect
+          x={x}
+          y={y}
+          width={width}
+          height={height}
+          style={{
+            fill: 'transparent',
+            stroke: 'rgba(255,255,255,0.1)',
+            strokeWidth: 1,
+          }}
+        />
+        {width > 60 && height > 20 && (
+          <text
+            x={x + 4}
+            y={y + 14}
+            fill="currentColor"
+            className="text-[10px] font-bold uppercase tracking-wider opacity-40 pointer-events-none text-slate-500 dark:text-slate-400"
+          >
+            {name}
+          </text>
+        )}
+      </g>
+    );
+  }
+
+  return (
+    <g
+      className="cursor-pointer transition-all hover:brightness-110"
+      onClick={() => {
+        if (props.onClick) props.onClick(ticker);
+      }}
+    >
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        style={{
+          fill: getColor(change),
+          stroke: 'rgba(0,0,0,0.2)',
+          strokeWidth: 1,
+        }}
+      />
+      {width > 35 && height > 35 && (
+        <>
+          <text
+            x={x + width / 2}
+            y={y + height / 2 - (height > 50 ? 6 : 0)}
+            textAnchor="middle"
+            fill="#fff"
+            className={cn(
+              "font-bold pointer-events-none",
+              width > 60 ? "text-sm" : "text-[10px]"
+            )}
+          >
+            {ticker}
+          </text>
+          {height > 50 && (
+            <text
+              x={x + width / 2}
+              y={y + height / 2 + 12}
+              textAnchor="middle"
+              fill="#fff"
+              className={cn(
+                "font-medium pointer-events-none",
+                width > 60 ? "text-xs" : "text-[8px]"
+              )}
+            >
+              {change > 0 ? "+" : ""}{change.toFixed(1)}%
+            </text>
+          )}
+        </>
+      )}
+    </g>
+  );
+};
+
+const childrenCount = (props: any) => {
+  return props.children ? props.children.length : 0;
+};
+
 export default function MarketHeatmap({ sector, refreshToken }: MarketHeatmapProps) {
-  const [marketData, setMarketData] = useState<SectorData[]>([]);
+  const [marketData, setMarketData] = useState<TreemapNode>({ name: "root", children: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [universe, setUniverse] = useState<Universe>("popular");
   const router = useRouter();
 
-  // Helper: group screener rows into SectorData[]
-  const buildSectorsFromRows = (rows: ScreenerRow[]): SectorData[] => {
+  const handleTickerClick = (ticker: string) => {
+    router.push(`/company/${ticker}`);
+  };
+
+  // Helper: group screener rows into TreemapNode structure
+  const buildSectorsFromRows = (rows: ScreenerRow[]): TreemapNode => {
     const bySector = new Map<string, MarketItem[]>();
 
     for (const row of rows) {
@@ -105,13 +246,12 @@ export default function MarketHeatmap({ sector, refreshToken }: MarketHeatmapPro
       const change = row.refund_1d_p ?? 0;
       const mcap = row.market_capitalization ?? 0;
 
-      const sizeBase = mcap > 0 ? Math.log10(mcap) : 1;
-      const size = 40 + sizeBase * 6 + Math.abs(change) * 1.5;
-
       const item: MarketItem = {
+        name: row.code,
         ticker: row.code,
         change,
-        size,
+        size: mcap || 1,
+        sector: sec,
       };
 
       const bucket = bySector.get(sec) ?? [];
@@ -119,18 +259,22 @@ export default function MarketHeatmap({ sector, refreshToken }: MarketHeatmapPro
       bySector.set(sec, bucket);
     }
 
-    return Array.from(bySector.entries())
+    const children = Array.from(bySector.entries())
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([sectorName, stocks]) => ({ sector: sectorName, stocks }));
+      .map(([sectorName, stocks]) => ({
+        name: sectorName,
+        children: stocks.sort((a, b) => b.size - a.size)
+      }));
+
+    return { name: "market", children };
   };
 
   useEffect(() => {
-    const fetchBackendData = async (): Promise<SectorData[] | null> => {
+    const fetchBackendData = async (): Promise<TreemapNode | null> => {
       try {
         const config = UNIVERSE_OPTIONS.find((u) => u.value === universe) ??
           UNIVERSE_OPTIONS[0];
 
-        // Build optional sector filter for backend query using canonical sector name
         let query: string | undefined;
         let usedEquality = false;
         if (sector) {
@@ -152,15 +296,11 @@ export default function MarketHeatmap({ sector, refreshToken }: MarketHeatmapPro
           }),
         });
 
-        if (!res.ok) {
-          console.error("Backend heatmap fetch failed", res.status, res.statusText);
-          return null;
-        }
+        if (!res.ok) return null;
 
         const json = (await res.json()) as { data?: ScreenerRow[] };
         let rows = json.data ?? [];
 
-        // If equality returned empty, retry with a broader 'match' token from dropdown
         if (!rows.length && usedEquality && sector) {
           const raw = String(sector).toLowerCase();
           const MATCH_TOKEN_MAP: Record<string, string> = {
@@ -198,49 +338,42 @@ export default function MarketHeatmap({ sector, refreshToken }: MarketHeatmapPro
 
         let filtered = rows;
         if (universe === "small" || universe === "micro") {
-          // Approx buckets by market cap
           filtered = rows.filter((r) => {
             const mcap = r.market_capitalization ?? 0;
-            if (universe === "small") {
-              return mcap > 0 && mcap <= 20_000_000_000; // <= $20B
-            }
-            return mcap > 0 && mcap <= 2_000_000_000; // <= $2B
+            if (universe === "small") return mcap > 0 && mcap <= 20_000_000_000;
+            return mcap > 0 && mcap <= 2_000_000_000;
           });
         }
-
-        // If filter removed everything, fall back to original rows
         if (!filtered.length) filtered = rows;
 
         return buildSectorsFromRows(filtered);
       } catch (e) {
-        console.error("Error loading backend heatmap data", e);
         return null;
       }
     };
 
-    const fetchFallbackData = async (): Promise<SectorData[]> => {
+    const fetchFallbackData = async (): Promise<TreemapNode> => {
       const allTickers = SECTORS.flatMap((s) => s.tickers);
       const data = await getBulkRealTimePrices(allTickers);
 
-      const processedData = SECTORS.map((sectorDef) => {
+      const children = SECTORS.map((sectorDef) => {
         const stocks = sectorDef.tickers.map((ticker) => {
           const stock = data.find(
             (d) => d.code === ticker.replace(".US", "") || d.code === ticker
           );
-          if (!stock)
-            return { ticker: ticker.replace(".US", ""), change: 0, size: 50 };
-
-          const change = stock.change_p || 0;
+          const change = stock?.change_p || 0;
           return {
-            ticker: stock.code,
+            name: ticker.replace(".US", ""),
+            ticker: ticker.replace(".US", ""),
             change,
-            size: 50 + Math.abs(change) * 10,
-          };
+            size: (100 + Math.random() * 900) * 1e9,
+            sector: sectorDef.sector,
+          } as MarketItem;
         });
-        return { sector: sectorDef.sector, stocks };
+        return { name: sectorDef.sector, children: stocks.sort((a, b) => b.size - a.size) };
       });
 
-      return processedData;
+      return { name: "market", children };
     };
 
     const run = async () => {
@@ -248,22 +381,17 @@ export default function MarketHeatmap({ sector, refreshToken }: MarketHeatmapPro
       setError(null);
       try {
         const backend = await fetchBackendData();
-        if (backend && backend.length) {
+        if (backend && backend.children?.length) {
           setMarketData(backend);
         } else {
           const fallback = await fetchFallbackData();
           setMarketData(fallback);
-          setError(
-            "Showing a curated set of large caps while full market data is unavailable."
-          );
+          setError("Showing a curated set of large caps while full market data is unavailable.");
         }
       } catch (e) {
-        console.error("Heatmap data load failed", e);
         const fallback = await fetchFallbackData();
         setMarketData(fallback);
-        setError(
-          "Unable to load full market universe. Showing a curated fallback heatmap instead."
-        );
+        setError("Unable to load full market universe. Showing a curated fallback heatmap instead.");
       } finally {
         setLoading(false);
       }
@@ -271,16 +399,6 @@ export default function MarketHeatmap({ sector, refreshToken }: MarketHeatmapPro
 
     void run();
   }, [universe, sector, refreshToken]);
-
-  const getColor = (change: number) => {
-    if (change >= 3) return "bg-emerald-600";
-    if (change >= 1) return "bg-emerald-500";
-    if (change > 0) return "bg-emerald-400";
-    if (change === 0) return "bg-slate-400";
-    if (change <= -3) return "bg-rose-600";
-    if (change <= -1) return "bg-rose-500";
-    return "bg-rose-400";
-  };
 
   return (
     <Card className="h-full border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900">
@@ -334,57 +452,23 @@ export default function MarketHeatmap({ sector, refreshToken }: MarketHeatmapPro
             <div className="h-10 w-10 rounded-full border-2 border-slate-200 dark:border-slate-700 border-t-brand animate-spin" />
             <span>Loading market data…</span>
           </div>
-        ) : error ? (
+        ) : error && !marketData.children?.length ? (
           <div className="flex flex-col items-center justify-center h-full gap-2 text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs">
-              {error}
-            </p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs">{error}</p>
           </div>
         ) : (
-          <div className="w-full h-full flex flex-wrap gap-2 content-start overflow-y-auto">
-            {marketData
-              .filter((group) => {
-                if (!sector) return true;
-                const token = String(sector).replace(/-/g, " ").toLowerCase();
-                return group.sector.toLowerCase().includes(token);
-              })
-              .map((secGroup) => (
-              <div
-                key={secGroup.sector}
-                className="grow min-w-[200px] flex flex-col gap-1"
+          <div className="w-full h-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <Treemap
+                data={marketData.children as any}
+                dataKey="size"
+                aspectRatio={4 / 3}
+                stroke="#1e293b"
+                content={<CustomTreemapCell onClick={handleTickerClick} />}
               >
-                <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1 px-1">
-                  {secGroup.sector}
-                </div>
-                <div className="flex flex-wrap gap-1 h-full">
-                  {secGroup.stocks.map((stock) => (
-                    <button
-                      key={stock.ticker}
-                      type="button"
-                      onClick={() => router.push(`/company/${stock.ticker}`)}
-                      className={cn(
-                        "relative flex flex-col items-center justify-center p-2 rounded-md text-white transition-all hover:brightness-110 cursor-pointer group overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand focus-visible:ring-offset-slate-950",
-                        getColor(stock.change)
-                      )}
-                      style={{
-                        flexGrow: stock.size,
-                        minWidth: "60px",
-                        minHeight: "60px",
-                      }}
-                    >
-                      <span className="font-bold text-sm z-10">
-                        {stock.ticker}
-                      </span>
-                      <span className="text-xs font-medium z-10">
-                        {stock.change > 0 ? "+" : ""}
-                        {stock.change.toFixed(2)}%
-                      </span>
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
+                <RechartsTooltip content={<CustomTooltip />} />
+              </Treemap>
+            </ResponsiveContainer>
           </div>
         )}
       </CardContent>

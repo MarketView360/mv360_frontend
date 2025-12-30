@@ -19,16 +19,26 @@ import {
   TabsTrigger,
   TabsContent,
 } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 
 import { Progress } from "@/components/ui/progress";
-import { CompanyChartsSwitcher } from "@/components/company/CompanyChartsSwitcher";
+import { CompanyChartsSwitcher, type PriceHistoryPoint } from "@/components/company/CompanyChartsSwitcher";
+import { CompanyNavigation } from "@/components/company/CompanyNavigation";
 import { UsdValue } from "@/components/company/UsdValue";
 import { CompanyLogo } from "@/components/company/CompanyLogo";
 import { CompanyDescriptionModal } from "@/components/company/CompanyDescriptionModal";
 import { FinancialsSection } from "@/components/company/FinancialsSection";
 import { TechnicalsSection } from "@/components/company/TechnicalsSection";
 
-import { TrendingUp, Activity, FileText } from "lucide-react";
+import { TrendingUp, Activity, FileText, Info } from "lucide-react";
+import { PeerComparison } from "@/components/company/PeerComparison";
+import { NewsFeed, type NewsArticle } from "@/components/company/NewsFeed";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Schemas for API validation
 const CompanySchema = z.object({
@@ -163,7 +173,7 @@ async function fetchValuationHistory(ticker: string) {
 // Loading Components
 function PageSkeleton() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <div className="h-16 border-b border-slate-200 dark:border-slate-800 animate-pulse bg-white dark:bg-slate-900" />
       <div className="mx-auto max-w-[1600px] py-8 px-4 md:px-8 lg:px-12 space-y-8">
         <div className="flex flex-col md:flex-row gap-6">
@@ -213,7 +223,7 @@ async function CompanyContent({ ticker }: { ticker: string }) {
     const data = transformData(companyData, pricesData, valuationHistory);
 
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900 pb-20">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20">
         {/* Sticky Header */}
         <PageHeader ticker={ticker} />
 
@@ -221,31 +231,41 @@ async function CompanyContent({ ticker }: { ticker: string }) {
           {/* Hero Section */}
           <CompanyHero data={data} />
 
-          {/* Action Tabs */}
-          <ActionTabs ticker={ticker} />
+          {/* Navigation Tabs */}
+          <CompanyNavigation ticker={ticker} currentTab="overview" />
 
           {/* Main Grid */}
           <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
             {/* Left Column - Main Content */}
             <div className="xl:col-span-3 space-y-10">
-              {/* Charts: Price vs Valuations */}
-              <CompanyChartsSwitcher
-                priceHistory={data.priceHistory}
-                valuationMetrics={data.valuationMetrics}
-                valuationHistory={data.valuationHistory}
-              />
+              <div id="overview" className="scroll-mt-32">
+                {/* Charts: Price vs Valuations */}
+                <CompanyChartsSwitcher
+                  priceHistory={data.priceHistory}
+                  valuationMetrics={data.valuationMetrics}
+                  valuationHistory={data.valuationHistory}
+                />
+              </div>
 
-              {/* Key Metrics */}
-              <KeyMetricsCard metrics={data.ratios} />
+              <div id="financials" className="scroll-mt-32">
+                {/* Financial Statements - New Component */}
+                <FinancialsSection ticker={ticker} />
+              </div>
 
-              {/* Financial Statements - New Component */}
-              <FinancialsSection ticker={ticker} />
+              <div id="technicals" className="scroll-mt-32">
+                {/* Technical Indicators - New Component */}
+                <TechnicalsSection ticker={ticker} currentPrice={data.price} />
+              </div>
 
-              {/* Technical Indicators - New Component */}
-              <TechnicalsSection ticker={ticker} currentPrice={data.price} />
-
-              {/* Peer Comparison */}
-              <PeerComparison ticker={ticker} sector={data.sector} exchange={data.exchange} />
+              <div id="peers" className="scroll-mt-32">
+                {/* Peer Comparison */}
+                <PeerComparison
+                  ticker={ticker}
+                  sector={data.sector}
+                  exchange={data.exchange}
+                  initialData={await fetchPeers(ticker, data.exchange)}
+                />
+              </div>
             </div>
 
             {/* Right Sidebar */}
@@ -253,7 +273,9 @@ async function CompanyContent({ ticker }: { ticker: string }) {
               <CompanyProfile data={data} />
               <AnalystRatings ticker={ticker} />
               <RecentFilings ticker={ticker} />
-              <NewsFeed ticker={ticker} />
+              <div id="news" className="scroll-mt-32">
+                <NewsFeed ticker={ticker} limit={3} initialData={await fetchNews(ticker)} />
+              </div>
             </div>
           </div>
         </div>
@@ -269,12 +291,6 @@ async function CompanyContent({ ticker }: { ticker: string }) {
 type CompanyResponse = Awaited<ReturnType<typeof api.fetchCompany>>;
 type PricesResponse = Awaited<ReturnType<typeof api.fetchPrices>>;
 type Metrics = z.infer<typeof MetricsSchema> | null;
-
-interface PriceHistoryPoint {
-  date: string;
-  price: number;
-  volume: number | null;
-}
 
 interface RatioItem {
   label: string;
@@ -329,6 +345,10 @@ function transformData(
   const priceHistory: PriceHistoryPoint[] = prices.map((p) => ({
     date: p.date,
     price: p.adj_close ?? p.close ?? 0,
+    open: p.open ?? null,
+    high: p.high ?? null,
+    low: p.low ?? null,
+    close: p.close ?? null,
     volume: p.volume ?? null,
   }));
 
@@ -437,7 +457,7 @@ function Breadcrumb({ ticker }: { ticker: string }) {
           {item.href ? (
             <Link
               href={item.href}
-              className="text-slate-500 hover:text-brand transition-colors"
+              className="text-muted-foreground hover:text-brand transition-colors"
             >
               {item.label}
             </Link>
@@ -446,7 +466,7 @@ function Breadcrumb({ ticker }: { ticker: string }) {
               {item.label}
             </span>
           )}
-          {!item.active && <span className="text-slate-400">/</span>}
+          {!item.active && <span className="text-muted-foreground/60">/</span>}
         </div>
       ))}
     </nav>
@@ -464,7 +484,7 @@ function CompanyHero({ data }: { data: CompanyViewModel }) {
 
   return (
     <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-lg">
-      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand to-blue-500" />
+      <div className="absolute inset-x-0 top-0 h-1 bg-brand" />
       <div className="flex flex-col lg:flex-row gap-6 lg:items-center justify-between">
         <div className="flex items-start gap-4">
           <CompanyLogo ticker={data.ticker} name={data.name} />
@@ -476,9 +496,9 @@ function CompanyHero({ data }: { data: CompanyViewModel }) {
               <Badge variant="secondary" className="font-semibold">
                 {data.ticker}
               </Badge>
-              <span className="text-sm text-slate-500">{data.exchange ?? "US"}</span>
-              <span className="text-sm text-slate-500">•</span>
-              <span className="text-sm text-slate-500">{data.sector ?? "Sector"}</span>
+              <span className="text-sm text-muted-foreground">{data.exchange ?? "US"}</span>
+              <span className="text-sm text-muted-foreground/60">•</span>
+              <span className="text-sm text-muted-foreground">{data.sector ?? "Sector"}</span>
             </div>
           </div>
         </div>
@@ -492,11 +512,10 @@ function CompanyHero({ data }: { data: CompanyViewModel }) {
 
             <Badge
               variant="outline"
-              className={`text-lg font-semibold ${
-                isPositive
-                  ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-400 dark:border-green-900"
-                  : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900"
-              }`}
+              className={`text-lg font-semibold ${isPositive
+                ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-400 dark:border-green-900"
+                : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900"
+                }`}
             >
               {isPositive ? "+" : ""}
               {data.changePercent != null
@@ -504,43 +523,14 @@ function CompanyHero({ data }: { data: CompanyViewModel }) {
                 : "—"}
             </Badge>
           </div>
-          <span className="text-xs text-slate-500 mt-1">Market Close</span>
+          <span className="text-xs text-muted-foreground mt-1">Market Close</span>
         </div>
       </div>
     </div>
   );
 }
 
-// Component: Action Tabs
-function ActionTabs({ ticker }: Readonly<{ ticker: string }>) {
-  const tabs = [
-    { id: "overview", label: "Overview", href: `/company/${ticker}`, active: true },
-    { id: "financials", label: "Financials", href: `/company/${ticker}/financials` },
-    { id: "technicals", label: "Technicals", href: `/company/${ticker}/technicals` },
-  ];
 
-  return (
-    <div className="sticky top-16 z-40 backdrop-blur bg-white/60 dark:bg-slate-900/60 border-y border-slate-200 dark:border-slate-800 -mt-4">
-      <div className="flex items-center py-1 overflow-x-auto">
-        <div className="flex gap-1">
-          {tabs.map((tab) => (
-            <Link
-              key={tab.id}
-              href={tab.href}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                tab.active
-                  ? "bg-brand/10 text-brand border-b-2 border-brand"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
-              }`}
-            >
-              {tab.label}
-            </Link>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // Component: Key Metrics Card
 function KeyMetricsCard({ metrics }: { metrics: RatioItem[] }) {
@@ -567,7 +557,7 @@ function MetricItem({ label, value }: RatioItem) {
   return (
     <div className="group relative p-4 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-brand transition-colors bg-white dark:bg-slate-900">
       <div className="absolute inset-y-0 left-0 w-1 bg-brand rounded-l-lg opacity-0 group-hover:opacity-100 transition-opacity" />
-      <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">{label}</div>
+      <div className="text-xs text-muted-foreground mb-1">{label}</div>
       <div className="text-lg font-semibold text-slate-900 dark:text-white">{value}</div>
     </div>
   );
@@ -611,7 +601,7 @@ interface DetailItemProps {
 function DetailItem({ label, value, className, children }: DetailItemProps) {
   return (
     <div className={className}>
-      <div className="text-xs text-slate-500 dark:text-slate-400">{label}</div>
+      <div className="text-xs text-muted-foreground">{label}</div>
       <div className="text-sm font-medium text-slate-900 dark:text-white">
         {children || value || "—"}
       </div>
@@ -626,7 +616,21 @@ async function AnalystRatings({ ticker }: { ticker: string }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Analyst Ratings</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle>Analyst Ratings</CardTitle>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className="text-muted-foreground/60 hover:text-brand transition-colors">
+                  <Info className="w-4 h-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-[200px] text-xs">
+                <p>Consensus rating based on aggregate analyst price targets and recommendations over the last 90 days.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
@@ -665,7 +669,7 @@ async function RecentFilings({ ticker }: { ticker: string }) {
           {filings?.slice(0, 3).map((filing: Filing) => (
             <div key={filing.id} className="flex items-center justify-between py-2">
               <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-slate-400" />
+                <FileText className="w-4 h-4 text-muted-foreground/60" />
                 <span className="text-sm font-medium">{filing.type}</span>
               </div>
               <Badge variant="secondary" className="text-xs">
@@ -679,65 +683,7 @@ async function RecentFilings({ ticker }: { ticker: string }) {
   );
 }
 
-// Component: News Feed
-interface NewsArticle {
-  date: string;
-  title: string;
-  content: string;
-  link: string;
-  symbols?: string[];
-}
 
-async function NewsFeed({ ticker }: { ticker: string }) {
-  const news = await fetchNews(ticker);
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Latest News</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {news && news.length > 0 ? (
-          <div className="space-y-4">
-            {news.slice(0, 3).map((article) => (
-              <a
-                key={article.link || `${article.title}-${article.date}`}
-                href={article.link}
-                target="_blank"
-                rel="noreferrer"
-                className="block pb-3 border-b border-slate-200 dark:border-slate-700 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-900/60 rounded-md px-2 -mx-2 transition-colors"
-              >
-                <h4 className="text-sm font-medium mb-1 text-slate-900 dark:text-white line-clamp-2">
-                  {article.title}
-                </h4>
-                <p className="text-xs text-slate-500 mb-1">
-                  {formatNewsDate(article.date)} • {getNewsSource(article.link)}
-                </p>
-                {article.content && (
-                  <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2">
-                    {article.content}
-                  </p>
-                )}
-              </a>
-            ))}
-            <div className="pt-1 border-t border-dashed border-slate-200 dark:border-slate-700 mt-1">
-              <Link
-                href={`/news?ticker=${encodeURIComponent(ticker)}`}
-                className="text-xs text-brand hover:underline"
-              >
-                Show all news for {ticker}
-              </Link>
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            No recent news available.
-          </p>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
 
 async function fetchNews(ticker: string) {
   const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
@@ -834,113 +780,23 @@ function FinancialStatements({ data }: { data: CompanyViewModel }) {
   );
 }
 
-// Peer Comparison
-interface PeerRow {
-  ticker: string;
-  name: string;
-  exchange: string | null;
-  sector: string | null;
-  industry: string | null;
-  market_capitalization: number | null;
-  price: number | null;
-  pe_ratio: number | null;
-  refund_1d_p: number | null;
-}
-
-async function PeerComparison({
-  ticker,
-  sector,
-  exchange,
-}: {
-  ticker: string;
-  sector: string | null;
-  exchange: string | null;
-}) {
+async function fetchPeers(ticker: string, exchange: string | null) {
   const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
   const params = new URLSearchParams();
   if (exchange) {
     params.set("exchange", exchange);
   }
 
-  const res = await fetch(
-    `${baseUrl}/api/company/${encodeURIComponent(ticker)}/peers?${params.toString()}`,
-    { next: { revalidate: 900 } }
-  );
-
-  let peers: PeerRow[] = [];
-  if (res.ok) {
-    peers = (await res.json()) as PeerRow[];
+  try {
+    const res = await fetch(
+      `${baseUrl}/api/company/${encodeURIComponent(ticker)}/peers?${params.toString()}`,
+      { next: { revalidate: 900 } }
+    );
+    if (res.ok) return await res.json();
+    return [];
+  } catch (e) {
+    return [];
   }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Peer Comparison</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {peers.length === 0 ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            {sector
-              ? `No peers found in the ${sector} sector yet.`
-              : "No peers found for this company yet."}
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="text-xs uppercase text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
-                <tr>
-                  <th className="py-2 text-left">Ticker</th>
-                  <th className="py-2 text-left">Name</th>
-                  <th className="py-2 text-right">Price</th>
-                  <th className="py-2 text-right">Mkt Cap</th>
-                  <th className="py-2 text-right">P/E</th>
-                  <th className="py-2 text-right">1D %</th>
-                </tr>
-              </thead>
-              <tbody>
-                {peers.map((peer) => (
-                  <tr
-                    key={peer.ticker}
-                    className="border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-900/60"
-                  >
-                    <td className="py-2 font-semibold">
-                      <Link
-                        href={`/company/${encodeURIComponent(peer.ticker)}`}
-                        className="text-brand hover:underline"
-                      >
-                        {peer.ticker}
-                      </Link>
-                    </td>
-                    <td className="py-2 truncate max-w-[160px]">{peer.name}</td>
-                    <td className="py-2 text-right">
-                      {peer.price != null ? (
-                        <UsdValue amount={peer.price} />
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td className="py-2 text-right">
-                      {peer.market_capitalization != null
-                        ? formatMetrics.marketCap(peer.market_capitalization)
-                        : "—"}
-                    </td>
-                    <td className="py-2 text-right">
-                      {peer.pe_ratio != null ? peer.pe_ratio.toFixed(2) : "—"}
-                    </td>
-                    <td className="py-2 text-right">
-                      {peer.refund_1d_p != null
-                        ? `${peer.refund_1d_p.toFixed(2)}%`
-                        : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
 }
 
 // Placeholder data fetchers (replace with actual API calls)

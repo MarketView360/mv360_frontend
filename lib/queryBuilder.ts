@@ -127,6 +127,11 @@ export const BACKEND_FIELD_MAP: Record<string, string> = {
   // ═══════════════════════════════════════════════════════════════════════════
   // GROWTH METRICS
   // ═══════════════════════════════════════════════════════════════════════════
+  "revenue growth": "revenue_growth_1y",
+  "earnings growth": "profit_growth_1y",
+  "sales growth": "revenue_growth_1y",
+  "profit growth": "profit_growth_1y",
+  "net income growth": "profit_growth_1y",
   "revenue growth 1year": "revenue_growth_1y",
   "revenue growth 1y": "revenue_growth_1y",
   "sales growth 1year": "revenue_growth_1y",
@@ -271,6 +276,18 @@ export const BACKEND_FIELD_MAP: Record<string, string> = {
   "52wk low": "week_52_low",
   "down from 52w high": "down_from_52w_high",
   "up from 52w low": "up_from_52w_low",
+  macd: "macd",
+  "macd line": "macd",
+  "macd signal": "macd_signal",
+  "macd histogram": "macd_histogram",
+  adx: "adx",
+  "adx 14": "adx",
+  "bollinger upper": "bb_upper",
+  "bollinger middle": "bb_middle",
+  "bollinger lower": "bb_lower",
+  bb_upper: "bb_upper",
+  bb_middle: "bb_middle",
+  bb_lower: "bb_lower",
   "short ratio": "short_ratio",
   "short percent": "short_percent",
   "shares short": "shares_short",
@@ -431,40 +448,32 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       backendField: "roce",
     },
     {
-      name: "ROA",
-      description: "Return on Assets",
-      unit: "%",
-      keywords: ["return assets", "roa"],
-      example: "ROA > 5",
-      category: "Most Used",
-      backendField: "roa",
+      name: "Average Volume",
+      description: "200-day average daily trading volume",
+      unit: "shares",
+      keywords: ["avg volume", "average volume"],
+      example: "Average Volume > 1000000",
+      backendField: "avg_volume_200d",
     },
+  ],
+  "Size & Volume": [
     {
-      name: "EPS",
-      description: "Earnings per Share (TTM)",
-      unit: "$",
-      keywords: ["earnings per share", "eps"],
-      example: "EPS > 10",
-      category: "Most Used",
-      backendField: "eps_ttm",
-    },
-    {
-      name: "Revenue",
-      description: "Total Revenue (TTM)",
+      name: "Market Capitalization",
+      description: "Total market value of shares",
       unit: "USD",
-      keywords: ["revenue", "sales", "turnover"],
-      example: "Revenue > 1000000000",
-      category: "Most Used",
-      backendField: "revenue_ttm",
+      keywords: ["market cap", "mcap", "market value"],
+      example: "Market Capitalization > 5000000000",
+      category: "Size & Volume",
+      backendField: "market_cap",
     },
     {
-      name: "Dividend Yield",
-      description: "Annual dividend as % of current price",
-      unit: "%",
-      keywords: ["dividend", "yield", "div yield"],
-      example: "Dividend Yield BETWEEN 2 AND 6",
-      category: "Most Used",
-      backendField: "dividend_yield",
+      name: "Price",
+      description: "Current stock price",
+      unit: "$",
+      keywords: ["price", "stock price", "share price", "current price"],
+      example: "Price > 100",
+      category: "Size & Volume",
+      backendField: "price",
     },
     {
       name: "Volume",
@@ -472,26 +481,17 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "shares",
       keywords: ["volume", "trading volume"],
       example: "Volume > 500000",
-      category: "Most Used",
+      category: "Size & Volume",
       backendField: "volume",
     },
     {
-      name: "OPM",
-      description: "Operating Profit Margin",
-      unit: "%",
-      keywords: ["operating", "margin", "profit margin"],
-      example: "OPM > 15",
-      category: "Most Used",
-      backendField: "opm",
-    },
-    {
-      name: "Earnings",
-      description: "Net Earnings (TTM)",
-      unit: "USD",
-      keywords: ["earnings", "net income", "profit"],
-      example: "Earnings > 100000000",
-      category: "Most Used",
-      backendField: "earnings_ttm",
+      name: "Avg Volume",
+      description: "Average trading volume (200 days)",
+      unit: "shares",
+      keywords: ["average volume", "avg volume", "dma volume"],
+      example: "Avg Volume > 1000000",
+      category: "Size & Volume",
+      backendField: "avg_volume_200d",
     },
   ],
   Valuation: [
@@ -501,6 +501,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "x",
       keywords: ["pe", "price earnings", "p/e"],
       example: "Price to Earning BETWEEN 10 AND 25",
+      category: "Valuation",
       backendField: "pe",
     },
     {
@@ -509,6 +510,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "x",
       keywords: ["forward pe", "forward p/e"],
       example: "Forward PE < 20",
+      category: "Valuation",
       backendField: "forward_pe",
     },
     {
@@ -517,6 +519,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "x",
       keywords: ["peg", "price earnings growth"],
       example: "PEG Ratio < 1",
+      category: "Valuation",
       backendField: "peg",
     },
     {
@@ -525,6 +528,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "x",
       keywords: ["pb", "price book", "p/b"],
       example: "Price to Book Value < 3",
+      category: "Valuation",
       backendField: "pb",
     },
     {
@@ -533,6 +537,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "%",
       keywords: ["dividend", "yield", "div yield"],
       example: "Dividend Yield BETWEEN 2 AND 6",
+      category: "Valuation",
       backendField: "dividend_yield",
     },
     {
@@ -541,6 +546,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "x",
       keywords: ["ev ebitda", "enterprise value"],
       example: "EV/EBITDA < 15",
+      category: "Valuation",
       backendField: "ev_ebitda",
     },
     {
@@ -549,6 +555,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "x",
       keywords: ["ps", "price sales", "p/s"],
       example: "Price to Sales < 5",
+      category: "Valuation",
       backendField: "price_to_sales",
     },
     {
@@ -557,6 +564,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "x",
       keywords: ["ev sales", "ev/s"],
       example: "EV/Sales < 3",
+      category: "Valuation",
       backendField: "ev_sales",
     },
     {
@@ -565,6 +573,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "x",
       keywords: ["pcf", "price cash flow"],
       example: "Price to Cash Flow < 20",
+      category: "Valuation",
       backendField: "price_to_cash_flow",
     },
   ],
@@ -575,6 +584,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "%",
       keywords: ["roe", "return equity"],
       example: "Return on Equity > 15",
+      category: "Profitability",
       backendField: "roe",
     },
     {
@@ -583,15 +593,26 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "%",
       keywords: ["roce", "return capital"],
       example: "Return on Capital Employed > 15",
+      category: "Profitability",
       backendField: "roce",
     },
     {
-      name: "Return on Assets",
-      description: "Net income as % of total assets",
+      name: "ROA",
+      description: "Return on Assets",
       unit: "%",
-      keywords: ["roa", "return assets"],
-      example: "Return on Assets > 5",
+      keywords: ["return assets", "roa"],
+      example: "ROA > 5",
+      category: "Profitability",
       backendField: "roa",
+    },
+    {
+      name: "OPM",
+      description: "Operating Profit Margin",
+      unit: "%",
+      keywords: ["operating", "margin", "profit margin"],
+      example: "OPM > 15",
+      category: "Profitability",
+      backendField: "opm",
     },
     {
       name: "Operating Profit Margin",
@@ -599,6 +620,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "%",
       keywords: ["opm", "operating margin"],
       example: "Operating Profit Margin > 15",
+      category: "Profitability",
       backendField: "opm",
     },
     {
@@ -607,16 +629,18 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "%",
       keywords: ["net margin", "profit margin"],
       example: "Net Margin > 10",
+      category: "Profitability",
       backendField: "net_margin",
     },
   ],
-  "Leverage & Quality": [
+  "Financial Strength": [
     {
       name: "Debt to Equity",
       description: "Total debt divided by shareholders equity",
       unit: "x",
       keywords: ["debt equity", "de", "d/e"],
       example: "Debt to Equity < 0.5",
+      category: "Financial Strength",
       backendField: "debt_to_equity",
     },
     {
@@ -625,6 +649,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "x",
       keywords: ["lt debt equity", "long term debt"],
       example: "LT Debt to Equity < 0.3",
+      category: "Financial Strength",
       backendField: "lt_debt_to_equity",
     },
     {
@@ -633,6 +658,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "x",
       keywords: ["interest cover", "times interest earned"],
       example: "Interest Coverage > 5",
+      category: "Financial Strength",
       backendField: "interest_coverage",
     },
     {
@@ -641,6 +667,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "x",
       keywords: ["current", "liquidity"],
       example: "Current Ratio > 1.5",
+      category: "Financial Strength",
       backendField: "current_ratio",
     },
     {
@@ -649,6 +676,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "x",
       keywords: ["quick", "acid test"],
       example: "Quick Ratio > 1",
+      category: "Financial Strength",
       backendField: "quick_ratio",
     },
     {
@@ -657,6 +685,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "USD",
       keywords: ["total debt", "debt", "total liabilities"],
       example: "Total Debt < 1000000000",
+      category: "Financial Strength",
       backendField: "total_debt",
     },
     {
@@ -665,6 +694,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "USD",
       keywords: ["cash", "cash equivalents", "liquidity"],
       example: "Cash and Equivalents > 500000000",
+      category: "Financial Strength",
       backendField: "cash_equivalents",
     },
   ],
@@ -675,6 +705,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "USD",
       keywords: ["ocf", "operating cf", "cash flow operations"],
       example: "Operating Cash Flow > 100000000",
+      category: "Cash Flow",
       backendField: "operating_cf",
     },
     {
@@ -683,6 +714,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "USD",
       keywords: ["fcf", "free cf"],
       example: "Free Cash Flow > 50000000",
+      category: "Cash Flow",
       backendField: "free_cf",
     },
     {
@@ -691,16 +723,45 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "%",
       keywords: ["cf margin", "cash margin"],
       example: "Cash Flow Margin > 10",
+      category: "Cash Flow",
       backendField: "cf_margin",
     },
   ],
   Growth: [
+    {
+      name: "Revenue Growth",
+      description: "1-year year-over-year revenue growth rate",
+      unit: "%",
+      keywords: ["revenue growth", "sales growth", "1y revenue", "annual revenue growth"],
+      example: "Revenue Growth > 10",
+      category: "Growth",
+      backendField: "revenue_growth_1y",
+    },
+    {
+      name: "Profit Growth",
+      description: "1-year year-over-year profit growth rate",
+      unit: "%",
+      keywords: ["profit growth", "earnings growth", "1y profit", "annual profit growth"],
+      example: "Profit Growth > 15",
+      category: "Growth",
+      backendField: "profit_growth_1y",
+    },
+    {
+      name: "EPS Growth 3Years",
+      description: "3-year EPS compound annual growth rate",
+      unit: "%",
+      keywords: ["3y eps", "earnings growth"],
+      example: "EPS Growth 3Years > 18",
+      category: "Growth",
+      backendField: "eps_cagr_3y",
+    },
     {
       name: "Sales Growth 3Years",
       description: "3-year compound annual growth rate",
       unit: "%",
       keywords: ["3y growth", "sales cagr"],
       example: "Sales Growth 3Years > 15",
+      category: "Growth",
       backendField: "sales_cagr_3y",
     },
     {
@@ -709,31 +770,8 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "%",
       keywords: ["5y growth", "profit cagr"],
       example: "Profit Growth 5Years > 20",
+      category: "Growth",
       backendField: "profit_cagr_5y",
-    },
-    {
-      name: "EPS Growth 3Years",
-      description: "3-year EPS compound annual growth rate",
-      unit: "%",
-      keywords: ["3y eps", "earnings growth"],
-      example: "EPS Growth 3Years > 18",
-      backendField: "eps_cagr_3y",
-    },
-    {
-      name: "Revenue Growth 1Year",
-      description: "1-year revenue growth rate",
-      unit: "%",
-      keywords: ["1y revenue", "annual revenue growth"],
-      example: "Revenue Growth 1Year > 10",
-      backendField: "revenue_growth_1y",
-    },
-    {
-      name: "Profit Growth 1Year",
-      description: "1-year profit growth rate",
-      unit: "%",
-      keywords: ["1y profit", "annual profit growth"],
-      example: "Profit Growth 1Year > 15",
-      backendField: "profit_growth_1y",
     },
     {
       name: "Return over 3years",
@@ -741,6 +779,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "%",
       keywords: ["3y return", "stock performance"],
       example: "Return over 3years > 50",
+      category: "Growth",
       backendField: "perf_3y_p",
     },
     {
@@ -749,16 +788,45 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "%",
       keywords: ["5y return", "long term return"],
       example: "Return over 5years > 100",
+      category: "Growth",
       backendField: "perf_5y_p",
     },
+    {
+      name: "Revenue",
+      description: "Total Revenue (TTM)",
+      unit: "USD",
+      keywords: ["revenue", "sales", "turnover"],
+      example: "Revenue > 1000000000",
+      category: "Growth",
+      backendField: "revenue_ttm",
+    },
+    {
+      name: "Earnings",
+      description: "Net Earnings (TTM)",
+      unit: "USD",
+      keywords: ["earnings", "net income", "profit"],
+      example: "Earnings > 100000000",
+      category: "Growth",
+      backendField: "earnings_ttm",
+    },
+    {
+      name: "EPS",
+      description: "Earnings per Share (TTM)",
+      unit: "$",
+      keywords: ["earnings per share", "eps"],
+      example: "EPS > 10",
+      category: "Growth",
+      backendField: "eps_ttm",
+    },
   ],
-  Technical: [
+  "Technical Analysis": [
     {
       name: "Beta",
       description: "Stock's volatility relative to market",
       unit: "x",
       keywords: ["beta", "volatility"],
       example: "Beta BETWEEN 0.8 AND 1.2",
+      category: "Technical Analysis",
       backendField: "beta",
     },
     {
@@ -767,6 +835,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "",
       keywords: ["rsi", "momentum"],
       example: "RSI BETWEEN 30 AND 70",
+      category: "Technical Analysis",
       backendField: "rsi",
     },
     {
@@ -775,6 +844,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "$",
       keywords: ["sma20", "20 day ma"],
       example: "Price > SMA20",
+      category: "Technical Analysis",
       backendField: "sma20",
     },
     {
@@ -783,6 +853,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "$",
       keywords: ["ma50", "sma50", "50 day ma"],
       example: "Price > Moving Average 50",
+      category: "Technical Analysis",
       backendField: "ma50",
     },
     {
@@ -791,23 +862,35 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "$",
       keywords: ["ma200", "sma200", "200 day ma"],
       example: "Moving Average 50 > Moving Average 200",
+      category: "Technical Analysis",
       backendField: "ma200",
     },
     {
-      name: "Average Volume",
-      description: "200-day average daily trading volume",
-      unit: "shares",
-      keywords: ["avg volume", "average volume"],
-      example: "Average Volume > 1000000",
-      backendField: "avg_volume_200d",
+      name: "MACD",
+      description: "Moving Average Convergence Divergence",
+      unit: "",
+      keywords: ["macd", "momentum"],
+      example: "MACD > MACD Signal",
+      category: "Technical Analysis",
+      backendField: "macd",
     },
     {
-      name: "Volume",
-      description: "Current trading volume",
-      unit: "shares",
-      keywords: ["volume", "trading volume"],
-      example: "Volume > 500000",
-      backendField: "volume",
+      name: "ADX",
+      description: "Average Directional Index (Trend Strength)",
+      unit: "",
+      keywords: ["adx", "trend strength"],
+      example: "ADX > 25",
+      category: "Technical Analysis",
+      backendField: "adx",
+    },
+    {
+      name: "Bollinger Upper",
+      description: "Upper Bollinger Band",
+      unit: "$",
+      keywords: ["bollinger", "bb upper"],
+      example: "Price > Bollinger Upper",
+      category: "Technical Analysis",
+      backendField: "bb_upper",
     },
     {
       name: "1D Change %",
@@ -815,6 +898,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "%",
       keywords: ["1d change", "daily change"],
       example: "1D Change % > 2",
+      category: "Technical Analysis",
       backendField: "refund_1d_p",
     },
     {
@@ -823,6 +907,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "%",
       keywords: ["5d change", "weekly change"],
       example: "5D Change % > 5",
+      category: "Technical Analysis",
       backendField: "refund_5d_p",
     },
     {
@@ -831,6 +916,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "$",
       keywords: ["price change 1d"],
       example: "Price Change 1D > 1",
+      category: "Technical Analysis",
       backendField: "price_change_1d",
     },
     {
@@ -839,6 +925,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "%",
       keywords: ["price change 1y", "annual change"],
       example: "Price Change 1Y > 20",
+      category: "Technical Analysis",
       backendField: "price_change_1y",
     },
   ],
@@ -849,6 +936,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "text",
       keywords: ["sector"],
       example: 'Sector = "Technology"',
+      category: "Company Info",
       backendField: "sector",
     },
     {
@@ -857,6 +945,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "text",
       keywords: ["industry", "business"],
       example: 'Industry = "Software"',
+      category: "Company Info",
       backendField: "industry",
     },
     {
@@ -865,6 +954,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "text",
       keywords: ["exchange", "listing"],
       example: 'Exchange = "US"',
+      category: "Company Info",
       backendField: "exchange",
     },
     {
@@ -873,6 +963,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "text",
       keywords: ["country"],
       example: 'Country = "USA"',
+      category: "Company Info",
       backendField: "country",
     },
     {
@@ -881,6 +972,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "text",
       keywords: ["currency"],
       example: 'Currency = "USD"',
+      category: "Company Info",
       backendField: "currency",
     },
     {
@@ -889,6 +981,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "text",
       keywords: ["symbol", "ticker", "code"],
       example: 'Symbol = "AAPL"',
+      category: "Company Info",
       backendField: "code",
     },
     {
@@ -897,6 +990,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "text",
       keywords: ["name", "company"],
       example: 'Name = "Apple"',
+      category: "Company Info",
       backendField: "name",
     },
   ],
@@ -907,6 +1001,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "$",
       keywords: ["eps", "earnings per share"],
       example: "EPS > 5",
+      category: "Earnings",
       backendField: "eps_ttm",
     },
     {
@@ -915,33 +1010,17 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "$",
       keywords: ["diluted eps"],
       example: "Diluted EPS > 4",
+      category: "Earnings",
       backendField: "diluted_eps_ttm",
     },
     {
       name: "Revenue",
       description: "Total Revenue (TTM)",
       unit: "USD",
-      keywords: ["revenue", "sales"],
+      keywords: ["revenue", "sales", "turnover"],
       example: "Revenue > 1000000000",
+      category: "Earnings",
       backendField: "revenue_ttm",
-    },
-    {
-      name: "Earnings",
-      description: "Net Earnings (TTM)",
-      unit: "USD",
-      keywords: ["earnings", "net income", "profit after tax"],
-      example: "Earnings > 100000000",
-      backendField: "earnings_ttm",
-    },
-  ],
-  "Price & Market": [
-    {
-      name: "Price",
-      description: "Current stock price",
-      unit: "$",
-      keywords: ["price", "current price", "stock price"],
-      example: "Price > 50",
-      backendField: "price",
     },
     {
       name: "Market Capitalization",
@@ -949,6 +1028,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "USD",
       keywords: ["market cap", "mcap", "market value"],
       example: "Market Capitalization > 10000000000",
+      category: "Earnings",
       backendField: "market_cap",
     },
     {
@@ -957,6 +1037,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "shares",
       keywords: ["volume", "trading volume"],
       example: "Volume > 1000000",
+      category: "Earnings",
       backendField: "volume",
     },
     {
@@ -965,6 +1046,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "shares",
       keywords: ["avg volume", "average volume"],
       example: "Average Volume > 500000",
+      category: "Earnings",
       backendField: "avg_volume_200d",
     },
   ],
@@ -975,19 +1057,21 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
     {
       name: "Quarterly Revenue Growth",
       description:
-        "Year-over-year quarterly revenue growth (EODHD: Highlights.QuarterlyRevenueGrowthYOY)",
+        "Year-over-year quarterly revenue growth",
       unit: "%",
-      keywords: ["quarterly revenue growth", "qoq revenue", "yoy revenue"],
+      keywords: ["quarterly revenue growth", "yoy revenue growth"],
       example: "Quarterly Revenue Growth > 10",
+      category: "Quarterly Metrics",
       backendField: "quarterly_revenue_growth_yoy",
     },
     {
       name: "Quarterly Earnings Growth",
       description:
-        "Year-over-year quarterly earnings growth (EODHD: Highlights.QuarterlyEarningsGrowthYOY)",
+        "Year-over-year quarterly earnings growth",
       unit: "%",
-      keywords: ["quarterly earnings growth", "qoq earnings", "yoy earnings"],
+      keywords: ["quarterly earnings growth", "yoy earnings growth"],
       example: "Quarterly Earnings Growth > 15",
+      category: "Quarterly Metrics",
       backendField: "quarterly_earnings_growth_yoy",
     },
   ],
@@ -995,7 +1079,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
     {
       name: "Debtor Days",
       description:
-        "Days sales outstanding - collection period (Calculated: netReceivables / totalRevenue * 365)",
+        "Days sales outstanding - collection period",
       unit: "days",
       keywords: [
         "debtor days",
@@ -1004,24 +1088,27 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
         "collection period",
       ],
       example: "Debtor Days < 60",
+      category: "Working Capital",
       backendField: "debtor_days",
     },
     {
       name: "Inventory Days",
       description:
-        "Days inventory outstanding (Calculated: inventory / costOfRevenue * 365)",
+        "Days inventory outstanding",
       unit: "days",
       keywords: ["inventory days", "dio", "days inventory"],
       example: "Inventory Days < 90",
+      category: "Working Capital",
       backendField: "inventory_days",
     },
     {
       name: "Days Payable",
       description:
-        "Days payable outstanding (Calculated: accountPayables / costOfRevenue * 365)",
+        "Days payable outstanding",
       unit: "days",
       keywords: ["days payable", "dpo", "payable days"],
       example: "Days Payable > 30",
+      category: "Working Capital",
       backendField: "days_payable",
     },
     {
@@ -1030,6 +1117,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "days",
       keywords: ["cash conversion cycle", "ccc", "working capital days"],
       example: "Cash Conversion Cycle < 100",
+      category: "Working Capital",
       backendField: "cash_conversion_cycle",
     },
   ],
@@ -1040,6 +1128,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "x",
       keywords: ["asset turnover", "asset efficiency"],
       example: "Asset Turnover > 0.5",
+      category: "Asset Efficiency",
       backendField: "asset_turnover",
     },
     {
@@ -1048,15 +1137,17 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "x",
       keywords: ["fixed asset turnover", "ppe turnover"],
       example: "Fixed Asset Turnover > 2",
+      category: "Asset Efficiency",
       backendField: "fixed_asset_turnover",
     },
     {
       name: "Total Assets",
       description:
-        "Total assets from balance sheet (EODHD: Financials.Balance_Sheet.totalAssets)",
+        "Total assets from balance sheet",
       unit: "USD",
       keywords: ["total assets", "assets"],
       example: "Total Assets > 1000000000",
+      category: "Asset Efficiency",
       backendField: "total_assets",
     },
   ],
@@ -1064,16 +1155,17 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
     {
       name: "Insider Ownership",
       description:
-        "Percentage held by insiders (EODHD: SharesStats.PercentInsiders)",
+        "Percentage held by insiders",
       unit: "%",
       keywords: ["insider ownership", "percent insiders", "insider holdings"],
       example: "Insider Ownership > 5",
+      category: "Ownership & Insiders",
       backendField: "insider_ownership",
     },
     {
       name: "Institutional Ownership",
       description:
-        "Percentage held by institutions (EODHD: SharesStats.PercentInstitutions)",
+        "Percentage held by institutions",
       unit: "%",
       keywords: [
         "institutional ownership",
@@ -1081,42 +1173,47 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
         "institutional holdings",
       ],
       example: "Institutional Ownership > 50",
+      category: "Ownership & Insiders",
       backendField: "institutional_ownership",
     },
     {
       name: "Shares Outstanding",
       description:
-        "Total shares outstanding (EODHD: SharesStats.SharesOutstanding)",
+        "Total shares outstanding",
       unit: "shares",
       keywords: ["shares outstanding", "outstanding shares"],
       example: "Shares Outstanding > 100000000",
+      category: "Ownership & Insiders",
       backendField: "shares_outstanding",
     },
     {
       name: "Shares Float",
       description:
-        "Shares available for trading (EODHD: SharesStats.SharesFloat)",
+        "Shares available for trading",
       unit: "shares",
       keywords: ["shares float", "float", "tradeable shares"],
       example: "Shares Float > 50000000",
+      category: "Ownership & Insiders",
       backendField: "shares_float",
     },
     {
       name: "Short Ratio",
       description:
-        "Days to cover short positions (EODHD: Technicals.ShortRatio)",
+        "Days to cover short positions",
       unit: "days",
       keywords: ["short ratio", "days to cover"],
       example: "Short Ratio < 5",
+      category: "Ownership & Insiders",
       backendField: "short_ratio",
     },
     {
       name: "Short Percent",
       description:
-        "Percentage of float shorted (EODHD: Technicals.ShortPercent)",
+        "Percentage of float shorted",
       unit: "%",
       keywords: ["short percent", "short interest"],
       example: "Short Percent < 10",
+      category: "Ownership & Insiders",
       backendField: "short_percent",
     },
   ],
@@ -1124,35 +1221,39 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
     {
       name: "52 Week High",
       description:
-        "Highest price in past 52 weeks (EODHD: Technicals.52WeekHigh)",
+        "Highest price in past 52 weeks",
       unit: "$",
       keywords: ["52 week high", "52w high", "year high"],
       example: "Price > 52 Week High * 0.9",
+      category: "52 Week Range",
       backendField: "week_52_high",
     },
     {
       name: "52 Week Low",
       description:
-        "Lowest price in past 52 weeks (EODHD: Technicals.52WeekLow)",
+        "Lowest price in past 52 weeks",
       unit: "$",
       keywords: ["52 week low", "52w low", "year low"],
       example: "Price < 52 Week Low * 1.1",
+      category: "52 Week Range",
       backendField: "week_52_low",
     },
     {
       name: "Down from 52W High",
-      description: "Percentage below 52-week high (Calculated)",
+      description: "Percentage below 52-week high",
       unit: "%",
       keywords: ["down from high", "below 52w high"],
       example: "Down from 52W High < 20",
+      category: "52 Week Range",
       backendField: "down_from_52w_high",
     },
     {
       name: "Up from 52W Low",
-      description: "Percentage above 52-week low (Calculated)",
+      description: "Percentage above 52-week low",
       unit: "%",
       keywords: ["up from low", "above 52w low"],
       example: "Up from 52W Low > 50",
+      category: "52 Week Range",
       backendField: "up_from_52w_low",
     },
   ],
@@ -1878,6 +1979,25 @@ export const getAllFields = (): FieldDef[] => {
   return allFields;
 };
 
+// Value suggestions for specific fields
+export const VALUE_SUGGESTIONS: Record<string, string[]> = {
+  sector: [
+    "Technology",
+    "Financial Services",
+    "Healthcare",
+    "Consumer Cyclical",
+    "Industrials",
+    "Communication Services",
+    "Consumer Defensive",
+    "Energy",
+    "Real Estate",
+    "Basic Materials",
+    "Utilities",
+  ],
+  exchange: ["US", "NASDAQ", "NYSE", "AMEX", "BATS"],
+  country: ["USA", "India", "UK", "Canada", "China", "Germany", "France", "Japan"],
+};
+
 // Search function for auto-completion
 export const searchSuggestions = (
   input: string,
@@ -1886,9 +2006,32 @@ export const searchSuggestions = (
   const suggestions: QuerySuggestion[] = [];
 
   // Get the current word being typed
-  const beforeCursor = input.substring(0, cursorPosition);
+  const beforeCursor = input.substring(0, cursorPosition).trimStart();
   const words = beforeCursor.split(/\s+/);
   const currentWord = words[words.length - 1]?.toLowerCase() || "";
+
+  // Previous word might indicate we need value suggestions (e.g., "Sector =" or "Exchange IN")
+  const prevWord = words[words.length - 2]?.toLowerCase() || "";
+  const secondPrevWord = words[words.length - 3]?.toLowerCase() || "";
+
+  // Check for value suggestions (e.g., "Sector =", "Sector IN")
+  const valueField = (["=", "!=", "in", "like", "between"].includes(prevWord) ? secondPrevWord :
+    ["=", "!=", "in", "like", "between"].includes(currentWord) ? prevWord : null);
+
+  if (valueField && VALUE_SUGGESTIONS[valueField.toLowerCase()]) {
+    const values = VALUE_SUGGESTIONS[valueField.toLowerCase()];
+    values.forEach(val => {
+      if (val.toLowerCase().includes(currentWord.replace(/['"]/g, '')) || currentWord === "=" || currentWord === "in") {
+        suggestions.push({
+          text: val,
+          type: "value",
+          description: `Value for ${valueField}`,
+          insertText: `"${val}"`,
+        });
+      }
+    });
+    if (suggestions.length > 0) return suggestions.slice(0, 10);
+  }
 
   if (currentWord.length === 0) return [];
 
@@ -1965,6 +2108,8 @@ const splitByLogicalOperators = (query: string): string[] => {
   let parenDepth = 0;
   let i = 0;
 
+  let betweenDepth = 0;
+
   while (i < query.length) {
     const char = query[i];
 
@@ -1977,17 +2122,33 @@ const splitByLogicalOperators = (query: string): string[] => {
       current += char;
       i++;
     } else if (parenDepth === 0) {
-      // Check for AND/OR only when NOT inside parentheses
       const remaining = query.slice(i);
-      // Match AND/OR with optional leading whitespace (for start of string) and required trailing whitespace
+
+      // Track BETWEEN to avoid splitting on the 'AND' between values
+      const betweenStartMatch = remaining.match(/^(\bBETWEEN\b\s+)/i);
+      if (betweenStartMatch) {
+        betweenDepth++;
+        current += betweenStartMatch[1];
+        i += betweenStartMatch[1].length;
+        continue;
+      }
+
+      // Check for AND/OR only when NOT inside parentheses and NOT inside a BETWEEN clause
       const andMatch = remaining.match(/^(\s*AND\s+)/i);
       const orMatch = remaining.match(/^(\s*OR\s+)/i);
 
       if (andMatch && (i === 0 || /\s$/.test(current))) {
-        if (current.trim()) results.push(current.trim());
-        results.push("AND");
-        current = "";
-        i += andMatch[1].length;
+        if (betweenDepth > 0) {
+          // This AND is likely part of BETWEEN x AND y
+          betweenDepth--; // Finish one BETWEEN clause
+          current += andMatch[1];
+          i += andMatch[1].length;
+        } else {
+          if (current.trim()) results.push(current.trim());
+          results.push("AND");
+          current = "";
+          i += andMatch[1].length;
+        }
       } else if (orMatch && (i === 0 || /\s$/.test(current))) {
         if (current.trim()) results.push(current.trim());
         results.push("OR");
@@ -2012,13 +2173,13 @@ export const validateQuery = (query: string): QueryValidationError[] => {
   const errors: QueryValidationError[] = [];
   const lines = query.split("\n");
   const fieldNames = getAllFields().map((f) => f.name);
-  
+
   // Also get all keywords from fields for validation
   const allKeywords = getAllFields().flatMap((f) => f.keywords || []);
-  
+
   // Also include BACKEND_FIELD_MAP keys as valid field names
   const backendFieldKeys = Object.keys(BACKEND_FIELD_MAP);
-  
+
   // Combine all valid field identifiers (use Array.from for compatibility)
   const allValidFields = Array.from(new Set([...fieldNames, ...allKeywords, ...backendFieldKeys]));
 
@@ -2070,7 +2231,8 @@ export const validateQuery = (query: string): QueryValidationError[] => {
       if (!conditionTrimmed) return;
 
       // Find operator in this condition
-      const operatorMatch = conditionTrimmed.match(/(>=|<=|!=|>|<|=)/);
+      // Find operator in this condition - now supports more operators
+      const operatorMatch = conditionTrimmed.match(/(>=|<=|!=|>|<|=|\bIN\b|\bBETWEEN\b|\bLIKE\b|\bIS\s+NOT\s+NULL\b|\bIS\s+NULL\b)/i);
 
       if (!operatorMatch) {
         // No operator found - decide if this is a known or unknown field fragment
@@ -2251,7 +2413,7 @@ export const tokenizeQuery = (query: string) => {
 
   // Better tokenization that preserves spacing and handles multi-character operators
   const regex =
-    /(\s+|>=|<=|!=|AND|OR|NOT|[()><=]|\w+(?:\s+\w+)*|\d+(?:\.\d+)?|[^\w\s()><=])/g;
+    /(\s+|>=|<=|!=|AND|OR|NOT|IN|BETWEEN|LIKE|IS\s+NOT\s+NULL|IS\s+NULL|[()><=]|\w+(?:\s+\w+)*|\d+(?:\.\d+)?|[^\w\s()><=])/gi;
   let match;
   let lastIndex = 0;
 

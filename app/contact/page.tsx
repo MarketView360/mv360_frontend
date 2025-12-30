@@ -84,7 +84,7 @@ export default function ContactPage() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-12 px-4">
       <div className="max-w-4xl mx-auto">
-        <Link 
+        <Link
           href="/"
           className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white mb-8 transition-colors"
         >
@@ -108,7 +108,7 @@ export default function ContactPage() {
                 <div>
                   <p className="font-medium text-slate-900 dark:text-white">Email</p>
                   <a href="mailto:support@marketview360.io" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
-                    support@marketview360.com
+                    support@marketview360.io
                   </a>
                 </div>
               </div>
@@ -160,11 +160,10 @@ export default function ContactPage() {
                           key={cat.id}
                           type="button"
                           onClick={() => setCategory(cat.id as ContactCategory)}
-                          className={`flex items-center gap-2 p-3 rounded-lg border text-sm font-medium transition-colors ${
-                            category === cat.id
+                          className={`flex items-center gap-2 p-3 rounded-lg border text-sm font-medium transition-colors ${category === cat.id
                               ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
                               : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600"
-                          }`}
+                            }`}
                         >
                           <Icon className="h-4 w-4" />
                           <span className="truncate">{cat.label}</span>

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/providers/AuthProvider";
 import { SocialAuthButtons, OrDivider } from "@/components/auth/SocialAuthButtons";
+import { Logo } from "@/components/common/Logo";
 import { Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, Sparkles } from "lucide-react";
 
 export default function LoginPage() {
@@ -27,9 +28,9 @@ function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirectTo") || "/";
-  
+
   const { signInWithEmail, signInWithMagicLink, loading } = useAuth();
-  
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -44,7 +45,7 @@ function LoginPageContent() {
     setIsLoading(true);
 
     const { error } = await signInWithEmail(email, password);
-    
+
     if (error) {
       setError(error.message);
       setIsLoading(false);
@@ -60,7 +61,7 @@ function LoginPageContent() {
     setIsLoading(true);
 
     const { error } = await signInWithMagicLink(email);
-    
+
     if (error) {
       setError(error.message);
     } else {
@@ -102,7 +103,7 @@ function LoginPageContent() {
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4 py-12">
       <div className="w-full max-w-md">
         {/* Back to home */}
-        <Link 
+        <Link
           href="/"
           className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white mb-8 transition-colors"
         >
@@ -114,9 +115,7 @@ function LoginPageContent() {
           {/* Header */}
           <div className="text-center mb-8">
             <Link href="/" className="inline-block mb-4">
-              <span className="font-heading font-bold text-2xl tracking-tight text-slate-900 dark:text-white">
-                Marketview<span className="text-blue-600">360</span>
-              </span>
+              <Logo width={200} height={40} className="h-10 md:h-12" />
             </Link>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
               Welcome back
@@ -128,7 +127,7 @@ function LoginPageContent() {
 
           {/* Social Login */}
           <SocialAuthButtons mode="login" />
-          
+
           <OrDivider />
 
           {/* Toggle between password and magic link */}
@@ -136,22 +135,20 @@ function LoginPageContent() {
             <button
               type="button"
               onClick={() => setMagicLinkMode(false)}
-              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                !magicLinkMode
-                  ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900"
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
-              }`}
+              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${!magicLinkMode
+                ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                }`}
             >
               Password
             </button>
             <button
               type="button"
               onClick={() => setMagicLinkMode(true)}
-              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1 ${
-                magicLinkMode
-                  ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900"
-                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
-              }`}
+              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1 ${magicLinkMode
+                ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                }`}
             >
               <Sparkles className="h-4 w-4" />
               Magic Link
@@ -195,7 +192,7 @@ function LoginPageContent() {
                     <label htmlFor="password" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
                       Password
                     </label>
-                    <Link 
+                    <Link
                       href="/auth/forgot-password"
                       className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
                     >

@@ -30,7 +30,7 @@ interface TechnicalData {
   ema_12: number | null;
   ema_26: number | null;
   rsi_14: number | null;
-  macd_line: number | null;
+  macd: number | null;
   macd_signal: number | null;
   macd_histogram: number | null;
   stoch_k: number | null;
@@ -103,14 +103,14 @@ export function TechnicalsSection({ ticker, currentPrice }: TechnicalsSectionPro
 
   const filteredData = useMemo(() => {
     if (!technicals.length) return [];
-    
+
     const rangeMap: Record<string, number> = {
       "1M": 21,
       "3M": 63,
       "6M": 126,
       "1Y": 252,
     };
-    
+
     const limit = rangeMap[range];
     // Data comes sorted desc, we need asc for charts
     const sorted = [...technicals].sort(
@@ -153,7 +153,7 @@ export function TechnicalsSection({ ticker, currentPrice }: TechnicalsSectionPro
   }
 
   const rsiSignal = getRsiSignal(latestData?.rsi_14);
-  const macdSignal = getMacdSignal(latestData?.macd_line, latestData?.macd_signal);
+  const macdSignal = getMacdSignal(latestData?.macd, latestData?.macd_signal);
   const trendSignal = getTrendSignal(currentPrice ?? null, latestData?.sma_50, latestData?.sma_200);
 
   return (
@@ -190,7 +190,7 @@ export function TechnicalsSection({ ticker, currentPrice }: TechnicalsSectionPro
           />
           <SignalCard
             label="MACD"
-            value={latestData?.macd_line?.toFixed(2) ?? "—"}
+            value={latestData?.macd?.toFixed(2) ?? "—"}
             signal={macdSignal.label}
             signalColor={macdSignal.color}
           />
@@ -278,7 +278,7 @@ export function TechnicalsSection({ ticker, currentPrice }: TechnicalsSectionPro
                 />
                 <Line
                   type="monotone"
-                  dataKey="macd_line"
+                  dataKey="macd"
                   stroke="#3b82f6"
                   strokeWidth={2}
                   dot={false}
