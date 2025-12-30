@@ -127,7 +127,7 @@ export default function MarketOverview({
         data?: ScreenerRow[];
       };
       const newsJson = (await newsRes.json()) as NewsItem[];
-      
+
       // Parse indices data
       let indicesData: { name: string; symbol: string; price: number | null; changePercent: number | null }[] = [];
       if (indicesRes.ok) {
@@ -438,9 +438,6 @@ export default function MarketOverview({
             <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-900 dark:text-white">
               <Newspaper className="w-5 h-5 text-brand" />
               Market News
-              <Badge variant="outline" className="text-[10px] h-4 ml-1">
-                Live
-              </Badge>
             </CardTitle>
             <button
               type="button"

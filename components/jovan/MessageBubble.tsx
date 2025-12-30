@@ -129,7 +129,7 @@ export function MessageBubble({
       >
         <div className="flex items-center gap-3 rounded-2xl bg-white border border-slate-200 dark:border-slate-700 dark:bg-slate-800 px-4 py-3 shadow-sm">
           {/* AI Avatar */}
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand-dark">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand">
             <Sparkles className="h-4 w-4 text-white" />
           </div>
           {/* Typing dots */}
@@ -290,7 +290,7 @@ export function MessageBubble({
                   {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               )}
-              
+
               {/* Action buttons - always visible */}
               <TooltipProvider>
                 <div className="flex items-center gap-0.5">
@@ -317,54 +317,54 @@ export function MessageBubble({
                     <TooltipContent>Copy</TooltipContent>
                   </Tooltip>
 
-                {/* Speak (assistant only) */}
-                {message.role === "assistant" && ttsSupported && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-6 w-6"
-                        onClick={() => {
-                          if (isSpeaking) {
-                            stop();
-                          } else {
-                            speak(message.content);
-                          }
-                        }}
-                      >
-                        <Volume2
-                          className={cn(
-                            "h-3 w-3",
-                            isSpeaking && "text-brand animate-pulse",
-                          )}
-                        />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {isSpeaking ? "Stop" : "Speak"}
-                    </TooltipContent>
-                  </Tooltip>
-                )}
+                  {/* Speak (assistant only) */}
+                  {message.role === "assistant" && ttsSupported && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          onClick={() => {
+                            if (isSpeaking) {
+                              stop();
+                            } else {
+                              speak(message.content);
+                            }
+                          }}
+                        >
+                          <Volume2
+                            className={cn(
+                              "h-3 w-3",
+                              isSpeaking && "text-brand animate-pulse",
+                            )}
+                          />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {isSpeaking ? "Stop" : "Speak"}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
 
-                {/* Regenerate (assistant only) */}
-                {message.role === "assistant" && onRegenerate && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-6 w-6"
-                        onClick={onRegenerate}
-                      >
-                        <RefreshCw className="h-3 w-3" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Regenerate</TooltipContent>
-                  </Tooltip>
-                )}
+                  {/* Regenerate (assistant only) */}
+                  {message.role === "assistant" && onRegenerate && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          onClick={onRegenerate}
+                        >
+                          <RefreshCw className="h-3 w-3" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Regenerate</TooltipContent>
+                    </Tooltip>
+                  )}
 
-                {/* Edit
+                  {/* Edit
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -380,22 +380,22 @@ export function MessageBubble({
                 </Tooltip>
                 */}
 
-                {/* Delete */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-6 w-6 hover:text-red-500"
-                      onClick={onDelete}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Delete</TooltipContent>
-                </Tooltip>
-              </div>
-            </TooltipProvider>
+                  {/* Delete */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6 hover:text-red-500"
+                        onClick={onDelete}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Delete</TooltipContent>
+                  </Tooltip>
+                </div>
+              </TooltipProvider>
             </div>
           </>
         )}

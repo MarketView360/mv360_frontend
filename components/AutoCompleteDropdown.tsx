@@ -63,7 +63,7 @@ export default function AutoCompleteDropdown({
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!visible) return;
-      
+
       // Number key shortcuts (1-9)
       const num = parseInt(event.key);
       if (num >= 1 && num <= 9 && num <= suggestions.length) {
@@ -105,7 +105,7 @@ export default function AutoCompleteDropdown({
       }}
     >
       {/* Compact Header */}
-      <div className="px-3 py-2 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-slate-100/50">
+      <div className="px-3 py-2 border-b border-slate-100 bg-slate-50">
         <div className="flex items-center justify-between text-xs">
           <div className="flex items-center gap-2 text-slate-600">
             <Calculator className="w-3 h-3" />
@@ -118,7 +118,7 @@ export default function AutoCompleteDropdown({
           </div>
         </div>
       </div>
-      
+
       {/* Suggestions List */}
       <div className="overflow-y-auto max-h-64">
         {suggestions.map((suggestion, index) => {
@@ -127,11 +127,10 @@ export default function AutoCompleteDropdown({
             <button
               key={`${suggestion.text}-${index}`}
               data-index={index}
-              className={`w-full px-3 py-2 text-left hover:bg-slate-50 transition-all duration-150 border-l-2 group ${
-                index === selectedIndex 
-                  ? `${getTypeColor(suggestion.type)} border-l-3 bg-slate-50` 
+              className={`w-full px-3 py-2 text-left hover:bg-slate-50 transition-all duration-150 border-l-2 group ${index === selectedIndex
+                  ? `${getTypeColor(suggestion.type)} border-l-3 bg-slate-50`
                   : 'border-l-transparent hover:border-l-slate-200'
-              }`}
+                }`}
               onClick={() => onSelect(suggestion)}
             >
               <div className="flex items-center gap-3">
@@ -139,7 +138,7 @@ export default function AutoCompleteDropdown({
                 <div className="shrink-0">
                   {getCategoryIcon(suggestion)}
                 </div>
-                
+
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
@@ -156,7 +155,7 @@ export default function AutoCompleteDropdown({
                     </div>
                   )}
                 </div>
-                
+
                 {/* Keyboard Shortcut */}
                 {shortcut && (
                   <div className="shrink-0">
@@ -170,7 +169,7 @@ export default function AutoCompleteDropdown({
           );
         })}
       </div>
-      
+
       {/* Compact Footer */}
       <div className="px-3 py-2 border-t border-slate-100 bg-slate-50/50">
         <div className="flex items-center justify-between text-xs text-slate-500">

@@ -20,17 +20,17 @@ const suggestionCards = [
     icon: TrendingUp,
     title: "Stock Analysis",
     prompt: "Analyze AAPL stock with key financial metrics and growth potential",
-    gradient: "from-blue-500 to-cyan-500",
-    bgLight: "bg-gradient-to-br from-blue-50 to-cyan-50",
-    bgDark: "dark:from-blue-950/50 dark:to-cyan-950/50",
+    solidColor: "bg-blue-500",
+    bgLight: "bg-blue-50",
+    bgDark: "dark:bg-blue-950/50",
   },
   {
     icon: BarChart3,
     title: "Compare Companies",
     prompt: "Compare MSFT and GOOGL using revenue, margins, and valuation",
-    gradient: "from-emerald-500 to-teal-500",
-    bgLight: "bg-gradient-to-br from-emerald-50 to-teal-50",
-    bgDark: "dark:from-emerald-950/50 dark:to-teal-950/50",
+    solidColor: "bg-emerald-500",
+    bgLight: "bg-emerald-50",
+    bgDark: "dark:bg-emerald-950/50",
   },
   {
     icon: PieChart,
@@ -44,9 +44,9 @@ const suggestionCards = [
     icon: Calculator,
     title: "Financial Concepts",
     prompt: "Explain the Rule of 40 for SaaS companies with examples",
-    gradient: "from-amber-500 to-orange-500",
-    bgLight: "bg-gradient-to-br from-amber-50 to-orange-50",
-    bgDark: "dark:from-amber-950/50 dark:to-orange-950/50",
+    solidColor: "bg-amber-500",
+    bgLight: "bg-amber-50",
+    bgDark: "dark:bg-amber-950/50",
   },
 ];
 
@@ -141,8 +141,8 @@ export function Greeting({
                 <div
                   className={cn(
                     "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
-                    "bg-gradient-to-br shadow-sm",
-                    card.gradient,
+                    "shadow-sm",
+                    card.solidColor,
                   )}
                 >
                   <Icon className="h-5 w-5 text-white" />

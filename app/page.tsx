@@ -7,7 +7,7 @@ export default async function Home() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans selection:bg-brand/20 transition-colors duration-300">
       {/* Hero Section */}
-      <section className="w-full py-24 md:py-32 bg-gradient-to-b from-white dark:from-slate-900 via-slate-50 dark:via-slate-950 to-slate-100 dark:to-slate-900 border-b border-slate-200 dark:border-slate-800 relative overflow-hidden">
+      <section className="w-full py-24 md:py-32 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 relative overflow-hidden">
         {/* Background Decorative Elements */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
           <div className="absolute -top-[20%] -right-[10%] w-[600px] h-[600px] rounded-full bg-brand/5 blur-3xl opacity-50"></div>
@@ -30,7 +30,7 @@ export default async function Home() {
               </span>
             </h1>
             <p className="text-xl text-slate-600 dark:text-slate-300 md:text-2xl max-w-[800px] mx-auto leading-relaxed">
-              Real-time US equity insights delivered with speed, clarity, and analytical depth.
+              Real-time US equity insights delivered with speed, clarity, and analytical depth. Marketview360 transforms complex U.S. equity data into actionable intelligence.
             </p>
           </div>
 
@@ -84,7 +84,7 @@ export default async function Home() {
         </div>
       </section>
 
-      
+
     </div>
   );
 }

@@ -25,9 +25,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
+  const [supabase, setSupabase] = useState<ReturnType<typeof createClient> | null>(null);
+  const [authDisabled, setAuthDisabled] = useState(false);
 
   useEffect(() => {
+    // Try to create the Supabase client, skip auth if credentials are missing
+    try {
+      const client = createClient();
+      setSupabase(client);
+    } catch (error) {
+      console.warn('Supabase auth bypassed: Missing credentials');
+      setAuthDisabled(true);
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!supabase || authDisabled) return;
+
     // Get initial session
     const getInitialSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -50,9 +65,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase.auth]);
+  }, [supabase, authDisabled]);
 
   const signInWithEmail = useCallback(async (email: string, password: string) => {
+    if (!supabase) return { error: new Error('Auth not available') };
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -60,9 +76,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     setLoading(false);
     return { error: error as Error | null };
-  }, [supabase.auth]);
+  }, [supabase]);
 
   const signUpWithEmail = useCallback(async (email: string, password: string, fullName?: string) => {
+    if (!supabase) return { error: new Error('Auth not available') };
     setLoading(true);
     const { error } = await supabase.auth.signUp({
       email,
@@ -76,9 +93,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     setLoading(false);
     return { error: error as Error | null };
-  }, [supabase.auth]);
+  }, [supabase]);
 
   const signInWithOAuth = useCallback(async (provider: 'google' | 'github') => {
+    if (!supabase) return { error: new Error('Auth not available') };
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
@@ -86,9 +104,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
     });
     return { error: error as Error | null };
-  }, [supabase.auth]);
+  }, [supabase]);
 
   const signInWithMagicLink = useCallback(async (email: string) => {
+    if (!supabase) return { error: new Error('Auth not available') };
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
@@ -96,38 +115,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
     });
     return { error: error as Error | null };
-  }, [supabase.auth]);
+  }, [supabase]);
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    if (supabase) await supabase.auth.signOut();
     setUser(null);
     setSession(null);
-  }, [supabase.auth]);
+  }, [supabase]);
 
   const resetPassword = useCallback(async (email: string) => {
+    if (!supabase) return { error: new Error('Auth not available') };
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth/reset-password`,
     });
     return { error: error as Error | null };
-  }, [supabase.auth]);
+  }, [supabase]);
 
   const updatePassword = useCallback(async (newPassword: string) => {
+    if (!supabase) return { error: new Error('Auth not available') };
     const { error } = await supabase.auth.updateUser({
       password: newPassword,
     });
     return { error: error as Error | null };
-  }, [supabase.auth]);
+  }, [supabase]);
 
   const verifyOtp = useCallback(async (email: string, token: string, type: 'email' | 'recovery') => {
+    if (!supabase) return { error: new Error('Auth not available') };
     const { error } = await supabase.auth.verifyOtp({
       email,
       token,
       type: type === 'email' ? 'email' : 'recovery',
     });
     return { error: error as Error | null };
-  }, [supabase.auth]);
+  }, [supabase]);
 
   const resendVerificationEmail = useCallback(async (email: string) => {
+    if (!supabase) return { error: new Error('Auth not available') };
     const { error } = await supabase.auth.resend({
       type: 'signup',
       email,
@@ -136,7 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
     });
     return { error: error as Error | null };
-  }, [supabase.auth]);
+  }, [supabase]);
 
   const value: AuthContextType = {
     user,

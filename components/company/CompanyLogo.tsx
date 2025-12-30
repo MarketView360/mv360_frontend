@@ -21,7 +21,7 @@ export function CompanyLogo({ ticker, name }: CompanyLogoProps) {
 
   if (!src || error) {
     return (
-      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-brand to-blue-600 text-white flex items-center justify-center font-bold text-2xl shadow-lg flex-shrink-0">
+      <div className="w-16 h-16 rounded-xl bg-brand text-white flex items-center justify-center font-bold text-2xl shadow-lg flex-shrink-0">
         {ticker?.[0] ?? "?"}
       </div>
     );
