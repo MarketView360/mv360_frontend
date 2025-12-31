@@ -43,10 +43,12 @@ export function NewsGrid() {
     setPage(1);
     setHasMore(true);
     setInitialLoading(true);
+    
     fetchPage(1)
       .then((rows) => {
         setPages(rows.length ? [rows] : []);
-        if (!rows.length || rows.length < PAGE_SIZE) {
+        const isSearch = !!q;
+        if (rows.length === 0 || (!isSearch && rows.length < PAGE_SIZE)) {
           setHasMore(false);
         }
       })
@@ -57,10 +59,13 @@ export function NewsGrid() {
     if (initialLoading || !hasMore || !inView) return;
 
     fetchPage(page + 1).then((rows) => {
-      if (!rows.length) setHasMore(false);
-      else {
+      if (rows.length === 0) {
+        setHasMore(false);
+      } else {
         setPages((prev) => [...prev, rows]);
         setPage((p) => p + 1);
+        const isSearch = !!q;
+        if (!isSearch && rows.length < PAGE_SIZE) setHasMore(false);
       }
     });
   }, [inView, page, hasMore, ticker, q, initialLoading]);
