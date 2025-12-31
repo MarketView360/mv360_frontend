@@ -33,6 +33,15 @@ export function useQuota(token: string | null): UseQuotaResult {
 
   const fetchQuota = useCallback(async () => {
     if (!token) {
+      // Mock data for unauthenticated/dev state
+      setQuota({
+        standard: { used: 12, limit: 50, unlimited: false },
+        reasoning: { used: 3, limit: 5, unlimited: false },
+        premium: { used: 0, limit: 0, unlimited: false },
+        voice: { used: 0, limit: 0, unlimited: false },
+        resetsAt: new Date(Date.now() + 1000 * 60 * 60 * 4).toISOString(), // 4 hours from now
+        tier: "free"
+      });
       setLoading(false);
       return;
     }
@@ -41,11 +50,17 @@ export function useQuota(token: string | null): UseQuotaResult {
     setError(null);
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
+
       const response = await fetch(`${API_BASE}/ai/quota`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error("Failed to fetch quota");
@@ -54,6 +69,16 @@ export function useQuota(token: string | null): UseQuotaResult {
       const data = await response.json();
       setQuota(data);
     } catch (err) {
+      console.error("Quota fetch error:", err);
+      // Fallback mock data for development/demo when backend is unreachable
+      setQuota({
+        standard: { used: 12, limit: 50, unlimited: false },
+        reasoning: { used: 3, limit: 5, unlimited: false },
+        premium: { used: 0, limit: 0, unlimited: false },
+        voice: { used: 0, limit: 0, unlimited: false },
+        resetsAt: new Date(Date.now() + 1000 * 60 * 60 * 4).toISOString(), // 4 hours from now
+        tier: "free"
+      });
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
