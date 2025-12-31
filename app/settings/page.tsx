@@ -273,7 +273,7 @@ export default function SettingsPage() {
       setShowDeleteConfirm(false);
       setDeleteConfirmText("");
       showSuccess(`Deleted ${result.deletedSessions} sessions and ${result.deletedMessages} messages`);
-      
+
       // Refresh account info
       fetchSettings();
     } catch {
@@ -321,7 +321,7 @@ export default function SettingsPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
         <div className="mx-auto max-w-4xl py-10 px-4 md:px-8 space-y-6">
           <Skeleton className="h-10 w-48" />
           <Skeleton className="h-64" />
@@ -341,7 +341,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <div className="mx-auto max-w-4xl py-10 px-4 md:px-8 space-y-8">
         {/* Header */}
         <div>

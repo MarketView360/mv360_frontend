@@ -2,17 +2,17 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { 
-  ArrowLeft, 
-  Search, 
-  ChevronDown, 
+import {
+  ArrowLeft,
+  Search,
+  ChevronDown,
   ChevronRight,
-  HelpCircle, 
-  User, 
-  CreditCard, 
-  BarChart3, 
-  MessageSquare, 
-  Shield, 
+  HelpCircle,
+  User,
+  CreditCard,
+  BarChart3,
+  MessageSquare,
+  Shield,
   Settings,
   Zap,
   Key
@@ -196,18 +196,18 @@ export default function HelpCenterPage() {
 
   const filteredCategories = searchQuery
     ? faqCategories.map(cat => ({
-        ...cat,
-        faqs: cat.faqs.filter(faq => 
-          faq.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          faq.answer.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-      })).filter(cat => cat.faqs.length > 0)
+      ...cat,
+      faqs: cat.faqs.filter(faq =>
+        faq.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        faq.answer.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    })).filter(cat => cat.faqs.length > 0)
     : faqCategories;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-12 px-4">
       <div className="max-w-5xl mx-auto">
-        <Link 
+        <Link
           href="/"
           className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white mb-8 transition-colors"
         >
@@ -265,9 +265,9 @@ export default function HelpCenterPage() {
           {filteredCategories.map((category) => {
             const Icon = category.icon;
             const isExpanded = expandedCategory === category.id || searchQuery !== "";
-            
+
             return (
-              <div 
+              <div
                 key={category.id}
                 className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden"
               >
@@ -286,13 +286,13 @@ export default function HelpCenterPage() {
                   </div>
                   <ChevronDown className={`h-5 w-5 text-slate-400 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                 </button>
-                
+
                 {isExpanded && (
                   <div className="border-t border-slate-100 dark:border-slate-800">
                     {category.faqs.map((faq, index) => {
                       const faqKey = `${category.id}-${index}`;
                       const isFAQExpanded = expandedFAQs.has(faqKey);
-                      
+
                       return (
                         <div key={index} className="border-b border-slate-100 dark:border-slate-800 last:border-b-0">
                           <button
@@ -318,7 +318,7 @@ export default function HelpCenterPage() {
         </div>
 
         {/* Still Need Help */}
-        <div className="mt-12 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-8 text-center text-white">
+        <div className="mt-12 bg-blue-600 rounded-2xl p-8 text-center text-white">
           <h2 className="text-2xl font-bold mb-2">Still Need Help?</h2>
           <p className="text-blue-100 mb-6">
             Can&apos;t find what you&apos;re looking for? Our support team is here to help.

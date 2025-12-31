@@ -64,7 +64,7 @@ interface TechnicalData {
   bb_middle: number | null;
   bb_lower: number | null;
   atr_14: number | null;
-  adx_14: number | null;
+  adx: number | null;
   stoch_k: number | null;
   stoch_d: number | null;
   obv: number | null;
@@ -237,13 +237,13 @@ function SignalSummary({
   const rsiSignal = getRsiSignal(latestData.rsi_14);
   const macdSignal = getMacdSignal(latestData.macd, latestData.macd_signal);
   const trendSignal = getTrendSignal(currentPrice, latestData.sma_50, latestData.sma_200);
-  const adxSignal = getAdxSignal(latestData.adx_14);
+  const adxSignal = getAdxSignal(latestData.adx);
 
   const signals = [
     { label: "RSI (14)", value: formatNumber(latestData.rsi_14, 1), ...rsiSignal, icon: Activity },
     { label: "MACD", value: formatNumber(latestData.macd, 3), ...macdSignal, icon: BarChart3 },
-    { label: "Trend", value: trendSignal.label, ...trendSignal, icon: TrendingUp },
-    { label: "ADX (14)", value: formatNumber(latestData.adx_14, 1), ...adxSignal, icon: Zap },
+    { label: "Trend", value: trendSignal.trend, ...trendSignal, icon: TrendingUp },
+    { label: "ADX (14)", value: formatNumber(latestData.adx, 1), ...adxSignal, icon: Zap },
   ];
 
   return (
@@ -281,15 +281,15 @@ function getMacdSignal(macd: number | null, signal: number | null) {
 
 function getTrendSignal(price: number | null, sma50: number | null, sma200: number | null) {
   if (price === null || sma50 === null || sma200 === null) {
-    return { signal: "N/A", label: "—", color: "text-slate-600", bgColor: "bg-slate-50 dark:bg-slate-800", badgeClass: "bg-slate-100 text-slate-600" };
+    return { signal: "N/A", trend: "—", color: "text-slate-600", bgColor: "bg-slate-50 dark:bg-slate-800", badgeClass: "bg-slate-100 text-slate-600" };
   }
   if (price > sma50 && sma50 > sma200) {
-    return { signal: "Strong Up", label: "Uptrend", color: "text-green-600", bgColor: "bg-green-50 dark:bg-green-950/30", badgeClass: "bg-green-100 text-green-700" };
+    return { signal: "Strong Up", trend: "Uptrend", color: "text-green-600", bgColor: "bg-green-50 dark:bg-green-950/30", badgeClass: "bg-green-100 text-green-700" };
   }
   if (price < sma50 && sma50 < sma200) {
-    return { signal: "Strong Down", label: "Downtrend", color: "text-red-600", bgColor: "bg-red-50 dark:bg-red-950/30", badgeClass: "bg-red-100 text-red-700" };
+    return { signal: "Strong Down", trend: "Downtrend", color: "text-red-600", bgColor: "bg-red-50 dark:bg-red-950/30", badgeClass: "bg-red-100 text-red-700" };
   }
-  return { signal: "Mixed", label: "Sideways", color: "text-amber-600", bgColor: "bg-amber-50 dark:bg-amber-950/30", badgeClass: "bg-amber-100 text-amber-700" };
+  return { signal: "Mixed", trend: "Sideways", color: "text-amber-600", bgColor: "bg-amber-50 dark:bg-amber-950/30", badgeClass: "bg-amber-100 text-amber-700" };
 }
 
 function getAdxSignal(adx: number | null) {
@@ -378,7 +378,7 @@ function TrendTab({ data }: Readonly<{ data: TechnicalData[] }>) {
 
   const adxData = data.map((d) => ({
     date: formatDate(d.date),
-    adx: d.adx_14,
+    adx: d.adx,
   }));
 
   return (

@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { Twitter, Linkedin, Github } from "lucide-react";
+import { RiTwitterXFill } from "react-icons/ri";
+import { Linkedin } from "lucide-react";
+import { Logo } from "@/components/common/Logo";
 
 export function Footer() {
   return (
@@ -7,10 +9,8 @@ export function Footer() {
       <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
           <div className="space-y-4">
-            <Link href="/" className="flex items-center space-x-2">
-              <span className="font-heading font-bold text-xl text-brand text-black dark:text-white">
-                Marketview360
-              </span>
+            <Link href="/" className="flex items-center">
+              <Logo width={192} height={36} />
             </Link>
             <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
               The fastest way to screen, analyze, and track US equities.
@@ -19,19 +19,17 @@ export function Footer() {
             </p>
             <div className="flex space-x-4">
               <Link
-                href="#"
+                href="https://x.com/marketview360io"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-slate-400 dark:text-slate-500 hover:text-brand dark:hover:text-brand transition-colors"
               >
-                <Twitter className="w-5 h-5" />
+                <RiTwitterXFill className="w-5 h-5" />
               </Link>
               <Link
-                href="#"
-                className="text-slate-400 dark:text-slate-500 hover:text-brand dark:hover:text-brand transition-colors"
-              >
-                <Github className="w-5 h-5" />
-              </Link>
-              <Link
-                href="#"
+                href="https://www.linkedin.com/company/marketview360io"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-slate-400 dark:text-slate-500 hover:text-brand dark:hover:text-brand transition-colors"
               >
                 <Linkedin className="w-5 h-5" />

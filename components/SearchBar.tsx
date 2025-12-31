@@ -819,21 +819,21 @@ export default function SearchBar() {
       <div className="absolute -inset-1 bg-brand/20 rounded-full opacity-20 group-hover:opacity-30 blur transition duration-200" />
 
       {/* input */}
-      <form onSubmit={handleSubmit} className="relative">
-        <Search className="absolute left-5 top-4 h-5 w-5 text-slate-400 dark:text-slate-600 pointer-events-none" />
+      <form onSubmit={handleSubmit} className="relative group">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 dark:text-slate-500 group-focus-within:text-brand transition-colors pointer-events-none" />
         <input
           ref={inputRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setOpen(true)}
           className={cn(
-            "flex h-14 w-full rounded-full border border-slate-200 dark:border-slate-700",
-            "bg-white dark:bg-slate-900 px-14 py-2 text-lg dark:text-white",
+            "flex h-12 w-full rounded-full border border-slate-200 dark:border-slate-800",
+            "bg-white dark:bg-slate-900 pl-11 pr-24 py-2 text-base dark:text-white",
             "placeholder:text-slate-400 dark:placeholder:text-slate-500",
-            "focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand",
-            "transition-all"
+            "focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand",
+            "transition-all shadow-sm hover:shadow-md"
           )}
-          placeholder="Search for a company like AAPL, MSFT, TSLA..."
+          placeholder="Search ticker, company or index..."
           aria-autocomplete="list"
         />
         {query && (
@@ -841,17 +841,17 @@ export default function SearchBar() {
             type="button"
             size="sm"
             variant="ghost"
-            className="absolute right-20 top-3 h-8 w-8 p-0"
+            className="absolute right-20 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:bg-transparent"
             onClick={() => setQuery("")}
             aria-label="Clear query"
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4 text-slate-400" />
           </Button>
         )}
         <Button
           type="submit"
           size="sm"
-          className="absolute right-2 top-2 h-10 px-6 rounded-full"
+          className="absolute right-1 top-1 h-10 px-6 rounded-full bg-brand hover:bg-brand/90 text-white shadow-sm"
         >
           Search
         </Button>
@@ -861,7 +861,7 @@ export default function SearchBar() {
       {dataDate && (
         <div className="flex justify-center mt-2">
           <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <span className="w-1.5 h-1.5 rounded-full bg-growth" />
             Data as of {new Date(dataDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
           </span>
         </div>

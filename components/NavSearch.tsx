@@ -31,7 +31,7 @@ const POPULAR_TICKERS: Record<string, string> = {
 function searchTickers(query: string) {
   const q = query.toUpperCase();
   return Object.entries(POPULAR_TICKERS)
-    .filter(([ticker, name]) => 
+    .filter(([ticker, name]) =>
       ticker.startsWith(q) || name.toLowerCase().includes(query.toLowerCase())
     )
     .slice(0, 5)
@@ -107,23 +107,23 @@ export function NavSearch() {
 
   return (
     <div ref={wrapperRef} className="relative w-full max-w-sm">
-      <form onSubmit={handleSubmit} className="relative">
+      <form onSubmit={handleSubmit} className="relative group">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500 group-focus-within:text-brand transition-colors" />
         <input
           ref={inputRef}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onFocus={() => setOpen(true)}
           className={cn(
-            "flex h-9 w-64 lg:w-80 rounded-full border border-slate-200 dark:border-slate-700",
-            "bg-slate-50 dark:bg-slate-900 pl-4 pr-9 py-1 text-sm shadow-sm",
-            "transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
-            "dark:focus-visible:ring-offset-slate-950 placeholder:text-slate-400 dark:placeholder:text-slate-500",
+            "flex h-9 w-64 lg:w-80 rounded-full border border-slate-200 dark:border-slate-800",
+            "bg-slate-50 dark:bg-slate-900 pl-9 pr-4 py-1 text-sm shadow-sm",
+            "transition-all focus-visible:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand",
+            "placeholder:text-slate-400 dark:placeholder:text-slate-500",
             "dark:text-white"
           )}
           placeholder="Search ticker..."
           aria-autocomplete="list"
         />
-        <Search className="absolute right-3 top-2.5 h-4 w-4 text-slate-400 dark:text-slate-600" />
       </form>
 
       {showSuggestions && (

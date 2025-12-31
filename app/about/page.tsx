@@ -53,9 +53,9 @@ export default function AboutPage() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {/* Hero Section */}
-      <section className="relative py-20 px-4 bg-gradient-to-b from-white dark:from-slate-900 to-slate-50 dark:to-slate-950">
+      <section className="relative py-20 px-4 bg-white dark:bg-slate-900">
         <div className="max-w-4xl mx-auto">
-          <Link 
+          <Link
             href="/"
             className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white mb-8 transition-colors"
           >
@@ -68,7 +68,7 @@ export default function AboutPage() {
               About <span className="text-blue-600">Marketview360</span>
             </h1>
             <p className="text-xl text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl mx-auto">
-              We&apos;re building the fastest, most intuitive platform for analyzing US equities. 
+              We&apos;re building the fastest, most intuitive platform for analyzing US equities.
               Our mission is to give every investor access to professional-grade research tools.
             </p>
           </div>
@@ -86,12 +86,12 @@ export default function AboutPage() {
               <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Our Mission</h2>
             </div>
             <p className="text-lg text-slate-600 dark:text-slate-300 leading-relaxed mb-6">
-              Financial markets shouldn&apos;t require expensive subscriptions or complex interfaces to understand. 
+              Financial markets shouldn&apos;t require expensive subscriptions or complex interfaces to understand.
               We believe that clear, accurate data presented thoughtfully can help anyone make better investment decisions.
             </p>
             <p className="text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
-              Marketview360 combines real-time market data, comprehensive financial metrics, and AI-powered 
-              analysis in one clean, modern platform. Whether you&apos;re a seasoned trader or just starting your 
+              Marketview360 combines real-time market data, comprehensive financial metrics, and AI-powered
+              analysis in one clean, modern platform. Whether you&apos;re a seasoned trader or just starting your
               investment journey, we&apos;re here to help you analyze US stocks like a pro.
             </p>
           </div>
@@ -110,7 +110,7 @@ export default function AboutPage() {
             {values.map((value, index) => {
               const Icon = value.icon;
               return (
-                <div 
+                <div
                   key={index}
                   className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-6 border border-slate-200 dark:border-slate-700"
                 >
@@ -142,7 +142,7 @@ export default function AboutPage() {
             {features.map((feature, index) => {
               const Icon = feature.icon;
               return (
-                <div 
+                <div
                   key={index}
                   className="bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700 transition-colors"
                 >
@@ -202,7 +202,7 @@ export default function AboutPage() {
             Built for Investors, by Investors
           </h2>
           <p className="text-lg text-slate-600 dark:text-slate-300 mb-8">
-            We use Marketview360 every day for our own research. Join thousands of investors 
+            We use Marketview360 every day for our own research. Join thousands of investors
             who trust our platform to help them make smarter decisions.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">

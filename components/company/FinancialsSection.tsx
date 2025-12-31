@@ -105,7 +105,7 @@ const TrendIndicator = ({ current, previous }: { current: number | null; previou
   const change = ((current - previous) / Math.abs(previous)) * 100;
   if (change > 0) {
     return (
-      <span className="flex items-center text-green-600 dark:text-green-400 text-xs">
+      <span className="flex items-center text-growth-600 dark:text-growth-400 text-xs font-mono">
         <TrendingUp className="w-3 h-3 mr-1" />
         +{change.toFixed(1)}%
       </span>
@@ -113,7 +113,7 @@ const TrendIndicator = ({ current, previous }: { current: number | null; previou
   }
   if (change < 0) {
     return (
-      <span className="flex items-center text-red-600 dark:text-red-400 text-xs">
+      <span className="flex items-center text-danger-600 dark:text-danger-400 text-xs font-mono">
         <TrendingDown className="w-3 h-3 mr-1" />
         {change.toFixed(1)}%
       </span>
@@ -408,35 +408,21 @@ export function FinancialsSection({ ticker }: FinancialsSectionProps) {
 }
 
 // Helper component for table rows
-function TableRow({
-  label,
-  data,
-  field,
-  format,
-}: {
-  label: string;
-  data: FinancialPeriod[];
-  field: keyof FinancialPeriod;
-  format: (value: number | null) => string;
-}) {
-  return (
-    <tr className="border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-      <td className="py-2 text-slate-600 dark:text-slate-300">{label}</td>
-      {data.map((f, idx) => (
-        <td key={f.period_end} className="py-2 text-right font-medium text-slate-900 dark:text-white">
-          <div className="flex flex-col items-end">
-            <span>{format(f[field] as number | null)}</span>
-            {idx < data.length - 1 && (
-              <TrendIndicator
-                current={f[field] as number | null}
-                previous={data[idx + 1][field] as number | null}
-              />
-            )}
-          </div>
-        </td>
-      ))}
-    </tr>
-  );
-}
+<tr className="border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+  <td className="py-2 text-slate-600 dark:text-slate-300">{label}</td>
+  {data.map((f, idx) => (
+    <td key={f.period_end} className="py-2 text-right font-medium text-slate-900 dark:text-white">
+      <div className="flex flex-col items-end">
+        <span className="font-mono">{format(f[field] as number | null)}</span>
+        {idx < data.length - 1 && (
+          <TrendIndicator
+            current={f[field] as number | null}
+            previous={data[idx + 1][field] as number | null}
+          />
+        )}
+      </div>
+    </td>
+  ))}
+</tr>
 
 export default FinancialsSection;

@@ -34,9 +34,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const client = createClient();
       setSupabase(client);
     } catch (error) {
-      console.warn('Supabase auth bypassed: Missing credentials');
+      console.warn('Supabase auth bypassed: Missing credentials or explicitly disabled for UI verification');
       setAuthDisabled(true);
       setLoading(false);
+
+      // Mock user for UI verification
+      const mockUser: User = {
+        id: 'mock-user-id',
+        email: 'dev@marketview360.io',
+        app_metadata: {},
+        user_metadata: { full_name: 'Mock Developer' },
+        aud: 'authenticated',
+        created_at: new Date().toISOString(),
+      };
+
+      const mockSession: Session = {
+        access_token: 'mock-token',
+        refresh_token: 'mock-refresh-token',
+        expires_in: 3600,
+        token_type: 'bearer',
+        user: mockUser,
+      };
+
+      setUser(mockUser);
+      setSession(mockSession);
     }
   }, []);
 

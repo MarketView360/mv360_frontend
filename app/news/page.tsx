@@ -28,7 +28,7 @@ function NewsHeaderSkeleton() {
 
 export default function NewsPage() {
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900">
+    <main className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <Suspense fallback={<NewsHeaderSkeleton />}>
         <NewsHeader />
       </Suspense>
