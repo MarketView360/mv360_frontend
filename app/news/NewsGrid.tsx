@@ -1,93 +1,134 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 import { useSearchParams } from "next/navigation";
-import { PiNewspaper } from "react-icons/pi";
+import { PiNewspaper, PiSpinnerGap } from "react-icons/pi";
+import { Button } from "@/components/ui/button";
 import NewsCard from "./NewsCard";
 import { NewsSkeleton } from "./NewsSkeleton";
-import { useInView } from "react-intersection-observer";
 
 const PAGE_SIZE = 20;
+
+interface Article {
+  link: string;
+  [key: string]: any;
+}
 
 export function NewsGrid() {
   const searchParams = useSearchParams();
   const ticker = searchParams.get("ticker") ?? undefined;
   const q = searchParams.get("q") ?? undefined;
+  const from = searchParams.get("from") ?? undefined;
+  const to = searchParams.get("to") ?? undefined;
 
-  const [pages, setPages] = useState<any[][]>([]);
+  const [articles, setArticles] = useState<Article[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  const { ref, inView } = useInView({ threshold: 0 });
+  // Deduplication helper
+  const uniqueArticles = (existing: Article[], incoming: Article[]) => {
+    const existingLinks = new Set(existing.map(a => a.link));
+    return [...existing, ...incoming.filter(a => !existingLinks.has(a.link))];
+  };
 
-  const fetchPage = async (p: number) => {
-
+  const fetchPage = useCallback(async (p: number) => {
     const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
     const sp = new URLSearchParams();
     if (ticker) sp.set("ticker", ticker);
     if (q) sp.set("q", q);
+    if (from) sp.set("from", from);
+    if (to) sp.set("to", to);
     sp.set("page", String(p));
     sp.set("limit", String(PAGE_SIZE));
 
-    const res = await fetch(`${baseUrl}/api/news?${sp.toString()}`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data;
-  };
+    try {
+      const res = await fetch(`${baseUrl}/api/news?${sp.toString()}`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data) ? data : (data.items || []); // Handle different response shapes
+    } catch (e) {
+      console.error("Failed to fetch news", e);
+      return [];
+    }
+  }, [ticker, q, from, to]);
 
   useEffect(() => {
     // reset on filter change
-    setPages([]);
+    setArticles([]);
     setPage(1);
     setHasMore(true);
     setInitialLoading(true);
     
     fetchPage(1)
       .then((rows) => {
-        setPages(rows.length ? [rows] : []);
-        const isSearch = !!q;
-        if (rows.length === 0 || (!isSearch && rows.length < PAGE_SIZE)) {
+        setArticles(rows);
+        if (!rows.length || rows.length < PAGE_SIZE) {
           setHasMore(false);
         }
       })
       .finally(() => setInitialLoading(false));
-  }, [ticker, q]);
+  }, [fetchPage]);
 
-  useEffect(() => {
-    if (initialLoading || !hasMore || !inView) return;
-
-    fetchPage(page + 1).then((rows) => {
-      if (rows.length === 0) {
+  const handleLoadMore = async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const nextPage = page + 1;
+    
+    try {
+      const rows = await fetchPage(nextPage);
+      if (!rows.length) {
         setHasMore(false);
       } else {
-        setPages((prev) => [...prev, rows]);
-        setPage((p) => p + 1);
-        const isSearch = !!q;
-        if (!isSearch && rows.length < PAGE_SIZE) setHasMore(false);
+        setArticles(prev => uniqueArticles(prev, rows));
+        setPage(nextPage);
+        if (rows.length < PAGE_SIZE) setHasMore(false);
       }
-    });
-  }, [inView, page, hasMore, ticker, q, initialLoading]);
-
-  const flat = pages.flat();
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   if (initialLoading) {
     return <NewsSkeleton cards={8} />;
   }
 
-  if (!flat.length) return <EmptyState />;
+  if (!articles.length) return <EmptyState />;
 
   return (
     <>
       <div className="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-4">
-        {flat.map((article) => (
+        {articles.map((article) => (
           <NewsCard key={article.link} article={article} />
         ))}
       </div>
+      
       {hasMore && (
-        <div ref={ref} className="mt-6">
-          <NewsSkeleton cards={4} />
+        <div className="mt-8 flex justify-center">
+           <Button 
+            variant="outline" 
+            size="lg" 
+            onClick={handleLoadMore}
+            disabled={loadingMore}
+            className="min-w-[200px]"
+          >
+            {loadingMore ? (
+              <>
+                <PiSpinnerGap className="mr-2 h-4 w-4 animate-spin" />
+                Loading...
+              </>
+            ) : (
+              "Load More News"
+            )}
+          </Button>
+        </div>
+      )}
+      
+      {!hasMore && articles.length > 0 && (
+        <div className="mt-8 text-center text-sm text-slate-500">
+          You&apos;ve reached the end of the list.
         </div>
       )}
     </>
