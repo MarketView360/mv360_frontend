@@ -1,15 +1,11 @@
-"use client";
+import type { ReactNode } from "react";
 
 import { Inter, Lexend_Mega } from "next/font/google";
-import { usePathname } from "next/navigation";
 
 import "./globals.css";
 import { cn } from "@/lib/utils";
-import { Footer } from "@/components/Footer";
-import { NetworkStatusWatcher } from "@/components/NetworkStatusWatcher";
 import { ThemeProvider } from "./providers";
-import NavigationBar from "@/components/NavigationBar";
-import { AiChatWidget } from "@/components/AiChatWidget";
+import RouteChrome from "./RouteChrome";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -26,10 +22,8 @@ const lexend = Lexend_Mega({
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: ReactNode;
 }>) {
-  const pathname = usePathname();
-
   return (
     <html lang="en" suppressHydrationWarning>
       <body
@@ -58,11 +52,7 @@ export default function RootLayout({
           }}
         />
         <ThemeProvider>
-          <NavigationBar />
-          <main className="flex-1 w-full">{children}</main>
-          <NetworkStatusWatcher />
-          {pathname !== "/jovan-chat" && <Footer />}
-          {pathname !== "/jovan-chat" && <AiChatWidget />}
+          <RouteChrome>{children}</RouteChrome>
         </ThemeProvider>
       </body>
     </html>
