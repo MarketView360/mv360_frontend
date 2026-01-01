@@ -1,13 +1,20 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { toast } from "sonner";
 import type { ChatMessage } from "@/lib/utils/jovan/types";
-import { aiApi } from "@/lib/api/ai";
+import { aiApi, AIApiError } from "@/lib/api/ai";
+
+export interface StreamingState {
+  isStreaming: boolean;
+  toolInUse?: string;
+}
 
 export function useChatStream(token: string | null, sessionId: string | null) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
-  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamingState, setStreamingState] = useState<StreamingState>({ isStreaming: false });
   const [error, setError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const sessionJustCreatedRef = useRef<boolean>(false);
 
   const fetchMessages = useCallback(async () => {
     if (!token || !sessionId) {
@@ -32,18 +39,35 @@ export function useChatStream(token: string | null, sessionId: string | null) {
   }, [token, sessionId]);
 
   useEffect(() => {
-    fetchMessages();
+    // Don't fetch messages if we just created the session during streaming
+    // This prevents overwriting the streaming messages
+    if (!sessionJustCreatedRef.current) {
+      fetchMessages();
+    } else {
+      // Reset the flag after skipping the fetch
+      sessionJustCreatedRef.current = false;
+    }
   }, [fetchMessages]);
 
   const sendMessage = useCallback(
     async (
       content: string,
-      options: { reasoning?: boolean; onSessionCreated?: (id: string) => void } = {}
-    ): Promise<string | null> => {
+      options: { 
+        reasoning?: boolean; 
+        onSessionCreated?: (id: string, title: string) => void;
+      } = {}
+    ): Promise<{ sessionId: string | null; title: string | null }> => {
       if (!token) {
+        toast.error("Please log in to send messages");
         setError("Please log in to send messages");
-        return null;
+        return { sessionId: null, title: null };
       }
+
+      // Cancel any existing stream
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
 
       const userMessage: ChatMessage = {
         id: `temp-${Date.now()}`,
@@ -53,7 +77,7 @@ export function useChatStream(token: string | null, sessionId: string | null) {
       };
 
       setMessages((prev) => [...prev, userMessage]);
-      setIsStreaming(true);
+      setStreamingState({ isStreaming: true });
       setError(null);
 
       const assistantMessageId = `temp-${Date.now() + 1}`;
@@ -75,17 +99,36 @@ export function useChatStream(token: string | null, sessionId: string | null) {
 
         let fullContent = "";
         let resolvedSessionId: string | undefined = sessionId || undefined;
+        let resolvedTitle: string | undefined;
 
-        for await (const chunk of aiApi.streamMessage({
-          messages: allMessages,
-          sessionId: sessionId || undefined,
-          reasoning: options.reasoning,
-        })) {
+        for await (const chunk of aiApi.streamMessage(
+          {
+            messages: allMessages,
+            sessionId: sessionId || undefined,
+            reasoning: options.reasoning,
+          },
+          abortControllerRef.current.signal
+        )) {
           fullContent += chunk.text;
           
+          // Handle new session creation
           if (chunk.sessionId && !resolvedSessionId) {
             resolvedSessionId = chunk.sessionId;
-            options.onSessionCreated?.(chunk.sessionId);
+            resolvedTitle = chunk.title ? decodeURIComponent(chunk.title) : undefined;
+            // Mark that we just created a session to prevent refetching during streaming
+            sessionJustCreatedRef.current = true;
+            options.onSessionCreated?.(chunk.sessionId, resolvedTitle || "New chat");
+          }
+
+          // Update tool indicator
+          if (chunk.toolUse) {
+            setStreamingState({ isStreaming: true, toolInUse: chunk.toolUse });
+            const toolNames: Record<string, string> = {
+              web_search: "Searching the web...",
+              visit_website: "Visiting website...",
+              calculator: "Calculating...",
+            };
+            toast.info(toolNames[chunk.toolUse] || "Using tool...", { id: "tool-use" });
           }
 
           setMessages((prev) =>
@@ -105,18 +148,43 @@ export function useChatStream(token: string | null, sessionId: string | null) {
           )
         );
 
-        return resolvedSessionId || null;
+        return { sessionId: resolvedSessionId || null, title: resolvedTitle || null };
       } catch (err) {
         console.error("Failed to send message:", err);
-        setError(err instanceof Error ? err.message : "Failed to send message");
         
+        // Handle different error types
+        if (err instanceof AIApiError) {
+          if (err.isQuotaError()) {
+            toast.error("Daily limit reached", {
+              description: "Upgrade to premium for more messages.",
+            });
+          } else if (err.isNetworkError()) {
+            toast.error("Connection error", {
+              description: "Please check your internet connection.",
+            });
+          } else if (err.code === "CANCELLED") {
+            // User cancelled, don't show error
+          } else {
+            toast.error("Failed to send message", {
+              description: err.details || err.message,
+            });
+          }
+          setError(err.message);
+        } else {
+          const message = err instanceof Error ? err.message : "Failed to send message";
+          toast.error(message);
+          setError(message);
+        }
+        
+        // Remove the failed assistant message
         setMessages((prev) =>
           prev.filter((m) => m.id !== assistantMessageId)
         );
         
-        return null;
+        return { sessionId: null, title: null };
       } finally {
-        setIsStreaming(false);
+        setStreamingState({ isStreaming: false });
+        abortControllerRef.current = null;
       }
     },
     [token, sessionId, messages]
@@ -127,7 +195,8 @@ export function useChatStream(token: string | null, sessionId: string | null) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
-    setIsStreaming(false);
+    setStreamingState({ isStreaming: false });
+    toast.info("Response cancelled");
   }, []);
 
   const clearMessages = useCallback(() => {
@@ -147,7 +216,8 @@ export function useChatStream(token: string | null, sessionId: string | null) {
   return {
     messages,
     loadingMsgs: loading,
-    isStreaming,
+    isStreaming: streamingState.isStreaming,
+    toolInUse: streamingState.toolInUse,
     error,
     sendMessage,
     cancelStream,

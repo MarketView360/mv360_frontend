@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
-import { User, Copy, ThumbsUp, ThumbsDown, RefreshCw } from "lucide-react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
+import { User, Copy, ThumbsUp, ThumbsDown, RefreshCw, Check } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Icons } from "./Icons";
 
 export interface Message {
@@ -21,38 +23,22 @@ interface ChatAreaProps {
   messages: Message[];
 }
 
-const MOCK_MESSAGES: Message[] = [
-  {
-    id: "1",
-    role: "user",
-    content: "Analyze the current market trends for EV stocks, specifically focusing on Tesla and Rivian.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 5), // 5 mins ago
-  },
-  {
-    id: "2",
-    role: "assistant",
-    model: "gpt-5.1",
-    content: "Based on the latest market data, the EV sector is currently experiencing a consolidation phase. \n\n**Tesla (TSLA)**\n- **Current Trend:** Bullish reversal pattern forming on the weekly chart.\n- **Key Levels:** Support at $210, Resistance at $250.\n- **News:** Recent FSD updates have been received positively by early testers.\n\n**Rivian (RIVN)**\n- **Current Trend:** Neutral to slightly bearish.\n- **Production:** Improving, but cash burn remains a primary concern for investors.\n\nWould you like a deeper technical analysis on either of these?",
-    timestamp: new Date(Date.now() - 1000 * 60 * 4), // 4 mins ago
-  },
-  {
-    id: "3",
-    role: "user",
-    content: "What about the technicals for Tesla? Give me the support and resistance levels.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 2), // 2 mins ago
-  },
-  {
-    id: "4",
-    role: "assistant",
-    model: "claude-sonnet-4.5",
-    content: "Here are the key technical levels for Tesla (TSLA) as of today:\n\n### Support Levels\n1. **$210.00** - Strong psychological support and 50-day moving average.\n2. **$194.50** - Previous swing low from last month.\n\n### Resistance Levels\n1. **$250.00** - Major resistance zone.\n2. **$265.20** - 200-day moving average convergence.\n\nThe RSI is currently at 58, indicating there is still room for upside before hitting overbought territory.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 1), // 1 min ago
-  }
-];
 
-export function ChatArea({ messages = MOCK_MESSAGES }: ChatAreaProps) {
+export function ChatArea({ messages }: ChatAreaProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleCopy = useCallback(async (content: string, messageId: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedId(messageId);
+      toast.success("Copied to clipboard");
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      toast.error("Failed to copy");
+    }
+  }, []);
 
   // Handle scroll events to detect if user is at the bottom
   const handleScroll = () => {
@@ -130,19 +116,30 @@ export function ChatArea({ messages = MOCK_MESSAGES }: ChatAreaProps) {
                   ? "bg-indigo-600 text-white rounded-tr-sm" 
                   : "bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-sm"
               )}>
-                 <div className="prose prose-sm dark:prose-invert max-w-none wrap-break-word">
-                    <ReactMarkdown>{message.content}</ReactMarkdown>
+                 <div className="prose prose-sm dark:prose-invert max-w-none break-words prose-p:my-3 prose-p:leading-relaxed prose-headings:mt-6 prose-headings:mb-3 prose-headings:font-semibold prose-h2:text-base prose-h3:text-sm prose-ul:my-3 prose-ol:my-3 prose-li:my-1 prose-li:leading-relaxed prose-pre:bg-slate-100 dark:prose-pre:bg-slate-800 prose-pre:rounded-lg prose-pre:p-3 prose-code:text-indigo-600 dark:prose-code:text-indigo-400 prose-code:bg-slate-100 dark:prose-code:bg-slate-800 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none prose-table:my-4 prose-table:border-collapse prose-th:bg-slate-100 dark:prose-th:bg-slate-800 prose-th:p-2 prose-th:text-left prose-th:font-semibold prose-th:border prose-th:border-slate-200 dark:prose-th:border-slate-700 prose-td:p-2 prose-td:border prose-td:border-slate-200 dark:prose-td:border-slate-700 prose-tr:border-slate-200 dark:prose-tr:border-slate-700 prose-strong:font-semibold prose-strong:text-slate-900 dark:prose-strong:text-slate-100 prose-em:italic prose-a:text-indigo-600 dark:prose-a:text-indigo-400 prose-a:underline prose-a:underline-offset-2">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {message.content}
+                    </ReactMarkdown>
                     {message.isStreaming && (
-                      <span className="inline-block w-2 h-4 ml-1 bg-slate-400 dark:bg-slate-500 animate-pulse" />
+                      <span className="inline-block w-2 h-4 ml-1 bg-indigo-500 animate-pulse rounded-sm" />
                     )}
                  </div>
               </div>
 
-              {/* Message Actions (Assistant only) */}
-              {message.role === "assistant" && (
+              {/* Message Actions (Assistant only, hide while streaming) */}
+              {message.role === "assistant" && !message.isStreaming && (
                 <div className="flex items-center gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                        <Copy className="w-3 h-3" />
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                      onClick={() => handleCopy(message.content, message.id)}
+                    >
+                        {copiedId === message.id ? (
+                          <Check className="w-3 h-3 text-green-500" />
+                        ) : (
+                          <Copy className="w-3 h-3" />
+                        )}
                     </Button>
                     <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                         <ThumbsUp className="w-3 h-3" />

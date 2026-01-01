@@ -1,10 +1,26 @@
 "use client";
 
-import React, { useMemo } from "react";
-import { Plus, MessageSquare, History, PanelLeftClose, Settings, Zap, Trash2, Loader2 } from "lucide-react";
+import React, { useMemo, useState, useRef, useEffect } from "react";
+import { Plus, MessageSquare, History, PanelLeftClose, Settings, Zap, Trash2, Loader2, Pencil, MoreHorizontal, Check, X, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog-custom";
 import Link from "next/link";
 import type { SessionSummary } from "@/lib/utils/jovan/types";
 
@@ -16,7 +32,8 @@ interface SidebarProps {
   loadingSessions?: boolean;
   onSelectSession?: (id: string) => void;
   onNewChat?: () => void;
-  onDeleteSession?: (id: string) => void;
+  onDeleteSession?: (id: string) => Promise<boolean>;
+  onRenameSession?: (id: string, title: string) => Promise<boolean>;
   className?: string;
 }
 
@@ -60,9 +77,73 @@ export function Sidebar({
   onSelectSession,
   onNewChat,
   onDeleteSession,
+  onRenameSession,
   className 
 }: SidebarProps) {
   const groupedSessions = useMemo(() => groupSessionsByDate(sessions), [sessions]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editingId && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editingId]);
+
+  const handleStartRename = (session: SessionSummary) => {
+    setEditingId(session.id);
+    setEditTitle(session.title || "");
+  };
+
+  const handleSaveRename = async () => {
+    if (editingId && editTitle.trim() && onRenameSession) {
+      await onRenameSession(editingId, editTitle.trim());
+    }
+    setEditingId(null);
+    setEditTitle("");
+  };
+
+  const handleCancelRename = () => {
+    setEditingId(null);
+    setEditTitle("");
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSaveRename();
+    } else if (e.key === "Escape") {
+      handleCancelRename();
+    }
+  };
+
+  const handleDeleteClick = (sessionId: string) => {
+    setDeletingId(sessionId);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingId || !onDeleteSession) return;
+    
+    setIsDeleting(true);
+    try {
+      await onDeleteSession(deletingId);
+    } finally {
+      setIsDeleting(false);
+      setDeletingId(null);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setDeletingId(null);
+  };
+
+  const getSessionTitle = (sessionId: string) => {
+    const session = sessions.find(s => s.id === sessionId);
+    return session?.title || "Untitled";
+  };
   return (
     <>
       {/* Mobile Overlay */}
@@ -131,35 +212,82 @@ export function Sidebar({
                                         </h3>
                                         {groupSessions.map((session) => (
                                             <div key={session.id} className="group relative">
-                                                <Button
-                                                    variant="ghost"
-                                                    onClick={() => onSelectSession?.(session.id)}
-                                                    className={cn(
-                                                        "w-full justify-start text-sm font-normal px-2 h-8 truncate pr-8",
-                                                        activeSessionId === session.id
-                                                            ? "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white"
-                                                            : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
-                                                    )}
-                                                >
-                                                    {dateGroup === "Today" ? (
-                                                        <MessageSquare className="w-4 h-4 mr-2 shrink-0 opacity-70" />
-                                                    ) : (
-                                                        <History className="w-4 h-4 mr-2 shrink-0 opacity-70" />
-                                                    )}
-                                                    <span className="truncate">{session.title || "Untitled"}</span>
-                                                </Button>
-                                                {onDeleteSession && (
+                                                {editingId === session.id ? (
+                                                  <div className="flex items-center gap-1 px-2 h-8">
+                                                    <input
+                                                      ref={inputRef}
+                                                      type="text"
+                                                      value={editTitle}
+                                                      onChange={(e) => setEditTitle(e.target.value)}
+                                                      onKeyDown={handleKeyDown}
+                                                      onBlur={handleSaveRename}
+                                                      className="flex-1 text-sm bg-transparent border-b border-indigo-500 focus:outline-none text-slate-900 dark:text-white"
+                                                      maxLength={100}
+                                                    />
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="icon"
+                                                      className="h-5 w-5 text-green-500"
+                                                      onClick={handleSaveRename}
+                                                    >
+                                                      <Check className="w-3 h-3" />
+                                                    </Button>
+                                                    <Button
+                                                      variant="ghost"
+                                                      size="icon"
+                                                      className="h-5 w-5 text-slate-400"
+                                                      onClick={handleCancelRename}
+                                                    >
+                                                      <X className="w-3 h-3" />
+                                                    </Button>
+                                                  </div>
+                                                ) : (
+                                                  <>
                                                     <Button
                                                         variant="ghost"
-                                                        size="icon"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            onDeleteSession(session.id);
-                                                        }}
-                                                        className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-500"
+                                                        onClick={() => onSelectSession?.(session.id)}
+                                                        className={cn(
+                                                            "w-full justify-start text-sm font-normal px-2 h-8 truncate pr-8",
+                                                            activeSessionId === session.id
+                                                                ? "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white"
+                                                                : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                                                        )}
                                                     >
-                                                        <Trash2 className="w-3 h-3" />
+                                                        {dateGroup === "Today" ? (
+                                                            <MessageSquare className="w-4 h-4 mr-2 shrink-0 opacity-70" />
+                                                        ) : (
+                                                            <History className="w-4 h-4 mr-2 shrink-0 opacity-70" />
+                                                        )}
+                                                        <span className="truncate">{session.title || "Untitled"}</span>
                                                     </Button>
+                                                    <DropdownMenu>
+                                                      <DropdownMenuTrigger asChild>
+                                                        <Button
+                                                          variant="ghost"
+                                                          size="icon"
+                                                          className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-40 hover:opacity-100 transition-opacity text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                                          onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                          <MoreHorizontal className="w-3 h-3" />
+                                                        </Button>
+                                                      </DropdownMenuTrigger>
+                                                      <DropdownMenuContent align="end" className="w-32">
+                                                        <DropdownMenuItem onClick={() => handleStartRename(session)}>
+                                                          <Pencil className="w-3 h-3 mr-2" />
+                                                          Rename
+                                                        </DropdownMenuItem>
+                                                        {onDeleteSession && (
+                                                          <DropdownMenuItem 
+                                                            onClick={() => handleDeleteClick(session.id)}
+                                                            className="text-red-600 focus:text-red-600"
+                                                          >
+                                                            <Trash2 className="w-3 h-3 mr-2" />
+                                                            Delete
+                                                          </DropdownMenuItem>
+                                                        )}
+                                                      </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                  </>
                                                 )}
                                             </div>
                                         ))}
@@ -188,6 +316,41 @@ export function Sidebar({
             </div>
         </div>
       </aside>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && handleCancelDelete()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-red-500" />
+              Delete Conversation
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &ldquo;{getSessionTitle(deletingId || '')}&rdquo;? This action cannot be undone and all messages in this conversation will be permanently deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

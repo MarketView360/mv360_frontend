@@ -17,7 +17,7 @@ export default function NavigationBar() {
     { href: "/screens", label: "Screens" },
     { href: "/market", label: "Markets" },
     { href: "/news", label: "News" },
-    { href: "/jovan-chat", label: "AI Assistant" },
+    { href: "/ai", label: "AI Assistant" },
   ];
 
   return (

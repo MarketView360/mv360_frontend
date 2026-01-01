@@ -59,6 +59,7 @@ interface ModelSelectorProps {
   onReasoningChange: (enabled: boolean) => void;
   className?: string;
   reasoningLabel?: string;
+  disabled?: boolean;
 }
 
 export function ModelSelector({
@@ -68,6 +69,7 @@ export function ModelSelector({
   onReasoningChange,
   className,
   reasoningLabel = "Reasoning",
+  disabled = false,
 }: ModelSelectorProps) {
   const selectedModel = MODELS.find((m) => m.id === selectedModelId) || MODELS[0];
   const { session } = useAuth();
@@ -167,6 +169,7 @@ export function ModelSelector({
                 id="reasoning-mode" 
                 checked={isReasoningEnabled}
                 onCheckedChange={onReasoningChange}
+                disabled={disabled}
                 className="scale-75 data-[state=checked]:bg-indigo-600"
             />
             <Label htmlFor="reasoning-mode" className="text-xs font-medium text-slate-600 dark:text-slate-400 cursor-pointer select-none">

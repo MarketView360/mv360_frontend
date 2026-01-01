@@ -3,6 +3,42 @@ import type { SessionSummary, ChatMessage, ReasoningQuota } from "@/lib/utils/jo
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
+// Error types for better handling
+export class AIApiError extends Error {
+  code: string;
+  status: number;
+  details?: string;
+
+  constructor(message: string, code: string, status: number, details?: string) {
+    super(message);
+    this.name = "AIApiError";
+    this.code = code;
+    this.status = status;
+    this.details = details;
+  }
+
+  static fromResponse(data: { message?: string; details?: string; code?: string }, status: number): AIApiError {
+    return new AIApiError(
+      data.message || "An error occurred",
+      data.code || "UNKNOWN_ERROR",
+      status,
+      data.details
+    );
+  }
+
+  isQuotaError(): boolean {
+    return this.code === "QUOTA_EXCEEDED" || this.status === 429;
+  }
+
+  isAuthError(): boolean {
+    return this.status === 401 || this.status === 403;
+  }
+
+  isNetworkError(): boolean {
+    return this.code === "NETWORK_ERROR";
+  }
+}
+
 async function getAuthToken(): Promise<string | null> {
   const supabase = createClient();
   const { data } = await supabase.auth.getSession();
@@ -21,12 +57,30 @@ async function authFetch(endpoint: string, options: RequestInit = {}): Promise<R
     (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  try {
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+    });
+    return response;
+  } catch {
+    // Network error
+    throw new AIApiError(
+      "Unable to connect to the server. Please check your connection.",
+      "NETWORK_ERROR",
+      0
+    );
+  }
+}
 
-  return response;
+async function handleApiError(response: Response): Promise<never> {
+  let errorData: { message?: string; details?: string; code?: string } = {};
+  try {
+    errorData = await response.json();
+  } catch {
+    errorData = { message: response.statusText || "Request failed" };
+  }
+  throw AIApiError.fromResponse(errorData, response.status);
 }
 
 export interface SendMessageParams {
@@ -71,8 +125,7 @@ export const aiApi = {
     const response = await authFetch("/ai/sessions");
     
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: "Failed to fetch sessions" }));
-      throw new Error(error.message || "Failed to fetch sessions");
+      await handleApiError(response);
     }
 
     return response.json();
@@ -82,14 +135,13 @@ export const aiApi = {
     const response = await authFetch(`/ai/sessions/${sessionId}/messages`);
     
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: "Failed to fetch messages" }));
-      throw new Error(error.message || "Failed to fetch messages");
+      await handleApiError(response);
     }
 
     const data = await response.json();
     
-    return data.map((msg: { role: string; content: string; created_at: string }, index: number) => ({
-      id: `${sessionId}-${index}`,
+    return data.map((msg: { id?: string; role: string; content: string; created_at: string }, index: number) => ({
+      id: msg.id || `${sessionId}-${index}`,
       role: msg.role as "user" | "assistant",
       content: msg.content,
       timestamp: msg.created_at,
@@ -103,8 +155,7 @@ export const aiApi = {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: "Failed to rename session" }));
-      throw new Error(error.message || "Failed to rename session");
+      await handleApiError(response);
     }
   },
 
@@ -114,8 +165,7 @@ export const aiApi = {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: "Failed to delete session" }));
-      throw new Error(error.message || "Failed to delete session");
+      await handleApiError(response);
     }
   },
 
@@ -130,39 +180,61 @@ export const aiApi = {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: "Failed to send message" }));
-      throw new Error(error.message || error.details || "Failed to send message");
+      await handleApiError(response);
     }
 
     return response.json();
   },
 
-  async *streamMessage(params: SendMessageParams): AsyncGenerator<{ text: string; sessionId?: string }, void, unknown> {
+  async *streamMessage(
+    params: SendMessageParams,
+    signal?: AbortSignal
+  ): AsyncGenerator<{ text: string; sessionId?: string; title?: string; toolUse?: string }, void, unknown> {
     const token = await getAuthToken();
     
-    const response = await fetch(`${API_BASE}/ai/chat-auth/stream`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({
-        messages: params.messages,
-        sessionId: params.sessionId,
-        reasoning: params.reasoning,
-      }),
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${API_BASE}/ai/chat-auth/stream`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          messages: params.messages,
+          sessionId: params.sessionId,
+          reasoning: params.reasoning,
+        }),
+        signal,
+      });
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        throw new AIApiError("Request cancelled", "CANCELLED", 0);
+      }
+      throw new AIApiError(
+        "Unable to connect to the server. Please check your connection.",
+        "NETWORK_ERROR",
+        0
+      );
+    }
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: "Failed to stream message" }));
-      throw new Error(error.message || error.details || "Failed to stream message");
+      let errorData: { message?: string; details?: string; code?: string } = {};
+      try {
+        errorData = await response.json();
+      } catch {
+        errorData = { message: response.statusText || "Failed to stream message" };
+      }
+      throw AIApiError.fromResponse(errorData, response.status);
     }
 
     const sessionId = response.headers.get("x-session-id") || undefined;
+    const titleHeader = response.headers.get("x-session-title");
+    const title = titleHeader ? decodeURIComponent(titleHeader) : undefined;
     const reader = response.body?.getReader();
     
     if (!reader) {
-      throw new Error("No response body");
+      throw new AIApiError("No response body", "NO_BODY", 500);
     }
 
     const decoder = new TextDecoder();
@@ -174,7 +246,17 @@ export const aiApi = {
         
         const text = decoder.decode(value, { stream: true });
         if (text) {
-          yield { text, sessionId };
+          // Check for tool use indicators in the stream
+          let toolUse: string | undefined;
+          if (text.includes("[TOOL:web_search]")) {
+            toolUse = "web_search";
+          } else if (text.includes("[TOOL:visit_website]")) {
+            toolUse = "visit_website";
+          } else if (text.includes("[TOOL:wolfram_alpha]")) {
+            toolUse = "calculator";
+          }
+          
+          yield { text: text.replace(/\[TOOL:\w+\]/g, ""), sessionId, title, toolUse };
         }
       }
     } finally {
@@ -186,8 +268,7 @@ export const aiApi = {
     const response = await authFetch("/ai/reasoning-quota");
     
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: "Failed to fetch quota" }));
-      throw new Error(error.message || "Failed to fetch quota");
+      await handleApiError(response);
     }
 
     return response.json();
@@ -197,8 +278,7 @@ export const aiApi = {
     const response = await authFetch("/ai/quota");
     
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: "Failed to fetch quota status" }));
-      throw new Error(error.message || "Failed to fetch quota status");
+      await handleApiError(response);
     }
 
     return response.json();
@@ -208,36 +288,53 @@ export const aiApi = {
     const response = await authFetch("/ai/models");
     
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: "Failed to fetch models" }));
-      throw new Error(error.message || "Failed to fetch models");
+      await handleApiError(response);
     }
 
     return response.json();
   },
 
   async fetchProviderStatus(): Promise<Record<string, { available: boolean; name: string }>> {
-    const response = await fetch(`${API_BASE}/ai/providers/status`);
-    
-    if (!response.ok) {
-      throw new Error("Failed to fetch provider status");
-    }
+    try {
+      const response = await fetch(`${API_BASE}/ai/providers/status`);
+      
+      if (!response.ok) {
+        throw new AIApiError("Failed to fetch provider status", "PROVIDER_STATUS_ERROR", response.status);
+      }
 
-    const data = await response.json();
-    return data.providers;
+      const data = await response.json();
+      return data.providers;
+    } catch {
+      throw new AIApiError("Unable to connect to the server", "NETWORK_ERROR", 0);
+    }
   },
 
   async sendAnonymousMessage(messages: Array<{ role: "user" | "assistant"; content: string }>): Promise<ChatResponse> {
-    const response = await fetch(`${API_BASE}/ai/chat`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ messages }),
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${API_BASE}/ai/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ messages }),
+      });
+    } catch {
+      throw new AIApiError(
+        "Unable to connect to the server. Please check your connection.",
+        "NETWORK_ERROR",
+        0
+      );
+    }
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: "Failed to send message" }));
-      throw new Error(error.message || error.details || "Failed to send message");
+      let errorData: { message?: string; details?: string; code?: string } = {};
+      try {
+        errorData = await response.json();
+      } catch {
+        errorData = { message: response.statusText || "Failed to send message" };
+      }
+      throw AIApiError.fromResponse(errorData, response.status);
     }
 
     return response.json();

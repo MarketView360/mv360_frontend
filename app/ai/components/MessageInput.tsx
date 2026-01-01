@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import { Paperclip, CircleChevronUp, Mic, Globe, Image as ImageIcon, SquareArrowUp, CornerRightUp } from "lucide-react";
+import { Paperclip, Mic, Globe, Image as ImageIcon, CornerRightUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,11 +16,23 @@ interface MessageInputProps {
   onSendMessage: (content: string) => void;
   className?: string;
   disabled?: boolean;
+  maxLength?: number;
 }
 
-export function MessageInput({ onSendMessage, className, disabled = false }: MessageInputProps) {
+const DEFAULT_MAX_LENGTH = 4000;
+
+export function MessageInput({ 
+  onSendMessage, 
+  className, 
+  disabled = false,
+  maxLength = DEFAULT_MAX_LENGTH 
+}: MessageInputProps) {
   const [input, setInput] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  const remainingChars = maxLength - input.length;
+  const isNearLimit = remainingChars < 200;
+  const isAtLimit = remainingChars <= 0;
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -51,14 +63,17 @@ export function MessageInput({ onSendMessage, className, disabled = false }: Mes
           ref={textareaRef}
           value={input}
           onChange={(e) => {
-            setInput(e.target.value);
-            adjustTextareaHeight();
+            const value = e.target.value;
+            if (value.length <= maxLength) {
+              setInput(value);
+              adjustTextareaHeight();
+            }
           }}
           onKeyDown={handleKeyDown}
           placeholder="Ask anything about finance, markets, or stocks..."
           className="min-h-[60px] max-h-[200px] w-full resize-none border-none bg-transparent px-4 py-4 focus-visible:ring-0 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 disabled:opacity-50"
           rows={1}
-          disabled={disabled}
+          disabled={disabled || isAtLimit}
         />
 
         {/* Toolbar */}
@@ -122,10 +137,18 @@ export function MessageInput({ onSendMessage, className, disabled = false }: Mes
         </div>
       </div>
       
-      <div className="text-center mt-2">
+      <div className="flex items-center justify-between mt-2 px-1">
         <p className="text-[10px] text-slate-400 dark:text-slate-500">
             AI can make mistakes. Please verify important financial information.
         </p>
+        {isNearLimit && (
+          <p className={cn(
+            "text-[10px] font-medium",
+            isAtLimit ? "text-red-500" : "text-amber-500"
+          )}>
+            {remainingChars} characters remaining
+          </p>
+        )}
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "./providers";
 import RouteChrome from "./RouteChrome";
+import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -53,6 +54,7 @@ export default function RootLayout({
         />
         <ThemeProvider>
           <RouteChrome>{children}</RouteChrome>
+          <Toaster position="top-right" richColors closeButton />
         </ThemeProvider>
       </body>
     </html>
