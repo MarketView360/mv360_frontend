@@ -158,7 +158,7 @@ export function Sidebar({
       {/* Sidebar Container */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 md:relative md:inset-auto z-70 h-full bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 transition-all duration-300 ease-in-out flex flex-col",
+          "fixed inset-y-0 left-0 md:relative md:inset-auto z-40 h-full bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 transition-all duration-300 ease-in-out flex flex-col",
           isOpen ? "w-[280px] translate-x-0" : "w-0 -translate-x-full md:w-0 md:translate-x-0 md:border-none overflow-hidden",
           className
         )}
@@ -265,21 +265,24 @@ export function Sidebar({
                                                         <Button
                                                           variant="ghost"
                                                           size="icon"
-                                                          className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-40 hover:opacity-100 transition-opacity text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                                                          onClick={(e) => e.stopPropagation()}
+                                                          className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 focus:opacity-100 focus-visible:opacity-100 transition-opacity text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                                          onPointerDown={(e) => e.stopPropagation()}
                                                         >
                                                           <MoreHorizontal className="w-3 h-3" />
                                                         </Button>
                                                       </DropdownMenuTrigger>
-                                                      <DropdownMenuContent align="end" className="w-32">
-                                                        <DropdownMenuItem onClick={() => handleStartRename(session)}>
+                                                      <DropdownMenuContent align="end" className="w-32 z-[100]">
+                                                        <DropdownMenuItem 
+                                                          onClick={() => handleStartRename(session)}
+                                                          className="cursor-pointer"
+                                                        >
                                                           <Pencil className="w-3 h-3 mr-2" />
                                                           Rename
                                                         </DropdownMenuItem>
                                                         {onDeleteSession && (
                                                           <DropdownMenuItem 
                                                             onClick={() => handleDeleteClick(session.id)}
-                                                            className="text-red-600 focus:text-red-600"
+                                                            className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/30 cursor-pointer"
                                                           >
                                                             <Trash2 className="w-3 h-3 mr-2" />
                                                             Delete

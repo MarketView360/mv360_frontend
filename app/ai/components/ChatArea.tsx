@@ -5,8 +5,7 @@ import { User, Copy, ThumbsUp, ThumbsDown, RefreshCw, Check } from "lucide-react
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { JovanResponse, stripJovanTags } from "../utils/jovanParser";
 import { Icons } from "./Icons";
 
 export interface Message {
@@ -73,13 +72,13 @@ export function ChatArea({ messages }: ChatAreaProps) {
         onScroll={handleScroll}
         className="h-full w-full overflow-y-auto px-4 md:px-8 pt-4 scroll-smooth custom-scrollbar"
     >
-      <div className="max-w-3xl mx-auto space-y-8 pb-8">
+      <div className="max-w-5xl xl:max-w-6xl mx-auto space-y-8 pb-8 w-full">
         {messages.map((message) => (
           <div
             key={message.id}
             className={cn(
               "flex gap-4 group",
-              message.role === "user" ? "flex-row-reverse" : "flex-row"
+              message.role === "user" ? "flex-row-reverse justify-start" : "flex-row justify-start"
             )}
           >
             {/* Avatar */}
@@ -98,8 +97,10 @@ export function ChatArea({ messages }: ChatAreaProps) {
 
             {/* Content */}
             <div className={cn(
-              "flex flex-col max-w-[85%] md:max-w-[75%]",
-              message.role === "user" ? "items-end" : "items-start"
+              "flex flex-col",
+              message.role === "user" 
+                ? "items-end max-w-[95%] sm:max-w-[90%] md:max-w-[82%] lg:max-w-[75%] ml-auto" 
+                : "items-start max-w-[95%] md:max-w-[92%] lg:max-w-[88%]"
             )}>
               <div className="flex items-center gap-2 mb-1 px-1">
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -111,19 +112,19 @@ export function ChatArea({ messages }: ChatAreaProps) {
               </div>
 
               <div className={cn(
-                "rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm",
+                "rounded-2xl px-5 py-4 shadow-sm min-w-[200px]",
                 message.role === "user" 
-                  ? "bg-indigo-600 text-white rounded-tr-sm" 
+                  ? "bg-indigo-600 text-white rounded-tr-sm text-[15px] leading-relaxed" 
                   : "bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-sm"
               )}>
-                 <div className="prose prose-sm dark:prose-invert max-w-none break-words prose-p:my-3 prose-p:leading-relaxed prose-headings:mt-6 prose-headings:mb-3 prose-headings:font-semibold prose-h2:text-base prose-h3:text-sm prose-ul:my-3 prose-ol:my-3 prose-li:my-1 prose-li:leading-relaxed prose-pre:bg-slate-100 dark:prose-pre:bg-slate-800 prose-pre:rounded-lg prose-pre:p-3 prose-code:text-indigo-600 dark:prose-code:text-indigo-400 prose-code:bg-slate-100 dark:prose-code:bg-slate-800 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none prose-table:my-4 prose-table:border-collapse prose-th:bg-slate-100 dark:prose-th:bg-slate-800 prose-th:p-2 prose-th:text-left prose-th:font-semibold prose-th:border prose-th:border-slate-200 dark:prose-th:border-slate-700 prose-td:p-2 prose-td:border prose-td:border-slate-200 dark:prose-td:border-slate-700 prose-tr:border-slate-200 dark:prose-tr:border-slate-700 prose-strong:font-semibold prose-strong:text-slate-900 dark:prose-strong:text-slate-100 prose-em:italic prose-a:text-indigo-600 dark:prose-a:text-indigo-400 prose-a:underline prose-a:underline-offset-2">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {message.content}
-                    </ReactMarkdown>
-                    {message.isStreaming && (
-                      <span className="inline-block w-2 h-4 ml-1 bg-indigo-500 animate-pulse rounded-sm" />
-                    )}
-                 </div>
+                {message.role === "user" ? (
+                  <div className="whitespace-pre-wrap">{message.content}</div>
+                ) : (
+                  <JovanResponse 
+                    content={message.content} 
+                    isStreaming={message.isStreaming} 
+                  />
+                )}
               </div>
 
               {/* Message Actions (Assistant only, hide while streaming) */}
@@ -133,7 +134,7 @@ export function ChatArea({ messages }: ChatAreaProps) {
                       variant="ghost" 
                       size="icon" 
                       className="h-6 w-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                      onClick={() => handleCopy(message.content, message.id)}
+                      onClick={() => handleCopy(stripJovanTags(message.content), message.id)}
                     >
                         {copiedId === message.id ? (
                           <Check className="w-3 h-3 text-green-500" />
@@ -163,6 +164,8 @@ export function ChatArea({ messages }: ChatAreaProps) {
 function ModelIcon({ modelId }: { modelId?: string }) {
     if (!modelId) return <Icons.Auto className="w-5 h-5 text-indigo-500" />;
     
+    if (modelId === 'gpt-oss') return <Icons.Jovan className="w-5 h-5" />;
+    
     if (modelId.includes('gpt')) return <Icons.OpenAI className="w-5 h-5 text-slate-900 dark:text-white" />;
     if (modelId.includes('claude')) return <Icons.Anthropic className="w-5 h-5 text-slate-900 dark:text-white" />;
     if (modelId.includes('gemini')) return <Icons.Google className="w-5 h-5 text-blue-600" />;
@@ -173,6 +176,7 @@ function ModelIcon({ modelId }: { modelId?: string }) {
 function getModelName(modelId?: string) {
     if (!modelId) return "Assistant";
     if (modelId === 'auto') return "Auto Model";
+    if (modelId === 'gpt-oss') return "Jovan Fast";
     if (modelId === 'gpt-5.1') return "GPT 5.1";
     if (modelId === 'claude-sonnet-4.5') return "Claude Sonnet";
     if (modelId === 'gemini-3') return "Gemini 3";

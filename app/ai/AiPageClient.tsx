@@ -26,7 +26,7 @@ export default function AiPageClient() {
   const urlSessionId = searchParams.get("session");
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [selectedModel, setSelectedModel] = useState("gpt");
+  const [selectedModel, setSelectedModel] = useState("gpt-oss");
   const [isReasoningEnabled, setIsReasoningEnabled] = useState(false);
   const [greeting, setGreeting] = useState("");
   const [token, setToken] = useState<string | null>(null);

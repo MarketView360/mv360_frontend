@@ -34,11 +34,11 @@ export interface ModelOption {
 
 const MODELS: ModelOption[] = [
 {
-    id: "gpt",
-    name: "GPT OSS",
+    id: "gpt-oss",
+    name: "Jovan Fast",
     provider: "openai",
-    icon: Icons.OpenAI,
-    description: "OpenAI's GPT model",
+    icon: Icons.Jovan,
+    description: "Fast Jovan model",
     supportsReasoning: true,
   },
   {
@@ -185,7 +185,7 @@ export function ModelSelector({
                       {getQuotaDisplay()}
                     </span>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom" className="max-w-[280px] text-xs p-4 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 shadow-xl select-none z-[100]">
+                  <TooltipContent side="bottom" className="max-w-[280px] text-xs p-4 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 shadow-xl select-none z-100">
                     <div className="space-y-3">
                       <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
                         <span className="font-semibold text-sm text-slate-900 dark:text-slate-50">Usage Quota</span>
