@@ -28,7 +28,7 @@ export function LoginRequired() {
     {/* Action Section */}
     <div className="rounded-3xl border border-slate-200 bg-slate-50/50 p-6 dark:border-slate-800 dark:bg-slate-900/20 space-y-5">
       <h2 className="text-center text-base font-semibold text-slate-800 dark:text-slate-200">
-        First, do you have an account?
+        Jovan needs an account to assist you. Got one?
       </h2>
 
       <div className="grid grid-cols-2 gap-4">

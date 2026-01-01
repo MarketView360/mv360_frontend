@@ -15,9 +15,10 @@ import {
 interface MessageInputProps {
   onSendMessage: (content: string) => void;
   className?: string;
+  disabled?: boolean;
 }
 
-export function MessageInput({ onSendMessage, className }: MessageInputProps) {
+export function MessageInput({ onSendMessage, className, disabled = false }: MessageInputProps) {
   const [input, setInput] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -55,8 +56,9 @@ export function MessageInput({ onSendMessage, className }: MessageInputProps) {
           }}
           onKeyDown={handleKeyDown}
           placeholder="Ask anything about finance, markets, or stocks..."
-          className="min-h-[60px] max-h-[200px] w-full resize-none border-none bg-transparent px-4 py-4 focus-visible:ring-0 text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
+          className="min-h-[60px] max-h-[200px] w-full resize-none border-none bg-transparent px-4 py-4 focus-visible:ring-0 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 disabled:opacity-50"
           rows={1}
+          disabled={disabled}
         />
 
         {/* Toolbar */}
