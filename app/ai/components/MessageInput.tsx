@@ -106,10 +106,10 @@ export function MessageInput({ onSendMessage, className }: MessageInputProps) {
             
             <Button 
                 onClick={handleSubmit} 
-                disabled={!input.trim()}
+                disabled={!input.trim() || disabled}
                 className={cn(
                     "h-8 w-8 rounded-lg p-0 transition-all duration-200",
-                    input.trim() 
+                    input.trim() && !disabled
                         ? "bg-indigo-600 hover:bg-indigo-700 text-white" 
                         : "bg-slate-100 dark:bg-slate-800 text-slate-400"
                 )}

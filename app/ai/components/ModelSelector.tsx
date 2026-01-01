@@ -33,28 +33,12 @@ export interface ModelOption {
 }
 
 const MODELS: ModelOption[] = [
-  {
-    id: "auto",
-    name: "Auto Model",
-    provider: "auto",
-    icon: Icons.Auto,
-    description: "Smart routing auto select model",
-    supportsReasoning: true,
-  },
-    {
-    id: "groq-compound",
-    name: "Compound",
-    provider: "groq",
-    icon: Icons.Groq,
-    description: "All rounder model",
-    supportsReasoning: false,
-  },
-  {
-    id: "gpt-oss",
+{
+    id: "gpt",
     name: "GPT OSS",
     provider: "openai",
     icon: Icons.OpenAI,
-    description: "OpenAI's gpt model",
+    description: "OpenAI's GPT model",
     supportsReasoning: true,
   },
   {
@@ -88,6 +72,9 @@ export function ModelSelector({
   const selectedModel = MODELS.find((m) => m.id === selectedModelId) || MODELS[0];
   const { session } = useAuth();
   const { quota, loading, timeUntilReset } = useQuota(session?.access_token ?? null);
+  
+  // Hide quota UI for non-logged-in users
+  const isAuthenticated = !!session;
 
   const getQuotaDisplay = () => {
     if (!quota) return null;
@@ -174,7 +161,7 @@ export function ModelSelector({
         </Select>
       </div>
 
-      {selectedModel.supportsReasoning && (
+      {selectedModel.supportsReasoning && isAuthenticated && (
         <div className="flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">
             <Switch 
                 id="reasoning-mode" 
@@ -187,7 +174,7 @@ export function ModelSelector({
             </Label>
             {loading ? (
                 <div className="ml-2 h-4 w-20 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
-            ) : quota && (
+            ) : quota && isAuthenticated && (
               <TooltipProvider>
                 <Tooltip delayDuration={300}>
                   <TooltipTrigger asChild>

@@ -1,86 +1,187 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Sidebar } from "./components/Sidebar";
 import { ChatArea, Message } from "./components/ChatArea";
 import { MessageInput } from "./components/MessageInput";
 import { ModelSelector } from "./components/ModelSelector";
-import { Menu, TrendingUp, Search, PieChart, Newspaper } from "lucide-react";
+import { LoginRequired } from "./components/LoginRequired";
+import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
+import { useChatSession } from "@/lib/hooks/useChatSession";
+import { useChatStream } from "@/lib/hooks/useChatStream";
+import { useReasoningQuota } from "@/lib/hooks/useReasoningQuota";
+
+// Feature flag: Allow anonymous users to access AI chat.
+// Default: true (if unset). Set NEXT_PUBLIC_ALLOW_ANONYMOUS_AI_CHAT=false to require login.
+const ALLOW_ANONYMOUS_CHAT =
+  process.env.NEXT_PUBLIC_ALLOW_ANONYMOUS_AI_CHAT !== "false";
 
 export default function AiPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedModel, setSelectedModel] = useState("auto");
-  const [isReasoningEnabled, setIsReasoningEnabled] = useState(true);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [isReasoningEnabled, setIsReasoningEnabled] = useState(false);
   const [greeting, setGreeting] = useState("");
+  const [token, setToken] = useState<string | null>(null);
+  const [anonymousMessageCount, setAnonymousMessageCount] = useState(0);
 
-useEffect(() => {
-  const hours = new Date().getHours();
-
-  let timeGreeting = "Good morning";
-  if (hours >= 12 && hours < 17) {
-    timeGreeting = "Good afternoon";
-  } else if (hours >= 17 || hours < 5) {
-    timeGreeting = "Good evening";
-  }
-
-  const financeGreetings = [
-    "Ready to beat the market?",
-    "What’s on your portfolio today?",
-    "Seeking the next alpha?",
-    "Planning your next move?",
-    "Watching any key stocks today?",
-    "Keeping an eye on the markets?",
-    "Looking for the next opportunity?",
-    "Tracking your positions today?",
-    "Reviewing your investments?",
-    "Following today’s market moves?",
-    "Spotting trends before they move?",
-    "Monitoring your watchlist?",
-    "Evaluating risk and reward?",
-    "Thinking long-term or short-term today?",
-    "Checking how the market’s behaving?"
-  ];
-
-  const randomGreeting =
-    financeGreetings[Math.floor(Math.random() * financeGreetings.length)];
-
-  const finalGreeting = `${timeGreeting} Investor, ${randomGreeting}`;
-
-  setGreeting(finalGreeting);
-}, []);
-
-  const handleSendMessage = (content: string) => {
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content,
-      timestamp: new Date(),
+  // Get auth token
+  useEffect(() => {
+    const supabase = createClient();
+    
+    const getToken = async () => {
+      const { data } = await supabase.auth.getSession();
+      setToken(data.session?.access_token || null);
+      
+      // Disable reasoning if user logs out
+      if (!data.session) {
+        setIsReasoningEnabled(false);
+      }
     };
     
-    setMessages((prev) => [...prev, newMessage]);
+    getToken();
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setToken(session?.access_token || null);
+      
+      // Disable reasoning if user logs out
+      if (!session) {
+        setIsReasoningEnabled(false);
+      }
+    });
 
-    // Mock response after a delay
-    setTimeout(() => {
-        const responseMessage: Message = {
-            id: (Date.now() + 1).toString(),
-            role: "assistant",
-            content: "This is a mock response. In a real application, I would process your request using the selected model (" + selectedModel + ") and provide a detailed financial analysis.",
-            timestamp: new Date(),
-            model: selectedModel,
-            isReasoning: isReasoningEnabled
-        };
-        setMessages((prev) => [...prev, responseMessage]);
-    }, 1500);
-  };
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Use real hooks
+  const {
+    sessions,
+    activeSessionId,
+    loadingSessions,
+    handleSelectSession,
+    handleNewChat,
+    handleDeleteSession,
+    addSession,
+  } = useChatSession(token, null);
+
+  const {
+    messages: chatMessages,
+    sendMessage,
+    clearMessages,
+  } = useChatStream(token, activeSessionId);
+
+  const {
+    canUseReasoning,
+    fetchReasoningQuota,
+  } = useReasoningQuota(token);
+
+  // Convert chat messages to the Message format expected by ChatArea
+  const messages: Message[] = chatMessages.map((msg) => ({
+    id: msg.id,
+    role: msg.role,
+    content: msg.content,
+    timestamp: new Date(msg.timestamp),
+    model: selectedModel,
+    isReasoning: msg.reasoning ? true : false,
+  }));
+
+  useEffect(() => {
+    const hours = new Date().getHours();
+
+    let timeGreeting = "Good morning";
+    if (hours >= 12 && hours < 17) {
+      timeGreeting = "Good afternoon";
+    } else if (hours >= 17 || hours < 5) {
+      timeGreeting = "Good evening";
+    }
+
+    const financeGreetings = [
+      "Ready to beat the market?",
+      "What's on your portfolio today?",
+      "Seeking the next alpha?",
+      "Planning your next move?",
+      "Watching any key stocks today?",
+      "Keeping an eye on the markets?",
+      "Looking for the next opportunity?",
+      "Tracking your positions today?",
+      "Reviewing your investments?",
+      "Following today's market moves?",
+      "Spotting trends before they move?",
+      "Monitoring your watchlist?",
+      "Evaluating risk and reward?",
+      "Checking how the market's behaving?"
+    ];
+
+    const randomGreeting =
+      financeGreetings[Math.floor(Math.random() * financeGreetings.length)];
+
+    const finalGreeting = `${timeGreeting} Investor, ${randomGreeting}`;
+
+    setGreeting(finalGreeting);
+  }, []);
+
+  const handleSendMessage = useCallback(async (content: string) => {
+    // Anonymous user: strict 2 message limit, no reasoning, no tools
+    if (!token) {
+      if (anonymousMessageCount >= 2) {
+        alert("You've reached the limit of 2 messages. Please sign in to continue chatting.");
+        return;
+      }
+      
+      // Send anonymous message (backend enforces limits too)
+      try {
+        const { aiApi } = await import("@/lib/api/ai");
+        await aiApi.sendAnonymousMessage([{ role: "user", content }]);
+        setAnonymousMessageCount(prev => prev + 1);
+      } catch (error) {
+        console.error("Anonymous message failed:", error);
+        if (error instanceof Error && error.message.includes("limit")) {
+          alert("Anonymous chat limit reached. Please sign in to continue.");
+        }
+      }
+      return;
+    }
+
+    // Authenticated user: full features
+    await sendMessage(content, {
+      reasoning: isReasoningEnabled && canUseReasoning,
+      onSessionCreated: (id) => {
+        addSession({
+          id,
+          title: content.slice(0, 50) + (content.length > 50 ? "..." : ""),
+          created_at: new Date().toISOString(),
+        });
+      },
+    });
+
+    if (isReasoningEnabled) {
+      fetchReasoningQuota();
+    }
+  }, [token, anonymousMessageCount, sendMessage, isReasoningEnabled, canUseReasoning, addSession, fetchReasoningQuota]);
+
+  const handleNewChatClick = useCallback(() => {
+    handleNewChat();
+    clearMessages();
+  }, [handleNewChat, clearMessages]);
+
+  // Show login required page if anonymous chat is disabled and user is not logged in
+  if (!ALLOW_ANONYMOUS_CHAT && !token) {
+    return <LoginRequired />;
+  }
 
   return (
     <div className="flex h-full w-full bg-white dark:bg-slate-950 overflow-hidden">
       {/* Sidebar */}
       <Sidebar 
         isOpen={isSidebarOpen} 
-        setIsOpen={setIsSidebarOpen} 
+        setIsOpen={setIsSidebarOpen}
+        sessions={sessions}
+        activeSessionId={activeSessionId}
+        loadingSessions={loadingSessions}
+        onSelectSession={handleSelectSession}
+        onNewChat={handleNewChatClick}
+        onDeleteSession={handleDeleteSession}
       />
 
       {/* Main Content */}

@@ -1,27 +1,68 @@
 "use client";
 
-import React from "react";
-import { Plus, MessageSquare, History, PanelLeftClose, Settings, Zap } from "lucide-react";
+import React, { useMemo } from "react";
+import { Plus, MessageSquare, History, PanelLeftClose, Settings, Zap, Trash2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Link from "next/link";
+import type { SessionSummary } from "@/lib/utils/jovan/types";
 
 interface SidebarProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
+  sessions?: SessionSummary[];
+  activeSessionId?: string | null;
+  loadingSessions?: boolean;
+  onSelectSession?: (id: string) => void;
+  onNewChat?: () => void;
+  onDeleteSession?: (id: string) => void;
   className?: string;
 }
 
-const MOCK_HISTORY = [
-  { id: 1, title: "Market Trends Analysis", date: "Today" },
-  { id: 2, title: "Tesla Q3 Earnings", date: "Today" },
-  { id: 3, title: "Crypto Portfolio Strategy", date: "Yesterday" },
-  { id: 4, title: "Dividend Stock Screener", date: "Previous 7 Days" },
-  { id: 5, title: "Macroeconomic Outlook", date: "Previous 7 Days" },
-];
+function groupSessionsByDate(sessions: SessionSummary[]): Record<string, SessionSummary[]> {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+  const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-export function Sidebar({ isOpen, setIsOpen, className }: SidebarProps) {
+  const groups: Record<string, SessionSummary[]> = {
+    "Today": [],
+    "Yesterday": [],
+    "Previous 7 Days": [],
+    "Older": [],
+  };
+
+  for (const session of sessions) {
+    const sessionDate = new Date(session.created_at);
+    const sessionDay = new Date(sessionDate.getFullYear(), sessionDate.getMonth(), sessionDate.getDate());
+
+    if (sessionDay.getTime() === today.getTime()) {
+      groups["Today"].push(session);
+    } else if (sessionDay.getTime() === yesterday.getTime()) {
+      groups["Yesterday"].push(session);
+    } else if (sessionDay.getTime() >= lastWeek.getTime()) {
+      groups["Previous 7 Days"].push(session);
+    } else {
+      groups["Older"].push(session);
+    }
+  }
+
+  return groups;
+}
+
+export function Sidebar({ 
+  isOpen, 
+  setIsOpen, 
+  sessions = [],
+  activeSessionId,
+  loadingSessions = false,
+  onSelectSession,
+  onNewChat,
+  onDeleteSession,
+  className 
+}: SidebarProps) {
+  const groupedSessions = useMemo(() => groupSessionsByDate(sessions), [sessions]);
   return (
     <>
       {/* Mobile Overlay */}
@@ -57,7 +98,11 @@ export function Sidebar({ isOpen, setIsOpen, className }: SidebarProps) {
                 </div>
 
                 {/* New Chat Button */}
-                <Button className="w-full justify-start gap-2 min-w-[248px]" variant="outline">
+                <Button 
+                    className="w-full justify-start gap-2 min-w-[248px]" 
+                    variant="outline"
+                    onClick={onNewChat}
+                >
                     <Plus className="w-4 h-4" />
                     New Chat
                 </Button>
@@ -67,37 +112,61 @@ export function Sidebar({ isOpen, setIsOpen, className }: SidebarProps) {
             <div className="flex-1 overflow-hidden px-2">
                 <ScrollArea className="h-full">
                     <div className="space-y-4 min-w-[248px] px-2 py-2">
-                        <div className="space-y-1">
-                            <h3 className="text-xs font-medium text-slate-500 dark:text-slate-400 px-2 py-1 uppercase tracking-wider">
-                                Today
-                            </h3>
-                            {MOCK_HISTORY.slice(0, 2).map((item) => (
-                                <Button
-                                    key={item.id}
-                                    variant="ghost"
-                                    className="w-full justify-start text-sm font-normal text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-2 h-8 truncate"
-                                >
-                                    <MessageSquare className="w-4 h-4 mr-2 shrink-0 opacity-70" />
-                                    <span className="truncate">{item.title}</span>
-                                </Button>
-                            ))}
-                        </div>
-
-                        <div className="space-y-1">
-                            <h3 className="text-xs font-medium text-slate-500 dark:text-slate-400 px-2 py-1 uppercase tracking-wider">
-                                Previous 7 Days
-                            </h3>
-                            {MOCK_HISTORY.slice(2).map((item) => (
-                                <Button
-                                    key={item.id}
-                                    variant="ghost"
-                                    className="w-full justify-start text-sm font-normal text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-2 h-8 truncate"
-                                >
-                                    <History className="w-4 h-4 mr-2 shrink-0 opacity-70" />
-                                    <span className="truncate">{item.title}</span>
-                                </Button>
-                            ))}
-                        </div>
+                        {loadingSessions ? (
+                            <div className="flex items-center justify-center py-8">
+                                <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+                            </div>
+                        ) : sessions.length === 0 ? (
+                            <div className="text-center py-8 text-sm text-slate-400">
+                                No conversations yet
+                            </div>
+                        ) : (
+                            Object.entries(groupedSessions).map(([dateGroup, groupSessions]) => {
+                                if (groupSessions.length === 0) return null;
+                                
+                                return (
+                                    <div key={dateGroup} className="space-y-1">
+                                        <h3 className="text-xs font-medium text-slate-500 dark:text-slate-400 px-2 py-1 uppercase tracking-wider">
+                                            {dateGroup}
+                                        </h3>
+                                        {groupSessions.map((session) => (
+                                            <div key={session.id} className="group relative">
+                                                <Button
+                                                    variant="ghost"
+                                                    onClick={() => onSelectSession?.(session.id)}
+                                                    className={cn(
+                                                        "w-full justify-start text-sm font-normal px-2 h-8 truncate pr-8",
+                                                        activeSessionId === session.id
+                                                            ? "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white"
+                                                            : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                                                    )}
+                                                >
+                                                    {dateGroup === "Today" ? (
+                                                        <MessageSquare className="w-4 h-4 mr-2 shrink-0 opacity-70" />
+                                                    ) : (
+                                                        <History className="w-4 h-4 mr-2 shrink-0 opacity-70" />
+                                                    )}
+                                                    <span className="truncate">{session.title || "Untitled"}</span>
+                                                </Button>
+                                                {onDeleteSession && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            onDeleteSession(session.id);
+                                                        }}
+                                                        className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-500"
+                                                    >
+                                                        <Trash2 className="w-3 h-3" />
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                );
+                            })
+                        )}
                     </div>
                 </ScrollArea>
             </div>

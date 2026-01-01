@@ -14,6 +14,7 @@ export interface Message {
   model?: string;
   timestamp: Date;
   isReasoning?: boolean;
+  isStreaming?: boolean;
 }
 
 interface ChatAreaProps {
@@ -131,6 +132,9 @@ export function ChatArea({ messages = MOCK_MESSAGES }: ChatAreaProps) {
               )}>
                  <div className="prose prose-sm dark:prose-invert max-w-none wrap-break-word">
                     <ReactMarkdown>{message.content}</ReactMarkdown>
+                    {message.isStreaming && (
+                      <span className="inline-block w-2 h-4 ml-1 bg-slate-400 dark:bg-slate-500 animate-pulse" />
+                    )}
                  </div>
               </div>
 
