@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { ReactNode, useState } from "react";
 import { Copy, Edit, Play, ChevronDown } from "lucide-react";
@@ -41,8 +41,10 @@ export function hasIncompleteTags(text: string): { clean: string; pending: strin
 // Query syntax highlighter
 function highlightQuerySyntax(query: string): ReactNode {
   const parts: ReactNode[] = [];
+  let remaining = query;
   let keyIndex = 0;
 
+  // Pattern: keywords, operators, metric names, values
   const patterns = [
     { regex: /\b(AND|OR)\b/g, className: "text-purple-600 dark:text-purple-400 font-bold" },
     { regex: /([<>=!]+)/g, className: "text-slate-700 dark:text-slate-300 font-semibold" },
@@ -52,6 +54,7 @@ function highlightQuerySyntax(query: string): ReactNode {
 
   const tokens: Array<{ text: string; className?: string; index: number }> = [];
   
+  // Find all matches
   patterns.forEach(({ regex, className }) => {
     let match;
     const r = new RegExp(regex);
@@ -64,10 +67,13 @@ function highlightQuerySyntax(query: string): ReactNode {
     }
   });
 
+  // Sort by index
   tokens.sort((a, b) => a.index - b.index);
 
+  // Build highlighted output
   let lastIndex = 0;
   tokens.forEach((token) => {
+    // Add text before token
     if (token.index > lastIndex) {
       parts.push(
         <span key={`text-${keyIndex++}`}>
@@ -75,6 +81,7 @@ function highlightQuerySyntax(query: string): ReactNode {
         </span>
       );
     }
+    // Add highlighted token
     parts.push(
       <span key={`token-${keyIndex++}`} className={token.className}>
         {token.text}
@@ -83,6 +90,7 @@ function highlightQuerySyntax(query: string): ReactNode {
     lastIndex = token.index + token.text.length;
   });
 
+  // Add remaining text
   if (lastIndex < query.length) {
     parts.push(
       <span key={`text-${keyIndex++}`}>
@@ -109,11 +117,13 @@ function QueryBlock({ content }: { content: string }) {
   };
 
   const handleUseInEditor = () => {
+    // Navigate to screener with query parameter
     router.push(`/screener?query=${encodeURIComponent(queryText)}`);
     toast.success("Opening query editor...");
   };
 
   const handleRunQuery = () => {
+    // Navigate to screener and auto-run
     router.push(`/screener?query=${encodeURIComponent(queryText)}&run=true`);
     toast.success("Running query...");
   };
@@ -173,14 +183,17 @@ function AccordionBlock({ title, content }: { title: string; content: string }) 
     </div>
   );
 }
+
 // Parse inline content (text with nested formatting tags)
 function parseInlineContent(text: string): ReactNode[] {
   const nodes: ReactNode[] = [];
   let remaining = text;
   let keyIndex = 0;
 
+  // Convert Markdown-style **text** to {{b}}text{{/b}}
   remaining = remaining.replace(/\*\*([^*]+)\*\*/g, '{{b}}$1{{/b}}');
   
+  // Pattern for inline tags
   const inlinePattern = /\{\{(b|i|u|s|code|mark|link|pagelink|ticker|formula|positive|negative|neutral|currency|percent|number|button|kbd|badge)(?:\s+([^}]*))?\}\}([\s\S]*?)\{\{\/\1\}\}/;
   
   while (remaining.length > 0) {
@@ -303,7 +316,7 @@ function parseInlineContent(text: string): ReactNode[] {
             rel="noopener noreferrer"
             className="text-blue-600 dark:text-blue-400 underline underline-offset-2 hover:text-blue-700 dark:hover:text-blue-300 transition-all hover:decoration-2"
           >
-            {parsedContent} 
+            {parsedContent} ↗
           </a>
         );
         break;
@@ -316,7 +329,7 @@ function parseInlineContent(text: string): ReactNode[] {
             href={`/${page}`}
             className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-semibold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
           >
-             {parsedContent}
+            → {parsedContent}
           </a>
         );
         break;
@@ -359,11 +372,13 @@ function parseListItems(content: string): ReactNode[] {
   let index = 0;
 
   while ((match = liPattern.exec(content)) !== null) {
+    // Check for nested lists
     const itemContent = match[1];
     const hasNestedUl = /\{\{ul\}\}/.test(itemContent);
     const hasNestedOl = /\{\{ol\}\}/.test(itemContent);
     
     if (hasNestedUl || hasNestedOl) {
+      // Parse nested structure
       const parts = parseBlockContent(itemContent);
       items.push(
         <li key={`li-${index++}`} className="leading-relaxed">
@@ -387,6 +402,7 @@ function parseDefinitionList(content: string): ReactNode {
   const items: ReactNode[] = [];
   let index = 0;
   
+  // Match dt/dd pairs
   const dtPattern = /\{\{dt\}\}([\s\S]*?)\{\{\/dt\}\}/g;
   const ddPattern = /\{\{dd\}\}([\s\S]*?)\{\{\/dd\}\}/g;
   
@@ -402,6 +418,7 @@ function parseDefinitionList(content: string): ReactNode {
     dds.push({ content: ddMatch[1], index: ddMatch.index });
   }
   
+  // Pair them up
   for (let i = 0; i < Math.min(dts.length, dds.length); i++) {
     items.push(
       <div key={`dl-item-${index++}`} className="mt-3 first:mt-0">
@@ -510,10 +527,10 @@ function parseTable(content: string): ReactNode {
 // Parse callout boxes
 function parseCallout(content: string, type: string): ReactNode {
   const icons = {
-    info: "ℹ",
-    warning: "",
-    tip: "",
-    success: ""
+    info: "ℹ️",
+    warning: "⚠️",
+    tip: "💡",
+    success: "✓"
   };
 
   const styles = {
@@ -528,7 +545,7 @@ function parseCallout(content: string, type: string): ReactNode {
 
   return (
     <div className={`flex gap-3 p-4 my-4 rounded-lg border-l-4 ${style}`}>
-      <div className="text-xl shrink-0 mt-0.5">{icon}</div>
+      <div className="text-xl flex-shrink-0 mt-0.5">{icon}</div>
       <div className="flex-1 leading-relaxed">
         {parseInlineContent(content)}
       </div>
@@ -545,7 +562,7 @@ function parseQuote(content: string, source?: string): ReactNode {
       </div>
       {source && (
         <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-           {source}
+          — {source}
         </div>
       )}
     </blockquote>
@@ -632,6 +649,7 @@ export function parseJovanResponse(text: string, isStreaming: boolean = false): 
   let remaining = textToParse;
   let keyIndex = 0;
 
+  // Block-level patterns
   const blockPatterns = [
     { pattern: /\{\{h2\}\}([\s\S]*?)\{\{\/h2\}\}/, type: "h2" },
     { pattern: /\{\{h3\}\}([\s\S]*?)\{\{\/h3\}\}/, type: "h3" },
@@ -760,7 +778,7 @@ export function parseJovanResponse(text: string, isStreaming: boolean = false): 
         const altMatch = imgAttrs.match(/alt="([^"]+)"/);
         elements.push(
           <div key={key} className="my-4 p-4 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-center text-slate-500 dark:text-slate-400">
-             Image placeholder: {altMatch ? altMatch[1] : srcMatch ? srcMatch[1] : "Chart"}
+            📊 Image placeholder: {altMatch ? altMatch[1] : srcMatch ? srcMatch[1] : "Chart"}
           </div>
         );
         break;
@@ -769,7 +787,7 @@ export function parseJovanResponse(text: string, isStreaming: boolean = false): 
         const typeMatch = chartAttrs.match(/type="([^"]+)"/);
         elements.push(
           <div key={key} className="my-4 p-4 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-center text-slate-500 dark:text-slate-400">
-             Chart placeholder: {typeMatch ? typeMatch[1] : "Chart"}
+            📈 Chart placeholder: {typeMatch ? typeMatch[1] : "Chart"}
           </div>
         );
         break;
