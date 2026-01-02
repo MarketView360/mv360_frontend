@@ -15,6 +15,7 @@ export function useChatStream(token: string | null, sessionId: string | null) {
   const [error, setError] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const sessionJustCreatedRef = useRef<boolean>(false);
+  const messagesRef = useRef<ChatMessage[]>([]);
 
   const fetchMessages = useCallback(async () => {
     if (!token || !sessionId) {
@@ -48,6 +49,10 @@ export function useChatStream(token: string | null, sessionId: string | null) {
       sessionJustCreatedRef.current = false;
     }
   }, [fetchMessages]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   const sendMessage = useCallback(
     async (
@@ -92,8 +97,12 @@ export function useChatStream(token: string | null, sessionId: string | null) {
       setMessages((prev) => [...prev, assistantMessage]);
 
       try {
+        const history = messagesRef.current
+          .filter((m) => m.role !== "assistant" || m.content.trim() !== "")
+          .filter((m) => !m.isStreaming);
+
         const allMessages = [
-          ...messages.map((m) => ({ role: m.role, content: m.content })),
+          ...history.map((m) => ({ role: m.role, content: m.content })),
           { role: "user" as const, content },
         ];
 
