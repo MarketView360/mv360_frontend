@@ -9,8 +9,27 @@ import { useRouter } from "next/navigation";
 function ExternalLink({ url, children }: { url: string; children: ReactNode }) {
   const [showConfirm, setShowConfirm] = useState(false);
 
+  // Check if URL is internal (our domains)
+  const isInternalUrl = (url: string) => {
+    try {
+      const urlObj = new URL(url);
+      const internalDomains = ['marketview360.io', 'www.marketview360.io', 'localhost'];
+      return internalDomains.includes(urlObj.hostname);
+    } catch {
+      return false;
+    }
+  };
+
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
+    
+    // If internal URL, open directly
+    if (isInternalUrl(url)) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    
+    // External URL - show confirmation
     setShowConfirm(true);
   };
 
@@ -44,6 +63,11 @@ function ExternalLink({ url, children }: { url: string; children: ReactNode }) {
                 <h3 className="font-semibold text-slate-900 dark:text-slate-100">External Link</h3>
                 <p className="text-sm text-slate-600 dark:text-slate-400">This link will take you to a domain outside MarketView360</p>
               </div>
+            </div>
+            
+            <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded p-3 mb-4">
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Destination URL:</p>
+              <p className="text-sm font-mono text-slate-900 dark:text-slate-100 break-all">{url}</p>
             </div>
             
             <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded p-3 mb-4">
