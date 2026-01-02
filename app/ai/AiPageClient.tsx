@@ -8,7 +8,7 @@ import { ChatArea, Message } from "./components/ChatArea";
 import { MessageInput } from "./components/MessageInput";
 import { ModelSelector } from "./components/ModelSelector";
 import { LoginRequired } from "./components/LoginRequired";
-import { Menu, StopCircle } from "lucide-react";
+import { Menu, PanelLeftOpen, StopCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { useChatSession } from "@/lib/hooks/useChatSession";
@@ -259,9 +259,10 @@ export default function AiPageClient() {
                 variant="ghost"
                 size="icon"
                 onClick={() => setIsSidebarOpen(true)}
-                className="md:hidden"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                title="Open sidebar"
               >
-                <Menu className="w-5 h-5" />
+                <PanelLeftOpen className="w-5 h-5" />
               </Button>
             )}
             <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100 hidden md:block">
