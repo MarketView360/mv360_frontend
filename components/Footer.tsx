@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { RiTwitterXFill } from "react-icons/ri";
-import { Linkedin } from "lucide-react";
+import { Linkedin, Sparkles } from "lucide-react";
 import { Logo } from "@/components/common/Logo";
 
 export function Footer() {
@@ -66,6 +66,15 @@ export function Footer() {
                   Market News
                 </Link>
               </li>
+              <li>
+                <Link
+                  href="/ai"
+                  className="hover:text-brand transition-colors flex items-center gap-1"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  AI Assistance
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -87,6 +96,11 @@ export function Footer() {
               <li>
                 <Link href="/about" className="hover:text-brand transition-colors">
                   About
+                </Link>
+              </li>
+              <li>
+                <Link href="/changelog" className="hover:text-brand transition-colors">
+                  Changelog
                 </Link>
               </li>
             </ul>
