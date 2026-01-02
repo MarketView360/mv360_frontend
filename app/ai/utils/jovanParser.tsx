@@ -1,9 +1,77 @@
 "use client";
 
 import React, { ReactNode, useState } from "react";
-import { Copy, Edit, Play, ChevronDown } from "lucide-react";
+import { Copy, Edit, Play, ChevronDown, ExternalLink as ExternalLinkIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+
+// External Link Component with confirmation dialog
+function ExternalLink({ url, children }: { url: string; children: ReactNode }) {
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setShowConfirm(true);
+  };
+
+  const handleConfirm = () => {
+    setShowConfirm(false);
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleCancel = () => {
+    setShowConfirm(false);
+  };
+
+  return (
+    <>
+      <a
+        href={url}
+        onClick={handleClick}
+        className="text-blue-600 dark:text-blue-400 underline underline-offset-2 hover:text-blue-700 dark:hover:text-blue-300 transition-all hover:decoration-2 cursor-pointer"
+      >
+        {children}
+      </a>
+      
+      {showConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-lg p-6 max-w-md w-full border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
+                <ExternalLinkIcon className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-900 dark:text-slate-100">External Link</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400">This link will take you to a domain outside MarketView360</p>
+              </div>
+            </div>
+            
+            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded p-3 mb-4">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                <strong>Important:</strong> Make sure you trust this destination before visiting. Jovan cannot scan external links for safety.
+              </p>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={handleCancel}
+                className="flex-1 px-4 py-2 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirm}
+                className="flex-1 px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors font-medium"
+              >
+                Visit Site
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
 
 /**
  * JovanParser - Comprehensive parser for Jovan AI custom tag syntax
@@ -41,62 +109,71 @@ export function hasIncompleteTags(text: string): { clean: string; pending: strin
 // Query syntax highlighter
 function highlightQuerySyntax(query: string): ReactNode {
   const parts: ReactNode[] = [];
-  let remaining = query;
   let keyIndex = 0;
+  let currentIndex = 0;
 
-  // Pattern: keywords, operators, metric names, values
-  const patterns = [
-    { regex: /\b(AND|OR)\b/g, className: "text-purple-600 dark:text-purple-400 font-bold" },
-    { regex: /([<>=!]+)/g, className: "text-slate-700 dark:text-slate-300 font-semibold" },
-    { regex: /\b([A-Z_][A-Z_0-9]*)\b/g, className: "text-cyan-600 dark:text-cyan-400 font-semibold" },
-    { regex: /\b(\d+\.?\d*)\b/g, className: "text-red-600 dark:text-red-400" },
-  ];
-
-  const tokens: Array<{ text: string; className?: string; index: number }> = [];
-  
-  // Find all matches
-  patterns.forEach(({ regex, className }) => {
-    let match;
-    const r = new RegExp(regex);
-    while ((match = r.exec(query)) !== null) {
-      tokens.push({
-        text: match[0],
-        className,
-        index: match.index
-      });
-    }
-  });
-
-  // Sort by index
-  tokens.sort((a, b) => a.index - b.index);
-
-  // Build highlighted output
-  let lastIndex = 0;
-  tokens.forEach((token) => {
-    // Add text before token
-    if (token.index > lastIndex) {
+  while (currentIndex < query.length) {
+    let matched = false;
+    
+    // Check for keywords first (highest priority)
+    const keywordMatch = query.slice(currentIndex).match(/^(AND|OR)\b/);
+    if (keywordMatch) {
       parts.push(
-        <span key={`text-${keyIndex++}`}>
-          {query.substring(lastIndex, token.index)}
+        <span key={`token-${keyIndex++}`} className="text-purple-600 dark:text-purple-400 font-bold">
+          {keywordMatch[0]}
         </span>
       );
+      currentIndex += keywordMatch[0].length;
+      matched = true;
+      continue;
     }
-    // Add highlighted token
-    parts.push(
-      <span key={`token-${keyIndex++}`} className={token.className}>
-        {token.text}
-      </span>
-    );
-    lastIndex = token.index + token.text.length;
-  });
 
-  // Add remaining text
-  if (lastIndex < query.length) {
+    // Check for operators
+    const operatorMatch = query.slice(currentIndex).match(/^([<>=!]+)/);
+    if (operatorMatch) {
+      parts.push(
+        <span key={`token-${keyIndex++}`} className="text-slate-700 dark:text-slate-300 font-semibold">
+          {operatorMatch[0]}
+        </span>
+      );
+      currentIndex += operatorMatch[0].length;
+      matched = true;
+      continue;
+    }
+
+    // Check for metric names (but NOT AND/OR)
+    const metricMatch = query.slice(currentIndex).match(/^([A-Z_][A-Z_0-9]*(?:_[A-Z0-9]+)*)\b/);
+    if (metricMatch && !['AND', 'OR'].includes(metricMatch[0])) {
+      parts.push(
+        <span key={`token-${keyIndex++}`} className="text-cyan-600 dark:text-cyan-400 font-semibold">
+          {metricMatch[0]}
+        </span>
+      );
+      currentIndex += metricMatch[0].length;
+      matched = true;
+      continue;
+    }
+
+    // Check for numbers
+    const numberMatch = query.slice(currentIndex).match(/^(\d+\.?\d*)\b/);
+    if (numberMatch) {
+      parts.push(
+        <span key={`token-${keyIndex++}`} className="text-red-600 dark:text-red-400">
+          {numberMatch[0]}
+        </span>
+      );
+      currentIndex += numberMatch[0].length;
+      matched = true;
+      continue;
+    }
+
+    // Add plain text (whitespace, commas, etc.)
     parts.push(
       <span key={`text-${keyIndex++}`}>
-        {query.substring(lastIndex)}
+        {query[currentIndex]}
       </span>
     );
+    currentIndex++;
   }
 
   return <>{parts}</>;
@@ -307,17 +384,11 @@ function parseInlineContent(text: string): ReactNode[] {
         break;
       case "link":
         const urlMatch = attrs?.match(/url="([^"]+)"/);
-        const url = urlMatch ? urlMatch[1] : "#";
+        const url = urlMatch ? urlMatch[1] : "";
         nodes.push(
-          <a 
-            key={key} 
-            href={url} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="text-blue-600 dark:text-blue-400 underline underline-offset-2 hover:text-blue-700 dark:hover:text-blue-300 transition-all hover:decoration-2"
-          >
+          <ExternalLink key={key} url={url}>
             {parsedContent} ↗
-          </a>
+          </ExternalLink>
         );
         break;
       case "pagelink":
@@ -327,6 +398,8 @@ function parseInlineContent(text: string): ReactNode[] {
           <a 
             key={key} 
             href={`/${page}`}
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-semibold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
           >
             → {parsedContent}
@@ -388,7 +461,7 @@ function parseListItems(content: string): ReactNode[] {
     } else {
       items.push(
         <li key={`li-${index++}`} className="leading-relaxed">
-          {parseInlineContent(itemContent)}
+          {parseJovanResponse(itemContent, false)}
         </li>
       );
     }
@@ -547,7 +620,7 @@ function parseCallout(content: string, type: string): ReactNode {
     <div className={`flex gap-3 p-4 my-4 rounded-lg border-l-4 ${style}`}>
       <div className="text-xl flex-shrink-0 mt-0.5">{icon}</div>
       <div className="flex-1 leading-relaxed">
-        {parseInlineContent(content)}
+        {parseJovanResponse(content, false)}
       </div>
     </div>
   );
@@ -635,6 +708,12 @@ function parseBlockContent(text: string): ReactNode[] {
   return elements;
 }
 
+// Preprocess text to move {{br}} tags before {{query}} to after {{query}}
+function preprocessBrTags(text: string): string {
+  // Match any {{br}} followed by {{query}}...{{/query}}
+  return text.replace(/\{\{br\}\}\s*\{\{query\}\}([\s\S]*?)\{\{\/query\}\}/g, '{{query}}$1{{/query}}{{br}}');
+}
+
 // Main parse function
 export function parseJovanResponse(text: string, isStreaming: boolean = false): ReactNode {
   if (!text) return null;
@@ -644,6 +723,9 @@ export function parseJovanResponse(text: string, isStreaming: boolean = false): 
     const { clean } = hasIncompleteTags(text);
     textToParse = clean;
   }
+
+  // Preprocess to move {{br}} tags before {{query}} to after {{query}}
+  textToParse = preprocessBrTags(textToParse);
 
   const elements: ReactNode[] = [];
   let remaining = textToParse;
@@ -768,6 +850,7 @@ export function parseJovanResponse(text: string, isStreaming: boolean = false): 
         break;
       case "br":
         elements.push(<br key={key} />);
+        elements.push(<span key={`${key}-space`}>&nbsp;</span>);
         break;
       case "hr":
         elements.push(<hr key={key} className="my-6 border-slate-300 dark:border-slate-700" />);
