@@ -1,0 +1,12 @@
+This file marks that the old settings page has been replaced with a new modern design.
+The new settings structure uses:
+- /settings/profile
+- /settings/security
+- /settings/privacy
+- /settings/appearance
+- /settings/notifications
+- /settings/general
+- /settings/billing
+- /settings/jovan-ai
+
+The main /settings route now redirects to /settings/profile

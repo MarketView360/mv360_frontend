@@ -17,9 +17,6 @@ import {
   Calendar,
   MessageSquare,
   Sparkles,
-  Bell,
-  Megaphone,
-  AlertCircle,
   Save,
   Loader2,
   CheckCircle,
@@ -62,9 +59,6 @@ export default function ProfilePage() {
   // Form state
   const [displayName, setDisplayName] = useState("");
   const [fullName, setFullName] = useState("");
-  const [newsletterOptIn, setNewsletterOptIn] = useState(false);
-  const [announcementsOptIn, setAnnouncementsOptIn] = useState(false);
-  const [alertsOptIn, setAlertsOptIn] = useState(false);
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -87,9 +81,6 @@ export default function ProfilePage() {
       setProfile(profileData);
       setDisplayName(profileData.display_name || "");
       setFullName(profileData.full_name || "");
-      setNewsletterOptIn(profileData.newsletter_opt_in || false);
-      setAnnouncementsOptIn(profileData.announcements_opt_in || false);
-      setAlertsOptIn(profileData.alerts_opt_in || false);
 
       if (statsRes.ok) {
         const statsData = await statsRes.json();
@@ -361,61 +352,7 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* Notification Preferences */}
-        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg text-slate-900 dark:text-white">
-              <Bell className="h-5 w-5" />
-              Notification Preferences
-            </CardTitle>
-            <CardDescription>Choose what updates you want to receive</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                  <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div>
-                  <p className="font-medium text-slate-900 dark:text-white">Newsletter</p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Weekly market insights and platform updates
-                  </p>
-                </div>
-              </div>
-              <Switch checked={newsletterOptIn} onCheckedChange={setNewsletterOptIn} />
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                  <Megaphone className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                </div>
-                <div>
-                  <p className="font-medium text-slate-900 dark:text-white">Announcements</p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    New features and important platform news
-                  </p>
-                </div>
-              </div>
-              <Switch checked={announcementsOptIn} onCheckedChange={setAnnouncementsOptIn} />
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-                  <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                </div>
-                <div>
-                  <p className="font-medium text-slate-900 dark:text-white">Price Alerts</p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Notifications when your watched stocks hit price targets
-                  </p>
-                </div>
-              </div>
-              <Switch checked={alertsOptIn} onCheckedChange={setAlertsOptIn} />
-            </div>
-          </CardContent>
-        </Card>
-
+        
         {/* Account Info */}
         <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           <CardHeader>
