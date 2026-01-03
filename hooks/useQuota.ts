@@ -40,7 +40,7 @@ function getSnapshot() {
   return store;
 }
 
-async function fetchQuotaIntoStore(token: string | null) {
+async function fetchQuotaIntoStore(token: string | null, forceFresh: boolean = false) {
   store.token = token;
   store.loading = true;
   store.error = null;
@@ -62,7 +62,8 @@ async function fetchQuotaIntoStore(token: string | null) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2000);
 
-    const response = await fetch(`${API_BASE}/ai/quota`, {
+    const url = forceFresh ? `${API_BASE}/ai/quota?fresh=1` : `${API_BASE}/ai/quota`;
+    const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -116,7 +117,7 @@ export function useQuota(token: string | null): UseQuotaResult {
   }, [token, state.token]);
 
   const fetchQuota = useCallback(async () => {
-    await fetchQuotaIntoStore(token);
+    await fetchQuotaIntoStore(token, true);
   }, [token]);
 
   const canUse = useCallback(
