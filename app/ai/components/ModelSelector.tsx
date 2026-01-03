@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Lock, KeyRound } from "lucide-react";
+import { Loader2, Lock, KeyRound } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -80,11 +80,18 @@ export function ModelSelector({
 
   const getQuotaDisplay = () => {
     if (!quota) return null;
-    const type = isReasoningEnabled ? "reasoning" : "standard";
-    const q = quota[type];
-    if (q.unlimited) return "Unlimited";
-    const remaining = Math.max(0, q.limit - q.used);
-    return `${remaining} out of ${q.limit} remaining`;
+    
+    if (isReasoningEnabled) {
+      // Show reasoning message count
+      const q = quota.reasoning;
+      return `${q.remaining} of ${q.limit} reasoning messages`;
+    } else {
+      // Show token count for standard messages
+      const q = quota.tokens;
+      const tokensInK = (q.remaining / 1000).toFixed(1);
+      const limitInK = (q.limit / 1000).toFixed(0);
+      return `${tokensInK}K of ${limitInK}K tokens`;
+    }
   };
 
   return (
@@ -175,14 +182,15 @@ export function ModelSelector({
             <Label htmlFor="reasoning-mode" className="text-xs font-medium text-slate-600 dark:text-slate-400 cursor-pointer select-none">
                 {reasoningLabel}
             </Label>
-            {loading ? (
-                <div className="ml-2 h-4 w-20 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
-            ) : quota && isAuthenticated && (
+            {quota && isAuthenticated ? (
               <TooltipProvider>
                 <Tooltip delayDuration={300}>
                   <TooltipTrigger asChild>
-                    <span className="ml-1.5 text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-help transition-colors border border-slate-200 dark:border-slate-800 rounded-full px-2 py-0.5 bg-slate-50 dark:bg-slate-900/50">
-                      {getQuotaDisplay()}
+                    <span className="ml-1.5 inline-flex items-center gap-1.5 text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-help transition-colors border border-slate-200 dark:border-slate-800 rounded-full px-2 py-0.5 bg-slate-50 dark:bg-slate-900/50">
+                      {loading ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : null}
+                      <span>{getQuotaDisplay()}</span>
                     </span>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="max-w-[280px] text-xs p-4 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 shadow-xl select-none z-100">
@@ -193,14 +201,32 @@ export function ModelSelector({
                       </div>
                       <div className="space-y-2">
                         <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
-                          <span className="text-xs">Next Reset</span>
+                          <span className="text-xs">Tokens</span>
+                          <span className="font-semibold text-sm text-slate-900 dark:text-slate-200 tabular-nums">
+                            {(quota.tokens.remaining / 1000).toFixed(1)}K / {(quota.tokens.limit / 1000).toFixed(0)}K
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                          <span className="text-xs">Reasoning</span>
+                          <span className="font-semibold text-sm text-slate-900 dark:text-slate-200 tabular-nums">
+                            {quota.reasoning.remaining} / {quota.reasoning.limit}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-slate-600 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800">
+                          <span className="text-xs">Next reset in</span>
                           <span className="font-semibold text-sm text-slate-900 dark:text-slate-200 tabular-nums">{timeUntilReset()}</span>
+                        </div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                          Resets every 12h (00:00 / 12:00 UTC)
                         </div>
                         {quota.tier === "free" && (
                           <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
                             <p className="text-indigo-600 dark:text-indigo-400 font-semibold text-xs flex items-center justify-between group cursor-pointer hover:underline decoration-indigo-600/30 underline-offset-2">
-                              <span>Upgrade your plan</span>
+                              <span>Upgrade to Premium</span>
                               <span aria-hidden="true" className="group-hover:translate-x-0.5 transition-transform">→</span>
+                            </p>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                              300K tokens + 10 reasoning / 12h
                             </p>
                           </div>
                         )}
@@ -209,7 +235,9 @@ export function ModelSelector({
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-            )}
+            ) : loading ? (
+              <div className="ml-2 h-4 w-20 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
+            ) : null}
         </div>
       )}
     </div>

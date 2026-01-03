@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Sidebar } from "./components/Sidebar";
@@ -8,12 +8,13 @@ import { ChatArea, Message } from "./components/ChatArea";
 import { MessageInput } from "./components/MessageInput";
 import { ModelSelector } from "./components/ModelSelector";
 import { LoginRequired } from "./components/LoginRequired";
-import { Menu, PanelLeftOpen, StopCircle } from "lucide-react";
+import { PanelLeftOpen, StopCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { useChatSession } from "@/lib/hooks/useChatSession";
 import { useChatStream } from "@/lib/hooks/useChatStream";
 import { useReasoningQuota } from "@/lib/hooks/useReasoningQuota";
+import { useQuota } from "@/hooks/useQuota";
 import { AIApiError } from "@/lib/api/ai";
 
 // Feature flag: Allow anonymous users to access AI chat.
@@ -84,14 +85,35 @@ export default function AiPageClient() {
   const {
     messages: chatMessages,
     isStreaming,
-    toolInUse,
     sendMessage,
     cancelStream,
     clearMessages,
   } = useChatStream(token, activeSessionId);
 
-  const { canUseReasoning, remainingReasoning, fetchReasoningQuota } =
-    useReasoningQuota(token);
+  const { canUseReasoning, fetchReasoningQuota } = useReasoningQuota(token);
+
+  // Real-time quota tracking
+  const { quota, refetch: refetchQuota, canUse } = useQuota(token);
+
+  const wasStreamingRef = useRef(false);
+
+  const refreshQuotaSoon = useCallback(async () => {
+    // 1) immediate
+    await refetchQuota();
+    // 2) small delayed retry (DB write may lag end-of-stream by a moment)
+    setTimeout(() => {
+      void refetchQuota();
+    }, 700);
+  }, [refetchQuota]);
+
+  // When a stream finishes, refresh quota so the quota bar updates without needing a page refresh.
+  useEffect(() => {
+    const wasStreaming = wasStreamingRef.current;
+    if (wasStreaming && !isStreaming && token) {
+      void refreshQuotaSoon();
+    }
+    wasStreamingRef.current = isStreaming;
+  }, [isStreaming, token, refreshQuotaSoon]);
 
   // Convert chat messages to the Message format expected by ChatArea
   const messages: Message[] = chatMessages.map((msg) => ({
@@ -147,14 +169,6 @@ export default function AiPageClient() {
         return;
       }
 
-      // Check reasoning quota before sending
-      if (isReasoningEnabled && !canUseReasoning) {
-        toast.error("Reasoning quota exceeded", {
-          description: `You've used all ${remainingReasoning}/3 reasoning messages today. Try again tomorrow or upgrade to premium.`,
-        });
-        return;
-      }
-
       // Anonymous user: strict 2 message limit, no reasoning, no tools
       if (!token) {
         if (anonymousMessageCount >= 2) {
@@ -184,22 +198,62 @@ export default function AiPageClient() {
         return;
       }
 
-      // Authenticated user: full features
-      const result = await sendMessage(content, {
-        reasoning: isReasoningEnabled && canUseReasoning,
-        onSessionCreated: (id, title) => {
-          addSession({
-            id,
-            title: title || content.slice(0, 50) + (content.length > 50 ? "..." : ""),
-            created_at: new Date().toISOString(),
+      // Authenticated user: Check quota before sending
+      if (quota) {
+        // Check token quota for standard messages
+        if (!isReasoningEnabled && !canUse("tokens")) {
+          const tier = quota.tier === "free" ? "Free" : "Premium";
+          toast.error("Token quota exceeded", {
+            description: `You've used all your tokens for this period. ${tier === "Free" ? "Upgrade to Premium for 300K tokens per 12 hours, or wait for the next reset." : "Your quota will reset soon."}`,
           });
-        },
-      });
+          return;
+        }
 
-      // Refresh reasoning quota after using it
-      if (isReasoningEnabled && result.sessionId) {
-        // Force refresh to get updated quota
-        setTimeout(() => fetchReasoningQuota(true), 1000);
+        // Check reasoning quota
+        if (isReasoningEnabled && !canUse("reasoning")) {
+          const tier = quota.tier === "free" ? "Free" : "Premium";
+          toast.error("Reasoning quota exceeded", {
+            description: `You've used all ${quota.reasoning.limit} reasoning messages for this period. ${tier === "Free" ? "Upgrade to Premium for 10 reasoning messages per 12 hours, or wait for the next reset." : "Your quota will reset soon."}`,
+          });
+          return;
+        }
+      }
+
+      // Send message
+      try {
+        const result = await sendMessage(content, {
+          reasoning: isReasoningEnabled && canUseReasoning,
+          onSessionCreated: (id, title) => {
+            addSession({
+              id,
+              title: title || content.slice(0, 50) + (content.length > 50 ? "..." : ""),
+              created_at: new Date().toISOString(),
+            });
+          },
+        });
+
+        // Refresh quota after message sent/stream finished (sendMessage resolves after stream ends)
+        await refreshQuotaSoon();
+        
+        // Also refresh reasoning quota if used
+        if (isReasoningEnabled && result.sessionId) {
+          setTimeout(() => fetchReasoningQuota(true), 500);
+        }
+      } catch (error) {
+        console.error("Message send failed:", error);
+        if (error instanceof AIApiError) {
+          if (error.isQuotaError()) {
+            toast.error("Quota exceeded", {
+              description: "You've reached your usage limit. Please wait for the next reset or upgrade your plan.",
+            });
+            // Refresh quota to show updated state
+            await refreshQuotaSoon();
+          } else {
+            toast.error("Failed to send message", {
+              description: error.message,
+            });
+          }
+        }
       }
     },
     [
@@ -208,9 +262,11 @@ export default function AiPageClient() {
       isStreaming,
       isReasoningEnabled,
       canUseReasoning,
-      remainingReasoning,
+      quota,
+      canUse,
       sendMessage,
       addSession,
+      refreshQuotaSoon,
       fetchReasoningQuota,
     ],
   );

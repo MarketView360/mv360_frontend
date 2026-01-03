@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
-import type { SessionSummary, ChatMessage, ReasoningQuota } from "@/lib/utils/jovan/types";
+import type { SessionSummary, ChatMessage, ReasoningQuota, QuotaStatus } from "@/lib/utils/jovan/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -92,15 +92,6 @@ export interface SendMessageParams {
 export interface ChatResponse {
   reply: string;
   sessionId?: string;
-}
-
-export interface QuotaStatus {
-  standard: { used: number; limit: number };
-  reasoning: { used: number; limit: number };
-  premium: { used: number; limit: number };
-  voice: { used: number; limit: number };
-  tier: "free" | "premium";
-  resetsAt: string;
 }
 
 export interface ModelInfo {

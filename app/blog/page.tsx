@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
+import {
   Calendar, 
   Sparkles, 
   Bug, 
@@ -22,7 +22,7 @@ import {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
-interface Changelog {
+interface Blog {
   id: number;
   created_at: string;
   title: string;
@@ -61,45 +61,45 @@ const getTypeBadgeColor = (type: string) => {
   }
 };
 
-export default function ChangelogPage() {
-  const [changelogs, setChangelogs] = useState<Changelog[]>([]);
+export default function BlogPage() {
+  const [blogs, setBlogs] = useState<Blog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedChangelog, setSelectedChangelog] = useState<Changelog | null>(null);
+  const [selectedBlog, setSelectedBlog] = useState<Blog | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState<string>("all");
 
   useEffect(() => {
-    const fetchChangelogs = async () => {
+    const fetchBlogs = async () => {
       try {
-        const response = await fetch(`${API_BASE}/changelog`);
+        const response = await fetch(`${API_BASE}/blog`);
         
         if (!response.ok) {
-          throw new Error(`Failed to fetch changelogs: ${response.statusText}`);
+          throw new Error(`Failed to fetch blogs: ${response.statusText}`);
         }
 
         const data = await response.json();
-        setChangelogs(data || []);
+        setBlogs(data || []);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load changelogs");
+        setError(err instanceof Error ? err.message : "Failed to load blogs");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchChangelogs();
+    fetchBlogs();
   }, []);
 
   // Close modal on Escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && selectedChangelog) {
-        setSelectedChangelog(null);
+      if (e.key === "Escape" && selectedBlog) {
+        setSelectedBlog(null);
       }
     };
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, [selectedChangelog]);
+  }, [selectedBlog]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -124,7 +124,7 @@ export default function ChangelogPage() {
     return `${Math.floor(diffInDays / 365)} years ago`;
   };
 
-  const filterChangelogs = (logs: Changelog[]) => {
+  const filterBlogs = (logs: Blog[]) => {
     return logs.filter((log) => {
       const matchesSearch =
         searchQuery === "" ||
@@ -139,8 +139,8 @@ export default function ChangelogPage() {
     });
   };
 
-  const groupByMonth = (logs: Changelog[]) => {
-    const grouped: Record<string, Changelog[]> = {};
+  const groupByMonth = (logs: Blog[]) => {
+    const grouped: Record<string, Blog[]> = {};
     
     logs.forEach((log) => {
       const date = new Date(log.date);
@@ -158,8 +158,8 @@ export default function ChangelogPage() {
     return grouped;
   };
 
-  const filteredChangelogs = filterChangelogs(changelogs);
-  const groupedChangelogs = groupByMonth(filteredChangelogs);
+  const filteredBlogs = filterBlogs(blogs);
+  const groupedBlogs = groupByMonth(filteredBlogs);
   const types = ["all", "feature", "fix", "improvement", "performance"];
 
   if (loading) {
@@ -189,7 +189,7 @@ export default function ChangelogPage() {
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-red-900 dark:text-red-300 mb-1">
-                  Error loading changelog
+                  Error loading blog
                 </h3>
                 <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
               </div>
@@ -210,10 +210,10 @@ export default function ChangelogPage() {
               <Sparkles className="h-8 w-8 text-brand" />
             </div>
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold font-heading bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 dark:from-white dark:via-slate-200 dark:to-white bg-clip-text text-transparent">
-              Changelog
+              Blog
             </h1>
           </div>
-          <p className="text-lg md:text-xl text-slate-600 dark:text-slate-400 max-w-3xl">
+          <p className="text-lg md:text-xl text-slate-600 dark:text-slate-400 max-w-3xl mt-2">
             Stay up to date with the latest features, improvements, and bug fixes. We&apos;re constantly improving to serve you better.
           </p>
         </div>
@@ -226,7 +226,7 @@ export default function ChangelogPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <Input
                 type="text"
-                placeholder="Search changelogs..."
+                placeholder="Search blogs..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:border-brand focus:ring-brand"
@@ -234,25 +234,25 @@ export default function ChangelogPage() {
             </div>
 
             {/* Type Filter */}
-            <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
+            <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-hide">
               {types.map((type) => (
                 <Button
                   key={type}
                   variant={selectedType === type ? "default" : "outline"}
                   size="sm"
                   onClick={() => setSelectedType(type)}
-                  className={`shrink-0 h-12 ${
+                  className={`shrink-0 h-12 px-6 rounded-xl transition-all duration-200 ${
                     selectedType === type
-                      ? "bg-brand hover:bg-brand/90 text-white"
-                      : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      ? "bg-brand hover:bg-brand/90 text-white border-transparent shadow-lg shadow-brand/20"
+                      : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-brand/50 hover:text-brand dark:hover:text-brand"
                   }`}
                 >
                   {type === "all" ? (
                     <Filter className="h-4 w-4 mr-2" />
                   ) : (
-                    <span className="mr-2">{getTypeIcon(type)}</span>
+                    <span className="mr-2 opacity-80">{getTypeIcon(type)}</span>
                   )}
-                  <span className="capitalize">{type}</span>
+                  <span className="capitalize font-medium">{type}</span>
                 </Button>
               ))}
             </div>
@@ -262,19 +262,19 @@ export default function ChangelogPage() {
           <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
             <Clock className="h-4 w-4" />
             <span>
-              {filteredChangelogs.length} {filteredChangelogs.length === 1 ? "update" : "updates"} found
+              {filteredBlogs.length} {filteredBlogs.length === 1 ? "post" : "posts"} found
             </span>
           </div>
         </div>
 
-        {/* Changelog Entries */}
-        {Object.keys(groupedChangelogs).length === 0 ? (
+        {/* Blog Entries */}
+        {Object.keys(groupedBlogs).length === 0 ? (
           <div className="text-center py-20">
             <div className="inline-flex p-6 bg-slate-100 dark:bg-slate-800/50 rounded-2xl mb-6">
               <Calendar className="h-16 w-16 text-slate-400 dark:text-slate-600" />
             </div>
             <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">
-              {searchQuery || selectedType !== "all" ? "No results found" : "No updates yet"}
+              {searchQuery || selectedType !== "all" ? "No results found" : "No posts yet"}
             </h3>
             <p className="text-slate-600 dark:text-slate-400 max-w-md mx-auto">
               {searchQuery || selectedType !== "all"
@@ -295,7 +295,7 @@ export default function ChangelogPage() {
           </div>
         ) : (
           <div className="space-y-16">
-            {Object.entries(groupedChangelogs).map(([monthYear, logs]) => (
+            {Object.entries(groupedBlogs).map(([monthYear, logs]) => (
               <div key={monthYear} className="relative">
                 {/* Month Header with decorative line */}
                 <div className="flex items-center gap-6 mb-8">
@@ -320,7 +320,7 @@ export default function ChangelogPage() {
                     >
                       <CardContent className="p-0">
                         <button
-                          onClick={() => setSelectedChangelog(log)}
+                          onClick={() => setSelectedBlog(log)}
                           className="w-full text-left"
                         >
                           <div className="flex flex-col sm:flex-row gap-6 p-6 sm:p-8">
@@ -378,14 +378,14 @@ export default function ChangelogPage() {
           </div>
         )}
 
-        {/* Modal for full changelog view */}
-        {selectedChangelog && (
+        {/* Modal for full blog view */}
+        {selectedBlog && (
           <div
             className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn"
-            onClick={() => setSelectedChangelog(null)}
+            onClick={() => setSelectedBlog(null)}
             role="dialog"
             aria-modal="true"
-            aria-labelledby="changelog-title"
+            aria-labelledby="blog-title"
           >
             <div
               className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl animate-slideUp"
@@ -395,33 +395,33 @@ export default function ChangelogPage() {
               <div className="flex items-start justify-between gap-6 p-6 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-br from-slate-50 to-white dark:from-slate-800 dark:to-slate-900">
                 <div className="flex-1 space-y-4">
                   <div className="flex flex-wrap items-center gap-3">
-                    {selectedChangelog.type && (
+                    {selectedBlog.type && (
                       <Badge
                         variant="outline"
-                        className={`${getTypeBadgeColor(selectedChangelog.type)} font-semibold`}
+                        className={`${getTypeBadgeColor(selectedBlog.type)} font-semibold`}
                       >
                         <span className="flex items-center gap-1.5">
-                          {getTypeIcon(selectedChangelog.type)}
-                          <span className="capitalize">{selectedChangelog.type}</span>
+                          {getTypeIcon(selectedBlog.type)}
+                          <span className="capitalize">{selectedBlog.type}</span>
                         </span>
                       </Badge>
                     )}
                     <span className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
                       <Calendar className="h-4 w-4" />
-                      {formatDate(selectedChangelog.date)}
+                      {formatDate(selectedBlog.date)}
                     </span>
                   </div>
                   <h2
-                    id="changelog-title"
+                    id="blog-title"
                     className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white leading-tight"
                   >
-                    {selectedChangelog.title}
+                    {selectedBlog.title}
                   </h2>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setSelectedChangelog(null)}
+                  onClick={() => setSelectedBlog(null)}
                   className="shrink-0 h-10 w-10 p-0 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
                 >
                   <X className="h-5 w-5" />
@@ -432,7 +432,7 @@ export default function ChangelogPage() {
               <div className="p-6 md:p-8 overflow-y-auto max-h-[calc(90vh-180px)]">
                 <div className="prose prose-slate dark:prose-invert max-w-none">
                   <div className="text-base md:text-lg text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
-                    {selectedChangelog.description}
+                    {selectedBlog.description}
                   </div>
                 </div>
               </div>
@@ -441,10 +441,10 @@ export default function ChangelogPage() {
               <div className="flex items-center justify-between p-6 md:p-8 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
                 <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
                   <Clock className="h-4 w-4" />
-                  <span>{getRelativeTime(selectedChangelog.date)}</span>
+                  <span>{getRelativeTime(selectedBlog.date)}</span>
                 </div>
                 <Button
-                  onClick={() => setSelectedChangelog(null)}
+                  onClick={() => setSelectedBlog(null)}
                   variant="outline"
                   className="border-slate-200 dark:border-slate-700"
                 >

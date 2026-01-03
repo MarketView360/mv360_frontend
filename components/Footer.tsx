@@ -99,8 +99,8 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/changelog" className="hover:text-brand transition-colors">
-                  Changelog
+                <Link href="/blog" className="hover:text-brand transition-colors">
+                  Blog
                 </Link>
               </li>
             </ul>
