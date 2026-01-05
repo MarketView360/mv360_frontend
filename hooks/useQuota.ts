@@ -2,7 +2,10 @@
 
 import { useEffect, useCallback, useSyncExternalStore } from "react";
 
-const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000";
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ??
+  process.env.NEXT_PUBLIC_BACKEND_URL ??
+  "http://localhost:3001";
 
 export interface QuotaStatus {
   tokens: { used: number; limit: number; remaining: number };
@@ -47,12 +50,7 @@ async function fetchQuotaIntoStore(token: string | null, forceFresh: boolean = f
   emitChange();
 
   if (!token) {
-    store.quota = {
-      tokens: { used: 5000, limit: 30000, remaining: 25000 },
-      reasoning: { used: 1, limit: 3, remaining: 2 },
-      resetsAt: new Date(Date.now() + 1000 * 60 * 60 * 6).toISOString(),
-      tier: "free",
-    };
+    store.quota = null;
     store.loading = false;
     emitChange();
     return;
@@ -60,7 +58,7 @@ async function fetchQuotaIntoStore(token: string | null, forceFresh: boolean = f
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
 
     const url = forceFresh ? `${API_BASE}/ai/quota?fresh=1` : `${API_BASE}/ai/quota`;
     const response = await fetch(url, {
@@ -80,12 +78,7 @@ async function fetchQuotaIntoStore(token: string | null, forceFresh: boolean = f
     store.quota = data;
   } catch (err) {
     console.error("Quota fetch error:", err);
-    store.quota = {
-      tokens: { used: 5000, limit: 30000, remaining: 25000 },
-      reasoning: { used: 1, limit: 3, remaining: 2 },
-      resetsAt: new Date(Date.now() + 1000 * 60 * 60 * 6).toISOString(),
-      tier: "free",
-    };
+    // Keep last known quota if available; don't overwrite with dummy values.
     store.error = err instanceof Error ? err.message : "Unknown error";
   } finally {
     store.loading = false;

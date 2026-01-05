@@ -131,12 +131,32 @@ export const aiApi = {
 
     const data = await response.json();
     
-    return data.map((msg: { id?: string; role: string; content: string; created_at: string }, index: number) => ({
-      id: msg.id || `${sessionId}-${index}`,
-      role: msg.role as "user" | "assistant",
-      content: msg.content,
-      timestamp: msg.created_at,
-    }));
+    return data.map(
+      (msg: { id?: string; role: string; content: string; created_at: string }, index: number) => {
+        const rawContent = msg.content ?? "";
+
+        // Extract persisted reasoning block if present
+        const reasoningMatches = rawContent.match(/\[REASONING\]([\s\S]*?)\[\/REASONING\]/g);
+        const reasoning = reasoningMatches
+          ? reasoningMatches
+              .map((m) => m.replace(/\[REASONING\]|\[\/REASONING\]/g, ""))
+              .join("")
+          : undefined;
+
+        const cleanedContent = rawContent.replace(
+          /\[REASONING\][\s\S]*?\[\/REASONING\]/g,
+          "",
+        );
+
+        return {
+          id: msg.id || `${sessionId}-${index}`,
+          role: msg.role as "user" | "assistant",
+          content: cleanedContent,
+          reasoning,
+          timestamp: msg.created_at,
+        };
+      },
+    );
   },
 
   async renameSession(sessionId: string, title: string): Promise<void> {
@@ -180,7 +200,7 @@ export const aiApi = {
   async *streamMessage(
     params: SendMessageParams,
     signal?: AbortSignal
-  ): AsyncGenerator<{ text: string; sessionId?: string; title?: string; toolUse?: string }, void, unknown> {
+  ): AsyncGenerator<{ text: string; reasoning?: string; sessionId?: string; title?: string; toolUse?: string }, void, unknown> {
     const token = await getAuthToken();
     
     let response: Response;
@@ -247,7 +267,23 @@ export const aiApi = {
             toolUse = "calculator";
           }
           
-          yield { text: text.replace(/\[TOOL:\w+\]/g, ""), sessionId, title, toolUse };
+          // Extract reasoning content from the stream
+          let reasoning: string | undefined;
+          let cleanText = text;
+          
+          // Parse [REASONING]...[/REASONING] tags
+          const reasoningMatches = text.match(/\[REASONING\]([\s\S]*?)\[\/REASONING\]/g);
+          if (reasoningMatches) {
+            reasoning = reasoningMatches
+              .map(match => match.replace(/\[REASONING\]|\[\/REASONING\]/g, ""))
+              .join("");
+            cleanText = text.replace(/\[REASONING\][\s\S]*?\[\/REASONING\]/g, "");
+          }
+          
+          // Clean tool tags
+          cleanText = cleanText.replace(/\[TOOL:\w+\]/g, "");
+          
+          yield { text: cleanText, reasoning, sessionId, title, toolUse };
         }
       }
     } finally {

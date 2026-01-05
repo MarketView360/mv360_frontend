@@ -92,6 +92,7 @@ export function useChatStream(token: string | null, sessionId: string | null) {
         content: "",
         timestamp: new Date().toISOString(),
         isStreaming: true,
+        reasoning: options.reasoning ? "" : undefined,
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
@@ -107,6 +108,7 @@ export function useChatStream(token: string | null, sessionId: string | null) {
         ];
 
         let fullContent = "";
+        let fullReasoning = "";
         let resolvedSessionId: string | undefined = sessionId || undefined;
         let resolvedTitle: string | undefined;
 
@@ -119,6 +121,11 @@ export function useChatStream(token: string | null, sessionId: string | null) {
           abortControllerRef.current.signal
         )) {
           fullContent += chunk.text;
+          
+          // Accumulate reasoning content
+          if (chunk.reasoning) {
+            fullReasoning += chunk.reasoning;
+          }
           
           // Handle new session creation
           if (chunk.sessionId && !resolvedSessionId) {
@@ -143,7 +150,11 @@ export function useChatStream(token: string | null, sessionId: string | null) {
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantMessageId
-                ? { ...m, content: fullContent }
+                ? { 
+                    ...m, 
+                    content: fullContent,
+                    reasoning: fullReasoning || undefined,
+                  }
                 : m
             )
           );

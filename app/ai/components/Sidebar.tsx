@@ -265,7 +265,7 @@ export function Sidebar({
                                                         <Button
                                                           variant="ghost"
                                                           size="icon"
-                                                          className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 focus:opacity-100 focus-visible:opacity-100 transition-opacity text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                                          className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-100 focus:opacity-100 focus-visible:opacity-100 transition-opacity text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                                                           onPointerDown={(e) => e.stopPropagation()}
                                                         >
                                                           <MoreHorizontal className="w-3 h-3" />

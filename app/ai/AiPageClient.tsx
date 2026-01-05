@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { useChatSession } from "@/lib/hooks/useChatSession";
 import { useChatStream } from "@/lib/hooks/useChatStream";
-import { useReasoningQuota } from "@/lib/hooks/useReasoningQuota";
 import { useQuota } from "@/hooks/useQuota";
 import { AIApiError } from "@/lib/api/ai";
 
@@ -90,10 +89,31 @@ export default function AiPageClient() {
     clearMessages,
   } = useChatStream(token, activeSessionId);
 
-  const { canUseReasoning, fetchReasoningQuota } = useReasoningQuota(token);
-
   // Real-time quota tracking
   const { quota, refetch: refetchQuota, canUse } = useQuota(token);
+
+  // If reasoning quota is exhausted, automatically turn off reasoning mode.
+  useEffect(() => {
+    if (isReasoningEnabled && quota && quota.reasoning.remaining <= 0) {
+      setIsReasoningEnabled(false);
+    }
+  }, [isReasoningEnabled, quota]);
+
+  const handleReasoningChange = useCallback(
+    (enabled: boolean) => {
+      if (enabled && quota && quota.reasoning.remaining <= 0) {
+        const tier = quota.tier === "free" ? "Free" : "Premium";
+        toast.error("Reasoning quota exceeded", {
+          description: `You've used all ${quota.reasoning.limit} reasoning messages for this period. ${tier === "Free" ? "Upgrade to Premium for 10 reasoning messages per 12 hours, or wait for the next reset." : "Your quota will reset soon."}`,
+        });
+        setIsReasoningEnabled(false);
+        return;
+      }
+
+      setIsReasoningEnabled(enabled);
+    },
+    [quota],
+  );
 
   const wasStreamingRef = useRef(false);
 
@@ -104,6 +124,17 @@ export default function AiPageClient() {
     setTimeout(() => {
       void refetchQuota();
     }, 700);
+    // 3) another retry for slower DB commits / network
+    setTimeout(() => {
+      void refetchQuota();
+    }, 1500);
+    // 4) additional retries for slow DB commit paths
+    setTimeout(() => {
+      void refetchQuota();
+    }, 3000);
+    setTimeout(() => {
+      void refetchQuota();
+    }, 6000);
   }, [refetchQuota]);
 
   // When a stream finishes, refresh quota so the quota bar updates without needing a page refresh.
@@ -123,6 +154,7 @@ export default function AiPageClient() {
     timestamp: new Date(msg.timestamp),
     model: selectedModel,
     isReasoning: msg.reasoning ? true : false,
+    reasoning: msg.reasoning,
     isStreaming: msg.isStreaming,
   }));
 
@@ -221,8 +253,8 @@ export default function AiPageClient() {
 
       // Send message
       try {
-        const result = await sendMessage(content, {
-          reasoning: isReasoningEnabled && canUseReasoning,
+        await sendMessage(content, {
+          reasoning: isReasoningEnabled,
           onSessionCreated: (id, title) => {
             addSession({
               id,
@@ -231,14 +263,6 @@ export default function AiPageClient() {
             });
           },
         });
-
-        // Refresh quota after message sent/stream finished (sendMessage resolves after stream ends)
-        await refreshQuotaSoon();
-        
-        // Also refresh reasoning quota if used
-        if (isReasoningEnabled && result.sessionId) {
-          setTimeout(() => fetchReasoningQuota(true), 500);
-        }
       } catch (error) {
         console.error("Message send failed:", error);
         if (error instanceof AIApiError) {
@@ -261,13 +285,11 @@ export default function AiPageClient() {
       anonymousMessageCount,
       isStreaming,
       isReasoningEnabled,
-      canUseReasoning,
       quota,
       canUse,
       sendMessage,
       addSession,
       refreshQuotaSoon,
-      fetchReasoningQuota,
     ],
   );
 
@@ -344,9 +366,8 @@ export default function AiPageClient() {
               selectedModelId={selectedModel}
               onModelChange={setSelectedModel}
               isReasoningEnabled={isReasoningEnabled}
-              onReasoningChange={setIsReasoningEnabled}
-              reasoningLabel="Reasoning"
-              disabled={!canUseReasoning && isReasoningEnabled}
+              onReasoningChange={handleReasoningChange}
+              disabled={isStreaming}
             />
           </div>
         </header>

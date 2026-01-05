@@ -1,12 +1,31 @@
 "use client";
 
 import React, { useRef, useEffect, useState, useCallback } from "react";
-import { User, Copy, ThumbsUp, ThumbsDown, RefreshCw, Check } from "lucide-react";
+import {
+  User,
+  Copy,
+  ThumbsUp,
+  ThumbsDown,
+  RefreshCw,
+  Check,
+  Download,
+  FileText,
+  FileJson,
+  FileDown,
+} from "lucide-react";
+import { jsPDF } from "jspdf";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 import { JovanResponse, stripJovanTags } from "../utils/jovanParser";
 import { Icons } from "./Icons";
+import { ReasoningBlock, ReasoningIndicator } from "./ReasoningBlock";
 
 export interface Message {
   id: string;
@@ -16,6 +35,7 @@ export interface Message {
   timestamp: Date;
   isReasoning?: boolean;
   isStreaming?: boolean;
+  reasoning?: string;
 }
 
 interface ChatAreaProps {
@@ -27,6 +47,147 @@ export function ChatArea({ messages }: ChatAreaProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const assistantBubbleRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const toExportPlainText = useCallback((content: string) => {
+    const stripped = stripJovanTags(content);
+    return stripped
+      // Remove any remaining tags (defensive; should be rare)
+      .replace(/\{\{[^}]+\}\}/g, "")
+      // Normalize line endings
+      .replace(/\r\n?/g, "\n")
+      // Drop control chars that can confuse PDF encoding (keep \n and \t)
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+      // Normalize whitespace
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  }, []);
+
+  const handleExport = useCallback(
+    async (message: Message, format: "pdf" | "json" | "txt") => {
+      try {
+        const plainText = toExportPlainText(message.content);
+
+        const safeTimestamp = message.timestamp
+          .toISOString()
+          .replace(/[:.]/g, "-")
+          .replace("T", "_")
+          .replace("Z", "");
+
+        const filenameBase = `ai-response_${safeTimestamp}`;
+
+        const downloadBlob = (blob: Blob, filename: string) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        };
+
+        if (format === "txt") {
+          const blob = new Blob([plainText], { type: "text/plain;charset=utf-8" });
+          downloadBlob(blob, `${filenameBase}.txt`);
+          toast.success("Exported TXT");
+          return;
+        }
+
+        if (format === "json") {
+          const payload = {
+            id: message.id,
+            role: message.role,
+            model: message.model ?? null,
+            timestamp: message.timestamp.toISOString(),
+            reasoning: message.reasoning ?? null,
+            content: {
+              raw: message.content,
+              plain: plainText,
+            },
+          };
+          const blob = new Blob([JSON.stringify(payload, null, 2)], {
+            type: "application/json;charset=utf-8",
+          });
+          downloadBlob(blob, `${filenameBase}.json`);
+          toast.success("Exported JSON");
+          return;
+        }
+
+        const doc = new jsPDF({ unit: "pt", format: "a4" });
+        const margin = 48;
+
+        // Prefer formatted export by capturing the rendered assistant bubble.
+        const el = assistantBubbleRefs.current[message.id];
+        if (el) {
+          const domToImage = await import("dom-to-image-more");
+          const imgData = await domToImage.toPng(el, {
+            bgcolor: "#ffffff",
+            quality: 1,
+            style: {
+              transform: "scale(2)",
+              transformOrigin: "top left",
+            },
+            width: el.scrollWidth * 2,
+            height: el.scrollHeight * 2,
+          });
+
+          const pageWidth = doc.internal.pageSize.getWidth();
+          const pageHeight = doc.internal.pageSize.getHeight();
+          const usableWidth = pageWidth - margin * 2;
+          const usableHeight = pageHeight - margin * 2;
+
+          // We rendered with scale(2) so use the element's scrollWidth/Height * 2 for aspect.
+          const imgWidth = usableWidth;
+          const imgHeight = ((el.scrollHeight * 2) * imgWidth) / (el.scrollWidth * 2);
+
+          let remaining = imgHeight;
+          const y = margin;
+          let offset = 0;
+
+          while (remaining > 0) {
+            doc.addImage(imgData, "PNG", margin, y - offset, imgWidth, imgHeight);
+            remaining -= usableHeight;
+            offset += usableHeight;
+
+            if (remaining > 0) {
+              doc.addPage();
+            }
+          }
+
+          doc.save(`${filenameBase}.pdf`);
+          toast.success("Exported PDF");
+          return;
+        }
+
+        // Fallback: plain-text PDF if bubble ref is missing.
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const maxWidth = pageWidth - margin * 2;
+
+        const header = message.model
+          ? `AI Response (${getModelName(message.model)})`
+          : "AI Response";
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.text(header, margin, 64);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.text(`Generated: ${message.timestamp.toLocaleString()}`, margin, 84);
+
+        doc.setFontSize(11);
+        const lines = doc.splitTextToSize(plainText || "(empty)", maxWidth);
+        doc.text(lines, margin, 116);
+
+        doc.save(`${filenameBase}.pdf`);
+        toast.success("Exported PDF");
+      } catch (err) {
+        console.error("Export failed:", err);
+        toast.error("Failed to export");
+      }
+    },
+    [toExportPlainText],
+  );
 
   const handleCopy = useCallback(async (content: string, messageId: string) => {
     try {
@@ -106,6 +267,10 @@ export function ChatArea({ messages }: ChatAreaProps) {
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                   {message.role === "user" ? "You" : getModelName(message.model)}
                 </span>
+                {/* Show reasoning indicator badge for assistant messages with reasoning */}
+                {message.role === "assistant" && message.reasoning !== undefined && (
+                  <ReasoningIndicator isActive={message.isStreaming && !message.content} />
+                )}
                 <span className="text-[10px] text-slate-400 dark:text-slate-500">
                     {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
@@ -116,14 +281,28 @@ export function ChatArea({ messages }: ChatAreaProps) {
                 message.role === "user" 
                   ? "bg-indigo-600 text-white rounded-tr-sm text-[15px] leading-relaxed" 
                   : "bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-sm"
-              )}>
+              )}
+              ref={(node) => {
+                if (message.role === "assistant") {
+                  assistantBubbleRefs.current[message.id] = node;
+                }
+              }}>
                 {message.role === "user" ? (
                   <div className="whitespace-pre-wrap">{message.content}</div>
                 ) : (
-                  <JovanResponse 
-                    content={message.content} 
-                    isStreaming={message.isStreaming} 
-                  />
+                  <>
+                    {/* Reasoning block - shown when reasoning content exists */}
+                    {(message.reasoning !== undefined) && (
+                      <ReasoningBlock 
+                        reasoning={message.reasoning} 
+                        isStreaming={message.isStreaming && !message.content} 
+                      />
+                    )}
+                    <JovanResponse 
+                      content={message.content} 
+                      isStreaming={message.isStreaming} 
+                    />
+                  </>
                 )}
               </div>
 
@@ -151,6 +330,41 @@ export function ChatArea({ messages }: ChatAreaProps) {
                     <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                         <RefreshCw className="w-3 h-3" />
                     </Button>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                        >
+                          <Download className="w-3 h-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" side="top" className="w-44">
+                        <DropdownMenuItem
+                          onClick={() => handleExport(message, "pdf")}
+                          className="cursor-pointer"
+                        >
+                          <FileDown className="w-4 h-4 text-red-600" />
+                          <span className="ml-2">Export PDF</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleExport(message, "json")}
+                          className="cursor-pointer"
+                        >
+                          <FileJson className="w-4 h-4 text-blue-600" />
+                          <span className="ml-2">Export JSON</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleExport(message, "txt")}
+                          className="cursor-pointer"
+                        >
+                          <FileText className="w-4 h-4 text-slate-600" />
+                          <span className="ml-2">Export TXT</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
               )}
             </div>
