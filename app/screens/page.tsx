@@ -133,7 +133,7 @@ function ScreensPageContent() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20 font-sans transition-colors duration-300">
+    <div className="min-h-full bg-slate-50 dark:bg-slate-950 pb-20 font-sans transition-colors duration-300">
       {/* Header */}
       <div className="bg-linear-to-br from-white via-slate-50/50 to-white dark:from-slate-900 dark:via-slate-900/50 dark:to-slate-900 border-b border-slate-200 dark:border-slate-800 py-8 relative overflow-hidden transition-colors duration-300">
         <div className="absolute inset-0 bg-slate-50/50 dark:bg-slate-900/50"></div>

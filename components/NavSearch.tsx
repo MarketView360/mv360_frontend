@@ -30,9 +30,10 @@ const POPULAR_TICKERS: Record<string, string> = {
 
 function searchTickers(query: string) {
   const q = query.toUpperCase();
+  const qLower = query.toLowerCase();
   return Object.entries(POPULAR_TICKERS)
     .filter(([ticker, name]) =>
-      ticker.startsWith(q) || name.toLowerCase().includes(query.toLowerCase())
+      ticker.startsWith(q) || name.toLowerCase().includes(qLower)
     )
     .slice(0, 5)
     .map(([ticker, name]) => ({ ticker, name }));
@@ -127,7 +128,7 @@ export function NavSearch() {
       </form>
 
       {showSuggestions && (
-        <div className="absolute top-full mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg z-50 overflow-hidden">
+        <div className="absolute top-full mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg z-[100] overflow-hidden">
           {suggestions.map((s, i) => (
             <button
               key={s.ticker}

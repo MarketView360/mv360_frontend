@@ -173,7 +173,7 @@ async function fetchValuationHistory(ticker: string) {
 // Loading Components
 function PageSkeleton() {
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-full bg-slate-50 dark:bg-slate-950">
       <div className="h-16 border-b border-slate-200 dark:border-slate-800 animate-pulse bg-white dark:bg-slate-900" />
       <div className="mx-auto max-w-[1600px] py-8 px-4 md:px-8 lg:px-12 space-y-8">
         <div className="flex flex-col md:flex-row gap-6">
@@ -223,7 +223,7 @@ async function CompanyContent({ ticker }: { ticker: string }) {
     const data = transformData(companyData, pricesData, valuationHistory);
 
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20">
+      <div className="min-h-full bg-slate-50 dark:bg-slate-950 pb-20">
         {/* Sticky Header */}
         <PageHeader ticker={ticker} />
 

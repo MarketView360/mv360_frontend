@@ -10,7 +10,7 @@ import { ModelSelector } from "./components/ModelSelector";
 import { LoginRequired } from "./components/LoginRequired";
 import { PanelLeftOpen, StopCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/providers/AuthProvider";
 import { useChatSession } from "@/lib/hooks/useChatSession";
 import { useChatStream } from "@/lib/hooks/useChatStream";
 import { useQuota } from "@/hooks/useQuota";
@@ -25,49 +25,21 @@ export default function AiPageClient() {
   const searchParams = useSearchParams();
   const urlSessionId = searchParams.get("session");
 
+  const { session, loading: isAuthLoading } = useAuth();
+  const token = session?.access_token ?? null;
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [selectedModel, setSelectedModel] = useState("gpt-oss");
   const [isReasoningEnabled, setIsReasoningEnabled] = useState(false);
   const [greeting, setGreeting] = useState("");
-  const [token, setToken] = useState<string | null>(null);
   const [anonymousMessageCount, setAnonymousMessageCount] = useState(0);
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
-  // Get auth token
+  // Disable reasoning if user logs out
   useEffect(() => {
-    const supabase = createClient();
-
-    const getToken = async () => {
-      const { data } = await supabase.auth.getSession();
-      setToken(data.session?.access_token || null);
-
-      // Disable reasoning if user logs out
-      if (!data.session) {
-        setIsReasoningEnabled(false);
-      }
-
-      // Auth check complete
-      setIsAuthLoading(false);
-    };
-
-    getToken();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setToken(session?.access_token || null);
-
-      // Disable reasoning if user logs out
-      if (!session) {
-        setIsReasoningEnabled(false);
-      }
-
-      // Auth check complete
-      setIsAuthLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+    if (!token) {
+      setIsReasoningEnabled(false);
+    }
+  }, [token]);
 
   // Use real hooks with URL session ID
   const {
@@ -91,6 +63,13 @@ export default function AiPageClient() {
 
   // Real-time quota tracking
   const { quota, refetch: refetchQuota, canUse } = useQuota(token);
+
+  // On first load (or after auth resolves), force a fresh quota fetch so the bar
+  // updates immediately without requiring a user interaction.
+  useEffect(() => {
+    if (!token) return;
+    void refetchQuota();
+  }, [token, refetchQuota]);
 
   // If reasoning quota is exhausted, automatically turn off reasoning mode.
   useEffect(() => {

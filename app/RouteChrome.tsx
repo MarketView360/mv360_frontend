@@ -36,23 +36,26 @@ export default function RouteChrome({
     <div
       className={cn(
         "flex flex-col w-full",
-        isFullScreen ? "h-[100dvh] overflow-hidden" : "min-h-screen"
+        "h-dvh overflow-hidden"
       )}
     >
       {!isFullScreen && pathname !== "/ai" && <NavigationBar />}
       {pathname === "/ai" && <NavigationBar />}
 
-      <main
-        className={cn(
-          "flex-1 w-full relative",
-          isFullScreen && "flex flex-col overflow-hidden"
-        )}
-      >
-        {children}
-      </main>
+      {isFullScreen ? (
+        <main className="flex-1 w-full relative flex flex-col overflow-hidden">
+          {children}
+        </main>
+      ) : (
+        <div className="app-scroll custom-scrollbar flex-1 w-full overflow-y-auto">
+          <main className="w-full relative">
+            {children}
+          </main>
+          <Footer />
+        </div>
+      )}
 
       <NetworkStatusWatcher />
-      {!isFullScreen && pathname !== "/ai" && <Footer />}
       {!isFullScreen && pathname !== "/ai" && <AiChatWidget />}
     </div>
   );

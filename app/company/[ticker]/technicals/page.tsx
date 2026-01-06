@@ -47,7 +47,7 @@ const api = {
 // Loading skeleton
 function PageSkeleton() {
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-full bg-slate-50 dark:bg-slate-950">
       <div className="h-16 border-b border-slate-200 dark:border-slate-800 animate-pulse bg-white dark:bg-slate-900" />
       <div className="mx-auto max-w-[1600px] py-8 px-4 md:px-8 lg:px-12 space-y-8">
         <div className="h-24 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse" />
@@ -82,9 +82,9 @@ async function TechnicalsPageWrapper({ ticker }: { ticker: string }) {
   const { company, metrics } = companyData;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20">
+    <div className="min-h-full bg-slate-50 dark:bg-slate-950 pb-20">
       {/* Header */}
-      <div className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-slate-200 dark:border-slate-800">
+      <div className="sticky top-16 z-10 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-slate-200 dark:border-slate-800">
         <div className="mx-auto max-w-[1600px] py-3 px-4 md:px-8 lg:px-12">
           <nav className="flex items-center gap-2 text-sm">
             <Link href="/" className="text-slate-500 hover:text-brand transition-colors">Home</Link>

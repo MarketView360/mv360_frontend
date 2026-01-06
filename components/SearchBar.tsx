@@ -690,8 +690,11 @@ const POPULAR_TICKERS: Record<string, string> = {
 
 function searchTickers(query: string) {
   const q = query.toUpperCase();
+  const qLower = query.toLowerCase();
   return Object.entries(POPULAR_TICKERS)
-    .filter(([ticker]) => ticker.startsWith(q))
+    .filter(([ticker, name]) => 
+      ticker.startsWith(q) || name.toLowerCase().includes(qLower) || name.toUpperCase().includes(q)
+    )
     .slice(0, 5)
     .map(([ticker, name]) => ({ ticker, name }));
 }
@@ -871,7 +874,7 @@ export default function SearchBar() {
       {(showSuggestions || showRecents) && (
         <div
           id="search-dropdown"
-          className="absolute top-full mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl z-50 overflow-hidden"
+          className="absolute top-full mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl z-[100] overflow-hidden"
         >
           {showRecents && !!recent.length && (
             <>

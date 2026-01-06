@@ -115,7 +115,7 @@ function MarketPageContent() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20 font-sans transition-colors duration-300">
+    <div className="min-h-full bg-slate-50 dark:bg-slate-950 pb-20 font-sans transition-colors duration-300">
       {/* Breadcrumbs + Copy Link */}
       <div className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
         <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-12 py-4 flex items-center justify-between">

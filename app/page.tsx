@@ -5,9 +5,9 @@ import SearchBar from "@/components/SearchBar";
 
 export default async function Home() {
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans selection:bg-brand/20 transition-colors duration-300">
+    <div className="min-h-full bg-slate-50 dark:bg-slate-950 flex flex-col font-sans selection:bg-brand/20 transition-colors duration-300">
       {/* Hero Section */}
-      <section className="w-full py-24 md:py-32 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 relative overflow-hidden">
+      <section className="w-full py-24 md:py-32 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 relative">
         {/* Background Decorative Elements */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
           <div className="absolute -top-[20%] -right-[10%] w-[600px] h-[600px] rounded-full bg-brand/5 blur-3xl opacity-50"></div>

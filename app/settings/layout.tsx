@@ -46,7 +46,7 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
   const pathname = usePathname();
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-full bg-slate-50 dark:bg-slate-950">
       <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-12 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">

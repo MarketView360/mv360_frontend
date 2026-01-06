@@ -7,7 +7,6 @@ import { UserAvatar } from "@/components/auth/UserAvatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -15,6 +14,7 @@ import {
   Mail,
   Crown,
   Calendar,
+  AlertCircle,
   MessageSquare,
   Sparkles,
   Save,
@@ -150,7 +150,7 @@ export default function ProfilePage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      <div className="min-h-full bg-slate-50 dark:bg-slate-950">
         <div className="mx-auto max-w-4xl py-10 px-4 md:px-8 space-y-6">
           <Skeleton className="h-10 w-48" />
           <div className="grid gap-6 md:grid-cols-3">
@@ -185,7 +185,7 @@ export default function ProfilePage() {
     : "—";
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-full bg-slate-50 dark:bg-slate-950">
       <div className="mx-auto max-w-4xl py-10 px-4 md:px-8 space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">

@@ -26,7 +26,7 @@ export function NewsHeader() {
   }, []);
 
   return (
-    <header className="border-b border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 backdrop-blur sticky top-0 z-20">
+    <header className="border-b border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 backdrop-blur sticky top-16 z-10">
       <div className="mx-auto max-w-[1400px] px-4 md:px-8 py-6 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">

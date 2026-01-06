@@ -11,6 +11,15 @@ body {
 
 html {
   overflow-x: hidden;
+  scrollbar-gutter: stable;
+}
+
+body {
+  overflow: hidden;
+}
+
+.app-scroll {
+  scrollbar-gutter: stable;
 }
 
 :root {
