@@ -1,6 +1,12 @@
 "use client";
 
-import React, { Suspense, useEffect, useMemo, useState, useCallback } from "react";
+import React, {
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+} from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,40 +45,11 @@ import { Label } from "@/components/ui/label";
 import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
 
-interface ScreenerRow {
-  code?: string;
-  name?: string;
-  exchange?: string;
-  market_capitalization?: number;
-  pe_ratio?: number;
-  forward_pe?: number;
-  peg?: number;
-  pb?: number;
-  price_to_sales?: number;
-  price_to_cash_flow?: number;
-  ev_ebitda?: number;
-  ev_sales?: number;
-  current_ratio?: number;
-  quick_ratio?: number;
-  debt_to_equity?: number;
-  lt_debt_to_equity?: number;
-  eps_ttm?: number;
-  diluted_eps_ttm?: number;
-  revenue_ttm?: number;
-  earnings_ttm?: number;
-  sma20?: number;
-  sma50?: number;
-  sma200?: number;
-  beta?: number;
-  perf_3y_p?: number;
-  perf_5y_p?: number;
-  roe?: number;
-  adjusted_close?: number;
-  dividend_yield?: number | null;
-  refund_1d_p?: number;
-  refund_5d_p?: number;
-  [key: string]: unknown;
-}
+// Import screener types aligned with backend
+import type { ScreenerRow } from "@/lib/types/screener";
+
+// Re-export for local usage (backward compatibility)
+export type { ScreenerRow };
 
 // Custom hook for debounced search
 function useDebounce<T>(value: T, delay: number): T {
@@ -121,37 +98,42 @@ function ResultsPageContent() {
   const debouncedSearch = useDebounce(searchTerm, 300);
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
     new Set([
-      "code",
+      "ticker",
+      "code", // alias for ticker
       "name",
       "exchange",
       "adjusted_close",
-      "market_capitalization",
+      "market_cap",
       "dividend_yield",
-      "refund_1d_p",
-      "refund_5d_p",
-      // Added critical valuation/quality columns by default
+      "change",
+      "change_percent",
+      // Valuation metrics (using correct backend column names)
       "pe_ratio",
       "forward_pe",
-      "peg",
-      "pb",
-      "price_to_sales",
-      "price_to_cash_flow",
+      "peg_ratio",
+      "price_book_mrq",
+      "price_sales_ttm",
       "ev_ebitda",
-      "ev_sales",
-      "current_ratio",
-      "quick_ratio",
-      "debt_to_equity",
-      "lt_debt_to_equity",
-      "eps_ttm",
+      "ev_revenue",
+      // Financial strength
+      "long_term_debt",
+      "short_term_debt",
+      "net_debt",
+      // Earnings
+      "earnings_share",
       "diluted_eps_ttm",
       "revenue_ttm",
-      "earnings_ttm",
-      "sma20",
-      "sma50",
-      "sma200",
+      // Technical
+      "day_50_ma",
+      "day_200_ma",
       "beta",
-      "perf_3y_p",
-      "perf_5y_p",
+      "week_52_high",
+      "week_52_low",
+      // Profitability
+      "return_on_equity_ttm",
+      "return_on_assets_ttm",
+      "operating_margin_ttm",
+      "profit_margin",
     ])
   );
   const [exporting, setExporting] = useState<string | null>(null);
@@ -270,8 +252,6 @@ function ResultsPageContent() {
         row.market_capitalization?.toString(),
         row.adjusted_close?.toString(),
         row.dividend_yield?.toString(),
-        row.refund_1d_p?.toString(),
-        row.refund_5d_p?.toString(),
       ]
         .filter(Boolean)
         .join(" ")
@@ -331,166 +311,99 @@ function ResultsPageContent() {
         label: string;
         format: (val: unknown) => string | number;
       }[] = [
-          { key: "code", label: "Code", format: (v) => String(v ?? "") },
-          { key: "name", label: "Name", format: (v) => String(v ?? "") },
-          { key: "exchange", label: "Exchange", format: (v) => String(v ?? "") },
-          {
-            key: "adjusted_close",
-            label: "Price",
-            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+        { key: "code", label: "Code", format: (v) => String(v ?? "") },
+        { key: "name", label: "Name", format: (v) => String(v ?? "") },
+        { key: "exchange", label: "Exchange", format: (v) => String(v ?? "") },
+        {
+          key: "adjusted_close",
+          label: "Price",
+          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+        },
+        {
+          key: "market_capitalization",
+          label: "Market Cap",
+          format: (v) => {
+            if (v == null) return "";
+            const n = Number(v);
+            if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+            if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+            if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+            return `$${n.toFixed(0)}`;
           },
-          {
-            key: "market_capitalization",
-            label: "Market Cap",
-            format: (v) => {
-              if (v == null) return "";
-              const n = Number(v);
-              if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
-              if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
-              if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
-              return `$${n.toFixed(0)}`;
-            },
+        },
+        {
+          key: "dividend_yield",
+          label: "Div Yield",
+          format: (v) => (v != null ? `${(Number(v) * 100).toFixed(2)}%` : ""),
+        },
+        {
+          key: "pe_ratio",
+          label: "P/E",
+          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+        },
+        {
+          key: "forward_pe",
+          label: "Fwd P/E",
+          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+        },
+        {
+          key: "peg",
+          label: "PEG",
+          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+        },
+        {
+          key: "pb",
+          label: "P/B",
+          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+        },
+        {
+          key: "price_to_sales",
+          label: "P/S",
+          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+        },
+        {
+          key: "ev_ebitda",
+          label: "EV/EBITDA",
+          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+        },
+        {
+          key: "eps_ttm",
+          label: "EPS (TTM)",
+          format: (v) => (v != null ? `$${Number(v).toFixed(2)}` : ""),
+        },
+        {
+          key: "diluted_eps_ttm",
+          label: "Diluted EPS",
+          format: (v) => (v != null ? `$${Number(v).toFixed(2)}` : ""),
+        },
+        {
+          key: "revenue_ttm",
+          label: "Sales (TTM)",
+          format: (v) => {
+            if (v == null) return "";
+            const n = Number(v);
+            if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+            if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+            if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+            return `$${n.toFixed(0)}`;
           },
-          {
-            key: "dividend_yield",
-            label: "Div Yield",
-            format: (v) => (v != null ? `${(Number(v) * 100).toFixed(2)}%` : ""),
-          },
-          {
-            key: "refund_1d_p",
-            label: "1D %",
-            format: (v) => (v != null ? `${Number(v).toFixed(2)}%` : ""),
-          },
-          {
-            key: "refund_5d_p",
-            label: "5D %",
-            format: (v) => (v != null ? `${Number(v).toFixed(2)}%` : ""),
-          },
-          {
-            key: "pe_ratio",
-            label: "P/E",
-            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-          },
-          {
-            key: "forward_pe",
-            label: "Fwd P/E",
-            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-          },
-          {
-            key: "peg",
-            label: "PEG",
-            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-          },
-          {
-            key: "pb",
-            label: "P/B",
-            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-          },
-          {
-            key: "price_to_sales",
-            label: "P/S",
-            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-          },
-          {
-            key: "price_to_cash_flow",
-            label: "P/C",
-            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-          },
-          {
-            key: "ev_ebitda",
-            label: "EV/EBITDA",
-            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-          },
-          {
-            key: "ev_sales",
-            label: "EV/Sales",
-            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-          },
-          {
-            key: "current_ratio",
-            label: "Current Ratio",
-            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-          },
-          {
-            key: "quick_ratio",
-            label: "Quick Ratio",
-            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-          },
-          {
-            key: "debt_to_equity",
-            label: "Debt/Eq",
-            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-          },
-          {
-            key: "lt_debt_to_equity",
-            label: "LT Debt/Eq",
-            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-          },
-          {
-            key: "eps_ttm",
-            label: "EPS (TTM)",
-            format: (v) => (v != null ? `$${Number(v).toFixed(2)}` : ""),
-          },
-          {
-            key: "diluted_eps_ttm",
-            label: "Diluted EPS",
-            format: (v) => (v != null ? `$${Number(v).toFixed(2)}` : ""),
-          },
-          {
-            key: "revenue_ttm",
-            label: "Sales (TTM)",
-            format: (v) => {
-              if (v == null) return "";
-              const n = Number(v);
-              if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
-              if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
-              if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
-              return `$${n.toFixed(0)}`;
-            },
-          },
-          {
-            key: "earnings_ttm",
-            label: "Earnings (TTM)",
-            format: (v) => {
-              if (v == null) return "";
-              const n = Number(v);
-              if (Math.abs(n) >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
-              if (Math.abs(n) >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
-              if (Math.abs(n) >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
-              return `$${n.toFixed(0)}`;
-            },
-          },
-          {
-            key: "sma20",
-            label: "SMA20",
-            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-          },
-          {
-            key: "sma50",
-            label: "SMA50",
-            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-          },
-          {
-            key: "sma200",
-            label: "SMA200",
-            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-          },
-          {
-            key: "beta",
-            label: "Beta",
-            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-          },
-          {
-            key: "perf_3y_p",
-            label: "Perf 3Y %",
-            format: (v) => (v != null ? `${Number(v).toFixed(2)}%` : ""),
-          },
-          {
-            key: "perf_5y_p",
-            label: "Perf 5Y %",
-            format: (v) => (v != null ? `${Number(v).toFixed(2)}%` : ""),
-          },
-        ];
+        },
+        {
+          key: "return_on_equity_ttm",
+          label: "ROE",
+          format: (v) => (v != null ? `${(Number(v) * 100).toFixed(2)}%` : ""),
+        },
+        {
+          key: "day_50_ma",
+          label: "SMA50",
+          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+        },
+        {
+          key: "day_200_ma",
+          label: "SMA200",
+          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+        },
+      ];
 
       // Filter to only visible columns
       const exportColumns = columnDefs.filter((col) =>
@@ -752,9 +665,7 @@ function ResultsPageContent() {
               </h1>
               <p className="text-sm text-slate-600 dark:text-muted-foreground mt-0.5">
                 <span className="font-medium">Query:</span>{" "}
-                <span className="text-muted-foreground break-all">
-                  {query}
-                </span>
+                <span className="text-muted-foreground break-all">{query}</span>
               </p>
             </div>
           </div>
@@ -797,30 +708,30 @@ function ResultsPageContent() {
                   { key: "adjusted_close", label: "Price" },
                   { key: "market_capitalization", label: "Market Cap" },
                   { key: "dividend_yield", label: "Div Yield" },
-                  { key: "refund_1d_p", label: "1D %" },
-                  { key: "refund_5d_p", label: "5D %" },
+                  { key: "change", label: "Change" },
+                  { key: "change_percent", label: "Change %" },
                   { key: "pe_ratio", label: "P/E" },
                   { key: "forward_pe", label: "Fwd P/E" },
-                  { key: "peg", label: "PEG" },
-                  { key: "pb", label: "P/B" },
-                  { key: "price_to_sales", label: "P/S" },
-                  { key: "price_to_cash_flow", label: "P/C" },
+                  { key: "peg_ratio", label: "PEG" },
+                  { key: "price_book_mrq", label: "P/B" },
+                  { key: "price_sales_ttm", label: "P/S" },
                   { key: "ev_ebitda", label: "EV/EBITDA" },
-                  { key: "ev_sales", label: "EV/Sales" },
-                  { key: "current_ratio", label: "Current Ratio" },
-                  { key: "quick_ratio", label: "Quick Ratio" },
-                  { key: "debt_to_equity", label: "Debt/Eq" },
-                  { key: "lt_debt_to_equity", label: "LT Debt/Eq" },
+                  { key: "ev_revenue", label: "EV/Revenue" },
+                  { key: "return_on_equity_ttm", label: "ROE" },
+                  { key: "return_on_assets_ttm", label: "ROA" },
+                  { key: "operating_margin_ttm", label: "OPM" },
+                  { key: "profit_margin", label: "Profit Margin" },
+                  { key: "net_debt", label: "Net Debt" },
+                  { key: "free_cash_flow", label: "FCF" },
+                  { key: "operating_cash_flow", label: "OCF" },
                   { key: "eps_ttm", label: "EPS (TTM)" },
                   { key: "diluted_eps_ttm", label: "Diluted EPS" },
                   { key: "revenue_ttm", label: "Sales (TTM)" },
-                  { key: "earnings_ttm", label: "Earnings (TTM)" },
-                  { key: "sma20", label: "SMA20" },
-                  { key: "sma50", label: "SMA50" },
-                  { key: "sma200", label: "SMA200" },
+                  { key: "day_50_ma", label: "SMA50" },
+                  { key: "day_200_ma", label: "SMA200" },
                   { key: "beta", label: "Beta" },
-                  { key: "perf_3y_p", label: "Perf 3Y" },
-                  { key: "perf_5y_p", label: "Perf 5Y" },
+                  { key: "week_52_high", label: "52W High" },
+                  { key: "week_52_low", label: "52W Low" },
                 ].map((col) => (
                   <DropdownMenuItem
                     key={col.key}
@@ -1082,26 +993,6 @@ function ResultsPageContent() {
                             </div>
                           </th>
                         )}
-                        {visibleColumns.has("refund_1d_p") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("refund_1d_p")}
-                          >
-                            <div className="flex items-center justify-end">
-                              1D % <SortIcon column="refund_1d_p" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("refund_5d_p") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("refund_5d_p")}
-                          >
-                            <div className="flex items-center justify-end">
-                              5D % <SortIcon column="refund_5d_p" />
-                            </div>
-                          </th>
-                        )}
                         {visibleColumns.has("pe_ratio") && (
                           <th
                             className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
@@ -1152,16 +1043,6 @@ function ResultsPageContent() {
                             </div>
                           </th>
                         )}
-                        {visibleColumns.has("price_to_cash_flow") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("price_to_cash_flow")}
-                          >
-                            <div className="flex items-center justify-end">
-                              P/C <SortIcon column="price_to_cash_flow" />
-                            </div>
-                          </th>
-                        )}
                         {visibleColumns.has("ev_ebitda") && (
                           <th
                             className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
@@ -1169,56 +1050,6 @@ function ResultsPageContent() {
                           >
                             <div className="flex items-center justify-end">
                               EV/EBITDA <SortIcon column="ev_ebitda" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("ev_sales") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("ev_sales")}
-                          >
-                            <div className="flex items-center justify-end">
-                              EV/Sales <SortIcon column="ev_sales" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("current_ratio") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("current_ratio")}
-                          >
-                            <div className="flex items-center justify-end">
-                              Current Ratio <SortIcon column="current_ratio" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("quick_ratio") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("quick_ratio")}
-                          >
-                            <div className="flex items-center justify-end">
-                              Quick Ratio <SortIcon column="quick_ratio" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("debt_to_equity") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("debt_to_equity")}
-                          >
-                            <div className="flex items-center justify-end">
-                              Debt/Eq <SortIcon column="debt_to_equity" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("lt_debt_to_equity") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("lt_debt_to_equity")}
-                          >
-                            <div className="flex items-center justify-end">
-                              LT Debt/Eq <SortIcon column="lt_debt_to_equity" />
                             </div>
                           </th>
                         )}
@@ -1252,43 +1083,23 @@ function ResultsPageContent() {
                             </div>
                           </th>
                         )}
-                        {visibleColumns.has("earnings_ttm") && (
+                        {visibleColumns.has("day_50_ma") && (
                           <th
                             className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("earnings_ttm")}
+                            onClick={() => toggleSort("day_50_ma")}
                           >
                             <div className="flex items-center justify-end">
-                              Earnings (TTM) <SortIcon column="earnings_ttm" />
+                              SMA50 <SortIcon column="day_50_ma" />
                             </div>
                           </th>
                         )}
-                        {visibleColumns.has("sma20") && (
+                        {visibleColumns.has("day_200_ma") && (
                           <th
                             className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("sma20")}
+                            onClick={() => toggleSort("day_200_ma")}
                           >
                             <div className="flex items-center justify-end">
-                              SMA20 <SortIcon column="sma20" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("sma50") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("sma50")}
-                          >
-                            <div className="flex items-center justify-end">
-                              SMA50 <SortIcon column="sma50" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("sma200") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("sma200")}
-                          >
-                            <div className="flex items-center justify-end">
-                              SMA200 <SortIcon column="sma200" />
+                              SMA200 <SortIcon column="day_200_ma" />
                             </div>
                           </th>
                         )}
@@ -1302,33 +1113,13 @@ function ResultsPageContent() {
                             </div>
                           </th>
                         )}
-                        {visibleColumns.has("perf_3y_p") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("perf_3y_p")}
-                          >
-                            <div className="flex items-center justify-end">
-                              Perf 3Y <SortIcon column="perf_3y_p" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("perf_5y_p") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("perf_5y_p")}
-                          >
-                            <div className="flex items-center justify-end">
-                              Perf 5Y <SortIcon column="perf_5y_p" />
-                            </div>
-                          </th>
-                        )}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                       {filteredRows.map((r, i) => {
                         const isAccessible = i < 20;
-                        const isPositive1d = (r.refund_1d_p ?? 0) >= 0;
-                        const isPositive5d = (r.refund_5d_p ?? 0) >= 0;
+                        const isPositive1d = (r.change ?? 0) >= 0;
+                        const isPositive5d = (r.change_percent ?? 0) >= 0;
                         const isEven = i % 2 === 0;
 
                         return (
@@ -1336,12 +1127,14 @@ function ResultsPageContent() {
                             key={`${r.code}-${i}`}
                             className={`
                               transition-all duration-150 group
-                              ${isAccessible
-                                ? `${isEven
-                                  ? "bg-white dark:bg-slate-900"
-                                  : "bg-slate-50/50 dark:bg-slate-800/30"
-                                } hover:bg-blue-50 dark:hover:bg-slate-700/50 cursor-pointer`
-                                : "opacity-30 pointer-events-none select-none bg-slate-100/50 dark:bg-slate-800/50"
+                              ${
+                                isAccessible
+                                  ? `${
+                                      isEven
+                                        ? "bg-white dark:bg-slate-900"
+                                        : "bg-slate-50/50 dark:bg-slate-800/30"
+                                    } hover:bg-blue-50 dark:hover:bg-slate-700/50 cursor-pointer`
+                                  : "opacity-30 pointer-events-none select-none bg-slate-100/50 dark:bg-slate-800/50"
                               }
                             `}
                             onClick={() => {
@@ -1392,36 +1185,6 @@ function ResultsPageContent() {
                                   : "—"}
                               </td>
                             )}
-                            {visibleColumns.has("refund_1d_p") && (
-                              <td className="px-4 py-3 text-right">
-                                <span
-                                  className={`inline-flex items-center gap-0.5 font-semibold tabular-nums font-mono ${isPositive1d
-                                    ? "text-growth-600 dark:text-growth-400"
-                                    : "text-danger-600 dark:text-danger-400"
-                                    }`}
-                                >
-                                  {fmtPct(r.refund_1d_p)}
-                                  <span className="text-xs">
-                                    {isPositive1d ? "▲" : "▼"}
-                                  </span>
-                                </span>
-                              </td>
-                            )}
-                            {visibleColumns.has("refund_5d_p") && (
-                              <td className="px-4 py-3 text-right">
-                                <span
-                                  className={`inline-flex items-center gap-0.5 font-semibold tabular-nums font-mono ${isPositive5d
-                                    ? "text-growth-600 dark:text-growth-400"
-                                    : "text-danger-600 dark:text-danger-400"
-                                    }`}
-                                >
-                                  {fmtPct(r.refund_5d_p)}
-                                  <span className="text-xs">
-                                    {isPositive5d ? "▲" : "▼"}
-                                  </span>
-                                </span>
-                              </td>
-                            )}
                             {/* P/E Ratio */}
                             {visibleColumns.has("pe_ratio") && (
                               <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 tabular-nums">
@@ -1458,59 +1221,11 @@ function ResultsPageContent() {
                                   : "—"}
                               </td>
                             )}
-                            {/* P/C */}
-                            {visibleColumns.has("price_to_cash_flow") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
-                                {r.price_to_cash_flow != null
-                                  ? r.price_to_cash_flow.toFixed(2)
-                                  : "—"}
-                              </td>
-                            )}
                             {/* EV/EBITDA */}
                             {visibleColumns.has("ev_ebitda") && (
                               <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
                                 {r.ev_ebitda != null
                                   ? r.ev_ebitda.toFixed(2)
-                                  : "—"}
-                              </td>
-                            )}
-                            {/* EV/Sales */}
-                            {visibleColumns.has("ev_sales") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.ev_sales != null
-                                  ? r.ev_sales.toFixed(2)
-                                  : "—"}
-                              </td>
-                            )}
-                            {/* Current Ratio */}
-                            {visibleColumns.has("current_ratio") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.current_ratio != null
-                                  ? r.current_ratio.toFixed(2)
-                                  : "—"}
-                              </td>
-                            )}
-                            {/* Quick Ratio */}
-                            {visibleColumns.has("quick_ratio") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.quick_ratio != null
-                                  ? r.quick_ratio.toFixed(2)
-                                  : "—"}
-                              </td>
-                            )}
-                            {/* Debt/Equity */}
-                            {visibleColumns.has("debt_to_equity") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.debt_to_equity != null
-                                  ? r.debt_to_equity.toFixed(2)
-                                  : "—"}
-                              </td>
-                            )}
-                            {/* LT Debt/Equity */}
-                            {visibleColumns.has("lt_debt_to_equity") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.lt_debt_to_equity != null
-                                  ? r.lt_debt_to_equity.toFixed(2)
                                   : "—"}
                               </td>
                             )}
@@ -1536,33 +1251,19 @@ function ResultsPageContent() {
                                 {fmtCap(r.revenue_ttm)}
                               </td>
                             )}
-                            {/* Earnings (TTM) */}
-                            {visibleColumns.has("earnings_ttm") && (
-                              <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 tabular-nums">
-                                {fmtCap(r.earnings_ttm)}
-                              </td>
-                            )}
-                            {/* SMA20 */}
-                            {visibleColumns.has("sma20") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.sma20 != null
-                                  ? `$${r.sma20.toFixed(2)}`
-                                  : "—"}
-                              </td>
-                            )}
                             {/* SMA50 */}
-                            {visibleColumns.has("sma50") && (
+                            {visibleColumns.has("day_50_ma") && (
                               <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.sma50 != null
-                                  ? `$${r.sma50.toFixed(2)}`
+                                {r.day_50_ma != null
+                                  ? `$${r.day_50_ma.toFixed(2)}`
                                   : "—"}
                               </td>
                             )}
                             {/* SMA200 */}
-                            {visibleColumns.has("sma200") && (
+                            {visibleColumns.has("day_200_ma") && (
                               <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.sma200 != null
-                                  ? `$${r.sma200.toFixed(2)}`
+                                {r.day_200_ma != null
+                                  ? `$${r.day_200_ma.toFixed(2)}`
                                   : "—"}
                               </td>
                             )}
@@ -1570,40 +1271,6 @@ function ResultsPageContent() {
                             {visibleColumns.has("beta") && (
                               <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
                                 {r.beta != null ? r.beta.toFixed(2) : "—"}
-                              </td>
-                            )}
-                            {/* Perf 3Y */}
-                            {visibleColumns.has("perf_3y_p") && (
-                              <td className="px-4 py-3 text-right">
-                                {r.perf_3y_p != null ? (
-                                  <span
-                                    className={`font-semibold tabular-nums font-mono ${r.perf_3y_p >= 0
-                                      ? "text-growth-600 dark:text-growth-400"
-                                      : "text-danger-600 dark:text-danger-400"
-                                      }`}
-                                  >
-                                    {fmtPct(r.perf_3y_p)}
-                                  </span>
-                                ) : (
-                                  <span className="text-muted-foreground/60">—</span>
-                                )}
-                              </td>
-                            )}
-                            {/* Perf 5Y */}
-                            {visibleColumns.has("perf_5y_p") && (
-                              <td className="px-4 py-3 text-right">
-                                {r.perf_5y_p != null ? (
-                                  <span
-                                    className={`font-semibold tabular-nums font-mono ${r.perf_5y_p >= 0
-                                      ? "text-growth-600 dark:text-growth-400"
-                                      : "text-danger-600 dark:text-danger-400"
-                                      }`}
-                                  >
-                                    {fmtPct(r.perf_5y_p)}
-                                  </span>
-                                ) : (
-                                  <span className="text-muted-foreground/60">—</span>
-                                )}
                               </td>
                             )}
                           </tr>

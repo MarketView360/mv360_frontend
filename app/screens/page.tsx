@@ -25,8 +25,8 @@ const SCREENS = [
       "High momentum stocks breaking out with strong price performance and volume.",
     tags: ["Momentum", "Technical"],
     color: "bg-yellow-500",
-    query: `Return over 1year > 50 AND
-Average Volume > 500000 AND
+    query: `Change Percent > 5 AND
+Volume > 500000 AND
 Market Capitalization > 1000`,
   },
   {
@@ -35,9 +35,9 @@ Market Capitalization > 1000`,
       "Companies with >20% revenue growth trading at a PEG ratio under 1.5.",
     tags: ["Growth", "Value"],
     color: "bg-green-500",
-    query: `Sales growth 3Years > 20 AND
-PEG Ratio < 1.5 AND
+    query: `PEG Ratio < 1.5 AND
 PEG Ratio > 0 AND
+Price to Sales < 5 AND
 Market Capitalization > 500`,
   },
   {
@@ -47,9 +47,8 @@ Market Capitalization > 500`,
     tags: ["Long Term", "Quality"],
     color: "bg-blue-500",
     query: `ROE > 15 AND
-ROCE > 15 AND
-Debt to equity < 0.5 AND
-Sales growth 3Years > 10 AND
+ROA > 10 AND
+Operating Margin > 15 AND
 Market Capitalization > 1000`,
   },
   {
@@ -57,7 +56,7 @@ Market Capitalization > 1000`,
     description: "High Return on Capital and High Earnings Yield (Greenblatt).",
     tags: ["Value", "Quality"],
     color: "bg-purple-500",
-    query: `ROCE > 20 AND
+    query: `ROA > 15 AND
 PE < 15 AND
 PE > 0 AND
 Market Capitalization > 500`,
@@ -71,7 +70,7 @@ Market Capitalization > 500`,
     query: `Dividend yield > 3 AND
 Dividend yield < 10 AND
 ROE > 12 AND
-Debt to equity < 1 AND
+Net Debt < 5000 AND
 Market Capitalization > 1000`,
   },
   {
@@ -79,10 +78,10 @@ Market Capitalization > 1000`,
     description: "Profitable companies with low debt and high profit margins.",
     tags: ["Quality", "Safe"],
     color: "bg-indigo-500",
-    query: `Debt to equity < 0.3 AND
+    query: `Net Debt < 1000 AND
 OPM > 15 AND
 ROE > 12 AND
-Current Ratio > 1.5 AND
+Current Assets > Current Liabilities AND
 Market Capitalization > 500`,
   },
 ];
@@ -107,7 +106,7 @@ function ScreensPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState(
-    "Market capitalization > 500 AND\nPrice to earning < 15 AND\nReturn on capital employed > 22%"
+    "Market Capitalization > 1000 AND\nPE < 25 AND\nROE > 15"
   );
 
   // Get current tab from URL params, default to 'screens' (Templates)
@@ -124,7 +123,7 @@ function ScreensPageContent() {
   const handleRunTemplate = (templateQuery: string) => {
     const params = new URLSearchParams({
       query: templateQuery,
-      sort: "market_capitalization.desc",
+      sort: "market_cap.desc",
       limit: String(50),
       offset: String(0),
       exchange: "us",
@@ -176,28 +175,32 @@ function ScreensPageContent() {
           <div className="flex justify-center mb-6">
             <div className="flex gap-2">
               <div
-                className={`w-2 h-2 rounded-full transition-all duration-300 ${currentTab === "screens"
-                  ? "bg-purple-500 w-8"
-                  : "bg-slate-300 dark:bg-slate-600"
-                  }`}
+                className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                  currentTab === "screens"
+                    ? "bg-purple-500 w-8"
+                    : "bg-slate-300 dark:bg-slate-600"
+                }`}
               ></div>
               <div
-                className={`w-2 h-2 rounded-full transition-all duration-300 ${currentTab === "strategies"
-                  ? "bg-growth w-8"
-                  : "bg-slate-300 dark:bg-slate-600"
-                  }`}
+                className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                  currentTab === "strategies"
+                    ? "bg-growth w-8"
+                    : "bg-slate-300 dark:bg-slate-600"
+                }`}
               ></div>
               <div
-                className={`w-2 h-2 rounded-full transition-all duration-300 ${currentTab === "builder"
-                  ? "bg-blue-500 w-8"
-                  : "bg-slate-300 dark:bg-slate-600"
-                  }`}
+                className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                  currentTab === "builder"
+                    ? "bg-blue-500 w-8"
+                    : "bg-slate-300 dark:bg-slate-600"
+                }`}
               ></div>
               <div
-                className={`w-2 h-2 rounded-full transition-all duration-300 ${currentTab === "community"
-                  ? "bg-amber-500 w-8"
-                  : "bg-slate-300 dark:bg-slate-600"
-                  }`}
+                className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                  currentTab === "community"
+                    ? "bg-amber-500 w-8"
+                    : "bg-slate-300 dark:bg-slate-600"
+                }`}
               ></div>
             </div>
           </div>
