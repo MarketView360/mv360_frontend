@@ -14,8 +14,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Palette, Sun, Moon, Monitor, Type, Wifi, Zap, LayoutGrid } from "lucide-react";
+import { Palette, Sun, Moon, Monitor, Type, Wifi, Zap, LayoutGrid, Newspaper, List, Infinity } from "lucide-react";
 import { toast } from "sonner";
+import { useNewsPreferences, PaginationStyle } from "@/hooks/useNewsPreferences";
 
 interface AppearanceSettings {
   theme: "light" | "dark" | "system";
@@ -30,6 +31,7 @@ export default function AppearancePage() {
   const { setTheme: applyTheme } = useTheme();
   const [settings, setSettings] = useState<AppearanceSettings | null>(null);
   const [loading, setLoading] = useState(true);
+  const { preferences: newsPrefs, setPaginationStyle, isLoaded: newsPrefsLoaded } = useNewsPreferences();
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -270,6 +272,63 @@ export default function AppearancePage() {
               onCheckedChange={(checked) => updateSetting("reduce_animations", checked)}
             />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* News Preferences */}
+      <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Newspaper className="h-5 w-5 text-brand" />
+            News Preferences
+          </CardTitle>
+          <CardDescription>Customize how news articles are displayed</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-brand/10 dark:bg-brand/20 rounded-lg">
+                {newsPrefsLoaded && newsPrefs.paginationStyle === "infinite" ? (
+                  <Infinity className="h-5 w-5 text-brand" />
+                ) : (
+                  <List className="h-5 w-5 text-brand" />
+                )}
+              </div>
+              <div>
+                <p className="font-medium text-slate-900 dark:text-white">Pagination Style</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Choose how to navigate through news articles
+                </p>
+              </div>
+            </div>
+            <Select
+              value={newsPrefsLoaded ? newsPrefs.paginationStyle : "infinite"}
+              onValueChange={(value: PaginationStyle) => {
+                setPaginationStyle(value);
+                toast.success("News pagination preference saved");
+              }}
+            >
+              <SelectTrigger className="w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="infinite">
+                  <div className="flex items-center gap-2">
+                    <Infinity className="h-4 w-4" /> Infinite Scroll
+                  </div>
+                </SelectItem>
+                <SelectItem value="numbered">
+                  <div className="flex items-center gap-2">
+                    <List className="h-4 w-4" /> Numbered Pages
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <p className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg">
+            This preference is stored locally in your browser and will persist across sessions.
+          </p>
         </CardContent>
       </Card>
     </div>
