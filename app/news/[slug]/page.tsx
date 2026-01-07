@@ -390,14 +390,14 @@ Please provide a concise summary of this news article.[/REASONING]`;
 
           <div className="flex items-center gap-2 flex-wrap">
             <Button
-              size="sm"
-              onClick={handleSummarize}
-              disabled={isSummarizing}
-              className="h-8 gap-2 bg-brand text-white hover:bg-brand/90 transition-all disabled:opacity-50"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              {isSummarizing ? "Starting..." : "Summarize with Jovan AI"}
-            </Button>
+  size="sm"
+  onClick={handleSummarize}
+  disabled={isSummarizing}
+  className="h-8 gap-2 !bg-slate-900 !text-white hover:!bg-slate-700 dark:!bg-brand dark:!text-white dark:hover:!bg-brand/90 disabled:opacity-50"
+>
+  <Sparkles className="h-3.5 w-3.5" />
+  {isSummarizing ? "Starting..." : "Summarize with Jovan AI"}
+</Button>
             <Button
               size="sm"
               onClick={() => showWarning(article.link)}
