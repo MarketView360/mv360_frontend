@@ -288,7 +288,15 @@ export function ChatArea({ messages }: ChatAreaProps) {
                 }
               }}>
                 {message.role === "user" ? (
-                  <div className="whitespace-pre-wrap">{message.content}</div>
+                  <div 
+                    className="whitespace-pre-wrap"
+                    dangerouslySetInnerHTML={{
+                      __html: message.content.replace(
+                        /\[([^\]]+)\]\(([^)]+)\)/g,
+                        '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-100 hover:text-blue-200 underline">$1</a>'
+                      )
+                    }}
+                  />
                 ) : (
                   <>
                     {/* Reasoning block - shown when reasoning content exists */}

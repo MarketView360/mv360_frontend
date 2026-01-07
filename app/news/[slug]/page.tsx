@@ -16,6 +16,7 @@ import {
   ChevronDown,
   ChevronUp,
   Link2,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +28,10 @@ import {
 import { getImageForArticle } from "../newsImages";
 import { ArticleDetailSkeleton } from "../NewsSkeletonNew";
 import { ScrollToTopFab } from "../ScrollToTopFab";
+import { useAuth } from "@/providers/AuthProvider";
+import { useQuota } from "@/hooks/useQuota";
+import { aiApi } from "@/lib/api/ai";
+import { toast } from "sonner";
 
 interface ArticleData {
   title: string;
@@ -162,6 +167,11 @@ export default function NewsArticlePage() {
   const { warningState, showWarning, setWarningOpen, confirmNavigation } =
     useExternalLinkWarning();
 
+  const { session } = useAuth();
+  const token = session?.access_token ?? null;
+  const { quota, canUse } = useQuota(token);
+  const [isSummarizing, setIsSummarizing] = useState(false);
+
   useEffect(() => {
     async function fetchArticle() {
       try {
@@ -277,6 +287,67 @@ export default function NewsArticlePage() {
     }
   };
 
+  const handleSummarize = async () => {
+    if (!article) return;
+
+    // Check if user is logged in
+    if (!token) {
+      toast.error("Please sign in", {
+        description: "You need to be signed in to use AI features.",
+      });
+      return;
+    }
+
+    // Check quota
+    if (!canUse("tokens")) {
+      const tier = quota?.tier === "free" ? "Free" : "Premium";
+      toast.error("AI quota exceeded", {
+        description: `You've used all your AI messages for this period. ${tier === "Free" ? "Upgrade to Premium for more messages, or wait for the next reset." : "Your quota will reset soon."}`,
+      });
+      return;
+    }
+
+    setIsSummarizing(true);
+
+try {
+  // Create a short visible message + hidden full content in [REASONING]
+  const newsUrl = (typeof window !== "undefined" ? window.location.href : "");
+  const visible = `Summarize this news: [${article.title}](${newsUrl})`;
+  const hidden = `[REASONING]I want to summarize this news content from MarketView360 news page. Start by giving a oneliner idea about what the news is about. Then provide a summary that covers all the important points of the news.
+
+Title: ${article.title}
+
+Content: ${article.content}
+
+Please provide a concise summary of this news article.[/REASONING]`;
+  const combinedMessage = `${visible}\n\n${hidden}`;
+
+  // Send message and create session
+  const stream = aiApi.streamMessage({
+    messages: [{ role: "user", content: combinedMessage }],
+  });
+
+  // Get the first chunk to extract session ID
+  const firstChunk = await stream.next();
+
+  if (firstChunk.done || !firstChunk.value.sessionId) {
+    throw new Error("Failed to create AI session");
+  }
+
+  const sessionId = firstChunk.value.sessionId;
+
+  // Navigate to AI page with the session
+  router.push(`/ai?session=${sessionId}`);
+} catch (error) {
+  console.error("Failed to create AI summary:", error);
+  toast.error("Failed to start AI summary", {
+    description: "Please try again later.",
+  });
+} finally {
+  setIsSummarizing(false);
+}
+  };
+
   if (loading) {
     return <ArticleDetailSkeleton />;
   }
@@ -317,7 +388,16 @@ export default function NewsArticlePage() {
             Back to News
           </Link>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              size="sm"
+              onClick={handleSummarize}
+              disabled={isSummarizing}
+              className="h-8 gap-2 bg-brand text-white hover:bg-brand/90 transition-all disabled:opacity-50"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              {isSummarizing ? "Starting..." : "Summarize with Jovan AI"}
+            </Button>
             <Button
               size="sm"
               onClick={() => showWarning(article.link)}
