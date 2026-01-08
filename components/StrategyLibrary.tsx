@@ -981,7 +981,7 @@ export default function StrategyLibrary({
       <div className="space-y-8">
         <div className="max-w-3xl">
           <p className="text-lg text-slate-600 dark:text-slate-400 mt-3 leading-relaxed">
-            Browse 100+ proven stock screens based on fundamental and technical
+            Browse proven stock screens based on fundamental and technical
             strategies. Select a strategy to load it into the query builder.
           </p>
         </div>
