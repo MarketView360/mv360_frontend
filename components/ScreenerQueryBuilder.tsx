@@ -46,6 +46,7 @@ import {
   getAllFields,
   QuerySuggestion,
   FieldDef,
+  VALUE_SUGGESTIONS,
 } from "@/lib/queryBuilder";
 
 // Define ScreenerRow type for results
@@ -109,10 +110,10 @@ export default function ScreenerQueryBuilder({
   // Query history
   const [queryHistory, setQueryHistory] = useState<string[]>([]);
   const [showHistory, setShowHistory] = useState(false);
-  const [isRunning, setIsRunning] = useState(false);
-  const [runError, setRunError] = useState<string | null>(null);
-  const [results, setResults] = useState<ScreenerRow[]>([]);
-  const [lastRunInfo, setLastRunInfo] = useState<{
+  const [isRunning] = useState(false);
+  const [runError] = useState<string | null>(null);
+  const [results] = useState<ScreenerRow[]>([]);
+  const [lastRunInfo] = useState<{
     url?: string;
     filters?: unknown;
     count?: number;
@@ -205,7 +206,6 @@ export default function ScreenerQueryBuilder({
       const valueField = (["=", "!=", "in", "like", "between"].includes(prevWord) ? secondPrevWord :
         ["=", "!=", "in", "like", "between"].includes(currentWord) ? prevWord : null);
 
-      const { VALUE_SUGGESTIONS } = require("@/lib/queryBuilder");
       if (valueField && VALUE_SUGGESTIONS[valueField.toLowerCase()]) {
         const values = VALUE_SUGGESTIONS[valueField.toLowerCase()];
         values.forEach((val: string) => {
@@ -441,6 +441,318 @@ export default function ScreenerQueryBuilder({
     return () => document.removeEventListener("keydown", handleGlobalKeyDown);
   }, [showKeyboardShortcuts, showGuide, showExamples]);
 
+
+
+  // Handle suggestion selection
+  const handleSuggestionSelect = useCallback(
+    (suggestion: QuerySuggestion) => {
+      if (!textareaRef.current) return;
+
+      const textarea = textareaRef.current;
+      const beforeCursor = value.substring(0, cursorPosition);
+      const afterCursor = value.substring(cursorPosition);
+
+      // Find the start of the current word
+      const words = beforeCursor.split(/\s+/);
+      const currentWord = words[words.length - 1] || "";
+      const wordStart = beforeCursor.lastIndexOf(currentWord);
+
+      // Replace the current word with the suggestion
+      const newValue =
+        value.substring(0, wordStart) +
+        (suggestion.insertText || suggestion.text) +
+        afterCursor;
+
+      onChange(newValue);
+      setShowSuggestions(false);
+
+      // Set cursor position after the inserted text
+      const newCursorPos =
+        wordStart + (suggestion.insertText || suggestion.text).length;
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+        setCursorPosition(newCursorPos);
+      }, 0);
+    },
+    [value, cursorPosition, onChange]
+  );
+
+  // Undo functionality
+  const handleUndo = useCallback(() => {
+    if (historyIndex > 0) {
+      setIsUndoRedo(true);
+      setHistoryIndex((prev) => prev - 1);
+      onChange(history[historyIndex - 1].query);
+    }
+  }, [historyIndex, history, onChange]);
+
+  // Redo functionality
+  const handleRedo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      setIsUndoRedo(true);
+      setHistoryIndex((prev) => prev + 1);
+      onChange(history[historyIndex + 1].query);
+    }
+  }, [historyIndex, history, onChange]);
+
+  // Clear query
+  const handleClearQuery = useCallback(() => {
+    onChange("");
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [onChange]);
+
+  // Copy query to clipboard
+  const handleCopyQuery = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch (err) {
+      console.error("Failed to copy query:", err);
+    }
+  };
+
+  // Toggle comment (add/remove # at start of line)
+  const toggleComment = useCallback(() => {
+    if (!textareaRef.current) return;
+
+    const textarea = textareaRef.current;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const lines = value.split("\n");
+
+    // Find which lines are selected
+    let currentPos = 0;
+    let startLine = 0;
+    let endLine = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      if (currentPos <= start && start <= currentPos + lines[i].length) {
+        startLine = i;
+      }
+      if (currentPos <= end && end <= currentPos + lines[i].length) {
+        endLine = i;
+        break;
+      }
+      currentPos += lines[i].length + 1; // +1 for newline
+    }
+
+    // Toggle comments on selected lines
+    const newLines = [...lines];
+    for (let i = startLine; i <= endLine; i++) {
+      if (newLines[i].startsWith("# ")) {
+        newLines[i] = newLines[i].substring(2);
+      } else if (newLines[i].startsWith("#")) {
+        newLines[i] = newLines[i].substring(1);
+      } else {
+        newLines[i] = "# " + newLines[i];
+      }
+    }
+
+    onChange(newLines.join("\n"));
+  }, [value, onChange]);
+
+  // Duplicate current line
+  const duplicateLine = useCallback(() => {
+    if (!textareaRef.current) return;
+
+    const textarea = textareaRef.current;
+    const start = textarea.selectionStart;
+    const lines = value.split("\n");
+
+    // Find current line
+    let currentPos = 0;
+    let currentLine = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      if (currentPos <= start && start <= currentPos + lines[i].length) {
+        currentLine = i;
+        break;
+      }
+      currentPos += lines[i].length + 1;
+    }
+
+    // Duplicate the line
+    const newLines = [...lines];
+    newLines.splice(currentLine + 1, 0, lines[currentLine]);
+    onChange(newLines.join("\n"));
+  }, [value, onChange]);
+
+  // Select current line
+  const selectLine = useCallback(() => {
+    if (!textareaRef.current) return;
+
+    const textarea = textareaRef.current;
+    const start = textarea.selectionStart;
+    const lines = value.split("\n");
+
+    // Find current line boundaries
+    let currentPos = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      if (currentPos <= start && start <= currentPos + lines[i].length) {
+        textarea.setSelectionRange(currentPos, currentPos + lines[i].length);
+        break;
+      }
+      currentPos += lines[i].length + 1;
+    }
+  }, [value]);
+
+  // Delete current line
+  const deleteLine = useCallback(() => {
+    if (!textareaRef.current) return;
+
+    const textarea = textareaRef.current;
+    const start = textarea.selectionStart;
+    const lines = value.split("\n");
+
+    if (lines.length <= 1) {
+      onChange("");
+      return;
+    }
+
+    // Find current line
+    let currentPos = 0;
+    let currentLine = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      if (currentPos <= start && start <= currentPos + lines[i].length) {
+        currentLine = i;
+        break;
+      }
+      currentPos += lines[i].length + 1;
+    }
+
+    // Delete the line
+    const newLines = [...lines];
+    newLines.splice(currentLine, 1);
+    onChange(newLines.join("\n"));
+  }, [value, onChange]);
+
+  // Format query (basic formatting)
+  const formatQuery = useCallback(() => {
+    const formatted = value
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .join("\n");
+    onChange(formatted);
+  }, [value, onChange]);
+
+  // Run query
+  const handleRunQuery = useCallback(async () => {
+    if (!value.trim() || !isValidQuery) return;
+
+    // Save to history
+    setQueryHistory((prev) => {
+      const newHistory = [value, ...prev.filter((q) => q !== value)].slice(
+        0,
+        50
+      );
+      persistHistory(newHistory);
+      return newHistory;
+    });
+    // Navigate to dedicated results page
+    const params = new URLSearchParams({
+      query: value,
+      sort: "market_capitalization.desc",
+      limit: String(50),
+      offset: String(0),
+      exchange: "us",
+    });
+    router.push(`/screens/results?${params.toString()}`);
+  }, [value, isValidQuery, persistHistory, router]);
+
+  // Save query to browser cache and history
+  const handleSaveQuery = useCallback(() => {
+    if (!value.trim()) return;
+    setQueryHistory((prev) => {
+      const newHistory = [value, ...prev.filter((q) => q !== value)].slice(
+        0,
+        50
+      );
+      persistHistory(newHistory);
+      return newHistory;
+    });
+    setShowHistory(true);
+  }, [value, persistHistory]);
+
+  // Smart insertion at cursor position
+  const handleSmartInsert = useCallback(
+    (text: string) => {
+      if (!textareaRef.current) return;
+
+      const textarea = textareaRef.current;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+
+      const beforeSelection = value.substring(0, start);
+      const afterSelection = value.substring(end);
+
+      // Smart spacing
+      const needsSpaceBefore =
+        start > 0 &&
+        !beforeSelection.endsWith(" ") &&
+        !beforeSelection.endsWith("\n");
+      const needsSpaceAfter =
+        afterSelection.length > 0 &&
+        !afterSelection.startsWith(" ") &&
+        !afterSelection.startsWith("\n");
+
+      const insertText =
+        (needsSpaceBefore ? " " : "") + text + (needsSpaceAfter ? " " : "");
+
+      const newValue = beforeSelection + insertText + afterSelection;
+      onChange(newValue);
+
+      // Set cursor position after inserted text
+      const newCursorPos = start + insertText.length;
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+        setCursorPosition(newCursorPos);
+      }, 0);
+    },
+    [value, onChange]
+  );
+
+  // Handle operator selection from inline popup
+  const handleOperatorSelect = useCallback(
+    (fieldName: string, operator: string) => {
+      handleSmartInsert(`${fieldName} ${operator} `);
+      setShowOperatorPopupFor(null);
+    },
+    [handleSmartInsert]
+  );
+
+  // Insert paired characters (e.g., (), "") and keep selection/caret inside
+  const insertPair = useCallback(
+    (open: string, close: string) => {
+      if (!textareaRef.current) return;
+
+      const textarea = textareaRef.current;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+
+      const before = value.substring(0, start);
+      const middle = value.substring(start, end);
+      const after = value.substring(end);
+
+      const newValue = before + open + middle + close + after;
+      onChange(newValue);
+
+      const newStart = start + open.length;
+      const newEnd = start + open.length + middle.length;
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(newStart, newEnd);
+        setCursorPosition(newEnd);
+      }, 0);
+    },
+    [value, onChange]
+  );
+
   // Enhanced keyboard shortcuts
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -566,317 +878,18 @@ export default function ScreenerQueryBuilder({
       value,
       cursorPosition,
       getEnhancedSuggestions,
+      handleRunQuery,
+      handleUndo,
+      handleRedo,
+      toggleComment,
+      duplicateLine,
+      selectLine,
+      deleteLine,
+      handleClearQuery,
+      formatQuery,
+      insertPair,
+      handleSuggestionSelect,
     ]
-  );
-
-  // Handle suggestion selection
-  const handleSuggestionSelect = useCallback(
-    (suggestion: QuerySuggestion) => {
-      if (!textareaRef.current) return;
-
-      const textarea = textareaRef.current;
-      const beforeCursor = value.substring(0, cursorPosition);
-      const afterCursor = value.substring(cursorPosition);
-
-      // Find the start of the current word
-      const words = beforeCursor.split(/\s+/);
-      const currentWord = words[words.length - 1] || "";
-      const wordStart = beforeCursor.lastIndexOf(currentWord);
-
-      // Replace the current word with the suggestion
-      const newValue =
-        value.substring(0, wordStart) +
-        (suggestion.insertText || suggestion.text) +
-        afterCursor;
-
-      onChange(newValue);
-      setShowSuggestions(false);
-
-      // Set cursor position after the inserted text
-      const newCursorPos =
-        wordStart + (suggestion.insertText || suggestion.text).length;
-      setTimeout(() => {
-        textarea.focus();
-        textarea.setSelectionRange(newCursorPos, newCursorPos);
-        setCursorPosition(newCursorPos);
-      }, 0);
-    },
-    [value, cursorPosition, onChange]
-  );
-
-  // Undo functionality
-  const handleUndo = () => {
-    if (historyIndex > 0) {
-      setIsUndoRedo(true);
-      setHistoryIndex((prev) => prev - 1);
-      onChange(history[historyIndex - 1].query);
-    }
-  };
-
-  // Redo functionality
-  const handleRedo = () => {
-    if (historyIndex < history.length - 1) {
-      setIsUndoRedo(true);
-      setHistoryIndex((prev) => prev + 1);
-      onChange(history[historyIndex + 1].query);
-    }
-  };
-
-  // Clear query
-  const handleClearQuery = () => {
-    onChange("");
-    if (textareaRef.current) {
-      textareaRef.current.focus();
-    }
-  };
-
-  // Copy query to clipboard
-  const handleCopyQuery = async () => {
-    try {
-      await navigator.clipboard.writeText(value);
-    } catch (err) {
-      console.error("Failed to copy query:", err);
-    }
-  };
-
-  // Toggle comment (add/remove # at start of line)
-  const toggleComment = () => {
-    if (!textareaRef.current) return;
-
-    const textarea = textareaRef.current;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const lines = value.split("\n");
-
-    // Find which lines are selected
-    let currentPos = 0;
-    let startLine = 0;
-    let endLine = 0;
-
-    for (let i = 0; i < lines.length; i++) {
-      if (currentPos <= start && start <= currentPos + lines[i].length) {
-        startLine = i;
-      }
-      if (currentPos <= end && end <= currentPos + lines[i].length) {
-        endLine = i;
-        break;
-      }
-      currentPos += lines[i].length + 1; // +1 for newline
-    }
-
-    // Toggle comments on selected lines
-    const newLines = [...lines];
-    for (let i = startLine; i <= endLine; i++) {
-      if (newLines[i].startsWith("# ")) {
-        newLines[i] = newLines[i].substring(2);
-      } else if (newLines[i].startsWith("#")) {
-        newLines[i] = newLines[i].substring(1);
-      } else {
-        newLines[i] = "# " + newLines[i];
-      }
-    }
-
-    onChange(newLines.join("\n"));
-  };
-
-  // Duplicate current line
-  const duplicateLine = () => {
-    if (!textareaRef.current) return;
-
-    const textarea = textareaRef.current;
-    const start = textarea.selectionStart;
-    const lines = value.split("\n");
-
-    // Find current line
-    let currentPos = 0;
-    let currentLine = 0;
-
-    for (let i = 0; i < lines.length; i++) {
-      if (currentPos <= start && start <= currentPos + lines[i].length) {
-        currentLine = i;
-        break;
-      }
-      currentPos += lines[i].length + 1;
-    }
-
-    // Duplicate the line
-    const newLines = [...lines];
-    newLines.splice(currentLine + 1, 0, lines[currentLine]);
-    onChange(newLines.join("\n"));
-  };
-
-  // Select current line
-  const selectLine = () => {
-    if (!textareaRef.current) return;
-
-    const textarea = textareaRef.current;
-    const start = textarea.selectionStart;
-    const lines = value.split("\n");
-
-    // Find current line boundaries
-    let currentPos = 0;
-
-    for (let i = 0; i < lines.length; i++) {
-      if (currentPos <= start && start <= currentPos + lines[i].length) {
-        textarea.setSelectionRange(currentPos, currentPos + lines[i].length);
-        break;
-      }
-      currentPos += lines[i].length + 1;
-    }
-  };
-
-  // Delete current line
-  const deleteLine = () => {
-    if (!textareaRef.current) return;
-
-    const textarea = textareaRef.current;
-    const start = textarea.selectionStart;
-    const lines = value.split("\n");
-
-    if (lines.length <= 1) {
-      onChange("");
-      return;
-    }
-
-    // Find current line
-    let currentPos = 0;
-    let currentLine = 0;
-
-    for (let i = 0; i < lines.length; i++) {
-      if (currentPos <= start && start <= currentPos + lines[i].length) {
-        currentLine = i;
-        break;
-      }
-      currentPos += lines[i].length + 1;
-    }
-
-    // Delete the line
-    const newLines = [...lines];
-    newLines.splice(currentLine, 1);
-    onChange(newLines.join("\n"));
-  };
-
-  // Format query (basic formatting)
-  const formatQuery = () => {
-    const formatted = value
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0)
-      .join("\n");
-    onChange(formatted);
-  };
-
-  // Run query
-  const handleRunQuery = useCallback(async () => {
-    if (!value.trim() || !isValidQuery) return;
-
-    // Save to history
-    setQueryHistory((prev) => {
-      const newHistory = [value, ...prev.filter((q) => q !== value)].slice(
-        0,
-        50
-      );
-      persistHistory(newHistory);
-      return newHistory;
-    });
-    // Navigate to dedicated results page
-    const params = new URLSearchParams({
-      query: value,
-      sort: "market_capitalization.desc",
-      limit: String(50),
-      offset: String(0),
-      exchange: "us",
-    });
-    router.push(`/screens/results?${params.toString()}`);
-  }, [value, isValidQuery, persistHistory]);
-
-  // Save query to browser cache and history
-  const handleSaveQuery = useCallback(() => {
-    if (!value.trim()) return;
-    setQueryHistory((prev) => {
-      const newHistory = [value, ...prev.filter((q) => q !== value)].slice(
-        0,
-        50
-      );
-      persistHistory(newHistory);
-      return newHistory;
-    });
-    setShowHistory(true);
-  }, [value, persistHistory]);
-
-  // Smart insertion at cursor position
-  const handleSmartInsert = useCallback(
-    (text: string) => {
-      if (!textareaRef.current) return;
-
-      const textarea = textareaRef.current;
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-
-      const beforeSelection = value.substring(0, start);
-      const afterSelection = value.substring(end);
-
-      // Smart spacing
-      const needsSpaceBefore =
-        start > 0 &&
-        !beforeSelection.endsWith(" ") &&
-        !beforeSelection.endsWith("\n");
-      const needsSpaceAfter =
-        afterSelection.length > 0 &&
-        !afterSelection.startsWith(" ") &&
-        !afterSelection.startsWith("\n");
-
-      const insertText =
-        (needsSpaceBefore ? " " : "") + text + (needsSpaceAfter ? " " : "");
-
-      const newValue = beforeSelection + insertText + afterSelection;
-      onChange(newValue);
-
-      // Set cursor position after inserted text
-      const newCursorPos = start + insertText.length;
-      setTimeout(() => {
-        textarea.focus();
-        textarea.setSelectionRange(newCursorPos, newCursorPos);
-        setCursorPosition(newCursorPos);
-      }, 0);
-    },
-    [value, onChange]
-  );
-
-  // Handle operator selection from inline popup
-  const handleOperatorSelect = useCallback(
-    (fieldName: string, operator: string) => {
-      handleSmartInsert(`${fieldName} ${operator} `);
-      setShowOperatorPopupFor(null);
-    },
-    [handleSmartInsert]
-  );
-
-  // Insert paired characters (e.g., (), "") and keep selection/caret inside
-  const insertPair = useCallback(
-    (open: string, close: string) => {
-      if (!textareaRef.current) return;
-
-      const textarea = textareaRef.current;
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-
-      const before = value.substring(0, start);
-      const middle = value.substring(start, end);
-      const after = value.substring(end);
-
-      const newValue = before + open + middle + close + after;
-      onChange(newValue);
-
-      const newStart = start + open.length;
-      const newEnd = start + open.length + middle.length;
-      setTimeout(() => {
-        textarea.focus();
-        textarea.setSelectionRange(newStart, newEnd);
-        setCursorPosition(newEnd);
-      }, 0);
-    },
-    [value, onChange]
   );
 
   // Load example query
@@ -1371,19 +1384,19 @@ export default function ScreenerQueryBuilder({
                   {results.map((r, i) => (
                     <tr key={i} className="hover:bg-slate-50/60">
                       <td className="p-3 font-mono">
-                        {String((r as any).code || "")}
+                        {String(r["code"] || "")}
                       </td>
-                      <td className="p-3">{String((r as any).name || "")}</td>
+                      <td className="p-3">{String(r["name"] || "")}</td>
                       <td className="p-3">
-                        {String((r as any).exchange || "")}
+                        {String(r["exchange"] || "")}
                       </td>
                       <td className="p-3 text-right">
-                        {(r as any).market_capitalization ?? ""}
+                        {r["market_capitalization"] ?? ""}
                       </td>
                       <td className="p-3 text-right">
-                        {(r as any).pe_ratio ?? ""}
+                        {r["pe_ratio"] ?? ""}
                       </td>
-                      <td className="p-3 text-right">{(r as any).roe ?? ""}</td>
+                      <td className="p-3 text-right">{r["roe"] ?? ""}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1489,8 +1502,7 @@ export default function ScreenerQueryBuilder({
                     <span>{category}</span>
                     <div className="flex items-center gap-2">
                       <span className="text-xs bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 px-2 py-1 rounded-full">
-                        {(dataSourceWithFavorites as any)[category]?.length ??
-                          0}
+                        {((dataSourceWithFavorites as Record<string, FieldDef[]>)[category]?.length) ?? 0}
                       </span>
                       {selectedCategory === category && !searchTerm && (
                         <ChevronRight className="w-4 h-4 opacity-50" />

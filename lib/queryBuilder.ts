@@ -306,9 +306,11 @@ export const BACKEND_FIELD_MAP: Record<string, string> = {
   // ═══════════════════════════════════════════════════════════════════════════
   "market capitalization": "market_cap",
   "market cap": "market_cap",
+  market_cap: "market_cap",
   marketcap: "market_cap",
   mcap: "market_cap",
   "enterprise value": "enterprise_value",
+  enterprise_value: "enterprise_value",
   ev: "enterprise_value",
 
   // Valuation Metrics (company_metrics_ttm)
@@ -366,22 +368,28 @@ export const BACKEND_FIELD_MAP: Record<string, string> = {
 
   // Dividends (company_metrics_ttm)
   "dividend yield": "dividend_yield",
+  dividend_yield: "dividend_yield",
   "div yield": "dividend_yield",
   "dividend per share": "dividend_per_share",
+  dividend_per_share: "dividend_per_share",
   "dividend share": "dividend_per_share",
   "payout ratio": "payout_ratio",
+  payout_ratio: "payout_ratio",
   "dividend payout ratio": "payout_ratio",
 
   // Technical (company_metrics_ttm)
   beta: "beta",
   "stock beta": "beta",
   "52 week high": "week_52_high",
+  week_52_high: "week_52_high",
   "52w high": "week_52_high",
   "52wk high": "week_52_high",
   "52 week low": "week_52_low",
+  week_52_low: "week_52_low",
   "52w low": "week_52_low",
   "52wk low": "week_52_low",
   "50 day moving average": "day_50_ma",
+  day_50_ma: "day_50_ma",
   "50dma": "day_50_ma",
   "50 dma": "day_50_ma",
   sma50: "day_50_ma",
@@ -389,6 +397,7 @@ export const BACKEND_FIELD_MAP: Record<string, string> = {
   "sma 50": "day_50_ma",
   "moving average 50": "day_50_ma",
   "200 day moving average": "day_200_ma",
+  day_200_ma: "day_200_ma",
   "200dma": "day_200_ma",
   "200 dma": "day_200_ma",
   sma200: "day_200_ma",
@@ -398,12 +407,16 @@ export const BACKEND_FIELD_MAP: Record<string, string> = {
 
   // Shares (company_metrics_ttm)
   "shares outstanding": "shares_outstanding",
+  shares_outstanding: "shares_outstanding",
   "shares float": "shares_float",
+  shares_float: "shares_float",
   float: "shares_float",
 
   // Analyst (company_metrics_ttm)
   "analyst rating": "analyst_rating",
+  analyst_rating: "analyst_rating",
   "target price": "analyst_target_price",
+  target_price: "analyst_target_price",
   "analyst target": "analyst_target_price",
   "analyst target price": "analyst_target_price",
 
@@ -458,7 +471,7 @@ export const BACKEND_FIELD_MAP: Record<string, string> = {
   // ═══════════════════════════════════════════════════════════════════════════
   // INCOME_STATEMENT TABLES (annual/quarterly)
   // ═══════════════════════════════════════════════════════════════════════════
-  "total revenue": "total_revenue",
+  total_revenue: "total_revenue",
   "cost of revenue": "cost_of_revenue",
   "gross profit": "gross_profit",
   "operating income": "operating_income",
@@ -1557,8 +1570,8 @@ export const searchSuggestions = (
   const valueField = ["=", "!=", "in", "like", "between"].includes(prevWord)
     ? secondPrevWord
     : ["=", "!=", "in", "like", "between"].includes(currentWord)
-    ? prevWord
-    : null;
+      ? prevWord
+      : null;
 
   if (valueField && VALUE_SUGGESTIONS[valueField.toLowerCase()]) {
     const values = VALUE_SUGGESTIONS[valueField.toLowerCase()];
@@ -1834,7 +1847,26 @@ export const validateQuery = (query: string): QueryValidationError[] => {
           (field) => field.toLowerCase() === fieldPart.toLowerCase()
         );
 
-        if (!isValidField && !isArithmetic) {
+        if (isValidField) {
+          // Valid single field, nothing to do
+        } else if (isArithmetic) {
+          // Validate individual fields in arithmetic expression
+          const subFields = extractFieldsFromArithmetic(fieldPart);
+          subFields.forEach(subField => {
+            const isSubFieldValid = allValidFields.some(
+              (field) => field.toLowerCase() === subField.toLowerCase()
+            );
+            if (!isSubFieldValid) {
+              // Check for close match for subfield ? (Optional improvement)
+              errors.push({
+                line: lineIndex + 1,
+                column: trimmedLine.indexOf(subField) + 1,
+                message: `Unknown field "${subField}" in expression`,
+                severity: "error",
+              });
+            }
+          });
+        } else {
           // Try to find a close match
           const closeMatch = allValidFields.find((field) => {
             const fieldLower = field.toLowerCase();
