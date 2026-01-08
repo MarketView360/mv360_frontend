@@ -163,6 +163,7 @@ export interface ScreenerRow {
   peg_ratio?: number;
   price_book_mrq?: number;
   price_sales_ttm?: number;
+  enterprise_value?: number;
   ev_ebitda?: number;
   ev_revenue?: number;
 
@@ -179,11 +180,16 @@ export interface ScreenerRow {
   revenue_ttm?: number;
   ebitda?: number;
   gross_profit?: number;
+  quarterly_revenue_growth_yoy?: number;
+  quarterly_earnings_growth_yoy?: number;
 
   // Dividends
   dividend_yield?: number;
   dividend_per_share?: number;
+
   payout_ratio?: number;
+  revenue_per_share?: number;
+  book_value_per_share?: number;
 
   // Financial Strength
   net_debt?: number;

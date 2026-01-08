@@ -90,7 +90,7 @@ function ResultsPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<ScreenerRow[]>([]);
   const [source, setSource] = useState<string | undefined>(undefined);
-  const [sortKey, setSortKey] = useState<string>("market_capitalization");
+  const [sortKey, setSortKey] = useState<string>("market_cap");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   // New state for enhanced features
@@ -105,9 +105,7 @@ function ResultsPageContent() {
       "adjusted_close",
       "market_cap",
       "dividend_yield",
-      "change",
-      "change_percent",
-      // Valuation metrics (using correct backend column names)
+      // Valuation metrics
       "pe_ratio",
       "forward_pe",
       "peg_ratio",
@@ -115,14 +113,20 @@ function ResultsPageContent() {
       "price_sales_ttm",
       "ev_ebitda",
       "ev_revenue",
+      "enterprise_value",
       // Financial strength
-      "long_term_debt",
-      "short_term_debt",
       "net_debt",
-      // Earnings
-      "earnings_share",
+      // Earnings & Growth
       "diluted_eps_ttm",
       "revenue_ttm",
+      "quarterly_revenue_growth_yoy",
+      "quarterly_earnings_growth_yoy",
+      "payout_ratio",
+      "revenue_per_share",
+      "book_value_per_share",
+      // Cash Flow
+      "free_cash_flow",
+      "operating_cash_flow",
       // Technical
       "day_50_ma",
       "day_200_ma",
@@ -134,6 +138,11 @@ function ResultsPageContent() {
       "return_on_assets_ttm",
       "operating_margin_ttm",
       "profit_margin",
+      // Analyst & Shares
+      "analyst_target_price",
+      "analyst_rating",
+      "shares_outstanding",
+      "shares_float",
     ])
   );
   const [exporting, setExporting] = useState<string | null>(null);
@@ -311,99 +320,188 @@ function ResultsPageContent() {
         label: string;
         format: (val: unknown) => string | number;
       }[] = [
-        { key: "code", label: "Code", format: (v) => String(v ?? "") },
-        { key: "name", label: "Name", format: (v) => String(v ?? "") },
-        { key: "exchange", label: "Exchange", format: (v) => String(v ?? "") },
-        {
-          key: "adjusted_close",
-          label: "Price",
-          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-        },
-        {
-          key: "market_capitalization",
-          label: "Market Cap",
-          format: (v) => {
-            if (v == null) return "";
-            const n = Number(v);
-            if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
-            if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
-            if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
-            return `$${n.toFixed(0)}`;
+          { key: "code", label: "Code", format: (v) => String(v ?? "") },
+          { key: "name", label: "Name", format: (v) => String(v ?? "") },
+          { key: "exchange", label: "Exchange", format: (v) => String(v ?? "") },
+          {
+            key: "adjusted_close",
+            label: "Price",
+            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
           },
-        },
-        {
-          key: "dividend_yield",
-          label: "Div Yield",
-          format: (v) => (v != null ? `${(Number(v) * 100).toFixed(2)}%` : ""),
-        },
-        {
-          key: "pe_ratio",
-          label: "P/E",
-          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-        },
-        {
-          key: "forward_pe",
-          label: "Fwd P/E",
-          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-        },
-        {
-          key: "peg",
-          label: "PEG",
-          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-        },
-        {
-          key: "pb",
-          label: "P/B",
-          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-        },
-        {
-          key: "price_to_sales",
-          label: "P/S",
-          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-        },
-        {
-          key: "ev_ebitda",
-          label: "EV/EBITDA",
-          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-        },
-        {
-          key: "eps_ttm",
-          label: "EPS (TTM)",
-          format: (v) => (v != null ? `$${Number(v).toFixed(2)}` : ""),
-        },
-        {
-          key: "diluted_eps_ttm",
-          label: "Diluted EPS",
-          format: (v) => (v != null ? `$${Number(v).toFixed(2)}` : ""),
-        },
-        {
-          key: "revenue_ttm",
-          label: "Sales (TTM)",
-          format: (v) => {
-            if (v == null) return "";
-            const n = Number(v);
-            if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
-            if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
-            if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
-            return `$${n.toFixed(0)}`;
+          {
+            key: "market_cap",
+            label: "Market Cap",
+            format: (v) => {
+              if (v == null) return "";
+              const n = Number(v);
+              if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+              if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+              if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+              return `$${n.toFixed(0)}`;
+            },
           },
-        },
-        {
-          key: "return_on_equity_ttm",
-          label: "ROE",
-          format: (v) => (v != null ? `${(Number(v) * 100).toFixed(2)}%` : ""),
-        },
-        {
-          key: "day_50_ma",
-          label: "SMA50",
-          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-        },
-        {
-          key: "day_200_ma",
-          label: "SMA200",
-          format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-        },
-      ];
+          {
+            key: "dividend_yield",
+            label: "Div Yield",
+            format: (v) => (v != null ? `${(Number(v) * 100).toFixed(2)}%` : ""),
+          },
+          {
+            key: "analyst_target_price",
+            label: "Analyst Tgt",
+            format: (v) => (v != null ? `$${Number(v).toFixed(2)}` : ""),
+          },
+          {
+            key: "analyst_rating",
+            label: "Rating",
+            format: (v) => (v != null ? String(v) : ""),
+          },
+          {
+            key: "quarterly_revenue_growth_yoy",
+            label: "Rev Growth",
+            format: (v) => (v != null ? `${(Number(v) * 100).toFixed(2)}%` : ""),
+          },
+          {
+            key: "quarterly_earnings_growth_yoy",
+            label: "EPS Growth",
+            format: (v) => (v != null ? `${(Number(v) * 100).toFixed(2)}%` : ""),
+          },
+          {
+            key: "pe_ratio",
+            label: "P/E",
+            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+          },
+          {
+            key: "forward_pe",
+            label: "Fwd P/E",
+            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+          },
+          {
+            key: "peg_ratio",
+            label: "PEG",
+            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+          },
+          {
+            key: "price_book_mrq",
+            label: "P/B",
+            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+          },
+          {
+            key: "price_sales_ttm",
+            label: "P/S",
+            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+          },
+          {
+            key: "ev_ebitda",
+            label: "EV/EBITDA",
+            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+          },
+          {
+            key: "enterprise_value",
+            label: "Ent Value",
+            format: (v) => {
+              if (v == null) return "";
+              const n = Number(v);
+              if (Math.abs(n) >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+              if (Math.abs(n) >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+              if (Math.abs(n) >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+              return `$${n.toFixed(0)}`;
+            },
+          },
+          {
+            key: "payout_ratio",
+            label: "Payout",
+            format: (v) => (v != null ? `${(Number(v) * 100).toFixed(2)}%` : ""),
+          },
+          {
+            key: "revenue_per_share",
+            label: "Rev/Share",
+            format: (v) => (v != null ? `$${Number(v).toFixed(2)}` : ""),
+          },
+          {
+            key: "book_value_per_share",
+            label: "BV/Share",
+            format: (v) => (v != null ? `$${Number(v).toFixed(2)}` : ""),
+          },
+          {
+            key: "shares_float",
+            label: "Float",
+            format: (v) => {
+              if (v == null) return "";
+              const n = Number(v);
+              if (Math.abs(n) >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
+              if (Math.abs(n) >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
+              return fmt.format(n);
+            },
+          },
+          {
+            key: "net_debt",
+            label: "Net Debt",
+            format: (v) => {
+              if (v == null) return "";
+              const n = Number(v);
+              if (Math.abs(n) >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+              if (Math.abs(n) >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+              if (Math.abs(n) >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+              return `$${n.toFixed(0)}`;
+            },
+          },
+          {
+            key: "free_cash_flow",
+            label: "FCF",
+            format: (v) => {
+              if (v == null) return "";
+              const n = Number(v);
+              if (Math.abs(n) >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+              if (Math.abs(n) >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+              if (Math.abs(n) >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+              return `$${n.toFixed(0)}`;
+            },
+          },
+          {
+            key: "operating_cash_flow",
+            label: "OCF",
+            format: (v) => {
+              if (v == null) return "";
+              const n = Number(v);
+              if (Math.abs(n) >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+              if (Math.abs(n) >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+              if (Math.abs(n) >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+              return `$${n.toFixed(0)}`;
+            },
+          },
+          {
+            key: "diluted_eps_ttm",
+            label: "EPS (TTM)",
+            format: (v) => (v != null ? `$${Number(v).toFixed(2)}` : ""),
+          },
+          {
+            key: "revenue_ttm",
+            label: "Sales (TTM)",
+            format: (v) => {
+              if (v == null) return "";
+              const n = Number(v);
+              if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+              if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+              if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+              return `$${n.toFixed(0)}`;
+            },
+          },
+          {
+            key: "return_on_equity_ttm",
+            label: "ROE",
+            format: (v) => (v != null ? `${(Number(v) * 100).toFixed(2)}%` : ""),
+          },
+          {
+            key: "day_50_ma",
+            label: "SMA50",
+            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+          },
+          {
+            key: "day_200_ma",
+            label: "SMA200",
+            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+          },
+        ];
 
       // Filter to only visible columns
       const exportColumns = columnDefs.filter((col) =>
@@ -706,10 +804,8 @@ function ResultsPageContent() {
                   { key: "name", label: "Name" },
                   { key: "exchange", label: "Exchange" },
                   { key: "adjusted_close", label: "Price" },
-                  { key: "market_capitalization", label: "Market Cap" },
+                  { key: "market_cap", label: "Market Cap" },
                   { key: "dividend_yield", label: "Div Yield" },
-                  { key: "change", label: "Change" },
-                  { key: "change_percent", label: "Change %" },
                   { key: "pe_ratio", label: "P/E" },
                   { key: "forward_pe", label: "Fwd P/E" },
                   { key: "peg_ratio", label: "PEG" },
@@ -717,16 +813,25 @@ function ResultsPageContent() {
                   { key: "price_sales_ttm", label: "P/S" },
                   { key: "ev_ebitda", label: "EV/EBITDA" },
                   { key: "ev_revenue", label: "EV/Revenue" },
+                  { key: "enterprise_value", label: "Ent Value" },
                   { key: "return_on_equity_ttm", label: "ROE" },
                   { key: "return_on_assets_ttm", label: "ROA" },
                   { key: "operating_margin_ttm", label: "OPM" },
                   { key: "profit_margin", label: "Profit Margin" },
+                  { key: "payout_ratio", label: "Payout" },
+                  { key: "revenue_per_share", label: "Rev/Share" },
+                  { key: "book_value_per_share", label: "BV/Share" },
                   { key: "net_debt", label: "Net Debt" },
                   { key: "free_cash_flow", label: "FCF" },
                   { key: "operating_cash_flow", label: "OCF" },
-                  { key: "eps_ttm", label: "EPS (TTM)" },
-                  { key: "diluted_eps_ttm", label: "Diluted EPS" },
+                  { key: "diluted_eps_ttm", label: "EPS (TTM)" },
                   { key: "revenue_ttm", label: "Sales (TTM)" },
+                  { key: "quarterly_revenue_growth_yoy", label: "Rev Growth" },
+                  { key: "quarterly_earnings_growth_yoy", label: "EPS Growth" },
+                  { key: "analyst_target_price", label: "Analyst Tgt" },
+                  { key: "analyst_rating", label: "Rating" },
+                  { key: "shares_outstanding", label: "Shares" },
+                  { key: "shares_float", label: "Float" },
                   { key: "day_50_ma", label: "SMA50" },
                   { key: "day_200_ma", label: "SMA200" },
                   { key: "beta", label: "Beta" },
@@ -972,14 +1077,34 @@ function ResultsPageContent() {
                             </div>
                           </th>
                         )}
-                        {visibleColumns.has("market_capitalization") && (
+                        {visibleColumns.has("market_cap") && (
                           <th
                             className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("market_capitalization")}
+                            onClick={() => toggleSort("market_cap")}
                           >
                             <div className="flex items-center justify-end">
                               Market Cap{" "}
-                              <SortIcon column="market_capitalization" />
+                              <SortIcon column="market_cap" />
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has("shares_outstanding") && (
+                          <th
+                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                            onClick={() => toggleSort("shares_outstanding")}
+                          >
+                            <div className="flex items-center justify-end">
+                              Shares <SortIcon column="shares_outstanding" />
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has("shares_float") && (
+                          <th
+                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                            onClick={() => toggleSort("shares_float")}
+                          >
+                            <div className="flex items-center justify-end">
+                              Float <SortIcon column="shares_float" />
                             </div>
                           </th>
                         )}
@@ -1013,33 +1138,33 @@ function ResultsPageContent() {
                             </div>
                           </th>
                         )}
-                        {visibleColumns.has("peg") && (
+                        {visibleColumns.has("peg_ratio") && (
                           <th
                             className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("peg")}
+                            onClick={() => toggleSort("peg_ratio")}
                           >
                             <div className="flex items-center justify-end">
-                              PEG <SortIcon column="peg" />
+                              PEG <SortIcon column="peg_ratio" />
                             </div>
                           </th>
                         )}
-                        {visibleColumns.has("pb") && (
+                        {visibleColumns.has("price_book_mrq") && (
                           <th
                             className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("pb")}
+                            onClick={() => toggleSort("price_book_mrq")}
                           >
                             <div className="flex items-center justify-end">
-                              P/B <SortIcon column="pb" />
+                              P/B <SortIcon column="price_book_mrq" />
                             </div>
                           </th>
                         )}
-                        {visibleColumns.has("price_to_sales") && (
+                        {visibleColumns.has("price_sales_ttm") && (
                           <th
                             className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("price_to_sales")}
+                            onClick={() => toggleSort("price_sales_ttm")}
                           >
                             <div className="flex items-center justify-end">
-                              P/S <SortIcon column="price_to_sales" />
+                              P/S <SortIcon column="price_sales_ttm" />
                             </div>
                           </th>
                         )}
@@ -1053,13 +1178,13 @@ function ResultsPageContent() {
                             </div>
                           </th>
                         )}
-                        {visibleColumns.has("eps_ttm") && (
+                        {visibleColumns.has("enterprise_value") && (
                           <th
                             className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("eps_ttm")}
+                            onClick={() => toggleSort("enterprise_value")}
                           >
                             <div className="flex items-center justify-end">
-                              EPS (TTM) <SortIcon column="eps_ttm" />
+                              Ent Value <SortIcon column="enterprise_value" />
                             </div>
                           </th>
                         )}
@@ -1069,18 +1194,107 @@ function ResultsPageContent() {
                             onClick={() => toggleSort("diluted_eps_ttm")}
                           >
                             <div className="flex items-center justify-end">
-                              Diluted EPS <SortIcon column="diluted_eps_ttm" />
+                              EPS (TTM) <SortIcon column="diluted_eps_ttm" />
                             </div>
                           </th>
                         )}
-                        {visibleColumns.has("revenue_ttm") && (
+                        {visibleColumns.has("net_debt") && (
                           <th
                             className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("revenue_ttm")}
+                            onClick={() => toggleSort("net_debt")}
                           >
                             <div className="flex items-center justify-end">
-                              Sales (TTM) <SortIcon column="revenue_ttm" />
+                              Net Debt <SortIcon column="net_debt" />
                             </div>
+                          </th>
+                        )}
+                        {visibleColumns.has("payout_ratio") && (
+                          <th
+                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                            onClick={() => toggleSort("payout_ratio")}
+                          >
+                            <div className="flex items-center justify-end">
+                              Payout <SortIcon column="payout_ratio" />
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has("revenue_per_share") && (
+                          <th
+                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                            onClick={() => toggleSort("revenue_per_share")}
+                          >
+                            <div className="flex items-center justify-end">
+                              Rev/Share <SortIcon column="revenue_per_share" />
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has("book_value_per_share") && (
+                          <th
+                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                            onClick={() => toggleSort("book_value_per_share")}
+                          >
+                            <div className="flex items-center justify-end">
+                              BV/Share <SortIcon column="book_value_per_share" />
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has("free_cash_flow") && (
+                          <th
+                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                            onClick={() => toggleSort("free_cash_flow")}
+                          >
+                            <div className="flex items-center justify-end">
+                              FCF <SortIcon column="free_cash_flow" />
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has("operating_cash_flow") && (
+                          <th
+                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                            onClick={() => toggleSort("operating_cash_flow")}
+                          >
+                            <div className="flex items-center justify-end">
+                              OCF <SortIcon column="operating_cash_flow" />
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has("quarterly_revenue_growth_yoy") && (
+                          <th
+                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                            onClick={() => toggleSort("quarterly_revenue_growth_yoy")}
+                          >
+                            <div className="flex items-center justify-end">
+                              Rev Growth <SortIcon column="quarterly_revenue_growth_yoy" />
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has("quarterly_earnings_growth_yoy") && (
+                          <th
+                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                            onClick={() => toggleSort("quarterly_earnings_growth_yoy")}
+                          >
+                            <div className="flex items-center justify-end">
+                              EPS Growth <SortIcon column="quarterly_earnings_growth_yoy" />
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has("analyst_target_price") && (
+                          <th
+                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                            onClick={() => toggleSort("analyst_target_price")}
+                          >
+                            <div className="flex items-center justify-end">
+                              Target <SortIcon column="analyst_target_price" />
+                            </div>
+                          </th>
+                        )}
+
+                        {visibleColumns.has("analyst_rating") && (
+                          <th
+                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                            onClick={() => toggleSort("analyst_rating")}
+                          >
+                            Rating <SortIcon column="analyst_rating" />
                           </th>
                         )}
                         {visibleColumns.has("day_50_ma") && (
@@ -1127,14 +1341,12 @@ function ResultsPageContent() {
                             key={`${r.code}-${i}`}
                             className={`
                               transition-all duration-150 group
-                              ${
-                                isAccessible
-                                  ? `${
-                                      isEven
-                                        ? "bg-white dark:bg-slate-900"
-                                        : "bg-slate-50/50 dark:bg-slate-800/30"
-                                    } hover:bg-blue-50 dark:hover:bg-slate-700/50 cursor-pointer`
-                                  : "opacity-30 pointer-events-none select-none bg-slate-100/50 dark:bg-slate-800/50"
+                              ${isAccessible
+                                ? `${isEven
+                                  ? "bg-white dark:bg-slate-900"
+                                  : "bg-slate-50/50 dark:bg-slate-800/30"
+                                } hover:bg-blue-50 dark:hover:bg-slate-700/50 cursor-pointer`
+                                : "opacity-30 pointer-events-none select-none bg-slate-100/50 dark:bg-slate-800/50"
                               }
                             `}
                             onClick={() => {
@@ -1173,9 +1385,19 @@ function ResultsPageContent() {
                                 {fmtUsd(r.adjusted_close)}
                               </td>
                             )}
-                            {visibleColumns.has("market_capitalization") && (
+                            {visibleColumns.has("market_cap") && (
                               <td className="px-4 py-3 text-right font-mono font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
-                                {fmtCap(r.market_capitalization)}
+                                {fmtCap(r.market_cap)}
+                              </td>
+                            )}
+                            {visibleColumns.has("shares_outstanding") && (
+                              <td className="px-4 py-3 text-right font-mono font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
+                                {fmtCap(r.shares_outstanding)}
+                              </td>
+                            )}
+                            {visibleColumns.has("shares_float") && (
+                              <td className="px-4 py-3 text-right font-mono font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
+                                {fmtCap(r.shares_float)}
                               </td>
                             )}
                             {visibleColumns.has("dividend_yield") && (
@@ -1202,22 +1424,22 @@ function ResultsPageContent() {
                               </td>
                             )}
                             {/* PEG */}
-                            {visibleColumns.has("peg") && (
+                            {visibleColumns.has("peg_ratio") && (
                               <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.peg != null ? r.peg.toFixed(2) : "—"}
+                                {r.peg_ratio != null ? r.peg_ratio.toFixed(2) : "—"}
                               </td>
                             )}
                             {/* P/B */}
-                            {visibleColumns.has("pb") && (
+                            {visibleColumns.has("price_book_mrq") && (
                               <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
-                                {r.pb != null ? r.pb.toFixed(2) : "—"}
+                                {r.price_book_mrq != null ? r.price_book_mrq.toFixed(2) : "—"}
                               </td>
                             )}
                             {/* P/S */}
-                            {visibleColumns.has("price_to_sales") && (
+                            {visibleColumns.has("price_sales_ttm") && (
                               <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
-                                {r.price_to_sales != null
-                                  ? r.price_to_sales.toFixed(2)
+                                {r.price_sales_ttm != null
+                                  ? r.price_sales_ttm.toFixed(2)
                                   : "—"}
                               </td>
                             )}
@@ -1229,26 +1451,78 @@ function ResultsPageContent() {
                                   : "—"}
                               </td>
                             )}
-                            {/* EPS (TTM) */}
-                            {visibleColumns.has("eps_ttm") && (
-                              <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.eps_ttm != null
-                                  ? `$${r.eps_ttm.toFixed(2)}`
-                                  : "—"}
+                            {/* Enterprise Value */}
+                            {visibleColumns.has("enterprise_value") && (
+                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                {fmtCap(r.enterprise_value)}
                               </td>
                             )}
-                            {/* Diluted EPS */}
+                            {/* EPS (TTM) / Diluted */}
                             {visibleColumns.has("diluted_eps_ttm") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                              <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 tabular-nums">
                                 {r.diluted_eps_ttm != null
                                   ? `$${r.diluted_eps_ttm.toFixed(2)}`
                                   : "—"}
                               </td>
                             )}
-                            {/* Revenue (TTM) */}
-                            {visibleColumns.has("revenue_ttm") && (
+                            {/* Net Debt */}
+                            {visibleColumns.has("net_debt") && (
                               <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
-                                {fmtCap(r.revenue_ttm)}
+                                {fmtCap(r.net_debt)}
+                              </td>
+                            )}
+                            {/* Payout */}
+                            {visibleColumns.has("payout_ratio") && (
+                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                {fmtPct(r.payout_ratio)}
+                              </td>
+                            )}
+                            {/* Rev/Share */}
+                            {visibleColumns.has("revenue_per_share") && (
+                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                {fmtUsd(r.revenue_per_share)}
+                              </td>
+                            )}
+                            {/* BV/Share */}
+                            {visibleColumns.has("book_value_per_share") && (
+                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                {fmtUsd(r.book_value_per_share)}
+                              </td>
+                            )}
+                            {/* FCF */}
+                            {visibleColumns.has("free_cash_flow") && (
+                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                {fmtCap(r.free_cash_flow)}
+                              </td>
+                            )}
+                            {/* OCF */}
+                            {visibleColumns.has("operating_cash_flow") && (
+                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                {fmtCap(r.operating_cash_flow)}
+                              </td>
+                            )}
+                            {/* Rev Growth */}
+                            {visibleColumns.has("quarterly_revenue_growth_yoy") && (
+                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                {fmtPct(r.quarterly_revenue_growth_yoy)}
+                              </td>
+                            )}
+                            {/* EPS Growth */}
+                            {visibleColumns.has("quarterly_earnings_growth_yoy") && (
+                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                {fmtPct(r.quarterly_earnings_growth_yoy)}
+                              </td>
+                            )}
+                            {/* Target Price */}
+                            {visibleColumns.has("analyst_target_price") && (
+                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                {fmtUsd(r.analyst_target_price)}
+                              </td>
+                            )}
+                            {/* Rating */}
+                            {visibleColumns.has("analyst_rating") && (
+                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300">
+                                {r.analyst_rating ? Number(r.analyst_rating).toFixed(2) : "—"}
                               </td>
                             )}
                             {/* SMA50 */}
