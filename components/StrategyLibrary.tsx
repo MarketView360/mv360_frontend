@@ -954,7 +954,8 @@ export default function StrategyLibrary({
         strategy.description.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory =
         selectedCategory === "All" || strategy.category === selectedCategory;
-      return matchesSearch && matchesCategory;
+      const isVerified = strategy.feasibility === "full";
+      return matchesSearch && matchesCategory && isVerified;
     });
   }, [searchQuery, selectedCategory]);
 
@@ -1047,7 +1048,7 @@ export default function StrategyLibrary({
                       title={strategy.feasibilityNote || ""}
                     >
                       {strategy.feasibility === "full" ? (
-                        <><CheckCircle className="w-3 h-3 mr-0.5" />Works</>
+                        <><CheckCircle className="w-3 h-3 mr-0.5" />Verified</>
                       ) : strategy.feasibility === "partial" ? (
                         <><AlertTriangle className="w-3 h-3 mr-0.5" />Limited</>
                       ) : (
