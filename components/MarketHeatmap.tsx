@@ -77,7 +77,9 @@ type ScreenerRow = {
   code: string;
   sector: string | null;
   refund_1d_p: number | null;
+  price_change_1d?: number | null;
   market_capitalization: number | null;
+  market_cap?: number | null;
 };
 
 type Universe = "popular" | "small" | "micro" | "all";
@@ -243,8 +245,8 @@ export default function MarketHeatmap({ sector, refreshToken }: MarketHeatmapPro
 
     for (const row of rows) {
       const sec = row.sector || "Other";
-      const change = row.refund_1d_p ?? 0;
-      const mcap = row.market_capitalization ?? 0;
+      const change = row.refund_1d_p ?? row.price_change_1d ?? 0;
+      const mcap = row.market_capitalization ?? row.market_cap ?? 0;
 
       const item: MarketItem = {
         name: row.code,
@@ -339,7 +341,7 @@ export default function MarketHeatmap({ sector, refreshToken }: MarketHeatmapPro
         let filtered = rows;
         if (universe === "small" || universe === "micro") {
           filtered = rows.filter((r) => {
-            const mcap = r.market_capitalization ?? 0;
+            const mcap = r.market_capitalization ?? r.market_cap ?? 0;
             if (universe === "small") return mcap > 0 && mcap <= 20_000_000_000;
             return mcap > 0 && mcap <= 2_000_000_000;
           });
