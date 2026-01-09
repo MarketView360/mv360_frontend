@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { Inter, Lexend_Mega } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 
 import "./globals.css";
 import { cn } from "@/lib/utils";
@@ -55,6 +56,7 @@ export default function RootLayout({
         <ThemeProvider>
           <RouteChrome>{children}</RouteChrome>
           <Toaster position="top-right" richColors closeButton />
+          <Analytics />
         </ThemeProvider>
       </body>
     </html>
