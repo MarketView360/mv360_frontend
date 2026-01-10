@@ -13,7 +13,9 @@ import {
   ArrowDownRight,
   Activity,
   Clock,
+  Info,
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
 
@@ -300,10 +302,26 @@ export default function MarketOverview({
         {/* Movers */}
         <Card className="border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 h-full">
           <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
-            <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-900 dark:text-white">
-              <TrendingUp className="w-5 h-5 text-brand" />
-              Market Movers
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-900 dark:text-white">
+                <TrendingUp className="w-5 h-5 text-brand" />
+                Market Movers
+              </CardTitle>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button aria-label="Movers info" className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300">
+                      <Info className="w-4 h-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs text-xs">
+                    <p>
+                      Movers are calculated using end-of-day adjusted closing prices from the latest two trading sessions.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             {loading ? (
