@@ -20,7 +20,9 @@ export function CompanyLogo({ ticker, name, size = "md" }: CompanyLogoProps) {
     lg: "w-20 h-20 text-3xl rounded-xl",
   };
 
-  const symbol = ticker?.toLowerCase();
+  // Strip .US suffix for logo lookup
+  const cleanTicker = ticker?.replace(/\.US$/i, '') ?? '';
+  const symbol = cleanTicker.toLowerCase();
   const hasToken = !!LOGO_DEV_TOKEN;
   const src = hasToken
     ? `${LOGO_DEV_BASE}/${encodeURIComponent(symbol)}?token=${LOGO_DEV_TOKEN}`

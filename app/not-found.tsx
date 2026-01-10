@@ -23,11 +23,15 @@ export default function NotFound() {
               Go Home
             </Button>
           </Link>
-          <Link href="/market">
-            <Button size="lg" variant="outline" className="border-2 border-slate-300 dark:border-slate-600 hover:border-brand hover:bg-brand/5 dark:hover:border-brand dark:hover:bg-brand/10 text-slate-900 dark:text-white min-w-40 shadow-sm">
-              View Markets
+          <a href="mailto:support@finsaas.com">
+            <Button
+              size="lg"
+              variant="outline"
+              className="bg-white text-slate-900 border-2 border-slate-300 hover:bg-slate-100 dark:bg-transparent dark:text-white dark:border-slate-600 dark:hover:border-brand min-w-40 shadow-sm"
+            >
+              Contact Support
             </Button>
-          </Link>
+          </a>
         </div>
       </div>
       

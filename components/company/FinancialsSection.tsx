@@ -407,22 +407,36 @@ export function FinancialsSection({ ticker }: FinancialsSectionProps) {
   );
 }
 
-// Helper component for table rows
-<tr className="border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-  <td className="py-2 text-slate-600 dark:text-slate-300">{label}</td>
-  {data.map((f, idx) => (
-    <td key={f.period_end} className="py-2 text-right font-medium text-slate-900 dark:text-white">
-      <div className="flex flex-col items-end">
-        <span className="font-mono">{format(f[field] as number | null)}</span>
-        {idx < data.length - 1 && (
-          <TrendIndicator
-            current={f[field] as number | null}
-            previous={data[idx + 1][field] as number | null}
-          />
-        )}
-      </div>
-    </td>
-  ))}
-</tr>
-
 export default FinancialsSection;
+
+// Helper component for table rows
+function TableRow<K extends keyof FinancialPeriod>({
+  label,
+  data,
+  field,
+  format,
+}: {
+  label: string;
+  data: FinancialPeriod[];
+  field: K;
+  format: (value: number | null) => string;
+}) {
+  return (
+    <tr className="border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+      <td className="py-2 text-slate-600 dark:text-slate-300">{label}</td>
+      {data.map((f, idx) => (
+        <td key={f.period_end} className="py-2 text-right font-medium text-slate-900 dark:text-white">
+          <div className="flex flex-col items-end">
+            <span className="font-mono">{format(f[field] as number | null)}</span>
+            {idx < data.length - 1 && (
+              <TrendIndicator
+                current={f[field] as number | null}
+                previous={data[idx + 1][field] as number | null}
+              />
+            )}
+          </div>
+        </td>
+      ))}
+    </tr>
+  );
+}

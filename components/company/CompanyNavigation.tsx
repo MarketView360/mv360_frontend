@@ -23,12 +23,8 @@ export function CompanyNavigation({ ticker, currentTab: initialTab }: CompanyNav
 
     const tabs: Tab[] = [
         { id: "overview", label: "Overview", href: `/company/${ticker}` },
-        { id: "financials", label: "Financials", href: `/company/${ticker}/financials` },
-        { id: "technicals", label: "Technicals", href: `/company/${ticker}/technicals` },
-        { id: "analysis", label: "Analysis", href: `/company/${ticker}/analysis` },
         { id: "peers", label: "Peers", href: `/company/${ticker}/peers` },
         { id: "news", label: "News", href: `/company/${ticker}/news` },
-        { id: "holders", label: "Holders", href: `/company/${ticker}/holders` },
     ];
 
     // Listen for scroll to update active tab
@@ -37,7 +33,7 @@ export function CompanyNavigation({ ticker, currentTab: initialTab }: CompanyNav
 
         const handleScroll = () => {
             const sections = tabs
-                .filter(tab => ["overview", "financials", "technicals", "peers", "news"].includes(tab.id))
+                .filter(tab => ["overview", "peers", "news"].includes(tab.id))
                 .map(tab => document.getElementById(tab.id))
                 .filter(Boolean) as HTMLElement[];
 
@@ -59,7 +55,7 @@ export function CompanyNavigation({ ticker, currentTab: initialTab }: CompanyNav
     }, [isMainPage, tabs]);
 
     const handleTabClick = (e: React.MouseEvent<HTMLAnchorElement>, tab: Tab) => {
-        const isInternalSection = ["overview", "financials", "technicals", "peers", "news"].includes(tab.id);
+        const isInternalSection = ["overview", "peers", "news"].includes(tab.id);
 
         if (isMainPage && isInternalSection) {
             e.preventDefault();
@@ -79,13 +75,13 @@ export function CompanyNavigation({ ticker, currentTab: initialTab }: CompanyNav
     };
 
     return (
-        <div className="sticky top-[64px] z-40 backdrop-blur-md bg-white/60 dark:bg-slate-950/60 border-b border-slate-200 dark:border-slate-800 -mx-4 px-4 md:-mx-8 md:px-8 lg:-mx-12 lg:px-12 transition-colors duration-300">
+        <div className="bg-white/80 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800 -mx-4 px-4 md:-mx-8 md:px-8 lg:-mx-12 lg:px-12 transition-colors duration-300">
             <div className="mx-auto max-w-[1600px]">
                 <div className="flex items-center overflow-x-auto no-scrollbar">
                     <div className="flex gap-1 py-1">
                         {tabs.map((tab) => {
                             const isActive = activeTab === tab.id;
-                            const isInternalSection = ["overview", "financials", "technicals", "peers", "news"].includes(tab.id);
+                            const isInternalSection = ["overview", "peers", "news"].includes(tab.id);
                             const href = isMainPage && isInternalSection ? `#${tab.id}` : tab.href;
 
                             return (

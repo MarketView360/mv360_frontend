@@ -67,6 +67,7 @@ export function PriceChart({ data }: PriceChartProps) {
       "1Y": 252,
       "3Y": 252 * 3,
       "5Y": 252 * 5,
+      "10Y": 252 * 10,
       Max: "max",
     };
 
@@ -75,6 +76,27 @@ export function PriceChart({ data }: PriceChartProps) {
     if (enriched.length <= windowSize) return enriched;
     return enriched.slice(-windowSize);
   }, [enriched, range]);
+
+  // For very long ranges in candlestick view, downsample so the chart
+  // remains readable and doesn't become an unreadable cluster of candles.
+  const displayData = React.useMemo(() => {
+    if (!filteredData || filteredData.length === 0) return filteredData;
+    if (view !== "candlestick") return filteredData;
+
+    const maxCandles = 260; // roughly 1 year of trading days
+    if (filteredData.length <= maxCandles) return filteredData;
+
+    const step = Math.ceil(filteredData.length / maxCandles);
+    return filteredData.filter((_, idx) => idx % step === 0);
+  }, [filteredData, view]);
+
+  // Log scale only makes sense for strictly positive prices.
+  const hasNonPositivePrice = React.useMemo(
+    () => (displayData ?? []).some((p) => p.price == null || p.price <= 0),
+    [displayData],
+  );
+  const canUseLog = !hasNonPositivePrice && view === "price";
+  const canShowVolume = view !== "drawdown";
 
   const formatDateLabel = React.useCallback((dateStr: string) => {
     const date = new Date(dateStr);
@@ -134,7 +156,7 @@ export function PriceChart({ data }: PriceChartProps) {
         </div>
         <div className="flex items-center gap-2">
           <div className="flex space-x-1">
-            {["1M", "6M", "1Y", "3Y", "5Y", "Max"].map((r) => (
+            {["1M", "6M", "1Y", "3Y", "5Y", "10Y", "Max"].map((r) => (
               <button
                 key={r}
                 onClick={() => setRange(r)}
@@ -162,13 +184,14 @@ export function PriceChart({ data }: PriceChartProps) {
               Vol
             </button>
             <button
-              onClick={() => setLogScale((v) => !v)}
+              onClick={() => canUseLog && setLogScale((v) => !v)}
               className={cn(
                 "px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700",
-                logScale
+                logScale && canUseLog
                   ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
                   : "text-slate-500 dark:text-slate-400"
               )}
+              disabled={!canUseLog}
             >
               Log
             </button>
@@ -178,7 +201,7 @@ export function PriceChart({ data }: PriceChartProps) {
       <CardContent className="p-4">
         <div className="h-[320px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={filteredData}>
+            <ComposedChart data={displayData}>
               <defs>
                 {/* Simplified defs - could be removed if no longer used by Area/Bar */}
               </defs>
@@ -210,7 +233,7 @@ export function PriceChart({ data }: PriceChartProps) {
                   view === "price" ? `$${value}` : `${value.toFixed(0)}%`
                 }
                 domain={["auto", "auto"]}
-                scale={logScale && view === "price" ? "log" : "auto"}
+                scale={logScale && canUseLog ? "log" : "auto"}
               />
               <YAxis
                 yAxisId="volume"
@@ -227,6 +250,7 @@ export function PriceChart({ data }: PriceChartProps) {
                   if (n >= 1_000) return `${(n / 1_000).toFixed(0)}k`;
                   return `${n}`;
                 }}
+                hide={!showVolume || !canShowVolume}
               />
               <Tooltip
                 content={({ active, payload, label }) => {
