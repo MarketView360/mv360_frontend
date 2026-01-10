@@ -24,7 +24,9 @@ type ScreenerRow = {
   name: string;
   adjusted_close: number | null;
   refund_1d_p: number | null;
+  price_change_1d?: number | null;
   market_capitalization?: number | null;
+  market_cap?: number | null;
 };
 
 type NewsItem = {
@@ -210,7 +212,7 @@ export default function MarketOverview({
   const losersToShow = losers
     .slice(0, 5)
     // losers query is asc (worst first). Keep as-is for display.
-    .filter((row) => row.refund_1d_p !== null);
+    .filter((row) => (row.refund_1d_p ?? row.price_change_1d) !== null);
 
   return (
     <div className="space-y-6">
@@ -387,7 +389,7 @@ export default function MarketOverview({
                         </div>
                         <div className="text-right w-20 flex-shrink-0">
                           <div className="font-semibold text-emerald-600 dark:text-emerald-400">
-                            {formatChange(stock.refund_1d_p)}
+                            {formatChange(stock.refund_1d_p ?? stock.price_change_1d)}
                           </div>
                           <div className="text-[11px] text-slate-500 dark:text-slate-400">
                             ${formatPrice(stock.adjusted_close)}
@@ -435,7 +437,7 @@ export default function MarketOverview({
                         </div>
                         <div className="text-right w-20 flex-shrink-0">
                           <div className="font-semibold text-rose-600 dark:text-rose-400">
-                            {formatChange(stock.refund_1d_p)}
+                            {formatChange(stock.refund_1d_p ?? stock.price_change_1d)}
                           </div>
                           <div className="text-[11px] text-slate-500 dark:text-slate-400">
                             ${formatPrice(stock.adjusted_close)}
