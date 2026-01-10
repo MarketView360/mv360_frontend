@@ -697,8 +697,16 @@ function AnalystRatings({ metrics }: { metrics: AnalystData | null }) {
   }
 
   const total = metrics.strongBuy + metrics.buy + metrics.hold + metrics.sell + metrics.strongSell;
-  const buyPercent = total > 0 ? ((metrics.strongBuy + metrics.buy) / total) * 100 : 0;
-  
+  const buyShare = total > 0 ? (metrics.strongBuy + metrics.buy) / total : 0;
+
+  // Use the numeric rating (0-5) to drive the bar when available,
+  // so the visual matches the "Strong Buy / Buy / Hold / Sell" label.
+  // Fallback to the share of Buy+Strong Buy if rating is missing.
+  const barPercent =
+    metrics.rating != null
+      ? Math.min(Math.max((metrics.rating / 5) * 100, 0), 100)
+      : buyShare * 100;
+
   // Derive consensus from rating score
   const getConsensus = (rating: number | null) => {
     if (rating == null) return "N/A";
@@ -740,29 +748,28 @@ function AnalystRatings({ metrics }: { metrics: AnalystData | null }) {
               </div>
             )}
           </div>
-          
-          <Progress value={buyPercent} className="h-2" />
-          
+          <Progress value={barPercent} className="h-2" />
           <div className="grid grid-cols-5 gap-1 text-center text-xs">
+            {/* Most bearish on the left, most bullish on the right */}
             <div>
-              <div className="font-semibold text-green-600">{metrics.strongBuy}</div>
-              <div className="text-muted-foreground">Strong Buy</div>
-            </div>
-            <div>
-              <div className="font-semibold text-green-500">{metrics.buy}</div>
-              <div className="text-muted-foreground">Buy</div>
-            </div>
-            <div>
-              <div className="font-semibold text-slate-500">{metrics.hold}</div>
-              <div className="text-muted-foreground">Hold</div>
+              <div className="font-semibold text-red-600">{metrics.strongSell}</div>
+              <div className="text-muted-foreground">Strong Sell</div>
             </div>
             <div>
               <div className="font-semibold text-red-500">{metrics.sell}</div>
               <div className="text-muted-foreground">Sell</div>
             </div>
             <div>
-              <div className="font-semibold text-red-600">{metrics.strongSell}</div>
-              <div className="text-muted-foreground">Strong Sell</div>
+              <div className="font-semibold text-slate-500">{metrics.hold}</div>
+              <div className="text-muted-foreground">Hold</div>
+            </div>
+            <div>
+              <div className="font-semibold text-green-500">{metrics.buy}</div>
+              <div className="text-muted-foreground">Buy</div>
+            </div>
+            <div>
+              <div className="font-semibold text-green-600">{metrics.strongBuy}</div>
+              <div className="text-muted-foreground">Strong Buy</div>
             </div>
           </div>
         </div>
