@@ -85,12 +85,12 @@ function processArticleContent(content: string) {
 
   // Some feeds embed links using a custom inline-link markup like:
   // ["inline-link" data-url="https://example.com"]>[example.com]
-  // Normalize these back to plain URLs so our URL regex can handle them.
-  cleaned = cleaned
-    // Full form with label at the end
-    .replace(/\["inline-link"[^\]]*data-url="([^"\]]+)"[^\]]*]">?\[[^\]]*]/g, (match, url) => url)
-    // Fallback: any remaining inline-link with a data-url
-    .replace(/\["inline-link"[^\]]*data-url="([^"\]]+)"[^\]]*]/g, (match, url) => url);
+  // or variants with extra text like ]to">[label]. Normalize any such
+  // block back to a plain URL so our URL regex can handle them.
+  cleaned = cleaned.replace(
+    /\["inline-link"[\s\S]*?data-url="([^"\]]+)[^]]*]/g,
+    (_match, url) => url,
+  );
 
   const urlRegex = /(https?:\/\/[^\s<]+)/g;
   const links: string[] = [];

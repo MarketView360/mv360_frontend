@@ -15,17 +15,24 @@ export interface NewsArticle {
 
 // Some feeds embed links using a custom inline-link markup like:
 // ["inline-link" data-url="https://example.com"]>[example.com]
-// Normalize these so we don't show the raw markup in previews.
+// or variants with extra text like ]to">[example.com]. Normalize these so
+// we don't show the raw markup in previews.
 function cleanInlineLinks(raw: string | undefined | null): string {
     if (!raw) return "";
     let text = raw;
 
-    // Replace inline-link blocks with just their label or URL.
-    text = text
-        // Case: ["inline-link" data-url="URL"]>[label]
-        .replace(/\["inline-link"[^\]]*data-url="([^"\]]+)"[^\]]*]">\[([^\]]+)]/g, (match, url, label) => label || url)
-        // Fallback: any remaining ["inline-link" ... data-url="URL"]
-        .replace(/\["inline-link"[^\]]*data-url="([^"\]]+)"[^\]]*]/g, (match, url) => url);
+    // Replace inline-link blocks with just their label (if present) or URL.
+    // First handle the form that includes an explicit label at the end.
+    text = text.replace(
+        /\["inline-link"[\s\S]*?data-url="([^"\]]+)[^]]*]?[>]*\[([^\]]+)]/g,
+        (_match, url, label) => (label || url),
+    );
+
+    // Then handle any remaining inline-link blocks without a trailing [label].
+    text = text.replace(
+        /\["inline-link"[\s\S]*?data-url="([^"\]]+)[^]]*]/g,
+        (_match, url) => url,
+    );
 
     return text.trim();
 }
