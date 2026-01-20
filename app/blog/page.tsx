@@ -40,7 +40,8 @@ function parseMarkdownLinks(text: string): MarkdownPart[] {
   const parts: MarkdownPart[] = [];
   if (!text) return parts;
 
-  const regex = /\[([^\]]+)\]\(([^)]+)\)/g;
+  // Support standard markdown `[Label](url)` and a common variant `[Label] (url)`
+  const regex = /\[([^\]]+)\]\s*\(([^)]+)\)/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
@@ -538,7 +539,10 @@ export default function BlogPage() {
               <div className="p-6 md:p-8 overflow-y-auto max-h-[calc(90vh-180px)]">
                 <div className="prose prose-slate dark:prose-invert max-w-none">
                   <div className="text-base md:text-lg text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
-                    {selectedBlog.description}
+                    <BlogDescription
+                      text={selectedBlog.description}
+                      onExternalClick={showWarning}
+                    />
                   </div>
                 </div>
               </div>
