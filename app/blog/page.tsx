@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,6 +19,7 @@ import {
   ChevronRight,
   Clock
 } from "lucide-react";
+import { ExternalLinkWarning, useExternalLinkWarning } from "../news/ExternalLinkWarning";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -29,6 +30,97 @@ interface Blog {
   description: string;
   date: string;
   type: string;
+}
+
+type MarkdownPart =
+  | { type: "text"; text: string }
+  | { type: "link"; text: string; url: string };
+
+function parseMarkdownLinks(text: string): MarkdownPart[] {
+  const parts: MarkdownPart[] = [];
+  if (!text) return parts;
+
+  const regex = /\[([^\]]+)\]\(([^)]+)\)/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push({ type: "text", text: text.slice(lastIndex, match.index) });
+    }
+
+    const label = match[1];
+    const url = match[2];
+    parts.push({ type: "link", text: label, url });
+    lastIndex = regex.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push({ type: "text", text: text.slice(lastIndex) });
+  }
+
+  return parts;
+}
+
+function isInternalUrl(rawUrl: string): boolean {
+  if (!rawUrl) return false;
+  // Treat relative URLs as internal
+  if (rawUrl.startsWith("/")) return true;
+  try {
+    const url = new URL(rawUrl, "https://www.marketview360.io");
+    return url.hostname.endsWith("marketview360.io");
+  } catch {
+    return false;
+  }
+}
+
+function BlogDescription({
+  text,
+  onExternalClick,
+}: {
+  text: string;
+  onExternalClick: (url: string) => void;
+}) {
+  const parts = useMemo(() => parseMarkdownLinks(text), [text]);
+
+  if (!parts.length) return <>{text}</>;
+
+  return (
+    <>
+      {parts.map((part, idx) => {
+        if (part.type === "text") {
+          return <span key={idx}>{part.text}</span>;
+        }
+
+        const { url, text: label } = part;
+        if (isInternalUrl(url)) {
+          return (
+            <a
+              key={idx}
+              href={url}
+              className="text-brand hover:underline"
+            >
+              {label}
+            </a>
+          );
+        }
+
+        return (
+          <button
+            key={idx}
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              onExternalClick(url);
+            }}
+            className="inline-flex items-center gap-1 text-brand hover:underline"
+          >
+            {label}
+          </button>
+        );
+      })}
+    </>
+  );
 }
 
 const getTypeIcon = (type: string) => {
@@ -68,6 +160,13 @@ export default function BlogPage() {
   const [selectedBlog, setSelectedBlog] = useState<Blog | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState<string>("all");
+
+  const {
+    warningState,
+    showWarning,
+    confirmNavigation,
+    setWarningOpen,
+  } = useExternalLinkWarning();
 
   useEffect(() => {
     const fetchBlogs = async () => {
@@ -203,6 +302,12 @@ export default function BlogPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <div className="mx-auto max-w-[1200px] px-4 md:px-8 lg:px-12 py-12 md:py-20">
+        <ExternalLinkWarning
+          open={warningState.open}
+          onOpenChange={setWarningOpen}
+          url={warningState.url}
+          onConfirm={confirmNavigation}
+        />
         {/* Header */}
         <div className="mb-12">
           <div className="flex items-center gap-3 mb-4">
@@ -358,9 +463,10 @@ export default function BlogPage() {
                                 </h3>
                               </div>
 
-                              <p className="text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-3">
-                                {log.description}
-                              </p>
+                              <BlogDescription
+                                text={log.description}
+                                onExternalClick={showWarning}
+                              />
 
                               <div className="flex items-center gap-2 text-sm font-medium text-brand group-hover:gap-3 transition-all">
                                 <span>Read more</span>
