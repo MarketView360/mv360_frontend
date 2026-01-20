@@ -13,6 +13,23 @@ export interface NewsArticle {
     symbols?: string[];
 }
 
+// Some feeds embed links using a custom inline-link markup like:
+// ["inline-link" data-url="https://example.com"]>[example.com]
+// Normalize these so we don't show the raw markup in previews.
+function cleanInlineLinks(raw: string | undefined | null): string {
+    if (!raw) return "";
+    let text = raw;
+
+    // Replace inline-link blocks with just their label or URL.
+    text = text
+        // Case: ["inline-link" data-url="URL"]>[label]
+        .replace(/\["inline-link"[^\]]*data-url="([^"\]]+)"[^\]]*]">\[([^\]]+)]/g, (match, url, label) => label || url)
+        // Fallback: any remaining ["inline-link" ... data-url="URL"]
+        .replace(/\["inline-link"[^\]]*data-url="([^"\]]+)"[^\]]*]/g, (match, url) => url);
+
+    return text.trim();
+}
+
 // Keep slug generation in sync with app/news/[slug]/page.tsx
 function generateSlugFromArticle(article: NewsArticle & { slug?: string }): string {
     if (article.slug) return article.slug;
@@ -163,7 +180,7 @@ export function NewsFeed({
                                             </h4>
                                             {article.content && (
                                                 <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-3">
-                                                    {article.content}
+                                                    {cleanInlineLinks(article.content)}
                                                 </p>
                                             )}
                                         </div>
@@ -185,7 +202,7 @@ export function NewsFeed({
                                     </p>
                                     {article.content && (
                                         <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2">
-                                            {article.content}
+                                            {cleanInlineLinks(article.content)}
                                         </p>
                                     )}
                                 </Link>
