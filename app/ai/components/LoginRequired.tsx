@@ -33,7 +33,7 @@ export function LoginRequired() {
 
       <div className="grid grid-cols-2 gap-4">
         {/* Login Card - Increased border contrast (slate-300 light, slate-700 dark) */}
-        <Link href="/login" className="group">
+        <Link href="auth/login" className="group">
           <div className="flex h-full flex-col items-center space-y-3 rounded-2xl border border-slate-300 bg-white p-6 text-center transition-all duration-300 hover:border-indigo-500 hover:shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:hover:border-indigo-400">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-50 text-indigo-600 transition-transform group-hover:scale-110 dark:bg-indigo-950/30 dark:text-indigo-400">
               <UserCircle2 className="h-5 w-5" />
@@ -51,7 +51,7 @@ export function LoginRequired() {
         </Link>
 
         {/* Signup Card - Increased border contrast (slate-300 light, slate-700 dark) */}
-        <Link href="/signup" className="group">
+        <Link href="auth/signup" className="group">
           <div className="flex h-full flex-col items-center space-y-3 rounded-2xl border border-slate-300 bg-white p-6 text-center transition-all duration-300 hover:border-indigo-500 hover:shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:hover:border-indigo-400">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-50 text-indigo-600 transition-transform group-hover:scale-110 dark:bg-indigo-950/30 dark:text-indigo-400">
               <UserPlus2 className="h-5 w-5" />
