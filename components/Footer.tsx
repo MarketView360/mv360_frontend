@@ -1,12 +1,12 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Linkedin } from "lucide-react";
+import { Linkedin, Sparkles } from "lucide-react";
 
 export function Footer() {
   return (
     <footer role="contentinfo" className="bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 pt-16 pb-8 transition-colors duration-300">
       <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
           <div className="space-y-4">
             <Link href="/" className="flex items-center">
               <Image
@@ -63,7 +63,7 @@ export function Footer() {
                   href="/screens"
                   className="hover:text-brand transition-colors"
                 >
-                  Stock Screens
+                  Stock Screener
                 </Link>
               </li>
               <li>
@@ -72,8 +72,17 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/earnings" className="hover:text-brand transition-colors">
-                  Earnings Calendar
+                <Link href="/news" className="hover:text-brand transition-colors">
+                  Market News
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/ai"
+                  className="hover:text-brand transition-colors flex items-center gap-1"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  AI Assistance
                 </Link>
               </li>
             </ul>
@@ -81,55 +90,27 @@ export function Footer() {
 
           <div>
             <h3 className="font-semibold text-slate-900 dark:text-white mb-4">
-              Resources
+              Support
             </h3>
             <ul className="space-y-3 text-sm text-slate-500 dark:text-slate-400">
               <li>
-                <Link href="#" className="hover:text-brand transition-colors">
-                  Blog
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="hover:text-brand transition-colors">
-                  Documentation
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="hover:text-brand transition-colors">
+                <Link href="/help" className="hover:text-brand transition-colors">
                   Help Center
                 </Link>
               </li>
               <li>
-                <Link href="#" className="hover:text-brand transition-colors">
-                  API Reference
+                <Link href="/contact" className="hover:text-brand transition-colors">
+                  Contact Us
                 </Link>
               </li>
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="font-semibold text-slate-900 dark:text-white mb-4">
-              Company
-            </h3>
-            <ul className="space-y-3 text-sm text-slate-500 dark:text-slate-400">
               <li>
-                <Link href="#" className="hover:text-brand transition-colors">
+                <Link href="/about" className="hover:text-brand transition-colors">
                   About
                 </Link>
               </li>
               <li>
-                <Link href="#" className="hover:text-brand transition-colors">
-                  Careers
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="hover:text-brand transition-colors">
-                  Legal
-                </Link>
-              </li>
-              <li>
-                <Link href="#" className="hover:text-brand transition-colors">
-                  Contact
+                <Link href="/blog" className="hover:text-brand transition-colors">
+                  Blog
                 </Link>
               </li>
             </ul>
@@ -140,24 +121,30 @@ export function Footer() {
           <p className="text-xs text-slate-400 dark:text-slate-500">
             © {new Date().getFullYear()} Marketview360 Inc. All rights reserved.
           </p>
-          <div className="flex gap-6 text-xs text-slate-400 dark:text-slate-500">
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-slate-400 dark:text-slate-500">
             <Link
-              href="#"
+              href="/privacy"
               className="hover:text-slate-600 dark:hover:text-slate-400 transition-colors"
             >
-              Privacy Policy
+              Privacy
             </Link>
             <Link
-              href="#"
+              href="/terms"
               className="hover:text-slate-600 dark:hover:text-slate-400 transition-colors"
             >
-              Terms of Service
+              Terms
             </Link>
             <Link
-              href="#"
+              href="/cookies"
               className="hover:text-slate-600 dark:hover:text-slate-400 transition-colors"
             >
-              Cookie Policy
+              Cookies
+            </Link>
+            <Link
+              href="/disclaimer"
+              className="hover:text-slate-600 dark:hover:text-slate-400 transition-colors"
+            >
+              Disclaimer
             </Link>
           </div>
         </div>

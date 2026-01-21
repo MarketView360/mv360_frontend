@@ -11,6 +11,8 @@ export function NewsHeader() {
   const searchParams = useSearchParams();
   const tickerRef = useRef<HTMLInputElement>(null);
   const qRef = useRef<HTMLInputElement>(null);
+  const fromRef = useRef<HTMLInputElement>(null);
+  const toRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -32,7 +34,7 @@ export function NewsHeader() {
             Market News
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Filter by ticker or search headlines
+            Real-time market headlines with advanced filtering
           </p>
         </div>
 
@@ -42,38 +44,58 @@ export function NewsHeader() {
             e.preventDefault();
             const ticker = tickerRef.current?.value.trim().toUpperCase() || "";
             const q = qRef.current?.value.trim() || "";
+            const from = fromRef.current?.value || "";
+            const to = toRef.current?.value || "";
+
             const sp = new URLSearchParams();
             if (ticker) sp.set("ticker", ticker);
             if (q) sp.set("q", q);
+            if (from) sp.set("from", from);
+            if (to) sp.set("to", to);
+
             router.replace(`/news?${sp.toString()}`);
           }}
         >
-          <div className="relative">
-            <label htmlFor="ticker-input" className="sr-only">Filter by ticker symbol</label>
+          <div className="flex gap-2">
             <input
-              id="ticker-input"
               ref={tickerRef}
               name="ticker"
               defaultValue={searchParams.get("ticker") ?? ""}
               placeholder="Ticker (e.g. AAPL)"
-              className="w-full md:w-40 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+              className="w-32 md:w-40 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+              aria-label="Filter by ticker symbol"
             />
-          </div>
-          <div className="relative">
-            <label htmlFor="headline-search" className="sr-only">Search headlines by keyword</label>
             <input
-              id="headline-search"
               ref={qRef}
               name="q"
               defaultValue={searchParams.get("q") ?? ""}
               placeholder="Headline keywords"
-              className="w-full md:w-64 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+              className="flex-1 md:w-64 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+              aria-label="Search headlines by keyword"
             />
           </div>
-          <Button type="submit" size="sm" className="px-4">
-            <FiSearch className="mr-2" />
-            Search
-          </Button>
+
+          <div className="flex gap-2">
+            <input
+              ref={fromRef}
+              name="from"
+              type="date"
+              defaultValue={searchParams.get("from") ?? ""}
+              className="w-full md:w-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand text-slate-500 dark:text-slate-400"
+            />
+            <span className="self-center text-slate-400 dark:text-slate-600">-</span>
+            <input
+              ref={toRef}
+              name="to"
+              type="date"
+              defaultValue={searchParams.get("to") ?? ""}
+              className="w-full md:w-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand text-slate-500 dark:text-slate-400"
+            />
+            <Button type="submit" size="sm" className="px-4 shrink-0">
+              <FiSearch className="mr-2" />
+              Search
+            </Button>
+          </div>
         </form>
       </div>
     </header>

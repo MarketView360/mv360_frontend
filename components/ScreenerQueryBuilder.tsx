@@ -46,6 +46,7 @@ import {
   getAllFields,
   QuerySuggestion,
   FieldDef,
+  VALUE_SUGGESTIONS,
 } from "@/lib/queryBuilder";
 
 // Define ScreenerRow type for results
@@ -109,10 +110,10 @@ export default function ScreenerQueryBuilder({
   // Query history
   const [queryHistory, setQueryHistory] = useState<string[]>([]);
   const [showHistory, setShowHistory] = useState(false);
-  const [isRunning, setIsRunning] = useState(false);
-  const [runError, setRunError] = useState<string | null>(null);
-  const [results, setResults] = useState<ScreenerRow[]>([]);
-  const [lastRunInfo, setLastRunInfo] = useState<{
+  const [isRunning] = useState(false);
+  const [runError] = useState<string | null>(null);
+  const [results] = useState<ScreenerRow[]>([]);
+  const [lastRunInfo] = useState<{
     url?: string;
     filters?: unknown;
     count?: number;
@@ -137,19 +138,19 @@ export default function ScreenerQueryBuilder({
         const parsedFav = JSON.parse(fav);
         if (Array.isArray(parsedFav)) setFavoriteFields(parsedFav);
       }
-    } catch {}
+    } catch { }
   }, []);
 
   const persistHistory = useCallback((items: string[]) => {
     try {
       localStorage.setItem("queryHistory", JSON.stringify(items));
-    } catch {}
+    } catch { }
   }, []);
 
   const persistFavorites = useCallback((items: string[]) => {
     try {
       localStorage.setItem("favoriteFields", JSON.stringify(items));
-    } catch {}
+    } catch { }
   }, []);
 
   const toggleFavorite = useCallback(
@@ -199,6 +200,29 @@ export default function ScreenerQueryBuilder({
       // Get all fields for comprehensive search
       const allFields = getAllFields();
 
+      // Value suggestions logic (Ported from searchSuggestions in lib/queryBuilder)
+      const prevWord = words[words.length - 2]?.toLowerCase() || "";
+      const secondPrevWord = words[words.length - 3]?.toLowerCase() || "";
+      const valueField = (["=", "!=", "in", "like", "between"].includes(prevWord) ? secondPrevWord :
+        ["=", "!=", "in", "like", "between"].includes(currentWord) ? prevWord : null);
+
+      if (valueField && VALUE_SUGGESTIONS[valueField.toLowerCase()]) {
+        const values = VALUE_SUGGESTIONS[valueField.toLowerCase()];
+        values.forEach((val: string) => {
+          if (val.toLowerCase().includes(currentWord.replace(/['"]/g, '')) || currentWord === "=" || currentWord === "in") {
+            suggestions.push({
+              text: val,
+              type: "value",
+              description: `Value for ${valueField}`,
+              category: "Value",
+              insertText: `"${val}"`,
+              score: 1000,
+            });
+          }
+        });
+        if (suggestions.length > 0) return suggestions.sort((a, b) => (b.score || 0) - (a.score || 0));
+      }
+
       // Enhanced field matching with scoring
       allFields.forEach((field) => {
         const fieldLower = field.name.toLowerCase();
@@ -231,7 +255,9 @@ export default function ScreenerQueryBuilder({
             type: "operator",
             description: op.description,
             category: op.category,
-            insertText: ` ${op.symbol} `,
+            insertText: ["IN", "BETWEEN", "LIKE", "IS NULL", "IS NOT NULL"].includes(op.symbol.toUpperCase())
+              ? ` ${op.symbol.toUpperCase()} `
+              : ` ${op.symbol} `,
             score: op.symbol.toLowerCase().startsWith(currentWord) ? 100 : 50,
           });
         }
@@ -415,6 +441,318 @@ export default function ScreenerQueryBuilder({
     return () => document.removeEventListener("keydown", handleGlobalKeyDown);
   }, [showKeyboardShortcuts, showGuide, showExamples]);
 
+
+
+  // Handle suggestion selection
+  const handleSuggestionSelect = useCallback(
+    (suggestion: QuerySuggestion) => {
+      if (!textareaRef.current) return;
+
+      const textarea = textareaRef.current;
+      const beforeCursor = value.substring(0, cursorPosition);
+      const afterCursor = value.substring(cursorPosition);
+
+      // Find the start of the current word
+      const words = beforeCursor.split(/\s+/);
+      const currentWord = words[words.length - 1] || "";
+      const wordStart = beforeCursor.lastIndexOf(currentWord);
+
+      // Replace the current word with the suggestion
+      const newValue =
+        value.substring(0, wordStart) +
+        (suggestion.insertText || suggestion.text) +
+        afterCursor;
+
+      onChange(newValue);
+      setShowSuggestions(false);
+
+      // Set cursor position after the inserted text
+      const newCursorPos =
+        wordStart + (suggestion.insertText || suggestion.text).length;
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+        setCursorPosition(newCursorPos);
+      }, 0);
+    },
+    [value, cursorPosition, onChange]
+  );
+
+  // Undo functionality
+  const handleUndo = useCallback(() => {
+    if (historyIndex > 0) {
+      setIsUndoRedo(true);
+      setHistoryIndex((prev) => prev - 1);
+      onChange(history[historyIndex - 1].query);
+    }
+  }, [historyIndex, history, onChange]);
+
+  // Redo functionality
+  const handleRedo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      setIsUndoRedo(true);
+      setHistoryIndex((prev) => prev + 1);
+      onChange(history[historyIndex + 1].query);
+    }
+  }, [historyIndex, history, onChange]);
+
+  // Clear query
+  const handleClearQuery = useCallback(() => {
+    onChange("");
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [onChange]);
+
+  // Copy query to clipboard
+  const handleCopyQuery = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch (err) {
+      console.error("Failed to copy query:", err);
+    }
+  };
+
+  // Toggle comment (add/remove # at start of line)
+  const toggleComment = useCallback(() => {
+    if (!textareaRef.current) return;
+
+    const textarea = textareaRef.current;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const lines = value.split("\n");
+
+    // Find which lines are selected
+    let currentPos = 0;
+    let startLine = 0;
+    let endLine = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      if (currentPos <= start && start <= currentPos + lines[i].length) {
+        startLine = i;
+      }
+      if (currentPos <= end && end <= currentPos + lines[i].length) {
+        endLine = i;
+        break;
+      }
+      currentPos += lines[i].length + 1; // +1 for newline
+    }
+
+    // Toggle comments on selected lines
+    const newLines = [...lines];
+    for (let i = startLine; i <= endLine; i++) {
+      if (newLines[i].startsWith("# ")) {
+        newLines[i] = newLines[i].substring(2);
+      } else if (newLines[i].startsWith("#")) {
+        newLines[i] = newLines[i].substring(1);
+      } else {
+        newLines[i] = "# " + newLines[i];
+      }
+    }
+
+    onChange(newLines.join("\n"));
+  }, [value, onChange]);
+
+  // Duplicate current line
+  const duplicateLine = useCallback(() => {
+    if (!textareaRef.current) return;
+
+    const textarea = textareaRef.current;
+    const start = textarea.selectionStart;
+    const lines = value.split("\n");
+
+    // Find current line
+    let currentPos = 0;
+    let currentLine = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      if (currentPos <= start && start <= currentPos + lines[i].length) {
+        currentLine = i;
+        break;
+      }
+      currentPos += lines[i].length + 1;
+    }
+
+    // Duplicate the line
+    const newLines = [...lines];
+    newLines.splice(currentLine + 1, 0, lines[currentLine]);
+    onChange(newLines.join("\n"));
+  }, [value, onChange]);
+
+  // Select current line
+  const selectLine = useCallback(() => {
+    if (!textareaRef.current) return;
+
+    const textarea = textareaRef.current;
+    const start = textarea.selectionStart;
+    const lines = value.split("\n");
+
+    // Find current line boundaries
+    let currentPos = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      if (currentPos <= start && start <= currentPos + lines[i].length) {
+        textarea.setSelectionRange(currentPos, currentPos + lines[i].length);
+        break;
+      }
+      currentPos += lines[i].length + 1;
+    }
+  }, [value]);
+
+  // Delete current line
+  const deleteLine = useCallback(() => {
+    if (!textareaRef.current) return;
+
+    const textarea = textareaRef.current;
+    const start = textarea.selectionStart;
+    const lines = value.split("\n");
+
+    if (lines.length <= 1) {
+      onChange("");
+      return;
+    }
+
+    // Find current line
+    let currentPos = 0;
+    let currentLine = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      if (currentPos <= start && start <= currentPos + lines[i].length) {
+        currentLine = i;
+        break;
+      }
+      currentPos += lines[i].length + 1;
+    }
+
+    // Delete the line
+    const newLines = [...lines];
+    newLines.splice(currentLine, 1);
+    onChange(newLines.join("\n"));
+  }, [value, onChange]);
+
+  // Format query (basic formatting)
+  const formatQuery = useCallback(() => {
+    const formatted = value
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .join("\n");
+    onChange(formatted);
+  }, [value, onChange]);
+
+  // Run query
+  const handleRunQuery = useCallback(async () => {
+    if (!value.trim() || !isValidQuery) return;
+
+    // Save to history
+    setQueryHistory((prev) => {
+      const newHistory = [value, ...prev.filter((q) => q !== value)].slice(
+        0,
+        50
+      );
+      persistHistory(newHistory);
+      return newHistory;
+    });
+    // Navigate to dedicated results page
+    const params = new URLSearchParams({
+      query: value,
+      sort: "market_capitalization.desc",
+      limit: String(50),
+      offset: String(0),
+      exchange: "us",
+    });
+    router.push(`/screens/results?${params.toString()}`);
+  }, [value, isValidQuery, persistHistory, router]);
+
+  // Save query to browser cache and history
+  const handleSaveQuery = useCallback(() => {
+    if (!value.trim()) return;
+    setQueryHistory((prev) => {
+      const newHistory = [value, ...prev.filter((q) => q !== value)].slice(
+        0,
+        50
+      );
+      persistHistory(newHistory);
+      return newHistory;
+    });
+    setShowHistory(true);
+  }, [value, persistHistory]);
+
+  // Smart insertion at cursor position
+  const handleSmartInsert = useCallback(
+    (text: string) => {
+      if (!textareaRef.current) return;
+
+      const textarea = textareaRef.current;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+
+      const beforeSelection = value.substring(0, start);
+      const afterSelection = value.substring(end);
+
+      // Smart spacing
+      const needsSpaceBefore =
+        start > 0 &&
+        !beforeSelection.endsWith(" ") &&
+        !beforeSelection.endsWith("\n");
+      const needsSpaceAfter =
+        afterSelection.length > 0 &&
+        !afterSelection.startsWith(" ") &&
+        !afterSelection.startsWith("\n");
+
+      const insertText =
+        (needsSpaceBefore ? " " : "") + text + (needsSpaceAfter ? " " : "");
+
+      const newValue = beforeSelection + insertText + afterSelection;
+      onChange(newValue);
+
+      // Set cursor position after inserted text
+      const newCursorPos = start + insertText.length;
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+        setCursorPosition(newCursorPos);
+      }, 0);
+    },
+    [value, onChange]
+  );
+
+  // Handle operator selection from inline popup
+  const handleOperatorSelect = useCallback(
+    (fieldName: string, operator: string) => {
+      handleSmartInsert(`${fieldName} ${operator} `);
+      setShowOperatorPopupFor(null);
+    },
+    [handleSmartInsert]
+  );
+
+  // Insert paired characters (e.g., (), "") and keep selection/caret inside
+  const insertPair = useCallback(
+    (open: string, close: string) => {
+      if (!textareaRef.current) return;
+
+      const textarea = textareaRef.current;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+
+      const before = value.substring(0, start);
+      const middle = value.substring(start, end);
+      const after = value.substring(end);
+
+      const newValue = before + open + middle + close + after;
+      onChange(newValue);
+
+      const newStart = start + open.length;
+      const newEnd = start + open.length + middle.length;
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(newStart, newEnd);
+        setCursorPosition(newEnd);
+      }, 0);
+    },
+    [value, onChange]
+  );
+
   // Enhanced keyboard shortcuts
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -540,317 +878,18 @@ export default function ScreenerQueryBuilder({
       value,
       cursorPosition,
       getEnhancedSuggestions,
+      handleRunQuery,
+      handleUndo,
+      handleRedo,
+      toggleComment,
+      duplicateLine,
+      selectLine,
+      deleteLine,
+      handleClearQuery,
+      formatQuery,
+      insertPair,
+      handleSuggestionSelect,
     ]
-  );
-
-  // Handle suggestion selection
-  const handleSuggestionSelect = useCallback(
-    (suggestion: QuerySuggestion) => {
-      if (!textareaRef.current) return;
-
-      const textarea = textareaRef.current;
-      const beforeCursor = value.substring(0, cursorPosition);
-      const afterCursor = value.substring(cursorPosition);
-
-      // Find the start of the current word
-      const words = beforeCursor.split(/\s+/);
-      const currentWord = words[words.length - 1] || "";
-      const wordStart = beforeCursor.lastIndexOf(currentWord);
-
-      // Replace the current word with the suggestion
-      const newValue =
-        value.substring(0, wordStart) +
-        (suggestion.insertText || suggestion.text) +
-        afterCursor;
-
-      onChange(newValue);
-      setShowSuggestions(false);
-
-      // Set cursor position after the inserted text
-      const newCursorPos =
-        wordStart + (suggestion.insertText || suggestion.text).length;
-      setTimeout(() => {
-        textarea.focus();
-        textarea.setSelectionRange(newCursorPos, newCursorPos);
-        setCursorPosition(newCursorPos);
-      }, 0);
-    },
-    [value, cursorPosition, onChange]
-  );
-
-  // Undo functionality
-  const handleUndo = () => {
-    if (historyIndex > 0) {
-      setIsUndoRedo(true);
-      setHistoryIndex((prev) => prev - 1);
-      onChange(history[historyIndex - 1].query);
-    }
-  };
-
-  // Redo functionality
-  const handleRedo = () => {
-    if (historyIndex < history.length - 1) {
-      setIsUndoRedo(true);
-      setHistoryIndex((prev) => prev + 1);
-      onChange(history[historyIndex + 1].query);
-    }
-  };
-
-  // Clear query
-  const handleClearQuery = () => {
-    onChange("");
-    if (textareaRef.current) {
-      textareaRef.current.focus();
-    }
-  };
-
-  // Copy query to clipboard
-  const handleCopyQuery = async () => {
-    try {
-      await navigator.clipboard.writeText(value);
-    } catch (err) {
-      console.error("Failed to copy query:", err);
-    }
-  };
-
-  // Toggle comment (add/remove # at start of line)
-  const toggleComment = () => {
-    if (!textareaRef.current) return;
-
-    const textarea = textareaRef.current;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const lines = value.split("\n");
-
-    // Find which lines are selected
-    let currentPos = 0;
-    let startLine = 0;
-    let endLine = 0;
-
-    for (let i = 0; i < lines.length; i++) {
-      if (currentPos <= start && start <= currentPos + lines[i].length) {
-        startLine = i;
-      }
-      if (currentPos <= end && end <= currentPos + lines[i].length) {
-        endLine = i;
-        break;
-      }
-      currentPos += lines[i].length + 1; // +1 for newline
-    }
-
-    // Toggle comments on selected lines
-    const newLines = [...lines];
-    for (let i = startLine; i <= endLine; i++) {
-      if (newLines[i].startsWith("# ")) {
-        newLines[i] = newLines[i].substring(2);
-      } else if (newLines[i].startsWith("#")) {
-        newLines[i] = newLines[i].substring(1);
-      } else {
-        newLines[i] = "# " + newLines[i];
-      }
-    }
-
-    onChange(newLines.join("\n"));
-  };
-
-  // Duplicate current line
-  const duplicateLine = () => {
-    if (!textareaRef.current) return;
-
-    const textarea = textareaRef.current;
-    const start = textarea.selectionStart;
-    const lines = value.split("\n");
-
-    // Find current line
-    let currentPos = 0;
-    let currentLine = 0;
-
-    for (let i = 0; i < lines.length; i++) {
-      if (currentPos <= start && start <= currentPos + lines[i].length) {
-        currentLine = i;
-        break;
-      }
-      currentPos += lines[i].length + 1;
-    }
-
-    // Duplicate the line
-    const newLines = [...lines];
-    newLines.splice(currentLine + 1, 0, lines[currentLine]);
-    onChange(newLines.join("\n"));
-  };
-
-  // Select current line
-  const selectLine = () => {
-    if (!textareaRef.current) return;
-
-    const textarea = textareaRef.current;
-    const start = textarea.selectionStart;
-    const lines = value.split("\n");
-
-    // Find current line boundaries
-    let currentPos = 0;
-
-    for (let i = 0; i < lines.length; i++) {
-      if (currentPos <= start && start <= currentPos + lines[i].length) {
-        textarea.setSelectionRange(currentPos, currentPos + lines[i].length);
-        break;
-      }
-      currentPos += lines[i].length + 1;
-    }
-  };
-
-  // Delete current line
-  const deleteLine = () => {
-    if (!textareaRef.current) return;
-
-    const textarea = textareaRef.current;
-    const start = textarea.selectionStart;
-    const lines = value.split("\n");
-
-    if (lines.length <= 1) {
-      onChange("");
-      return;
-    }
-
-    // Find current line
-    let currentPos = 0;
-    let currentLine = 0;
-
-    for (let i = 0; i < lines.length; i++) {
-      if (currentPos <= start && start <= currentPos + lines[i].length) {
-        currentLine = i;
-        break;
-      }
-      currentPos += lines[i].length + 1;
-    }
-
-    // Delete the line
-    const newLines = [...lines];
-    newLines.splice(currentLine, 1);
-    onChange(newLines.join("\n"));
-  };
-
-  // Format query (basic formatting)
-  const formatQuery = () => {
-    const formatted = value
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0)
-      .join("\n");
-    onChange(formatted);
-  };
-
-  // Run query
-  const handleRunQuery = useCallback(async () => {
-    if (!value.trim() || !isValidQuery) return;
-
-    // Save to history
-    setQueryHistory((prev) => {
-      const newHistory = [value, ...prev.filter((q) => q !== value)].slice(
-        0,
-        50
-      );
-      persistHistory(newHistory);
-      return newHistory;
-    });
-    // Navigate to dedicated results page
-    const params = new URLSearchParams({
-      query: value,
-      sort: "market_capitalization.desc",
-      limit: String(50),
-      offset: String(0),
-      exchange: "us",
-    });
-    router.push(`/screens/results?${params.toString()}`);
-  }, [value, isValidQuery, persistHistory]);
-
-  // Save query to browser cache and history
-  const handleSaveQuery = useCallback(() => {
-    if (!value.trim()) return;
-    setQueryHistory((prev) => {
-      const newHistory = [value, ...prev.filter((q) => q !== value)].slice(
-        0,
-        50
-      );
-      persistHistory(newHistory);
-      return newHistory;
-    });
-    setShowHistory(true);
-  }, [value, persistHistory]);
-
-  // Smart insertion at cursor position
-  const handleSmartInsert = useCallback(
-    (text: string) => {
-      if (!textareaRef.current) return;
-
-      const textarea = textareaRef.current;
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-
-      const beforeSelection = value.substring(0, start);
-      const afterSelection = value.substring(end);
-
-      // Smart spacing
-      const needsSpaceBefore =
-        start > 0 &&
-        !beforeSelection.endsWith(" ") &&
-        !beforeSelection.endsWith("\n");
-      const needsSpaceAfter =
-        afterSelection.length > 0 &&
-        !afterSelection.startsWith(" ") &&
-        !afterSelection.startsWith("\n");
-
-      const insertText =
-        (needsSpaceBefore ? " " : "") + text + (needsSpaceAfter ? " " : "");
-
-      const newValue = beforeSelection + insertText + afterSelection;
-      onChange(newValue);
-
-      // Set cursor position after inserted text
-      const newCursorPos = start + insertText.length;
-      setTimeout(() => {
-        textarea.focus();
-        textarea.setSelectionRange(newCursorPos, newCursorPos);
-        setCursorPosition(newCursorPos);
-      }, 0);
-    },
-    [value, onChange]
-  );
-
-  // Handle operator selection from inline popup
-  const handleOperatorSelect = useCallback(
-    (fieldName: string, operator: string) => {
-      handleSmartInsert(`${fieldName} ${operator} `);
-      setShowOperatorPopupFor(null);
-    },
-    [handleSmartInsert]
-  );
-
-  // Insert paired characters (e.g., (), "") and keep selection/caret inside
-  const insertPair = useCallback(
-    (open: string, close: string) => {
-      if (!textareaRef.current) return;
-
-      const textarea = textareaRef.current;
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-
-      const before = value.substring(0, start);
-      const middle = value.substring(start, end);
-      const after = value.substring(end);
-
-      const newValue = before + open + middle + close + after;
-      onChange(newValue);
-
-      const newStart = start + open.length;
-      const newEnd = start + open.length + middle.length;
-      setTimeout(() => {
-        textarea.focus();
-        textarea.setSelectionRange(newStart, newEnd);
-        setCursorPosition(newEnd);
-      }, 0);
-    },
-    [value, onChange]
   );
 
   // Load example query
@@ -878,15 +917,15 @@ export default function ScreenerQueryBuilder({
   } as unknown as Record<string, FieldDef[]>;
   const baseList = searchTerm
     ? allFields.filter(
-        (field) =>
-          field.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          field.keywords.some((keyword: string) =>
-            keyword.toLowerCase().includes(searchTerm.toLowerCase())
-          )
-      )
+      (field) =>
+        field.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        field.keywords.some((keyword: string) =>
+          keyword.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+    )
     : dataSourceWithFavorites[
-        selectedCategory as keyof typeof dataSourceWithFavorites
-      ] || [];
+    selectedCategory as keyof typeof dataSourceWithFavorites
+    ] || [];
   const filteredRatios = applySort(baseList);
 
   return (
@@ -1084,11 +1123,10 @@ export default function ScreenerQueryBuilder({
                         <div className="w-3 flex justify-center">
                           {hasErrors && (
                             <div
-                              className={`w-2 h-2 rounded-full cursor-pointer ${
-                                lineErrors.some((e) => e.severity === "error")
-                                  ? "bg-red-500"
-                                  : "bg-yellow-500"
-                              }`}
+                              className={`w-2 h-2 rounded-full cursor-pointer ${lineErrors.some((e) => e.severity === "error")
+                                ? "bg-red-500"
+                                : "bg-yellow-500"
+                                }`}
                               title={lineErrors
                                 .map((e) => e.message)
                                 .join(", ")}
@@ -1116,9 +1154,8 @@ export default function ScreenerQueryBuilder({
               {showSyntaxHighlighting && value && (
                 <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
                   <div
-                    className={`p-6 ${
-                      showLineNumbers ? "pl-4" : "pl-6"
-                    } font-mono text-base whitespace-pre-wrap break-words`}
+                    className={`p-6 ${showLineNumbers ? "pl-4" : "pl-6"
+                      } font-mono text-base whitespace-pre-wrap break-words`}
                     style={{
                       transform: `translateY(-${editorScrollTop}px)`,
                       lineHeight: "1.5rem",
@@ -1144,17 +1181,14 @@ export default function ScreenerQueryBuilder({
                     (e.target as HTMLTextAreaElement).scrollTop
                   )
                 }
-                className={`relative z-10 w-full h-64 p-6 ${
-                  showLineNumbers ? "pl-4" : "pl-6"
-                } font-mono text-base ${
-                  showSyntaxHighlighting
+                className={`relative z-10 w-full h-64 p-6 ${showLineNumbers ? "pl-4" : "pl-6"
+                  } font-mono text-base ${showSyntaxHighlighting
                     ? "bg-transparent"
                     : "bg-slate-50/50 dark:bg-slate-800/50 focus:bg-white dark:focus:bg-slate-900"
-                } transition-colors resize-y outline-none border-0 focus:ring-2 focus:ring-blue-500/20 rounded-none ${
-                  showSyntaxHighlighting
+                  } transition-colors resize-y outline-none border-0 focus:ring-2 focus:ring-blue-500/20 rounded-none ${showSyntaxHighlighting
                     ? "text-transparent caret-slate-900 dark:caret-white"
                     : "text-slate-900 dark:text-white"
-                }`}
+                  }`}
                 placeholder="Start typing your query... (e.g., Market Capitalization > 1000 AND PE < 20)"
                 spellCheck={false}
                 style={{
@@ -1219,11 +1253,10 @@ export default function ScreenerQueryBuilder({
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
-                className={`flex items-center gap-1 transition-colors ${
-                  showAdvancedOptions
-                    ? "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
-                    : ""
-                }`}
+                className={`flex items-center gap-1 transition-colors ${showAdvancedOptions
+                  ? "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
+                  : ""
+                  }`}
                 title="Advanced Options"
               >
                 <Settings className="w-4 h-4" />
@@ -1233,11 +1266,10 @@ export default function ScreenerQueryBuilder({
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowHistory(!showHistory)}
-                className={`flex items-center gap-1 transition-colors ${
-                  showHistory
-                    ? "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
-                    : ""
-                }`}
+                className={`flex items-center gap-1 transition-colors ${showHistory
+                  ? "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
+                  : ""
+                  }`}
               >
                 <History className="w-4 h-4" />
                 History ({queryHistory.length})
@@ -1249,11 +1281,10 @@ export default function ScreenerQueryBuilder({
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowPreview(!showPreview)}
-                className={`flex items-center gap-1 transition-colors ${
-                  showPreview
-                    ? "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
-                    : ""
-                }`}
+                className={`flex items-center gap-1 transition-colors ${showPreview
+                  ? "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700"
+                  : ""
+                  }`}
               >
                 <Lightbulb className="w-4 h-4" />
                 {showPreview ? "Hide" : "Show"} Preview
@@ -1353,19 +1384,19 @@ export default function ScreenerQueryBuilder({
                   {results.map((r, i) => (
                     <tr key={i} className="hover:bg-slate-50/60">
                       <td className="p-3 font-mono">
-                        {String((r as any).code || "")}
+                        {String(r["code"] || "")}
                       </td>
-                      <td className="p-3">{String((r as any).name || "")}</td>
+                      <td className="p-3">{String(r["name"] || "")}</td>
                       <td className="p-3">
-                        {String((r as any).exchange || "")}
+                        {String(r["exchange"] || "")}
                       </td>
                       <td className="p-3 text-right">
-                        {(r as any).market_capitalization ?? ""}
+                        {r["market_capitalization"] ?? ""}
                       </td>
                       <td className="p-3 text-right">
-                        {(r as any).pe_ratio ?? ""}
+                        {r["pe_ratio"] ?? ""}
                       </td>
-                      <td className="p-3 text-right">{(r as any).roe ?? ""}</td>
+                      <td className="p-3 text-right">{r["roe"] ?? ""}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1463,17 +1494,15 @@ export default function ScreenerQueryBuilder({
                       setSelectedCategory(category);
                       setSearchTerm("");
                     }}
-                    className={`w-full text-left px-4 py-3 text-sm font-medium transition-all flex items-center justify-between group ${
-                      selectedCategory === category && !searchTerm
-                        ? "bg-blue-100 dark:bg-blue-900/40 text-blue-900 dark:text-blue-300 border-r-2 border-blue-500"
-                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white"
-                    }`}
+                    className={`w-full text-left px-4 py-3 text-sm font-medium transition-all flex items-center justify-between group ${selectedCategory === category && !searchTerm
+                      ? "bg-blue-100 dark:bg-blue-900/40 text-blue-900 dark:text-blue-300 border-r-2 border-blue-500"
+                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white"
+                      }`}
                   >
                     <span>{category}</span>
                     <div className="flex items-center gap-2">
                       <span className="text-xs bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 px-2 py-1 rounded-full">
-                        {(dataSourceWithFavorites as any)[category]?.length ??
-                          0}
+                        {((dataSourceWithFavorites as Record<string, FieldDef[]>)[category]?.length) ?? 0}
                       </span>
                       {selectedCategory === category && !searchTerm && (
                         <ChevronRight className="w-4 h-4 opacity-50" />

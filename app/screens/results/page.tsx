@@ -1,6 +1,12 @@
 "use client";
 
-import React, { Suspense, useEffect, useMemo, useState, useCallback } from "react";
+import React, {
+  Suspense,
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+} from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,40 +45,11 @@ import { Label } from "@/components/ui/label";
 import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
 
-interface ScreenerRow {
-  code?: string;
-  name?: string;
-  exchange?: string;
-  market_capitalization?: number;
-  pe_ratio?: number;
-  forward_pe?: number;
-  peg?: number;
-  pb?: number;
-  price_to_sales?: number;
-  price_to_cash_flow?: number;
-  ev_ebitda?: number;
-  ev_sales?: number;
-  current_ratio?: number;
-  quick_ratio?: number;
-  debt_to_equity?: number;
-  lt_debt_to_equity?: number;
-  eps_ttm?: number;
-  diluted_eps_ttm?: number;
-  revenue_ttm?: number;
-  earnings_ttm?: number;
-  sma20?: number;
-  sma50?: number;
-  sma200?: number;
-  beta?: number;
-  perf_3y_p?: number;
-  perf_5y_p?: number;
-  roe?: number;
-  adjusted_close?: number;
-  dividend_yield?: number | null;
-  refund_1d_p?: number;
-  refund_5d_p?: number;
-  [key: string]: unknown;
-}
+// Import screener types aligned with backend
+import type { ScreenerRow } from "@/lib/types/screener";
+
+// Re-export for local usage (backward compatibility)
+export type { ScreenerRow };
 
 // Custom hook for debounced search
 function useDebounce<T>(value: T, delay: number): T {
@@ -82,6 +59,14 @@ function useDebounce<T>(value: T, delay: number): T {
     return () => clearTimeout(handler);
   }, [value, delay]);
   return debouncedValue;
+}
+
+export default function ResultsPage() {
+  return (
+    <Suspense fallback={<ResultsPageSkeleton />}>
+      <ResultsPageContent />
+    </Suspense>
+  );
 }
 
 function ResultsPageSkeleton() {
@@ -105,7 +90,7 @@ function ResultsPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<ScreenerRow[]>([]);
   const [source, setSource] = useState<string | undefined>(undefined);
-  const [sortKey, setSortKey] = useState<string>("market_capitalization");
+  const [sortKey, setSortKey] = useState<string>("market_cap");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   // New state for enhanced features
@@ -113,37 +98,51 @@ function ResultsPageContent() {
   const debouncedSearch = useDebounce(searchTerm, 300);
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
     new Set([
-      "code",
+      "ticker",
+      "code", // alias for ticker
       "name",
       "exchange",
       "adjusted_close",
-      "market_capitalization",
+      "market_cap",
       "dividend_yield",
-      "refund_1d_p",
-      "refund_5d_p",
-      // Added critical valuation/quality columns by default
+      // Valuation metrics
       "pe_ratio",
       "forward_pe",
-      "peg",
-      "pb",
-      "price_to_sales",
-      "price_to_cash_flow",
+      "peg_ratio",
+      "price_book_mrq",
+      "price_sales_ttm",
       "ev_ebitda",
-      "ev_sales",
-      "current_ratio",
-      "quick_ratio",
-      "debt_to_equity",
-      "lt_debt_to_equity",
-      "eps_ttm",
+      "ev_revenue",
+      "enterprise_value",
+      // Financial strength
+      "net_debt",
+      // Earnings & Growth
       "diluted_eps_ttm",
       "revenue_ttm",
-      "earnings_ttm",
-      "sma20",
-      "sma50",
-      "sma200",
+      "quarterly_revenue_growth_yoy",
+      "quarterly_earnings_growth_yoy",
+      "payout_ratio",
+      "revenue_per_share",
+      "book_value_per_share",
+      // Cash Flow
+      "free_cash_flow",
+      "operating_cash_flow",
+      // Technical
+      "day_50_ma",
+      "day_200_ma",
       "beta",
-      "perf_3y_p",
-      "perf_5y_p",
+      "week_52_high",
+      "week_52_low",
+      // Profitability
+      "return_on_equity_ttm",
+      "return_on_assets_ttm",
+      "operating_margin_ttm",
+      "profit_margin",
+      // Analyst & Shares
+      "analyst_target_price",
+      "analyst_rating",
+      "shares_outstanding",
+      "shares_float",
     ])
   );
   const [exporting, setExporting] = useState<string | null>(null);
@@ -262,8 +261,6 @@ function ResultsPageContent() {
         row.market_capitalization?.toString(),
         row.adjusted_close?.toString(),
         row.dividend_yield?.toString(),
-        row.refund_1d_p?.toString(),
-        row.refund_5d_p?.toString(),
       ]
         .filter(Boolean)
         .join(" ")
@@ -332,7 +329,7 @@ function ResultsPageContent() {
             format: (v) => (v != null ? Number(v).toFixed(2) : ""),
           },
           {
-            key: "market_capitalization",
+            key: "market_cap",
             label: "Market Cap",
             format: (v) => {
               if (v == null) return "";
@@ -349,14 +346,24 @@ function ResultsPageContent() {
             format: (v) => (v != null ? `${(Number(v) * 100).toFixed(2)}%` : ""),
           },
           {
-            key: "refund_1d_p",
-            label: "1D %",
-            format: (v) => (v != null ? `${Number(v).toFixed(2)}%` : ""),
+            key: "analyst_target_price",
+            label: "Analyst Tgt",
+            format: (v) => (v != null ? `$${Number(v).toFixed(2)}` : ""),
           },
           {
-            key: "refund_5d_p",
-            label: "5D %",
-            format: (v) => (v != null ? `${Number(v).toFixed(2)}%` : ""),
+            key: "analyst_rating",
+            label: "Rating",
+            format: (v) => (v != null ? String(v) : ""),
+          },
+          {
+            key: "quarterly_revenue_growth_yoy",
+            label: "Rev Growth",
+            format: (v) => (v != null ? `${(Number(v) * 100).toFixed(2)}%` : ""),
+          },
+          {
+            key: "quarterly_earnings_growth_yoy",
+            label: "EPS Growth",
+            format: (v) => (v != null ? `${(Number(v) * 100).toFixed(2)}%` : ""),
           },
           {
             key: "pe_ratio",
@@ -369,23 +376,18 @@ function ResultsPageContent() {
             format: (v) => (v != null ? Number(v).toFixed(2) : ""),
           },
           {
-            key: "peg",
+            key: "peg_ratio",
             label: "PEG",
             format: (v) => (v != null ? Number(v).toFixed(2) : ""),
           },
           {
-            key: "pb",
+            key: "price_book_mrq",
             label: "P/B",
             format: (v) => (v != null ? Number(v).toFixed(2) : ""),
           },
           {
-            key: "price_to_sales",
+            key: "price_sales_ttm",
             label: "P/S",
-            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-          },
-          {
-            key: "price_to_cash_flow",
-            label: "P/C",
             format: (v) => (v != null ? Number(v).toFixed(2) : ""),
           },
           {
@@ -394,40 +396,85 @@ function ResultsPageContent() {
             format: (v) => (v != null ? Number(v).toFixed(2) : ""),
           },
           {
-            key: "ev_sales",
-            label: "EV/Sales",
-            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+            key: "enterprise_value",
+            label: "Ent Value",
+            format: (v) => {
+              if (v == null) return "";
+              const n = Number(v);
+              if (Math.abs(n) >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+              if (Math.abs(n) >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+              if (Math.abs(n) >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+              return `$${n.toFixed(0)}`;
+            },
           },
           {
-            key: "current_ratio",
-            label: "Current Ratio",
-            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+            key: "payout_ratio",
+            label: "Payout",
+            format: (v) => (v != null ? `${(Number(v) * 100).toFixed(2)}%` : ""),
           },
           {
-            key: "quick_ratio",
-            label: "Quick Ratio",
-            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-          },
-          {
-            key: "debt_to_equity",
-            label: "Debt/Eq",
-            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-          },
-          {
-            key: "lt_debt_to_equity",
-            label: "LT Debt/Eq",
-            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-          },
-          {
-            key: "eps_ttm",
-            label: "EPS (TTM)",
+            key: "revenue_per_share",
+            label: "Rev/Share",
             format: (v) => (v != null ? `$${Number(v).toFixed(2)}` : ""),
+          },
+          {
+            key: "book_value_per_share",
+            label: "BV/Share",
+            format: (v) => (v != null ? `$${Number(v).toFixed(2)}` : ""),
+          },
+          {
+            key: "shares_float",
+            label: "Float",
+            format: (v) => {
+              if (v == null) return "";
+              const n = Number(v);
+              if (Math.abs(n) >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
+              if (Math.abs(n) >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
+              return fmt.format(n);
+            },
+          },
+          {
+            key: "net_debt",
+            label: "Net Debt",
+            format: (v) => {
+              if (v == null) return "";
+              const n = Number(v);
+              if (Math.abs(n) >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+              if (Math.abs(n) >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+              if (Math.abs(n) >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+              return `$${n.toFixed(0)}`;
+            },
+          },
+          {
+            key: "free_cash_flow",
+            label: "FCF",
+            format: (v) => {
+              if (v == null) return "";
+              const n = Number(v);
+              if (Math.abs(n) >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+              if (Math.abs(n) >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+              if (Math.abs(n) >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+              return `$${n.toFixed(0)}`;
+            },
+          },
+          {
+            key: "operating_cash_flow",
+            label: "OCF",
+            format: (v) => {
+              if (v == null) return "";
+              const n = Number(v);
+              if (Math.abs(n) >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+              if (Math.abs(n) >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+              if (Math.abs(n) >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+              return `$${n.toFixed(0)}`;
+            },
           },
           {
             key: "diluted_eps_ttm",
-            label: "Diluted EPS",
+            label: "EPS (TTM)",
             format: (v) => (v != null ? `$${Number(v).toFixed(2)}` : ""),
           },
+
           {
             key: "revenue_ttm",
             label: "Sales (TTM)",
@@ -441,47 +488,21 @@ function ResultsPageContent() {
             },
           },
           {
-            key: "earnings_ttm",
-            label: "Earnings (TTM)",
-            format: (v) => {
-              if (v == null) return "";
-              const n = Number(v);
-              if (Math.abs(n) >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
-              if (Math.abs(n) >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
-              if (Math.abs(n) >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
-              return `$${n.toFixed(0)}`;
-            },
+            key: "return_on_equity_ttm",
+            label: "ROE",
+            format: (v) => (v != null ? `${(Number(v) * 100).toFixed(2)}%` : ""),
           },
           {
-            key: "sma20",
-            label: "SMA20",
-            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-          },
-          {
-            key: "sma50",
+            key: "day_50_ma",
             label: "SMA50",
             format: (v) => (v != null ? Number(v).toFixed(2) : ""),
           },
           {
-            key: "sma200",
+            key: "day_200_ma",
             label: "SMA200",
             format: (v) => (v != null ? Number(v).toFixed(2) : ""),
           },
-          {
-            key: "beta",
-            label: "Beta",
-            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
-          },
-          {
-            key: "perf_3y_p",
-            label: "Perf 3Y %",
-            format: (v) => (v != null ? `${Number(v).toFixed(2)}%` : ""),
-          },
-          {
-            key: "perf_5y_p",
-            label: "Perf 5Y %",
-            format: (v) => (v != null ? `${Number(v).toFixed(2)}%` : ""),
-          },
+
         ];
 
       // Filter to only visible columns
@@ -739,14 +760,12 @@ function ResultsPageContent() {
               <ChevronLeft className="w-4 h-4 mr-1" /> Back
             </Button>
             <div>
-              <h1 className="text-xl md:text-2xl font-semibold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-slate-100 dark:to-slate-300 bg-clip-text text-transparent">
+              <h1 className="text-xl md:text-2xl font-semibold text-slate-900 dark:text-slate-100">
                 Screener Results
               </h1>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+              <p className="text-sm text-slate-600 dark:text-muted-foreground mt-0.5">
                 <span className="font-medium">Query:</span>{" "}
-                <span className="text-slate-500 dark:text-slate-400 break-all">
-                  {query}
-                </span>
+                <span className="text-muted-foreground break-all">{query}</span>
               </p>
             </div>
           </div>
@@ -754,7 +773,7 @@ function ResultsPageContent() {
           {/* Search Bar */}
           <div className="w-full md:w-auto flex items-center gap-2">
             <div className="relative w-full md:w-80">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
               <Input
                 placeholder="Search results..."
                 value={searchTerm}
@@ -768,7 +787,7 @@ function ResultsPageContent() {
                   className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
                   onClick={clearSearch}
                 >
-                  <X className="w-3.5 h-3.5 text-slate-400 hover:text-slate-600" />
+                  <X className="w-3.5 h-3.5 text-muted-foreground/60 hover:text-slate-600" />
                 </Button>
               )}
             </div>
@@ -787,32 +806,39 @@ function ResultsPageContent() {
                   { key: "name", label: "Name" },
                   { key: "exchange", label: "Exchange" },
                   { key: "adjusted_close", label: "Price" },
-                  { key: "market_capitalization", label: "Market Cap" },
+                  { key: "market_cap", label: "Market Cap" },
                   { key: "dividend_yield", label: "Div Yield" },
-                  { key: "refund_1d_p", label: "1D %" },
-                  { key: "refund_5d_p", label: "5D %" },
                   { key: "pe_ratio", label: "P/E" },
                   { key: "forward_pe", label: "Fwd P/E" },
-                  { key: "peg", label: "PEG" },
-                  { key: "pb", label: "P/B" },
-                  { key: "price_to_sales", label: "P/S" },
-                  { key: "price_to_cash_flow", label: "P/C" },
+                  { key: "peg_ratio", label: "PEG" },
+                  { key: "price_book_mrq", label: "P/B" },
+                  { key: "price_sales_ttm", label: "P/S" },
                   { key: "ev_ebitda", label: "EV/EBITDA" },
-                  { key: "ev_sales", label: "EV/Sales" },
-                  { key: "current_ratio", label: "Current Ratio" },
-                  { key: "quick_ratio", label: "Quick Ratio" },
-                  { key: "debt_to_equity", label: "Debt/Eq" },
-                  { key: "lt_debt_to_equity", label: "LT Debt/Eq" },
-                  { key: "eps_ttm", label: "EPS (TTM)" },
-                  { key: "diluted_eps_ttm", label: "Diluted EPS" },
+                  { key: "ev_revenue", label: "EV/Revenue" },
+                  { key: "enterprise_value", label: "Ent Value" },
+                  { key: "return_on_equity_ttm", label: "ROE" },
+                  { key: "return_on_assets_ttm", label: "ROA" },
+                  { key: "operating_margin_ttm", label: "OPM" },
+                  { key: "profit_margin", label: "Profit Margin" },
+                  { key: "payout_ratio", label: "Payout" },
+                  { key: "revenue_per_share", label: "Rev/Share" },
+                  { key: "book_value_per_share", label: "BV/Share" },
+                  { key: "net_debt", label: "Net Debt" },
+                  { key: "free_cash_flow", label: "FCF" },
+                  { key: "operating_cash_flow", label: "OCF" },
+                  { key: "diluted_eps_ttm", label: "EPS (TTM)" },
                   { key: "revenue_ttm", label: "Sales (TTM)" },
-                  { key: "earnings_ttm", label: "Earnings (TTM)" },
-                  { key: "sma20", label: "SMA20" },
-                  { key: "sma50", label: "SMA50" },
-                  { key: "sma200", label: "SMA200" },
+                  { key: "quarterly_revenue_growth_yoy", label: "Rev Growth" },
+                  { key: "quarterly_earnings_growth_yoy", label: "EPS Growth" },
+                  { key: "analyst_target_price", label: "Analyst Tgt" },
+                  { key: "analyst_rating", label: "Rating" },
+                  { key: "shares_outstanding", label: "Shares" },
+                  { key: "shares_float", label: "Float" },
+                  { key: "day_50_ma", label: "SMA50" },
+                  { key: "day_200_ma", label: "SMA200" },
                   { key: "beta", label: "Beta" },
-                  { key: "perf_3y_p", label: "Perf 3Y" },
-                  { key: "perf_5y_p", label: "Perf 5Y" },
+                  { key: "week_52_high", label: "52W High" },
+                  { key: "week_52_low", label: "52W Low" },
                 ].map((col) => (
                   <DropdownMenuItem
                     key={col.key}
@@ -838,8 +864,8 @@ function ResultsPageContent() {
 
         {/* Paywall Banner */}
         {showPaywall && (
-          <div className="relative overflow-hidden rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-amber-100 p-4">
-            <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-amber-500 to-amber-300" />
+          <div className="relative overflow-hidden rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-4">
+            <div className="absolute inset-y-0 left-0 w-1 bg-amber-500" />
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <Shield className="w-5 h-5 text-amber-600" />
@@ -856,7 +882,7 @@ function ResultsPageContent() {
               </div>
               <Button
                 size="sm"
-                className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-sm"
+                className="bg-amber-500 hover:bg-amber-600 text-white shadow-sm"
               >
                 <Shield className="w-4 h-4 mr-1.5" /> Upgrade Pro
               </Button>
@@ -872,7 +898,7 @@ function ResultsPageContent() {
                 {loading ? (
                   <span className="inline-flex items-center gap-2">
                     <Loader2 className="w-5 h-5 animate-spin text-slate-600" />
-                    <span className="text-slate-600 dark:text-slate-400">
+                    <span className="text-slate-600 dark:text-muted-foreground">
                       Loading results...
                     </span>
                   </span>
@@ -891,7 +917,7 @@ function ResultsPageContent() {
                     {searchTerm && (
                       <Badge
                         variant="outline"
-                        className="border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400"
+                        className="border-slate-300 dark:border-slate-600 text-slate-600 dark:text-muted-foreground"
                       >
                         {visibleAccessibleCount} visible
                       </Badge>
@@ -953,7 +979,7 @@ function ResultsPageContent() {
           <CardContent className="p-0">
             {/* Error State */}
             {error && (
-              <div className="m-4 p-4 rounded-lg border border-red-200 bg-gradient-to-r from-red-50 to-red-100 text-red-800 text-sm flex items-start gap-3">
+              <div className="m-4 p-4 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 text-red-800 text-sm flex items-start gap-3">
                 <Shield className="w-5 h-5 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="font-medium mb-1">Failed to load results</p>
@@ -988,18 +1014,18 @@ function ResultsPageContent() {
             {!loading && !error && filteredRows.length === 0 && (
               <div className="p-12 text-center">
                 <div className="mx-auto w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
-                  <Search className="w-8 h-8 text-slate-400" />
+                  <Search className="w-8 h-8 text-muted-foreground/60" />
                 </div>
                 <p className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">
                   {searchTerm ? "No matches found" : "No results found"}
                 </p>
-                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto mb-4">
+                <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-4">
                   {searchTerm
                     ? "Try adjusting your search terms"
                     : "Try adjusting your filters or search criteria"}
                 </p>
                 {source && (
-                  <div className="text-xs text-slate-400 break-all font-mono bg-slate-50 dark:bg-slate-800 p-3 rounded max-w-2xl mx-auto">
+                  <div className="text-xs text-muted-foreground/80 break-all font-mono bg-slate-50 dark:bg-slate-800 p-3 rounded max-w-2xl mx-auto">
                     API Request: {source}
                   </div>
                 )}
@@ -1011,7 +1037,7 @@ function ResultsPageContent() {
               <div className="relative w-full">
                 <div className="overflow-x-auto max-h-[75vh]">
                   <table className="w-full text-sm relative border-collapse min-w-[1200px]">
-                    <thead className="sticky top-0 z-10 bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-800/90 text-slate-600 dark:text-slate-300 border-b-2 border-slate-200 dark:border-slate-700 shadow-sm">
+                    <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-b-2 border-slate-200 dark:border-slate-700 shadow-sm">
                       <tr>
                         {visibleColumns.has("code") && (
                           <th
@@ -1053,14 +1079,34 @@ function ResultsPageContent() {
                             </div>
                           </th>
                         )}
-                        {visibleColumns.has("market_capitalization") && (
+                        {visibleColumns.has("market_cap") && (
                           <th
                             className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("market_capitalization")}
+                            onClick={() => toggleSort("market_cap")}
                           >
                             <div className="flex items-center justify-end">
                               Market Cap{" "}
-                              <SortIcon column="market_capitalization" />
+                              <SortIcon column="market_cap" />
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has("shares_outstanding") && (
+                          <th
+                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                            onClick={() => toggleSort("shares_outstanding")}
+                          >
+                            <div className="flex items-center justify-end">
+                              Shares <SortIcon column="shares_outstanding" />
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has("shares_float") && (
+                          <th
+                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                            onClick={() => toggleSort("shares_float")}
+                          >
+                            <div className="flex items-center justify-end">
+                              Float <SortIcon column="shares_float" />
                             </div>
                           </th>
                         )}
@@ -1071,26 +1117,6 @@ function ResultsPageContent() {
                           >
                             <div className="flex items-center justify-end">
                               Div Yield <SortIcon column="dividend_yield" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("refund_1d_p") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("refund_1d_p")}
-                          >
-                            <div className="flex items-center justify-end">
-                              1D % <SortIcon column="refund_1d_p" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("refund_5d_p") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("refund_5d_p")}
-                          >
-                            <div className="flex items-center justify-end">
-                              5D % <SortIcon column="refund_5d_p" />
                             </div>
                           </th>
                         )}
@@ -1114,43 +1140,33 @@ function ResultsPageContent() {
                             </div>
                           </th>
                         )}
-                        {visibleColumns.has("peg") && (
+                        {visibleColumns.has("peg_ratio") && (
                           <th
                             className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("peg")}
+                            onClick={() => toggleSort("peg_ratio")}
                           >
                             <div className="flex items-center justify-end">
-                              PEG <SortIcon column="peg" />
+                              PEG <SortIcon column="peg_ratio" />
                             </div>
                           </th>
                         )}
-                        {visibleColumns.has("pb") && (
+                        {visibleColumns.has("price_book_mrq") && (
                           <th
                             className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("pb")}
+                            onClick={() => toggleSort("price_book_mrq")}
                           >
                             <div className="flex items-center justify-end">
-                              P/B <SortIcon column="pb" />
+                              P/B <SortIcon column="price_book_mrq" />
                             </div>
                           </th>
                         )}
-                        {visibleColumns.has("price_to_sales") && (
+                        {visibleColumns.has("price_sales_ttm") && (
                           <th
                             className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("price_to_sales")}
+                            onClick={() => toggleSort("price_sales_ttm")}
                           >
                             <div className="flex items-center justify-end">
-                              P/S <SortIcon column="price_to_sales" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("price_to_cash_flow") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("price_to_cash_flow")}
-                          >
-                            <div className="flex items-center justify-end">
-                              P/C <SortIcon column="price_to_cash_flow" />
+                              P/S <SortIcon column="price_sales_ttm" />
                             </div>
                           </th>
                         )}
@@ -1164,63 +1180,13 @@ function ResultsPageContent() {
                             </div>
                           </th>
                         )}
-                        {visibleColumns.has("ev_sales") && (
+                        {visibleColumns.has("enterprise_value") && (
                           <th
                             className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("ev_sales")}
+                            onClick={() => toggleSort("enterprise_value")}
                           >
                             <div className="flex items-center justify-end">
-                              EV/Sales <SortIcon column="ev_sales" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("current_ratio") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("current_ratio")}
-                          >
-                            <div className="flex items-center justify-end">
-                              Current Ratio <SortIcon column="current_ratio" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("quick_ratio") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("quick_ratio")}
-                          >
-                            <div className="flex items-center justify-end">
-                              Quick Ratio <SortIcon column="quick_ratio" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("debt_to_equity") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("debt_to_equity")}
-                          >
-                            <div className="flex items-center justify-end">
-                              Debt/Eq <SortIcon column="debt_to_equity" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("lt_debt_to_equity") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("lt_debt_to_equity")}
-                          >
-                            <div className="flex items-center justify-end">
-                              LT Debt/Eq <SortIcon column="lt_debt_to_equity" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("eps_ttm") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("eps_ttm")}
-                          >
-                            <div className="flex items-center justify-end">
-                              EPS (TTM) <SortIcon column="eps_ttm" />
+                              Ent Value <SortIcon column="enterprise_value" />
                             </div>
                           </th>
                         )}
@@ -1230,57 +1196,126 @@ function ResultsPageContent() {
                             onClick={() => toggleSort("diluted_eps_ttm")}
                           >
                             <div className="flex items-center justify-end">
-                              Diluted EPS <SortIcon column="diluted_eps_ttm" />
+                              EPS (TTM) <SortIcon column="diluted_eps_ttm" />
                             </div>
                           </th>
                         )}
-                        {visibleColumns.has("revenue_ttm") && (
+                        {visibleColumns.has("net_debt") && (
                           <th
                             className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("revenue_ttm")}
+                            onClick={() => toggleSort("net_debt")}
                           >
                             <div className="flex items-center justify-end">
-                              Sales (TTM) <SortIcon column="revenue_ttm" />
+                              Net Debt <SortIcon column="net_debt" />
                             </div>
                           </th>
                         )}
-                        {visibleColumns.has("earnings_ttm") && (
+                        {visibleColumns.has("payout_ratio") && (
                           <th
                             className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("earnings_ttm")}
+                            onClick={() => toggleSort("payout_ratio")}
                           >
                             <div className="flex items-center justify-end">
-                              Earnings (TTM) <SortIcon column="earnings_ttm" />
+                              Payout <SortIcon column="payout_ratio" />
                             </div>
                           </th>
                         )}
-                        {visibleColumns.has("sma20") && (
+                        {visibleColumns.has("revenue_per_share") && (
                           <th
                             className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("sma20")}
+                            onClick={() => toggleSort("revenue_per_share")}
                           >
                             <div className="flex items-center justify-end">
-                              SMA20 <SortIcon column="sma20" />
+                              Rev/Share <SortIcon column="revenue_per_share" />
                             </div>
                           </th>
                         )}
-                        {visibleColumns.has("sma50") && (
+                        {visibleColumns.has("book_value_per_share") && (
                           <th
                             className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("sma50")}
+                            onClick={() => toggleSort("book_value_per_share")}
                           >
                             <div className="flex items-center justify-end">
-                              SMA50 <SortIcon column="sma50" />
+                              BV/Share <SortIcon column="book_value_per_share" />
                             </div>
                           </th>
                         )}
-                        {visibleColumns.has("sma200") && (
+                        {visibleColumns.has("free_cash_flow") && (
                           <th
                             className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("sma200")}
+                            onClick={() => toggleSort("free_cash_flow")}
                           >
                             <div className="flex items-center justify-end">
-                              SMA200 <SortIcon column="sma200" />
+                              FCF <SortIcon column="free_cash_flow" />
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has("operating_cash_flow") && (
+                          <th
+                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                            onClick={() => toggleSort("operating_cash_flow")}
+                          >
+                            <div className="flex items-center justify-end">
+                              OCF <SortIcon column="operating_cash_flow" />
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has("quarterly_revenue_growth_yoy") && (
+                          <th
+                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                            onClick={() => toggleSort("quarterly_revenue_growth_yoy")}
+                          >
+                            <div className="flex items-center justify-end">
+                              Rev Growth <SortIcon column="quarterly_revenue_growth_yoy" />
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has("quarterly_earnings_growth_yoy") && (
+                          <th
+                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                            onClick={() => toggleSort("quarterly_earnings_growth_yoy")}
+                          >
+                            <div className="flex items-center justify-end">
+                              EPS Growth <SortIcon column="quarterly_earnings_growth_yoy" />
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has("analyst_target_price") && (
+                          <th
+                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                            onClick={() => toggleSort("analyst_target_price")}
+                          >
+                            <div className="flex items-center justify-end">
+                              Target <SortIcon column="analyst_target_price" />
+                            </div>
+                          </th>
+                        )}
+
+                        {visibleColumns.has("analyst_rating") && (
+                          <th
+                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                            onClick={() => toggleSort("analyst_rating")}
+                          >
+                            Rating <SortIcon column="analyst_rating" />
+                          </th>
+                        )}
+                        {visibleColumns.has("day_50_ma") && (
+                          <th
+                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                            onClick={() => toggleSort("day_50_ma")}
+                          >
+                            <div className="flex items-center justify-end">
+                              SMA50 <SortIcon column="day_50_ma" />
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has("day_200_ma") && (
+                          <th
+                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                            onClick={() => toggleSort("day_200_ma")}
+                          >
+                            <div className="flex items-center justify-end">
+                              SMA200 <SortIcon column="day_200_ma" />
                             </div>
                           </th>
                         )}
@@ -1294,33 +1329,13 @@ function ResultsPageContent() {
                             </div>
                           </th>
                         )}
-                        {visibleColumns.has("perf_3y_p") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("perf_3y_p")}
-                          >
-                            <div className="flex items-center justify-end">
-                              Perf 3Y <SortIcon column="perf_3y_p" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("perf_5y_p") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("perf_5y_p")}
-                          >
-                            <div className="flex items-center justify-end">
-                              Perf 5Y <SortIcon column="perf_5y_p" />
-                            </div>
-                          </th>
-                        )}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                       {filteredRows.map((r, i) => {
                         const isAccessible = i < 20;
-                        const isPositive1d = (r.refund_1d_p ?? 0) >= 0;
-                        const isPositive5d = (r.refund_5d_p ?? 0) >= 0;
+                        const isPositive1d = (r.change ?? 0) >= 0;
+                        const isPositive5d = (r.change_percent ?? 0) >= 0;
                         const isEven = i % 2 === 0;
 
                         return (
@@ -1368,319 +1383,303 @@ function ResultsPageContent() {
                               </td>
                             )}
                             {visibleColumns.has("adjusted_close") && (
-                              <td className="px-4 py-3 text-right font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
+                              <td className="px-4 py-3 text-right font-mono font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
                                 {fmtUsd(r.adjusted_close)}
                               </td>
                             )}
-                            {visibleColumns.has("market_capitalization") && (
-                              <td className="px-4 py-3 text-right font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
-                                {fmtCap(r.market_capitalization)}
+                            {visibleColumns.has("market_cap") && (
+                              <td className="px-4 py-3 text-right font-mono font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
+                                {fmtCap(r.market_cap)}
+                              </td>
+                            )}
+                            {visibleColumns.has("shares_outstanding") && (
+                              <td className="px-4 py-3 text-right font-mono font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
+                                {fmtCap(r.shares_outstanding)}
+                              </td>
+                            )}
+                            {visibleColumns.has("shares_float") && (
+                              <td className="px-4 py-3 text-right font-mono font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
+                                {fmtCap(r.shares_float)}
                               </td>
                             )}
                             {visibleColumns.has("dividend_yield") && (
-                              <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-400 tabular-nums">
+                              <td className="px-4 py-3 text-right font-mono text-slate-600 dark:text-muted-foreground tabular-nums">
                                 {r.dividend_yield != null
                                   ? `${(r.dividend_yield * 100).toFixed(2)}%`
                                   : "—"}
                               </td>
                             )}
-                            {visibleColumns.has("refund_1d_p") && (
-                              <td className="px-4 py-3 text-right">
-                                <span
-                                  className={`inline-flex items-center gap-0.5 font-semibold tabular-nums ${isPositive1d
-                                    ? "text-emerald-600 dark:text-emerald-400"
-                                    : "text-rose-600 dark:text-rose-400"
-                                    }`}
-                                >
-                                  {fmtPct(r.refund_1d_p)}
-                                  <span className="text-xs">
-                                    {isPositive1d ? "▲" : "▼"}
-                                  </span>
-                                </span>
-                              </td>
-                            )}
-                            {visibleColumns.has("refund_5d_p") && (
-                              <td className="px-4 py-3 text-right">
-                                <span
-                                  className={`inline-flex items-center gap-0.5 font-semibold tabular-nums ${isPositive5d
-                                    ? "text-emerald-600 dark:text-emerald-400"
-                                    : "text-rose-600 dark:text-rose-400"
-                                    }`}
-                                >
-                                  {fmtPct(r.refund_5d_p)}
-                                  <span className="text-xs">
-                                    {isPositive5d ? "▲" : "▼"}
-                                  </span>
-                                </span>
-                              </td>
-                            )}
+
                             {/* P/E Ratio */}
-                            {visibleColumns.has("pe_ratio") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.pe_ratio != null
-                                  ? r.pe_ratio.toFixed(2)
-                                  : "—"}
-                              </td>
-                            )}
+                            {
+                              visibleColumns.has("pe_ratio") && (
+                                <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 tabular-nums">
+                                  {r.pe_ratio != null
+                                    ? r.pe_ratio.toFixed(2)
+                                    : "—"}
+                                </td>
+                              )
+                            }
                             {/* Forward P/E */}
-                            {visibleColumns.has("forward_pe") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.forward_pe != null
-                                  ? r.forward_pe.toFixed(2)
-                                  : "—"}
-                              </td>
-                            )}
+                            {
+                              visibleColumns.has("forward_pe") && (
+                                <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 tabular-nums">
+                                  {r.forward_pe != null
+                                    ? r.forward_pe.toFixed(2)
+                                    : "—"}
+                                </td>
+                              )
+                            }
                             {/* PEG */}
-                            {visibleColumns.has("peg") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.peg != null ? r.peg.toFixed(2) : "—"}
-                              </td>
-                            )}
+                            {
+                              visibleColumns.has("peg_ratio") && (
+                                <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 tabular-nums">
+                                  {r.peg_ratio != null ? r.peg_ratio.toFixed(2) : "—"}
+                                </td>
+                              )
+                            }
                             {/* P/B */}
-                            {visibleColumns.has("pb") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.pb != null ? r.pb.toFixed(2) : "—"}
-                              </td>
-                            )}
+                            {
+                              visibleColumns.has("price_book_mrq") && (
+                                <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                  {r.price_book_mrq != null ? r.price_book_mrq.toFixed(2) : "—"}
+                                </td>
+                              )
+                            }
                             {/* P/S */}
-                            {visibleColumns.has("price_to_sales") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.price_to_sales != null
-                                  ? r.price_to_sales.toFixed(2)
-                                  : "—"}
-                              </td>
-                            )}
-                            {/* P/C */}
-                            {visibleColumns.has("price_to_cash_flow") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.price_to_cash_flow != null
-                                  ? r.price_to_cash_flow.toFixed(2)
-                                  : "—"}
-                              </td>
-                            )}
+                            {
+                              visibleColumns.has("price_sales_ttm") && (
+                                <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                  {r.price_sales_ttm != null
+                                    ? r.price_sales_ttm.toFixed(2)
+                                    : "—"}
+                                </td>
+                              )
+                            }
                             {/* EV/EBITDA */}
-                            {visibleColumns.has("ev_ebitda") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.ev_ebitda != null
-                                  ? r.ev_ebitda.toFixed(2)
-                                  : "—"}
-                              </td>
-                            )}
-                            {/* EV/Sales */}
-                            {visibleColumns.has("ev_sales") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.ev_sales != null
-                                  ? r.ev_sales.toFixed(2)
-                                  : "—"}
-                              </td>
-                            )}
-                            {/* Current Ratio */}
-                            {visibleColumns.has("current_ratio") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.current_ratio != null
-                                  ? r.current_ratio.toFixed(2)
-                                  : "—"}
-                              </td>
-                            )}
-                            {/* Quick Ratio */}
-                            {visibleColumns.has("quick_ratio") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.quick_ratio != null
-                                  ? r.quick_ratio.toFixed(2)
-                                  : "—"}
-                              </td>
-                            )}
-                            {/* Debt/Equity */}
-                            {visibleColumns.has("debt_to_equity") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.debt_to_equity != null
-                                  ? r.debt_to_equity.toFixed(2)
-                                  : "—"}
-                              </td>
-                            )}
-                            {/* LT Debt/Equity */}
-                            {visibleColumns.has("lt_debt_to_equity") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.lt_debt_to_equity != null
-                                  ? r.lt_debt_to_equity.toFixed(2)
-                                  : "—"}
-                              </td>
-                            )}
-                            {/* EPS (TTM) */}
-                            {visibleColumns.has("eps_ttm") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.eps_ttm != null
-                                  ? `$${r.eps_ttm.toFixed(2)}`
-                                  : "—"}
-                              </td>
-                            )}
-                            {/* Diluted EPS */}
-                            {visibleColumns.has("diluted_eps_ttm") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.diluted_eps_ttm != null
-                                  ? `$${r.diluted_eps_ttm.toFixed(2)}`
-                                  : "—"}
-                              </td>
-                            )}
-                            {/* Revenue (TTM) */}
-                            {visibleColumns.has("revenue_ttm") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {fmtCap(r.revenue_ttm)}
-                              </td>
-                            )}
-                            {/* Earnings (TTM) */}
-                            {visibleColumns.has("earnings_ttm") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {fmtCap(r.earnings_ttm)}
-                              </td>
-                            )}
-                            {/* SMA20 */}
-                            {visibleColumns.has("sma20") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.sma20 != null
-                                  ? `$${r.sma20.toFixed(2)}`
-                                  : "—"}
-                              </td>
-                            )}
+                            {
+                              visibleColumns.has("ev_ebitda") && (
+                                <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                  {r.ev_ebitda != null
+                                    ? r.ev_ebitda.toFixed(2)
+                                    : "—"}
+                                </td>
+                              )
+                            }
+                            {/* Enterprise Value */}
+                            {
+                              visibleColumns.has("enterprise_value") && (
+                                <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                  {fmtCap(r.enterprise_value)}
+                                </td>
+                              )
+                            }
+                            {/* EPS (TTM) / Diluted */}
+                            {
+                              visibleColumns.has("diluted_eps_ttm") && (
+                                <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 tabular-nums">
+                                  {r.diluted_eps_ttm != null
+                                    ? `$${r.diluted_eps_ttm.toFixed(2)}`
+                                    : "—"}
+                                </td>
+                              )
+                            }
+                            {/* Net Debt */}
+                            {
+                              visibleColumns.has("net_debt") && (
+                                <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                  {fmtCap(r.net_debt)}
+                                </td>
+                              )
+                            }
+                            {/* Payout */}
+                            {
+                              visibleColumns.has("payout_ratio") && (
+                                <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                  {fmtPct(r.payout_ratio)}
+                                </td>
+                              )
+                            }
+                            {/* Rev/Share */}
+                            {
+                              visibleColumns.has("revenue_per_share") && (
+                                <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                  {fmtUsd(r.revenue_per_share)}
+                                </td>
+                              )
+                            }
+                            {/* BV/Share */}
+                            {
+                              visibleColumns.has("book_value_per_share") && (
+                                <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                  {fmtUsd(r.book_value_per_share)}
+                                </td>
+                              )
+                            }
+                            {/* FCF */}
+                            {
+                              visibleColumns.has("free_cash_flow") && (
+                                <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                  {fmtCap(r.free_cash_flow)}
+                                </td>
+                              )
+                            }
+                            {/* OCF */}
+                            {
+                              visibleColumns.has("operating_cash_flow") && (
+                                <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                  {fmtCap(r.operating_cash_flow)}
+                                </td>
+                              )
+                            }
+                            {/* Rev Growth */}
+                            {
+                              visibleColumns.has("quarterly_revenue_growth_yoy") && (
+                                <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                  {fmtPct(r.quarterly_revenue_growth_yoy)}
+                                </td>
+                              )
+                            }
+                            {/* EPS Growth */}
+                            {
+                              visibleColumns.has("quarterly_earnings_growth_yoy") && (
+                                <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                  {fmtPct(r.quarterly_earnings_growth_yoy)}
+                                </td>
+                              )
+                            }
+                            {/* Target Price */}
+                            {
+                              visibleColumns.has("analyst_target_price") && (
+                                <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                  {fmtUsd(r.analyst_target_price)}
+                                </td>
+                              )
+                            }
+                            {/* Rating */}
+                            {
+                              visibleColumns.has("analyst_rating") && (
+                                <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300">
+                                  {r.analyst_rating ? Number(r.analyst_rating).toFixed(2) : "—"}
+                                </td>
+                              )
+                            }
                             {/* SMA50 */}
-                            {visibleColumns.has("sma50") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.sma50 != null
-                                  ? `$${r.sma50.toFixed(2)}`
-                                  : "—"}
-                              </td>
-                            )}
+                            {
+                              visibleColumns.has("day_50_ma") && (
+                                <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
+                                  {r.day_50_ma != null
+                                    ? `$${r.day_50_ma.toFixed(2)}`
+                                    : "—"}
+                                </td>
+                              )
+                            }
                             {/* SMA200 */}
-                            {visibleColumns.has("sma200") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.sma200 != null
-                                  ? `$${r.sma200.toFixed(2)}`
-                                  : "—"}
-                              </td>
-                            )}
+                            {
+                              visibleColumns.has("day_200_ma") && (
+                                <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
+                                  {r.day_200_ma != null
+                                    ? `$${r.day_200_ma.toFixed(2)}`
+                                    : "—"}
+                                </td>
+                              )
+                            }
                             {/* Beta */}
-                            {visibleColumns.has("beta") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.beta != null ? r.beta.toFixed(2) : "—"}
-                              </td>
-                            )}
-                            {/* Perf 3Y */}
-                            {visibleColumns.has("perf_3y_p") && (
-                              <td className="px-4 py-3 text-right">
-                                {r.perf_3y_p != null ? (
-                                  <span
-                                    className={`font-semibold tabular-nums ${r.perf_3y_p >= 0
-                                      ? "text-emerald-600 dark:text-emerald-400"
-                                      : "text-rose-600 dark:text-rose-400"
-                                      }`}
-                                  >
-                                    {fmtPct(r.perf_3y_p)}
-                                  </span>
-                                ) : (
-                                  <span className="text-slate-400">—</span>
-                                )}
-                              </td>
-                            )}
-                            {/* Perf 5Y */}
-                            {visibleColumns.has("perf_5y_p") && (
-                              <td className="px-4 py-3 text-right">
-                                {r.perf_5y_p != null ? (
-                                  <span
-                                    className={`font-semibold tabular-nums ${r.perf_5y_p >= 0
-                                      ? "text-emerald-600 dark:text-emerald-400"
-                                      : "text-rose-600 dark:text-rose-400"
-                                      }`}
-                                  >
-                                    {fmtPct(r.perf_5y_p)}
-                                  </span>
-                                ) : (
-                                  <span className="text-slate-400">—</span>
-                                )}
-                              </td>
-                            )}
-                          </tr>
+                            {
+                              visibleColumns.has("beta") && (
+                                <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
+                                  {r.beta != null ? r.beta.toFixed(2) : "—"}
+                                </td>
+                              )
+                            }
+
+                          </tr >
                         );
                       })}
-                    </tbody>
-                  </table>
-                </div>
+                    </tbody >
+                  </table >
+                </div >
 
                 {/* Paywall Footer Message */}
-                {showPaywall && filteredRows.length > 20 && (
-                  <div className="sticky bottom-0 bg-gradient-to-t from-white dark:from-slate-900 to-white/95 dark:to-slate-900/95 p-4 border-t border-slate-200 dark:border-slate-700">
-                    <div className="flex items-center justify-center gap-3 text-sm text-slate-600 dark:text-slate-400">
-                      <div className="h-px bg-slate-200 dark:bg-slate-700 flex-1 max-w-24" />
-                      <Shield className="w-4 h-4 text-amber-500" />
-                      <span>
-                        {visibleRestrictedCount} additional results hidden
-                      </span>
-                      <Shield className="w-4 h-4 text-amber-500" />
-                      <div className="h-px bg-slate-200 dark:bg-slate-700 flex-1 max-w-24" />
+                {
+                  showPaywall && filteredRows.length > 20 && (
+                    <div className="sticky bottom-0 bg-white dark:bg-slate-900 p-4 border-t border-slate-200 dark:border-slate-700">
+                      <div className="flex items-center justify-center gap-3 text-sm text-slate-600 dark:text-muted-foreground">
+                        <div className="h-px bg-slate-200 dark:bg-slate-700 flex-1 max-w-24" />
+                        <Shield className="w-4 h-4 text-amber-500" />
+                        <span>
+                          {visibleRestrictedCount} additional results hidden
+                        </span>
+                        <Shield className="w-4 h-4 text-amber-500" />
+                        <div className="h-px bg-slate-200 dark:bg-slate-700 flex-1 max-w-24" />
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )
+                }
+              </div >
             )}
 
             {/* Pagination Footer */}
-            {!loading && !error && filteredRows.length > 0 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
-                <div className="text-sm text-slate-600 dark:text-slate-400 flex items-center gap-2">
-                  <span>
-                    Showing{" "}
-                    <span className="font-semibold text-slate-900 dark:text-slate-100">
-                      {offset + 1}
-                    </span>{" "}
-                    to{" "}
-                    <span className="font-semibold text-slate-900 dark:text-slate-100">
-                      {Math.min(offset + limit, filteredRows.length)}
-                    </span>{" "}
-                    of{" "}
-                    <span className="font-semibold text-slate-900 dark:text-slate-100">
-                      {filteredRows.length}
-                    </span>{" "}
-                    results
-                  </span>
-                  {searchTerm && (
-                    <Badge
-                      variant="secondary"
-                      className="bg-blue-50 text-blue-700"
+            {
+              !loading && !error && filteredRows.length > 0 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+                  <div className="text-sm text-slate-600 dark:text-muted-foreground flex items-center gap-2">
+                    <span>
+                      Showing{" "}
+                      <span className="font-semibold text-slate-900 dark:text-slate-100">
+                        {offset + 1}
+                      </span>{" "}
+                      to{" "}
+                      <span className="font-semibold text-slate-900 dark:text-slate-100">
+                        {Math.min(offset + limit, filteredRows.length)}
+                      </span>{" "}
+                      of{" "}
+                      <span className="font-semibold text-slate-900 dark:text-slate-100">
+                        {filteredRows.length}
+                      </span>{" "}
+                      results
+                    </span>
+                    {searchTerm && (
+                      <Badge
+                        variant="secondary"
+                        className="bg-blue-50 text-blue-700"
+                      >
+                        filtered
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={onPrev}
+                      disabled={offset <= 0}
+                      className="min-w-24"
                     >
-                      filtered
-                    </Badge>
-                  )}
+                      <ChevronLeft className="w-4 h-4 mr-1" /> Previous
+                    </Button>
+
+                    <div className="h-6 w-px bg-slate-300 dark:bg-slate-600" />
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={onNext}
+                      disabled={filteredRows.length < limit}
+                      className="min-w-24"
+                    >
+                      Next <ChevronLeft className="w-4 h-4 ml-1 rotate-180" />
+                    </Button>
+                  </div>
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onPrev}
-                    disabled={offset <= 0}
-                    className="min-w-24"
-                  >
-                    <ChevronLeft className="w-4 h-4 mr-1" /> Previous
-                  </Button>
-
-                  <div className="h-6 w-px bg-slate-300 dark:bg-slate-600" />
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onNext}
-                    disabled={filteredRows.length < limit}
-                    className="min-w-24"
-                  >
-                    Next <ChevronLeft className="w-4 h-4 ml-1 rotate-180" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              )
+            }
+          </CardContent >
+        </Card >
 
         {/* Floating Export Button (Mobile) */}
-        <div className="fixed bottom-4 right-4 md:hidden">
+        < div className="fixed bottom-4 right-4 md:hidden" >
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -1699,16 +1698,8 @@ function ResultsPageContent() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        </div>
-      </div>
-    </TooltipProvider>
-  );
-}
-
-export default function ResultsPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-brand" /></div>}>
-      <ResultsPageContent />
-    </Suspense>
+        </div >
+      </div >
+    </TooltipProvider >
   );
 }

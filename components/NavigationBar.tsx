@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Menu } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { NavSearch } from "@/components/NavSearch";
 import { useAuth } from "@/providers/AuthProvider";
@@ -10,6 +11,14 @@ import { UserDropdown } from "@/components/auth/UserDropdown";
 
 export default function NavigationBar() {
   const { user, loading } = useAuth();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const navLinks = [
+    { href: "/screens", label: "Screens" },
+    { href: "/market", label: "Markets" },
+    { href: "/news", label: "News" },
+    { href: "/jovan-chat", label: "AI Assistant" },
+  ];
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-slate-950/60 transition-colors duration-300" aria-label="Main navigation">
@@ -34,21 +43,15 @@ export default function NavigationBar() {
             </div>
           </Link>
           <div className="hidden md:flex items-center gap-10 text-[13px] font-bold tracking-wide uppercase text-slate-500 dark:text-slate-400">
-            <Link
-              href="/screens"
-              className="hover:text-brand dark:hover:text-white transition-all hover:-translate-y-0.5"
-            >
-              Screens
-            </Link>
-            <Link href="/market" className="hover:text-brand dark:hover:text-white transition-all hover:-translate-y-0.5">
-              Markets
-            </Link>
-            <Link href="/news" className="hover:text-brand dark:hover:text-white transition-all hover:-translate-y-0.5">
-              News
-            </Link>
-            <Link href="/jovan-chat" className="hover:text-brand dark:hover:text-white transition-all hover:-translate-y-0.5">
-              AI Assistant
-            </Link>
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="hover:text-brand dark:hover:text-white transition-all hover:-translate-y-0.5"
+              >
+                {link.label}
+              </Link>
+            ))}
           </div>
         </div>
 
@@ -84,15 +87,57 @@ export default function NavigationBar() {
               </>
             )}
             <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="md:hidden inline-flex items-center justify-center p-2 rounded-md text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
               aria-label="Toggle mobile menu"
-              aria-expanded="false"
+              aria-expanded={isMobileMenuOpen}
             >
-              <Menu className="w-5 h-5" />
+              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
       </div>
+
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 animate-in fade-in slide-in-from-top-4 duration-200">
+          <div className="space-y-4 px-4 py-6">
+            <div className="mb-6">
+              <NavSearch />
+            </div>
+            <div className="flex flex-col gap-4">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="text-lg font-medium text-slate-600 dark:text-slate-400 hover:text-brand dark:hover:text-white transition-colors"
+                >
+                  {link.label}
+                </Link>
+              ))}
+              {!user && !loading && (
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <Link
+                    href="/auth/login"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex h-11 items-center justify-center rounded-md border border-slate-200 dark:border-slate-800 font-medium"
+                  >
+                    Log in
+                  </Link>
+                  <Link
+                    href="/auth/signup"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex h-11 items-center justify-center rounded-md bg-brand text-white font-medium"
+                  >
+                    Sign up
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }

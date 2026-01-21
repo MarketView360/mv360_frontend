@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,12 @@ interface UsdValueProps {
 }
 
 const POPULAR_CURRENCIES = ["EUR", "INR", "GBP", "JPY", "AUD", "CAD", "CHF"] as const;
+
+interface ExchangeRateResponse {
+  result: string;
+  rates?: Record<string, number>;
+  time_last_update_utc?: string;
+}
 
 export function UsdValue({ amount, className }: UsdValueProps) {
   const [open, setOpen] = useState(false);
@@ -55,8 +61,8 @@ export function UsdValue({ amount, className }: UsdValueProps) {
       if (!res.ok) {
         throw new Error(`FX API failed: ${res.status}`);
       }
-      const json = (await res.json()) as any;
-      if (json.result !== "success" || typeof json.rates !== "object") {
+      const json = (await res.json()) as ExchangeRateResponse;
+      if (json.result !== "success" || typeof json.rates !== "object" || !json.rates) {
         throw new Error("Unexpected FX API response");
       }
       const rates: FxRates = json.rates;
@@ -78,15 +84,18 @@ export function UsdValue({ amount, className }: UsdValueProps) {
     void loadRates();
   };
 
-  const convert = (code: string, value: number | null) => {
-    if (value == null || !fx.rates) return "—";
-    const rate = fx.rates[code];
-    if (!rate || Number.isNaN(rate)) return "—";
-    const converted = value * rate;
-    if (converted >= 1000) return converted.toFixed(0);
-    if (converted >= 1) return converted.toFixed(2);
-    return converted.toFixed(4);
-  };
+  const convert = React.useCallback(
+    (code: string, value: number | null) => {
+      if (value == null || !fx.rates) return "—";
+      const rate = fx.rates[code];
+      if (!rate || Number.isNaN(rate)) return "—";
+      const converted = value * rate;
+      if (converted >= 1000) return converted.toFixed(0);
+      if (converted >= 1) return converted.toFixed(2);
+      return converted.toFixed(4);
+    },
+    [fx.rates]
+  );
 
   const popularRows = useMemo(() => {
     if (!fx.rates || amount == null) return [] as { code: string; value: string }[];
@@ -94,7 +103,7 @@ export function UsdValue({ amount, className }: UsdValueProps) {
       code,
       value: convert(code, amount),
     }));
-  }, [fx.rates, amount]);
+  }, [fx.rates, amount, convert]);
 
   return (
     <>

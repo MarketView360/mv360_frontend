@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { getBulkRealTimePrices } from "@/lib/eodhd";
-import { ChevronRight } from "lucide-react";
+import { Treemap, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
 
 // --- Mock Data Structure (to keep sectors) ---
 const SECTORS = [
@@ -60,15 +59,18 @@ const SECTORS = [
 ];
 
 interface MarketItem {
+  name: string;
   ticker: string;
   change: number;
-  marketCap: number;
+  size: number;
+  sector: string;
 }
 
-interface SectorData {
-  sector: string;
-  stocks: MarketItem[];
-  totalMarketCap: number;
+interface TreemapNode {
+  name: string;
+  children?: TreemapNode[] | MarketItem[];
+  sector?: string;
+  size?: number;
 }
 
 type MarketHeatmapProps = {
@@ -94,7 +96,9 @@ type ScreenerRow = {
   code: string;
   sector: string | null;
   refund_1d_p: number | null;
+  price_change_1d?: number | null;
   market_capitalization: number | null;
+  market_cap?: number | null;
 };
 
 type Universe = "popular" | "small" | "micro" | "all";
@@ -110,51 +114,165 @@ const BACKEND_URL =
   (process.env.NEXT_PUBLIC_BACKEND_URL as string | undefined) ??
   "http://localhost:4000";
 
-// Color mapping based on percentage change
-const getHeatmapColor = (change: number): string => {
-  if (change >= 2) return "bg-[#00873c]"; // Deep green
-  if (change >= 1) return "bg-[#1a9850]"; // Green
-  if (change >= 0.5) return "bg-[#3faf5a]"; // Light green
-  if (change > 0) return "bg-[#60bf6e]"; // Very light green
-  if (change === 0) return "bg-[#4a4a4a]"; // Gray
-  if (change > -0.5) return "bg-[#d16060]"; // Very light red
-  if (change > -1) return "bg-[#c94545]"; // Light red
-  if (change > -2) return "bg-[#b52f2f]"; // Red
-  return "bg-[#991f1f]"; // Deep red
+const getColor = (change: number) => {
+  if (change >= 3) return "#059669"; // emerald-600
+  if (change >= 1) return "#10b981"; // emerald-500
+  if (change > 0) return "#34d399"; // emerald-400
+  if (change === 0) return "#94a3b8"; // slate-400
+  if (change <= -3) return "#e11d48"; // rose-600
+  if (change <= -1) return "#f43f5e"; // rose-500
+  return "#fb7185"; // rose-400
 };
 
-const getTextColor = (change: number): string => {
-  const absChange = Math.abs(change);
-  if (absChange < 0.3) return "text-white/70";
-  return "text-white";
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    const isPositive = data.change >= 0;
+    return (
+      <div className="bg-slate-900 border border-slate-800 p-3 rounded-lg shadow-xl text-white min-w-[160px]">
+        <div className="flex justify-between items-center mb-1">
+          <span className="font-bold text-lg">{data.ticker}</span>
+          <span className={cn("text-sm font-bold", isPositive ? "text-emerald-400" : "text-rose-400")}>
+            {isPositive ? "+" : ""}{data.change.toFixed(2)}%
+          </span>
+        </div>
+        <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-2">{data.sector}</div>
+        <div className="space-y-1 pt-2 border-t border-slate-800">
+          <div className="flex justify-between text-xs">
+            <span className="text-slate-500">Market Cap</span>
+            <span className="font-medium">
+              {data.size >= 1e12
+                ? `$${(data.size / 1e12).toFixed(2)}T`
+                : data.size >= 1e9
+                  ? `$${(data.size / 1e9).toFixed(2)}B`
+                  : `$${(data.size / 1e6).toFixed(2)}M`}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return null;
 };
 
-// Company logo URL helper
-const getLogoUrl = (ticker: string): string => {
-  const cleanTicker = ticker.replace(".US", "").replace("-", ".");
-  return `https://img.logo.dev/ticker/${cleanTicker}?token=pk_SbCCLZl-QeKIAV7b49kBSw`;
+const CustomTreemapCell = (props: any) => {
+  const { x, y, width, height, ticker, change, root, name, sector } = props;
+
+  // Don't render if too small
+  if (width < 20 || height < 20) return null;
+
+  const isSectorLabel = childrenCount(props) > 0;
+
+  if (isSectorLabel) {
+    return (
+      <g>
+        <rect
+          x={x}
+          y={y}
+          width={width}
+          height={height}
+          style={{
+            fill: 'transparent',
+            stroke: 'rgba(255,255,255,0.1)',
+            strokeWidth: 1,
+          }}
+        />
+        {width > 60 && height > 20 && (
+          <text
+            x={x + 4}
+            y={y + 14}
+            fill="currentColor"
+            className="text-[10px] font-bold uppercase tracking-wider opacity-40 pointer-events-none text-slate-500 dark:text-slate-400"
+          >
+            {name}
+          </text>
+        )}
+      </g>
+    );
+  }
+
+  return (
+    <g
+      className="cursor-pointer transition-all hover:brightness-110"
+      onClick={() => {
+        if (props.onClick) props.onClick(ticker);
+      }}
+    >
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        style={{
+          fill: getColor(change),
+          stroke: 'rgba(0,0,0,0.2)',
+          strokeWidth: 1,
+        }}
+      />
+      {width > 35 && height > 35 && (
+        <>
+          <text
+            x={x + width / 2}
+            y={y + height / 2 - (height > 50 ? 6 : 0)}
+            textAnchor="middle"
+            fill="#fff"
+            className={cn(
+              "font-bold pointer-events-none",
+              width > 60 ? "text-sm" : "text-[10px]"
+            )}
+          >
+            {ticker}
+          </text>
+          {height > 50 && (
+            <text
+              x={x + width / 2}
+              y={y + height / 2 + 12}
+              textAnchor="middle"
+              fill="#fff"
+              className={cn(
+                "font-medium pointer-events-none",
+                width > 60 ? "text-xs" : "text-[8px]"
+              )}
+            >
+              {change > 0 ? "+" : ""}{change.toFixed(1)}%
+            </text>
+          )}
+        </>
+      )}
+    </g>
+  );
+};
+
+const childrenCount = (props: any) => {
+  return props.children ? props.children.length : 0;
 };
 
 export default function MarketHeatmap({ sector, refreshToken }: MarketHeatmapProps) {
-  const [marketData, setMarketData] = useState<SectorData[]>([]);
+  const [marketData, setMarketData] = useState<TreemapNode>({ name: "root", children: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [universe, setUniverse] = useState<Universe>("popular");
   const router = useRouter();
 
-  // Helper: group screener rows into SectorData[]
-  const buildSectorsFromRows = useCallback((rows: ScreenerRow[]): SectorData[] => {
+  const handleTickerClick = (ticker: string) => {
+    router.push(`/company/${ticker}`);
+  };
+
+  // Helper: group screener rows into TreemapNode structure
+  const buildSectorsFromRows = useCallback((rows: ScreenerRow[]): TreemapNode => {
     const bySector = new Map<string, MarketItem[]>();
 
     for (const row of rows) {
       const sec = row.sector || "Other";
-      const change = row.refund_1d_p ?? 0;
-      const mcap = row.market_capitalization ?? 0;
+      const change = row.refund_1d_p ?? row.price_change_1d ?? 0;
+      const mcap = row.market_capitalization ?? row.market_cap ?? 0;
 
       const item: MarketItem = {
+        name: row.code,
         ticker: row.code,
         change,
-        marketCap: mcap,
+        size: mcap || 1,
+        sector: sec,
       };
 
       const bucket = bySector.get(sec) ?? [];
@@ -162,22 +280,22 @@ export default function MarketHeatmap({ sector, refreshToken }: MarketHeatmapPro
       bySector.set(sec, bucket);
     }
 
-    return Array.from(bySector.entries())
+    const children = Array.from(bySector.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
       .map(([sectorName, stocks]) => ({
-        sector: sectorName,
-        stocks: stocks.sort((a, b) => b.marketCap - a.marketCap),
-        totalMarketCap: stocks.reduce((sum, s) => sum + s.marketCap, 0),
-      }))
-      .sort((a, b) => b.totalMarketCap - a.totalMarketCap);
+        name: sectorName,
+        children: stocks.sort((a, b) => b.size - a.size)
+      }));
+
+    return { name: "market", children };
   }, []);
 
   useEffect(() => {
-    const fetchBackendData = async (): Promise<SectorData[] | null> => {
+    const fetchBackendData = async (): Promise<TreemapNode | null> => {
       try {
         const config = UNIVERSE_OPTIONS.find((u) => u.value === universe) ??
           UNIVERSE_OPTIONS[0];
 
-        // Build optional sector filter for backend query using canonical sector name
         let query: string | undefined;
         let usedEquality = false;
         if (sector) {
@@ -199,15 +317,11 @@ export default function MarketHeatmap({ sector, refreshToken }: MarketHeatmapPro
           }),
         });
 
-        if (!res.ok) {
-          console.error("Backend heatmap fetch failed", res.status, res.statusText);
-          return null;
-        }
+        if (!res.ok) return null;
 
         const json = (await res.json()) as { data?: ScreenerRow[] };
         let rows = json.data ?? [];
 
-        // If equality returned empty, retry with a broader 'match' token from dropdown
         if (!rows.length && usedEquality && sector) {
           const raw = String(sector).toLowerCase();
           const MATCH_TOKEN_MAP: Record<string, string> = {
@@ -245,53 +359,42 @@ export default function MarketHeatmap({ sector, refreshToken }: MarketHeatmapPro
 
         let filtered = rows;
         if (universe === "small" || universe === "micro") {
-          // Approx buckets by market cap
           filtered = rows.filter((r) => {
-            const mcap = r.market_capitalization ?? 0;
-            if (universe === "small") {
-              return mcap > 0 && mcap <= 20_000_000_000; // <= $20B
-            }
-            return mcap > 0 && mcap <= 2_000_000_000; // <= $2B
+            const mcap = r.market_capitalization ?? r.market_cap ?? 0;
+            if (universe === "small") return mcap > 0 && mcap <= 20_000_000_000;
+            return mcap > 0 && mcap <= 2_000_000_000;
           });
         }
-
-        // If filter removed everything, fall back to original rows
         if (!filtered.length) filtered = rows;
 
         return buildSectorsFromRows(filtered);
       } catch (e) {
-        console.error("Error loading backend heatmap data", e);
         return null;
       }
     };
 
-    const fetchFallbackData = async (): Promise<SectorData[]> => {
+    const fetchFallbackData = async (): Promise<TreemapNode> => {
       const allTickers = SECTORS.flatMap((s) => s.tickers);
       const data = await getBulkRealTimePrices(allTickers);
 
-      const processedData = SECTORS.map((sectorDef) => {
+      const children = SECTORS.map((sectorDef) => {
         const stocks = sectorDef.tickers.map((ticker) => {
           const stock = data.find(
             (d) => d.code === ticker.replace(".US", "") || d.code === ticker
           );
-          if (!stock)
-            return { ticker: ticker.replace(".US", ""), change: 0, marketCap: 1000000000 };
-
-          const change = stock.change_p || 0;
+          const change = stock?.change_p || 0;
           return {
-            ticker: stock.code,
+            name: ticker.replace(".US", ""),
+            ticker: ticker.replace(".US", ""),
             change,
-            marketCap: 1000000000, // Default for fallback
-          };
+            size: (100 + Math.random() * 900) * 1e9,
+            sector: sectorDef.sector,
+          } as MarketItem;
         });
-        return {
-          sector: sectorDef.sector,
-          stocks,
-          totalMarketCap: stocks.reduce((sum, s) => sum + s.marketCap, 0),
-        };
+        return { name: sectorDef.sector, children: stocks.sort((a, b) => b.size - a.size) };
       });
 
-      return processedData;
+      return { name: "market", children };
     };
 
     const run = async () => {
@@ -299,22 +402,17 @@ export default function MarketHeatmap({ sector, refreshToken }: MarketHeatmapPro
       setError(null);
       try {
         const backend = await fetchBackendData();
-        if (backend && backend.length) {
+        if (backend && backend.children?.length) {
           setMarketData(backend);
         } else {
           const fallback = await fetchFallbackData();
           setMarketData(fallback);
-          setError(
-            "Showing a curated set of large caps while full market data is unavailable."
-          );
+          setError("Showing a curated set of large caps while full market data is unavailable.");
         }
       } catch (e) {
-        console.error("Heatmap data load failed", e);
         const fallback = await fetchFallbackData();
         setMarketData(fallback);
-        setError(
-          "Unable to load full market universe. Showing a curated fallback heatmap instead."
-        );
+        setError("Unable to load full market universe. Showing a curated fallback heatmap instead.");
       } finally {
         setLoading(false);
       }
@@ -322,146 +420,6 @@ export default function MarketHeatmap({ sector, refreshToken }: MarketHeatmapPro
 
     void run();
   }, [universe, sector, refreshToken, buildSectorsFromRows]);
-
-  // Filter sectors based on search
-  const filteredData = useMemo(() => {
-    if (!sector) return marketData;
-    const token = String(sector).replace(/-/g, " ").toLowerCase();
-    return marketData.filter((group) =>
-      group.sector.toLowerCase().includes(token)
-    );
-  }, [marketData, sector]);
-
-  // Calculate total market cap for sizing
-  const totalMarketCap = useMemo(() => {
-    return filteredData.reduce((sum, s) => sum + s.totalMarketCap, 0);
-  }, [filteredData]);
-
-  // Stock cell component
-  const StockCell = ({ stock, sectorTotalCap }: { stock: MarketItem; sectorTotalCap: number }) => {
-    const [imgError, setImgError] = useState(false);
-    const relativeSize = sectorTotalCap > 0 ? (stock.marketCap / sectorTotalCap) : 0.2;
-
-    // Determine cell size based on market cap
-    const isLarge = relativeSize > 0.3;
-    const isMedium = relativeSize > 0.15;
-
-    return (
-      <button
-        type="button"
-        onClick={() => router.push(`/company/${stock.ticker}`)}
-        className={cn(
-          "relative flex flex-col items-center justify-center rounded transition-all hover:brightness-125 hover:z-10 cursor-pointer overflow-hidden border border-black/20",
-          getHeatmapColor(stock.change),
-          isLarge ? "p-3" : isMedium ? "p-2" : "p-1"
-        )}
-        style={{
-          flexGrow: Math.max(stock.marketCap / 1e9, 1),
-          flexBasis: isLarge ? "120px" : isMedium ? "80px" : "50px",
-          minWidth: isLarge ? "100px" : isMedium ? "60px" : "40px",
-          minHeight: isLarge ? "80px" : isMedium ? "50px" : "35px",
-        }}
-        title={`${stock.ticker}: ${stock.change >= 0 ? "+" : ""}${stock.change.toFixed(2)}%`}
-      >
-        {/* Logo */}
-        {(isLarge || isMedium) && !imgError && (
-          <div className={cn(
-            "relative mb-1",
-            isLarge ? "w-8 h-8" : "w-5 h-5"
-          )}>
-            <Image
-              src={getLogoUrl(stock.ticker)}
-              alt={stock.ticker}
-              fill
-              className="object-contain rounded"
-              onError={() => setImgError(true)}
-              unoptimized
-            />
-          </div>
-        )}
-
-        {/* Ticker */}
-        <span className={cn(
-          "font-bold leading-tight",
-          getTextColor(stock.change),
-          isLarge ? "text-sm" : isMedium ? "text-xs" : "text-[10px]"
-        )}>
-          {stock.ticker}
-        </span>
-
-        {/* Change percentage */}
-        <span className={cn(
-          "font-medium leading-tight",
-          getTextColor(stock.change),
-          isLarge ? "text-xs" : isMedium ? "text-[10px]" : "text-[9px]"
-        )}>
-          {stock.change >= 0 ? "+" : ""}{stock.change.toFixed(2)}%
-        </span>
-      </button>
-    );
-  };
-
-  // Sector component
-  const SectorBlock = ({ sectorData }: { sectorData: SectorData }) => {
-    const sectorWeight = totalMarketCap > 0 ? (sectorData.totalMarketCap / totalMarketCap) * 100 : 10;
-
-    return (
-      <div
-        className="flex flex-col min-w-0"
-        style={{
-          flexGrow: Math.max(sectorWeight, 5),
-          flexBasis: sectorWeight > 15 ? "300px" : sectorWeight > 8 ? "200px" : "150px",
-        }}
-      >
-        {/* Sector header */}
-        <div className="flex items-center gap-1 bg-[#1a1a1a] px-2 py-1.5 text-[11px] font-medium text-slate-300 truncate">
-          <span className="truncate">{sectorData.sector}</span>
-          <ChevronRight className="w-3 h-3 flex-shrink-0 text-slate-500" />
-        </div>
-
-        {/* Stocks grid */}
-        <div className="flex flex-wrap flex-1 gap-px bg-[#1a1a1a] p-px">
-          {sectorData.stocks.slice(0, 12).map((stock) => (
-            <StockCell
-              key={stock.ticker}
-              stock={stock}
-              sectorTotalCap={sectorData.totalMarketCap}
-            />
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  // Color legend
-  const ColorLegend = () => (
-    <div className="flex items-center justify-center gap-1 py-3 bg-[#0f0f0f]">
-      <div className="flex items-center h-4">
-        {/* Gradient bar */}
-        <div className="flex h-full">
-          <div className="w-8 bg-[#991f1f]" />
-          <div className="w-8 bg-[#b52f2f]" />
-          <div className="w-8 bg-[#c94545]" />
-          <div className="w-8 bg-[#d16060]" />
-          <div className="w-6 bg-[#4a4a4a]" />
-          <div className="w-8 bg-[#60bf6e]" />
-          <div className="w-8 bg-[#3faf5a]" />
-          <div className="w-8 bg-[#1a9850]" />
-          <div className="w-8 bg-[#00873c]" />
-        </div>
-      </div>
-      {/* Labels */}
-      <div className="flex items-center text-[10px] text-slate-400 ml-3 gap-4">
-        <span>-1.2%</span>
-        <span>-0.8%</span>
-        <span>-0.4%</span>
-        <span>0%</span>
-        <span>0.4%</span>
-        <span>0.8%</span>
-        <span>1.2%</span>
-      </div>
-    </div>
-  );
 
   return (
     <div className="flex flex-col h-full bg-[#0f0f0f] rounded-lg overflow-hidden border border-slate-800">
@@ -503,24 +461,29 @@ export default function MarketHeatmap({ sector, refreshToken }: MarketHeatmapPro
             <div className="h-10 w-10 rounded-full border-2 border-slate-700 border-t-emerald-500 animate-spin" />
             <span className="text-sm">Loading market data…</span>
           </div>
-        ) : error && filteredData.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full gap-2 text-center p-4">
-            <p className="text-sm text-slate-400 max-w-xs">{error}</p>
+        ) : error && !marketData.children?.length ? (
+          <div className="flex flex-col items-center justify-center h-full gap-2 text-center">
+            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs">{error}</p>
           </div>
         ) : (
-          <div className="flex flex-wrap h-full gap-px bg-[#1a1a1a] p-1 content-start">
-            {filteredData.map((sectorData) => (
-              <SectorBlock key={sectorData.sector} sectorData={sectorData} />
-            ))}
+          <div className="w-full h-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <Treemap
+                data={marketData.children as any}
+                dataKey="size"
+                aspectRatio={4 / 3}
+                stroke="#1e293b"
+                content={<CustomTreemapCell onClick={handleTickerClick} />}
+              >
+                <RechartsTooltip content={<CustomTooltip />} />
+              </Treemap>
+            </ResponsiveContainer>
           </div>
         )}
       </div>
 
-      {/* Color legend */}
-      {!loading && filteredData.length > 0 && <ColorLegend />}
-
       {/* Warning message if using fallback */}
-      {error && filteredData.length > 0 && (
+      {error && !loading && (
         <div className="px-4 py-2 bg-amber-900/20 border-t border-amber-800/30">
           <p className="text-xs text-amber-400/80 text-center">{error}</p>
         </div>

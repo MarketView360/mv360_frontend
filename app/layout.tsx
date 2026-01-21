@@ -1,27 +1,36 @@
-"use client";
+import type { ReactNode } from "react";
 
-import { usePathname } from "next/navigation";
+import { Inter, Lexend_Mega } from "next/font/google";
 
 import "./globals.css";
 import { cn } from "@/lib/utils";
-import { Footer } from "@/components/Footer";
-import { NetworkStatusWatcher } from "@/components/NetworkStatusWatcher";
 import { ThemeProvider } from "./providers";
-import NavigationBar from "@/components/NavigationBar";
-import { AiChatWidget } from "@/components/AiChatWidget";
+import RouteChrome from "./RouteChrome";
+import { Toaster } from "@/components/ui/sonner";
 
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
+
+const lexend = Lexend_Mega({
+  subsets: ["latin"],
+  variable: "--font-heading",
+});
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: ReactNode;
 }>) {
-  const pathname = usePathname();
-
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className="min-h-screen bg-white dark:bg-slate-950 font-sans antialiased flex flex-col transition-colors duration-300 overflow-x-hidden"
+        className={cn(
+          "min-h-screen bg-white dark:bg-slate-950 font-sans antialiased flex flex-col transition-colors duration-300 overflow-x-hidden",
+          inter.variable,
+          lexend.variable
+        )}
       >
         <script
           dangerouslySetInnerHTML={{
@@ -42,14 +51,8 @@ export default function RootLayout({
           }}
         />
         <ThemeProvider>
-          <a href="#main-content" className="skip-to-content">
-            Skip to main content
-          </a>
-          <NavigationBar />
-          <main id="main-content" className="flex-1 w-full">{children}</main>
-          <NetworkStatusWatcher />
-          {pathname !== "/jovan-chat" && <Footer />}
-          {pathname !== "/jovan-chat" && <AiChatWidget />}
+          <RouteChrome>{children}</RouteChrome>
+          <Toaster position="top-right" richColors closeButton />
         </ThemeProvider>
       </body>
     </html>

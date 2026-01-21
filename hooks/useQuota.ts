@@ -1,16 +1,89 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useCallback, useSyncExternalStore } from "react";
 
-const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000";
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ??
+  process.env.NEXT_PUBLIC_BACKEND_URL ??
+  "http://localhost:3001";
 
 export interface QuotaStatus {
-  standard: { used: number; limit: number; unlimited: boolean };
-  reasoning: { used: number; limit: number; unlimited: boolean };
-  premium: { used: number; limit: number; unlimited: boolean };
-  voice: { used: number; limit: number; unlimited: boolean };
+  tokens: { used: number; limit: number; remaining: number };
+  reasoning: { used: number; limit: number; remaining: number };
   resetsAt: string;
   tier: "free" | "premium";
+}
+
+type StoreState = {
+  token: string | null;
+  quota: QuotaStatus | null;
+  loading: boolean;
+  error: string | null;
+};
+
+const store: StoreState = {
+  token: null,
+  quota: null,
+  loading: false,
+  error: null,
+};
+
+const listeners = new Set<() => void>();
+
+function emitChange() {
+  listeners.forEach((l) => l());
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function getSnapshot() {
+  return store;
+}
+
+async function fetchQuotaIntoStore(token: string | null, forceFresh: boolean = false) {
+  store.token = token;
+  store.loading = true;
+  store.error = null;
+  emitChange();
+
+  if (!token) {
+    store.quota = null;
+    store.loading = false;
+    emitChange();
+    return;
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    const url = forceFresh ? `${API_BASE}/ai/quota?fresh=1` : `${API_BASE}/ai/quota`;
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch quota");
+    }
+
+    const data = (await response.json()) as QuotaStatus;
+    store.quota = data;
+  } catch (err) {
+    console.error("Quota fetch error:", err);
+    // Keep last known quota if available; don't overwrite with dummy values.
+    store.error = err instanceof Error ? err.message : "Unknown error";
+  } finally {
+    store.loading = false;
+    emitChange();
+  }
 }
 
 interface UseQuotaResult {
@@ -18,8 +91,8 @@ interface UseQuotaResult {
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
-  canUse: (type: "standard" | "reasoning" | "premium" | "voice") => boolean;
-  getRemaining: (type: "standard" | "reasoning" | "premium" | "voice") => number;
+  canUse: (type: "tokens" | "reasoning") => boolean;
+  getRemaining: (type: "tokens" | "reasoning") => number;
   timeUntilReset: () => string;
 }
 
@@ -27,66 +100,40 @@ interface UseQuotaResult {
  * Hook to fetch and manage user quota
  */
 export function useQuota(token: string | null): UseQuotaResult {
-  const [quota, setQuota] = useState<QuotaStatus | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchQuota = useCallback(async () => {
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`${API_BASE}/ai/quota`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch quota");
-      }
-
-      const data = await response.json();
-      setQuota(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
+  const state = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
   useEffect(() => {
-    void fetchQuota();
-  }, [fetchQuota]);
+    // Only refetch if token changed.
+    if (state.token !== token) {
+      void fetchQuotaIntoStore(token);
+    }
+  }, [token, state.token]);
+
+  const fetchQuota = useCallback(async () => {
+    await fetchQuotaIntoStore(token, true);
+  }, [token]);
 
   const canUse = useCallback(
-    (type: "standard" | "reasoning" | "premium" | "voice"): boolean => {
-      if (!quota) return false;
-      const q = quota[type];
-      return q.unlimited || q.used < q.limit;
+    (type: "tokens" | "reasoning"): boolean => {
+      if (!state.quota) return false;
+      const q = state.quota[type];
+      return q.remaining > 0;
     },
-    [quota],
+    [state.quota],
   );
 
   const getRemaining = useCallback(
-    (type: "standard" | "reasoning" | "premium" | "voice"): number => {
-      if (!quota) return 0;
-      const q = quota[type];
-      if (q.unlimited) return Infinity;
-      return Math.max(0, q.limit - q.used);
+    (type: "tokens" | "reasoning"): number => {
+      if (!state.quota) return 0;
+      return state.quota[type].remaining;
     },
-    [quota],
+    [state.quota],
   );
 
   const timeUntilReset = useCallback((): string => {
-    if (!quota?.resetsAt) return "";
+    if (!state.quota?.resetsAt) return "";
 
-    const resetTime = new Date(quota.resetsAt).getTime();
+    const resetTime = new Date(state.quota.resetsAt).getTime();
     const now = Date.now();
     const diff = resetTime - now;
 
@@ -99,12 +146,12 @@ export function useQuota(token: string | null): UseQuotaResult {
       return `${hours}h ${minutes}m`;
     }
     return `${minutes}m`;
-  }, [quota]);
+  }, [state.quota]);
 
   return {
-    quota,
-    loading,
-    error,
+    quota: state.quota,
+    loading: state.loading,
+    error: state.error,
     refetch: fetchQuota,
     canUse,
     getRemaining,

@@ -1,4 +1,5 @@
 // Query Builder Utilities and Types
+// Aligned with backend's advanced-query.service.ts for consistency
 
 export interface QuerySuggestion {
   text: string;
@@ -27,115 +28,480 @@ export interface FieldDef {
   backendField?: string; // Maps to backend database column
 }
 
-// Backend field mapping - mirrors backend's FIELD_MAP for consistency
-// This maps frontend display names to actual database column names
+// ═══════════════════════════════════════════════════════════════════════════════
+// AVAILABLE TABLES - Mirrors backend's AVAILABLE_TABLES
+// These are the database tables available for advanced screening queries
+// ═══════════════════════════════════════════════════════════════════════════════
+export const AVAILABLE_TABLES = [
+  "companies",
+  "company_metrics_ttm",
+  "price_data",
+  "analyst_ratings",
+  "balance_sheet_annual",
+  "balance_sheet_quarterly",
+  "cash_flow_annual",
+  "cash_flow_quarterly",
+  "income_statement_annual",
+  "income_statement_quarterly",
+  "earnings_annual",
+  "earnings_estimates",
+  "earnings_history",
+  "dividend_history",
+  "esg_scores",
+  "fund_holders",
+  "insider_transactions",
+  "institutional_holders",
+  "news",
+  "index_components",
+  "index_registry",
+  "outstanding_shares_history_annual",
+  "outstanding_shares_history_quarterly",
+  "company_financials_view",
+] as const;
+
+export type AvailableTable = (typeof AVAILABLE_TABLES)[number];
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BACKEND FIELD MAP - Mirrors backend's FIELD_ALIASES
+// Maps user-friendly names to { table, column } for advanced queries
+// ═══════════════════════════════════════════════════════════════════════════════
+export interface FieldMapping {
+  table: string;
+  column: string;
+}
+
+export const FIELD_ALIASES: Record<string, FieldMapping> = {
+  // Company fields (companies table)
+  ticker: { table: "companies", column: "ticker" },
+  symbol: { table: "companies", column: "ticker" },
+  code: { table: "companies", column: "ticker" },
+  name: { table: "companies", column: "name" },
+  sector: { table: "companies", column: "sector" },
+  industry: { table: "companies", column: "industry" },
+  exchange: { table: "companies", column: "exchange" },
+  country: { table: "companies", column: "country_name" },
+  employees: { table: "companies", column: "employees" },
+
+  // Valuation metrics (company_metrics_ttm table)
+  market_cap: { table: "company_metrics_ttm", column: "market_cap" },
+  market_capitalization: { table: "company_metrics_ttm", column: "market_cap" },
+  pe_ratio: { table: "company_metrics_ttm", column: "pe_ratio" },
+  pe: { table: "company_metrics_ttm", column: "pe_ratio" },
+  forward_pe: { table: "company_metrics_ttm", column: "forward_pe" },
+  trailing_pe: { table: "company_metrics_ttm", column: "trailing_pe" },
+  peg_ratio: { table: "company_metrics_ttm", column: "peg_ratio" },
+  peg: { table: "company_metrics_ttm", column: "peg_ratio" },
+  pb_ratio: { table: "company_metrics_ttm", column: "price_book_mrq" },
+  price_to_book: { table: "company_metrics_ttm", column: "price_book_mrq" },
+  pb: { table: "company_metrics_ttm", column: "price_book_mrq" },
+  ps_ratio: { table: "company_metrics_ttm", column: "price_sales_ttm" },
+  price_to_sales: { table: "company_metrics_ttm", column: "price_sales_ttm" },
+  enterprise_value: {
+    table: "company_metrics_ttm",
+    column: "enterprise_value",
+  },
+  ev: { table: "company_metrics_ttm", column: "enterprise_value" },
+  ev_ebitda: { table: "company_metrics_ttm", column: "ev_ebitda" },
+  ev_revenue: { table: "company_metrics_ttm", column: "ev_revenue" },
+
+  // Profitability (company_metrics_ttm table)
+  profit_margin: { table: "company_metrics_ttm", column: "profit_margin" },
+  operating_margin: {
+    table: "company_metrics_ttm",
+    column: "operating_margin_ttm",
+  },
+  roe: { table: "company_metrics_ttm", column: "return_on_equity_ttm" },
+  return_on_equity: {
+    table: "company_metrics_ttm",
+    column: "return_on_equity_ttm",
+  },
+  roa: { table: "company_metrics_ttm", column: "return_on_assets_ttm" },
+  return_on_assets: {
+    table: "company_metrics_ttm",
+    column: "return_on_assets_ttm",
+  },
+
+  // Dividends (company_metrics_ttm table)
+  dividend_yield: { table: "company_metrics_ttm", column: "dividend_yield" },
+  dividend_per_share: {
+    table: "company_metrics_ttm",
+    column: "dividend_per_share",
+  },
+  payout_ratio: { table: "company_metrics_ttm", column: "payout_ratio" },
+
+  // Earnings (company_metrics_ttm table)
+  eps: { table: "company_metrics_ttm", column: "earnings_share" },
+  earnings_per_share: {
+    table: "company_metrics_ttm",
+    column: "earnings_share",
+  },
+  diluted_eps: { table: "company_metrics_ttm", column: "diluted_eps_ttm" },
+  revenue: { table: "company_metrics_ttm", column: "revenue_ttm" },
+  revenue_ttm: { table: "company_metrics_ttm", column: "revenue_ttm" },
+  ebitda: { table: "company_metrics_ttm", column: "ebitda" },
+
+  // Technical (company_metrics_ttm table)
+  beta: { table: "company_metrics_ttm", column: "beta" },
+  week_52_high: { table: "company_metrics_ttm", column: "week_52_high" },
+  week_52_low: { table: "company_metrics_ttm", column: "week_52_low" },
+  day_50_ma: { table: "company_metrics_ttm", column: "day_50_ma" },
+  sma50: { table: "company_metrics_ttm", column: "day_50_ma" },
+  ma50: { table: "company_metrics_ttm", column: "day_50_ma" },
+  day_200_ma: { table: "company_metrics_ttm", column: "day_200_ma" },
+  sma200: { table: "company_metrics_ttm", column: "day_200_ma" },
+  ma200: { table: "company_metrics_ttm", column: "day_200_ma" },
+
+  // Shares (company_metrics_ttm table)
+  shares_outstanding: {
+    table: "company_metrics_ttm",
+    column: "shares_outstanding",
+  },
+  shares_float: { table: "company_metrics_ttm", column: "shares_float" },
+
+  // Analyst (company_metrics_ttm table)
+  analyst_rating: { table: "company_metrics_ttm", column: "analyst_rating" },
+  target_price: {
+    table: "company_metrics_ttm",
+    column: "analyst_target_price",
+  },
+
+  // Price data (price_data table)
+  price: { table: "price_data", column: "adjusted_close" },
+  adjusted_close: { table: "price_data", column: "adjusted_close" },
+  close: { table: "price_data", column: "close" },
+  open: { table: "price_data", column: "open" },
+  high: { table: "price_data", column: "high" },
+  low: { table: "price_data", column: "low" },
+  volume: { table: "price_data", column: "volume" },
+  change: { table: "price_data", column: "change" },
+  change_percent: { table: "price_data", column: "change_percent" },
+
+  // Balance sheet (balance_sheet_annual/quarterly tables)
+  total_assets: { table: "balance_sheet_annual", column: "total_assets" },
+  total_current_assets: {
+    table: "balance_sheet_annual",
+    column: "total_current_assets",
+  },
+  cash_and_equivalents: {
+    table: "balance_sheet_annual",
+    column: "cash_and_equivalents",
+  },
+  cash: { table: "balance_sheet_annual", column: "cash_and_equivalents" },
+  net_receivables: {
+    table: "balance_sheet_annual",
+    column: "net_receivables",
+  },
+  inventory: { table: "balance_sheet_annual", column: "inventory" },
+  total_liabilities: {
+    table: "balance_sheet_annual",
+    column: "total_liabilities",
+  },
+  total_current_liabilities: {
+    table: "balance_sheet_annual",
+    column: "total_current_liabilities",
+  },
+  long_term_debt: { table: "balance_sheet_annual", column: "long_term_debt" },
+  short_term_debt: {
+    table: "balance_sheet_annual",
+    column: "short_term_debt",
+  },
+  total_stockholder_equity: {
+    table: "balance_sheet_annual",
+    column: "total_stockholder_equity",
+  },
+  retained_earnings: {
+    table: "balance_sheet_annual",
+    column: "retained_earnings",
+  },
+  net_debt: { table: "balance_sheet_annual", column: "net_debt" },
+  net_working_capital: {
+    table: "balance_sheet_annual",
+    column: "net_working_capital",
+  },
+
+  // Income statement (income_statement_annual/quarterly tables)
+  total_revenue: {
+    table: "income_statement_annual",
+    column: "total_revenue",
+  },
+  cost_of_revenue: {
+    table: "income_statement_annual",
+    column: "cost_of_revenue",
+  },
+  gross_profit: { table: "income_statement_annual", column: "gross_profit" },
+  operating_income: {
+    table: "income_statement_annual",
+    column: "operating_income",
+  },
+  ebit: { table: "income_statement_annual", column: "ebit" },
+  net_income: { table: "income_statement_annual", column: "net_income" },
+  interest_expense: {
+    table: "income_statement_annual",
+    column: "interest_expense",
+  },
+  income_tax_expense: {
+    table: "income_statement_annual",
+    column: "income_tax_expense",
+  },
+  research_development: {
+    table: "income_statement_annual",
+    column: "research_development",
+  },
+
+  // Cash flow (cash_flow_annual/quarterly tables)
+  total_cash_from_operating_activities: {
+    table: "cash_flow_annual",
+    column: "total_cash_from_operating_activities",
+  },
+  operating_cash_flow: {
+    table: "cash_flow_annual",
+    column: "total_cash_from_operating_activities",
+  },
+  ocf: {
+    table: "cash_flow_annual",
+    column: "total_cash_from_operating_activities",
+  },
+  capital_expenditures: {
+    table: "cash_flow_annual",
+    column: "capital_expenditures",
+  },
+  capex: { table: "cash_flow_annual", column: "capital_expenditures" },
+  free_cash_flow: { table: "cash_flow_annual", column: "free_cash_flow" },
+  fcf: { table: "cash_flow_annual", column: "free_cash_flow" },
+  dividends_paid: { table: "cash_flow_annual", column: "dividends_paid" },
+  net_borrowings: { table: "cash_flow_annual", column: "net_borrowings" },
+  change_in_cash: { table: "cash_flow_annual", column: "change_in_cash" },
+};
+
+// Simple string mapping for backward compatibility with existing code
+// Maps frontend display names (short forms) to actual database column names (exact backend names)
+// ONLY includes fields that exist in the backend according to SCREENER.md
 export const BACKEND_FIELD_MAP: Record<string, string> = {
-  // Price & Market Data
-  "market capitalization": "market_cap",
-  "market cap": "market_cap",
-  marketcap: "market_cap",
-  mcap: "market_cap",
-  "current price": "price",
-  price: "price",
-  volume: "volume",
-  "avg volume": "avg_volume_200d",
-  "average volume": "avg_volume_200d",
-  "1d change %": "refund_1d_p",
-  "5d change %": "refund_5d_p",
-
-  // Valuation
-  pe: "pe",
-  "price to earning": "pe",
-  "forward pe": "forward_pe",
-  "forward p/e": "forward_pe",
-  peg: "peg",
-  "peg ratio": "peg",
-  "price to book value": "pb",
-  "p/b": "pb",
-  pb: "pb",
-  "dividend yield": "dividend_yield",
-  "ev/ebitda": "ev_ebitda",
-  "price to sales": "price_to_sales",
-  "p/s": "price_to_sales",
-  "ev/sales": "ev_sales",
-  "ev/ sales": "ev_sales",
-  "price to cash flow": "price_to_cash_flow",
-  "p/c": "price_to_cash_flow",
-
-  // Profitability
-  roe: "roe",
-  "return on equity": "roe",
-  roce: "roce",
-  "return on capital employed": "roce",
-  roa: "roa",
-  "return on assets": "roa",
-  opm: "opm",
-  "operating profit margin": "opm",
-  "net margin": "net_margin",
-
-  // Growth
-  "sales growth 3years": "sales_cagr_3y",
-  "profit growth 5years": "profit_cagr_5y",
-  "eps growth 3years": "eps_cagr_3y",
-  "revenue growth 1year": "revenue_growth_1y",
-  "profit growth 1year": "profit_growth_1y",
-
-  // Leverage & Quality
-  "debt to equity": "debt_to_equity",
-  "lt debt to equity": "lt_debt_to_equity",
-  "interest coverage": "interest_coverage",
-  "current ratio": "current_ratio",
-  "quick ratio": "quick_ratio",
-  "total debt": "total_debt",
-  totaldebt: "total_debt",
-  "cash and equivalents": "cash_equivalents",
-  "cash equivalents": "cash_equivalents",
-  "cash and cash equivalents": "cash_equivalents",
-  cashequivalents: "cash_equivalents",
-  cashandequivalents: "cash_equivalents",
-
-  // Cash Flow
-  "operating cash flow": "operating_cf",
-  "free cash flow": "free_cf",
-  "cash flow margin": "cf_margin",
-
-  // Technicals
-  beta: "beta",
-  rsi: "rsi",
-  sma20: "sma20",
-  sma50: "ma50",
-  ma50: "ma50",
-  "moving average 50": "ma50",
-  sma200: "ma200",
-  ma200: "ma200",
-  "moving average 200": "ma200",
-  "price change 1d": "price_change_1d",
-  "price change 1y": "price_change_1y",
-
-  // Earnings & Revenue
-  eps: "eps_ttm",
-  "earnings per share": "eps_ttm",
-  "diluted eps": "diluted_eps_ttm",
-  revenue: "revenue_ttm",
-  sales: "revenue_ttm",
-  earnings: "earnings_ttm",
-
-  // Performance
-  "return over 3years": "perf_3y_p",
-  perf3y: "perf_3y_p",
-  "return over 5years": "perf_5y_p",
-  perf5y: "perf_5y_p",
-
-  // Company Info
+  // ═══════════════════════════════════════════════════════════════════════════
+  // COMPANIES TABLE
+  // ═══════════════════════════════════════════════════════════════════════════
+  ticker: "ticker",
+  symbol: "ticker",
+  code: "ticker",
+  name: "name",
+  "company name": "name",
   sector: "sector",
   industry: "industry",
-  exchange: "exchange",
-  code: "code",
-  symbol: "code",
-  name: "name",
-  country: "country",
-  currency: "currency",
+  "gic sector": "gic_sector",
+  "gic industry": "gic_industry",
+  "country iso": "country_iso",
+  "country name": "country_name",
+  country: "country_name",
+  "currency code": "currency_code",
+  currency: "currency_code",
+  employees: "employees",
+  "full time employees": "employees",
+  "ipo date": "ipo_date",
+  "is active": "is_active",
+  website: "website",
+  description: "description",
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // COMPANY_METRICS_TTM TABLE
+  // ═══════════════════════════════════════════════════════════════════════════
+  "market capitalization": "market_cap",
+  "market cap": "market_cap",
+  market_cap: "market_cap",
+  marketcap: "market_cap",
+  mcap: "market_cap",
+  "enterprise value": "enterprise_value",
+  enterprise_value: "enterprise_value",
+  ev: "enterprise_value",
+
+  // Valuation Metrics (company_metrics_ttm)
+  pe: "pe_ratio",
+  "pe ratio": "pe_ratio",
+  "price to earning": "pe_ratio",
+  "price to earnings": "pe_ratio",
+  "price/earning": "pe_ratio",
+  "price/earnings": "pe_ratio",
+  "p/e": "pe_ratio",
+  "trailing pe": "trailing_pe",
+  "forward pe": "forward_pe",
+  "forward p/e": "forward_pe",
+  peg: "peg_ratio",
+  "peg ratio": "peg_ratio",
+  "price earnings growth": "peg_ratio",
+  "price to book": "price_book_mrq",
+  "price to book value": "price_book_mrq",
+  "price/book": "price_book_mrq",
+  "p/b": "price_book_mrq",
+  pb: "price_book_mrq",
+  "price to sales": "price_sales_ttm",
+  "price/sales": "price_sales_ttm",
+  "p/s": "price_sales_ttm",
+  ps: "price_sales_ttm",
+  "ev/ebitda": "ev_ebitda",
+  "ev to ebitda": "ev_ebitda",
+  "ev/revenue": "ev_revenue",
+  "ev to revenue": "ev_revenue",
+
+  // Profitability Metrics (company_metrics_ttm)
+  "profit margin": "profit_margin",
+  "net margin": "profit_margin",
+  "net profit margin": "profit_margin",
+  "operating margin": "operating_margin_ttm",
+  "operating profit margin": "operating_margin_ttm",
+  opm: "operating_margin_ttm",
+  "operating margin ttm": "operating_margin_ttm",
+  roe: "return_on_equity_ttm",
+  "return on equity": "return_on_equity_ttm",
+  "roe ttm": "return_on_equity_ttm",
+  roa: "return_on_assets_ttm",
+  "return on assets": "return_on_assets_ttm",
+  "roa ttm": "return_on_assets_ttm",
+
+  // Earnings (company_metrics_ttm)
+  revenue: "revenue_ttm",
+  "revenue ttm": "revenue_ttm",
+  sales: "revenue_ttm",
+  "total revenue": "revenue_ttm",
+  eps: "earnings_share",
+  "earnings per share": "earnings_share",
+  "diluted eps": "diluted_eps_ttm",
+  "diluted eps ttm": "diluted_eps_ttm",
+
+  // Dividends (company_metrics_ttm)
+  "dividend yield": "dividend_yield",
+  dividend_yield: "dividend_yield",
+  "div yield": "dividend_yield",
+  "dividend per share": "dividend_per_share",
+  dividend_per_share: "dividend_per_share",
+  "dividend share": "dividend_per_share",
+  "payout ratio": "payout_ratio",
+  payout_ratio: "payout_ratio",
+  "dividend payout ratio": "payout_ratio",
+
+  // Technical (company_metrics_ttm)
+  beta: "beta",
+  "stock beta": "beta",
+  "52 week high": "week_52_high",
+  week_52_high: "week_52_high",
+  "52w high": "week_52_high",
+  "52wk high": "week_52_high",
+  "52 week low": "week_52_low",
+  week_52_low: "week_52_low",
+  "52w low": "week_52_low",
+  "52wk low": "week_52_low",
+  "50 day moving average": "day_50_ma",
+  day_50_ma: "day_50_ma",
+  "50dma": "day_50_ma",
+  "50 dma": "day_50_ma",
+  sma50: "day_50_ma",
+  ma50: "day_50_ma",
+  "sma 50": "day_50_ma",
+  "moving average 50": "day_50_ma",
+  "200 day moving average": "day_200_ma",
+  day_200_ma: "day_200_ma",
+  "200dma": "day_200_ma",
+  "200 dma": "day_200_ma",
+  sma200: "day_200_ma",
+  ma200: "day_200_ma",
+  "sma 200": "day_200_ma",
+  "moving average 200": "day_200_ma",
+
+  // Shares (company_metrics_ttm)
+  "shares outstanding": "shares_outstanding",
+  shares_outstanding: "shares_outstanding",
+  "shares float": "shares_float",
+  shares_float: "shares_float",
+  float: "shares_float",
+
+  // Analyst (company_metrics_ttm)
+  "analyst rating": "analyst_rating",
+  analyst_rating: "analyst_rating",
+  "target price": "analyst_target_price",
+  target_price: "analyst_target_price",
+  "analyst target": "analyst_target_price",
+  "analyst target price": "analyst_target_price",
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PRICE_DATA TABLE
+  // ═══════════════════════════════════════════════════════════════════════════
+  price: "adjusted_close",
+  "current price": "adjusted_close",
+  "stock price": "adjusted_close",
+  "share price": "adjusted_close",
+  "adjusted close": "adjusted_close",
+  close: "close",
+  open: "open",
+  high: "high",
+  low: "low",
+  volume: "volume",
+  "trading volume": "volume",
+  change: "change",
+  "price change": "change",
+  "change percent": "change_percent",
+  "change percentage": "change_percent",
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BALANCE_SHEET TABLES (annual/quarterly)
+  // ═══════════════════════════════════════════════════════════════════════════
+  "total assets": "total_assets",
+  "current assets": "total_current_assets",
+  "total current assets": "total_current_assets",
+  "cash and equivalents": "cash_and_equivalents",
+  "cash equivalents": "cash_and_equivalents",
+  cash: "cash_and_equivalents",
+  receivables: "net_receivables",
+  "net receivables": "net_receivables",
+  "accounts receivable": "net_receivables",
+  inventory: "inventory",
+  "total liabilities": "total_liabilities",
+  "current liabilities": "total_current_liabilities",
+  "total current liabilities": "total_current_liabilities",
+  "long term debt": "long_term_debt",
+  "lt debt": "long_term_debt",
+  "short term debt": "short_term_debt",
+  "st debt": "short_term_debt",
+  "shareholder equity": "total_stockholder_equity",
+  "shareholders equity": "total_stockholder_equity",
+  "stockholder equity": "total_stockholder_equity",
+  "stockholders equity": "total_stockholder_equity",
+  "retained earnings": "retained_earnings",
+  "net debt": "net_debt",
+  "net working capital": "net_working_capital",
+  "working capital": "net_working_capital",
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // INCOME_STATEMENT TABLES (annual/quarterly)
+  // ═══════════════════════════════════════════════════════════════════════════
+  total_revenue: "total_revenue",
+  "cost of revenue": "cost_of_revenue",
+  "gross profit": "gross_profit",
+  "operating income": "operating_income",
+  ebit: "ebit",
+  ebitda: "ebitda",
+  "net income": "net_income",
+  earnings: "net_income",
+  "interest expense": "interest_expense",
+  "income tax expense": "income_tax_expense",
+  "tax expense": "income_tax_expense",
+  "research development": "research_development",
+  "r&d": "research_development",
+  "research and development": "research_development",
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // CASH_FLOW TABLES (annual/quarterly)
+  // ═══════════════════════════════════════════════════════════════════════════
+  "operating cash flow": "total_cash_from_operating_activities",
+  ocf: "total_cash_from_operating_activities",
+  "cash from operations": "total_cash_from_operating_activities",
+  capex: "capital_expenditures",
+  "capital expenditures": "capital_expenditures",
+  "capital expenditure": "capital_expenditures",
+  "free cash flow": "free_cash_flow",
+  fcf: "free_cash_flow",
+  "dividends paid": "dividends_paid",
+  "net borrowings": "net_borrowings",
+  "change in cash": "change_in_cash",
 };
+
 
 // Helper function to get backend field name
 export function getBackendFieldName(fieldName: string): string {
@@ -161,7 +527,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       keywords: ["price earnings", "pe ratio", "p/e"],
       example: "PE BETWEEN 10 AND 25",
       category: "Most Used",
-      backendField: "pe",
+      backendField: "pe_ratio",
     },
     {
       name: "Price",
@@ -170,7 +536,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       keywords: ["price", "stock price", "share price", "current price"],
       example: "Price > 100",
       category: "Most Used",
-      backendField: "price",
+      backendField: "adjusted_close",
     },
     {
       name: "ROE",
@@ -179,52 +545,36 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       keywords: ["return equity", "roe"],
       example: "ROE > 15",
       category: "Most Used",
-      backendField: "roe",
+      backendField: "return_on_equity_ttm",
     },
     {
-      name: "ROCE",
-      description: "Return on Capital Employed",
-      unit: "%",
-      keywords: ["return capital", "roce"],
-      example: "ROCE > 15",
+      name: "Volume",
+      description: "Current trading volume",
+      unit: "shares",
+      keywords: ["volume", "trading volume"],
+      example: "Volume > 1000000",
       category: "Most Used",
-      backendField: "roce",
+      backendField: "volume",
     },
+  ],
+  "Size & Volume": [
     {
-      name: "ROA",
-      description: "Return on Assets",
-      unit: "%",
-      keywords: ["return assets", "roa"],
-      example: "ROA > 5",
-      category: "Most Used",
-      backendField: "roa",
-    },
-    {
-      name: "EPS",
-      description: "Earnings per Share (TTM)",
-      unit: "$",
-      keywords: ["earnings per share", "eps"],
-      example: "EPS > 10",
-      category: "Most Used",
-      backendField: "eps_ttm",
-    },
-    {
-      name: "Revenue",
-      description: "Total Revenue (TTM)",
+      name: "Market Capitalization",
+      description: "Total market value of shares",
       unit: "USD",
-      keywords: ["revenue", "sales", "turnover"],
-      example: "Revenue > 1000000000",
-      category: "Most Used",
-      backendField: "revenue_ttm",
+      keywords: ["market cap", "mcap", "market value"],
+      example: "Market Capitalization > 5000000000",
+      category: "Size & Volume",
+      backendField: "market_cap",
     },
     {
-      name: "Dividend Yield",
-      description: "Annual dividend as % of current price",
-      unit: "%",
-      keywords: ["dividend", "yield", "div yield"],
-      example: "Dividend Yield BETWEEN 2 AND 6",
-      category: "Most Used",
-      backendField: "dividend_yield",
+      name: "Price",
+      description: "Current stock price",
+      unit: "$",
+      keywords: ["price", "stock price", "share price", "current price"],
+      example: "Price > 100",
+      category: "Size & Volume",
+      backendField: "adjusted_close",
     },
     {
       name: "Volume",
@@ -232,26 +582,8 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "shares",
       keywords: ["volume", "trading volume"],
       example: "Volume > 500000",
-      category: "Most Used",
+      category: "Size & Volume",
       backendField: "volume",
-    },
-    {
-      name: "OPM",
-      description: "Operating Profit Margin",
-      unit: "%",
-      keywords: ["operating", "margin", "profit margin"],
-      example: "OPM > 15",
-      category: "Most Used",
-      backendField: "opm",
-    },
-    {
-      name: "Earnings",
-      description: "Net Earnings (TTM)",
-      unit: "USD",
-      keywords: ["earnings", "net income", "profit"],
-      example: "Earnings > 100000000",
-      category: "Most Used",
-      backendField: "earnings_ttm",
     },
   ],
   Valuation: [
@@ -261,7 +593,8 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "x",
       keywords: ["pe", "price earnings", "p/e"],
       example: "Price to Earning BETWEEN 10 AND 25",
-      backendField: "pe",
+      category: "Valuation",
+      backendField: "pe_ratio",
     },
     {
       name: "Forward PE",
@@ -269,6 +602,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "x",
       keywords: ["forward pe", "forward p/e"],
       example: "Forward PE < 20",
+      category: "Valuation",
       backendField: "forward_pe",
     },
     {
@@ -277,7 +611,8 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "x",
       keywords: ["peg", "price earnings growth"],
       example: "PEG Ratio < 1",
-      backendField: "peg",
+      category: "Valuation",
+      backendField: "peg_ratio",
     },
     {
       name: "Price to Book Value",
@@ -285,7 +620,8 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "x",
       keywords: ["pb", "price book", "p/b"],
       example: "Price to Book Value < 3",
-      backendField: "pb",
+      category: "Valuation",
+      backendField: "price_book_mrq",
     },
     {
       name: "Dividend Yield",
@@ -293,6 +629,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "%",
       keywords: ["dividend", "yield", "div yield"],
       example: "Dividend Yield BETWEEN 2 AND 6",
+      category: "Valuation",
       backendField: "dividend_yield",
     },
     {
@@ -301,7 +638,17 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "x",
       keywords: ["ev ebitda", "enterprise value"],
       example: "EV/EBITDA < 15",
+      category: "Valuation",
       backendField: "ev_ebitda",
+    },
+    {
+      name: "EV/Revenue",
+      description: "Enterprise Value to Revenue ratio",
+      unit: "x",
+      keywords: ["ev revenue", "ev/r"],
+      example: "EV/Revenue < 5",
+      category: "Valuation",
+      backendField: "ev_revenue",
     },
     {
       name: "Price to Sales",
@@ -309,23 +656,8 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "x",
       keywords: ["ps", "price sales", "p/s"],
       example: "Price to Sales < 5",
-      backendField: "price_to_sales",
-    },
-    {
-      name: "EV/Sales",
-      description: "Enterprise Value to Sales ratio",
-      unit: "x",
-      keywords: ["ev sales", "ev/s"],
-      example: "EV/Sales < 3",
-      backendField: "ev_sales",
-    },
-    {
-      name: "Price to Cash Flow",
-      description: "Price to operating cash flow ratio",
-      unit: "x",
-      keywords: ["pcf", "price cash flow"],
-      example: "Price to Cash Flow < 20",
-      backendField: "price_to_cash_flow",
+      category: "Valuation",
+      backendField: "price_sales_ttm",
     },
   ],
   Profitability: [
@@ -335,89 +667,73 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "%",
       keywords: ["roe", "return equity"],
       example: "Return on Equity > 15",
-      backendField: "roe",
+      category: "Profitability",
+      backendField: "return_on_equity_ttm",
     },
     {
-      name: "Return on Capital Employed",
-      description: "EBIT as % of capital employed",
+      name: "ROA",
+      description: "Return on Assets",
       unit: "%",
-      keywords: ["roce", "return capital"],
-      example: "Return on Capital Employed > 15",
-      backendField: "roce",
+      keywords: ["return assets", "roa"],
+      example: "ROA > 5",
+      category: "Profitability",
+      backendField: "return_on_assets_ttm",
     },
     {
-      name: "Return on Assets",
-      description: "Net income as % of total assets",
+      name: "OPM",
+      description: "Operating Profit Margin",
       unit: "%",
-      keywords: ["roa", "return assets"],
-      example: "Return on Assets > 5",
-      backendField: "roa",
+      keywords: ["operating", "margin", "profit margin"],
+      example: "OPM > 15",
+      category: "Profitability",
+      backendField: "operating_margin_ttm",
     },
     {
       name: "Operating Profit Margin",
       description: "Operating profit as % of revenue",
       unit: "%",
       keywords: ["opm", "operating margin"],
-      example: "Operating Profit Margin > 15",
-      backendField: "opm",
+      example: "Operating Profit Margin > 10",
+      category: "Profitability",
+      backendField: "operating_margin_ttm",
     },
     {
-      name: "Net Margin",
+      name: "Net Profit Margin",
       description: "Net profit as % of revenue",
       unit: "%",
-      keywords: ["net margin", "profit margin"],
-      example: "Net Margin > 10",
-      backendField: "net_margin",
+      keywords: ["profit margin", "net margin"],
+      example: "Net Profit Margin > 10",
+      category: "Profitability",
+      backendField: "profit_margin",
     },
   ],
-  "Leverage & Quality": [
+  "Financial Strength": [
     {
-      name: "Debt to Equity",
-      description: "Total debt divided by shareholders equity",
-      unit: "x",
-      keywords: ["debt equity", "de", "d/e"],
-      example: "Debt to Equity < 0.5",
-      backendField: "debt_to_equity",
-    },
-    {
-      name: "LT Debt to Equity",
-      description: "Long-term debt to equity ratio",
-      unit: "x",
-      keywords: ["lt debt equity", "long term debt"],
-      example: "LT Debt to Equity < 0.3",
-      backendField: "lt_debt_to_equity",
-    },
-    {
-      name: "Interest Coverage",
-      description: "EBIT divided by interest expense",
-      unit: "x",
-      keywords: ["interest cover", "times interest earned"],
-      example: "Interest Coverage > 5",
-      backendField: "interest_coverage",
-    },
-    {
-      name: "Current Ratio",
-      description: "Current assets divided by current liabilities",
-      unit: "x",
-      keywords: ["current", "liquidity"],
-      example: "Current Ratio > 1.5",
-      backendField: "current_ratio",
-    },
-    {
-      name: "Quick Ratio",
-      description: "Quick assets divided by current liabilities",
-      unit: "x",
-      keywords: ["quick", "acid test"],
-      example: "Quick Ratio > 1",
-      backendField: "quick_ratio",
-    },
-    {
-      name: "Total Debt",
-      description: "Total debt (short-term + long-term)",
+      name: "Long Term Debt",
+      description: "Long-term debt on balance sheet",
       unit: "USD",
-      keywords: ["total debt", "debt", "total liabilities"],
-      example: "Total Debt < 1000000000",
-      backendField: "total_debt",
+      keywords: ["long term debt", "lt debt"],
+      example: "Long Term Debt < 1000000000",
+      category: "Financial Strength",
+      backendField: "long_term_debt",
+    },
+    {
+      name: "Short Term Debt",
+      description: "Short-term debt on balance sheet",
+      unit: "USD",
+      keywords: ["short term debt", "st debt"],
+      example: "Short Term Debt < 500000000",
+      category: "Financial Strength",
+      backendField: "short_term_debt",
+    },
+    {
+      name: "Net Debt",
+      description: "Total debt minus cash and equivalents",
+      unit: "USD",
+      keywords: ["net debt"],
+      example: "Net Debt < 500000000",
+      category: "Financial Strength",
+      backendField: "net_debt",
     },
     {
       name: "Cash and Equivalents",
@@ -425,7 +741,8 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "USD",
       keywords: ["cash", "cash equivalents", "liquidity"],
       example: "Cash and Equivalents > 500000000",
-      backendField: "cash_equivalents",
+      category: "Financial Strength",
+      backendField: "cash_and_equivalents",
     },
   ],
   "Cash Flow": [
@@ -435,7 +752,8 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "USD",
       keywords: ["ocf", "operating cf", "cash flow operations"],
       example: "Operating Cash Flow > 100000000",
-      backendField: "operating_cf",
+      category: "Cash Flow",
+      backendField: "total_cash_from_operating_activities",
     },
     {
       name: "Free Cash Flow",
@@ -443,99 +761,37 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "USD",
       keywords: ["fcf", "free cf"],
       example: "Free Cash Flow > 50000000",
-      backendField: "free_cf",
+      category: "Cash Flow",
+      backendField: "free_cash_flow",
     },
     {
-      name: "Cash Flow Margin",
-      description: "Operating cash flow as % of revenue",
-      unit: "%",
-      keywords: ["cf margin", "cash margin"],
-      example: "Cash Flow Margin > 10",
-      backendField: "cf_margin",
+      name: "Capital Expenditures",
+      description: "Capital expenditures (capex)",
+      unit: "USD",
+      keywords: ["capex", "capital expenditure"],
+      example: "Capital Expenditures < 50000000",
+      category: "Cash Flow",
+      backendField: "capital_expenditures",
+    },
+    {
+      name: "Dividends Paid",
+      description: "Dividends paid to shareholders",
+      unit: "USD",
+      keywords: ["dividends paid"],
+      example: "Dividends Paid > 10000000",
+      category: "Cash Flow",
+      backendField: "dividends_paid",
     },
   ],
-  Growth: [
-    {
-      name: "Sales Growth 3Years",
-      description: "3-year compound annual growth rate",
-      unit: "%",
-      keywords: ["3y growth", "sales cagr"],
-      example: "Sales Growth 3Years > 15",
-      backendField: "sales_cagr_3y",
-    },
-    {
-      name: "Profit Growth 5Years",
-      description: "5-year profit compound annual growth rate",
-      unit: "%",
-      keywords: ["5y growth", "profit cagr"],
-      example: "Profit Growth 5Years > 20",
-      backendField: "profit_cagr_5y",
-    },
-    {
-      name: "EPS Growth 3Years",
-      description: "3-year EPS compound annual growth rate",
-      unit: "%",
-      keywords: ["3y eps", "earnings growth"],
-      example: "EPS Growth 3Years > 18",
-      backendField: "eps_cagr_3y",
-    },
-    {
-      name: "Revenue Growth 1Year",
-      description: "1-year revenue growth rate",
-      unit: "%",
-      keywords: ["1y revenue", "annual revenue growth"],
-      example: "Revenue Growth 1Year > 10",
-      backendField: "revenue_growth_1y",
-    },
-    {
-      name: "Profit Growth 1Year",
-      description: "1-year profit growth rate",
-      unit: "%",
-      keywords: ["1y profit", "annual profit growth"],
-      example: "Profit Growth 1Year > 15",
-      backendField: "profit_growth_1y",
-    },
-    {
-      name: "Return over 3years",
-      description: "3-year stock return",
-      unit: "%",
-      keywords: ["3y return", "stock performance"],
-      example: "Return over 3years > 50",
-      backendField: "perf_3y_p",
-    },
-    {
-      name: "Return over 5years",
-      description: "5-year stock return",
-      unit: "%",
-      keywords: ["5y return", "long term return"],
-      example: "Return over 5years > 100",
-      backendField: "perf_5y_p",
-    },
-  ],
-  Technical: [
+  "Technical Analysis": [
     {
       name: "Beta",
       description: "Stock's volatility relative to market",
       unit: "x",
       keywords: ["beta", "volatility"],
       example: "Beta BETWEEN 0.8 AND 1.2",
+      category: "Technical Analysis",
       backendField: "beta",
-    },
-    {
-      name: "RSI",
-      description: "Relative Strength Index",
-      unit: "",
-      keywords: ["rsi", "momentum"],
-      example: "RSI BETWEEN 30 AND 70",
-      backendField: "rsi",
-    },
-    {
-      name: "SMA20",
-      description: "20-day simple moving average",
-      unit: "$",
-      keywords: ["sma20", "20 day ma"],
-      example: "Price > SMA20",
-      backendField: "sma20",
     },
     {
       name: "Moving Average 50",
@@ -543,7 +799,8 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "$",
       keywords: ["ma50", "sma50", "50 day ma"],
       example: "Price > Moving Average 50",
-      backendField: "ma50",
+      category: "Technical Analysis",
+      backendField: "day_50_ma",
     },
     {
       name: "Moving Average 200",
@@ -551,55 +808,44 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "$",
       keywords: ["ma200", "sma200", "200 day ma"],
       example: "Moving Average 50 > Moving Average 200",
-      backendField: "ma200",
+      category: "Technical Analysis",
+      backendField: "day_200_ma",
     },
     {
-      name: "Average Volume",
-      description: "200-day average daily trading volume",
-      unit: "shares",
-      keywords: ["avg volume", "average volume"],
-      example: "Average Volume > 1000000",
-      backendField: "avg_volume_200d",
-    },
-    {
-      name: "Volume",
-      description: "Current trading volume",
-      unit: "shares",
-      keywords: ["volume", "trading volume"],
-      example: "Volume > 500000",
-      backendField: "volume",
-    },
-    {
-      name: "1D Change %",
-      description: "1-day price change percentage",
-      unit: "%",
-      keywords: ["1d change", "daily change"],
-      example: "1D Change % > 2",
-      backendField: "refund_1d_p",
-    },
-    {
-      name: "5D Change %",
-      description: "5-day price change percentage",
-      unit: "%",
-      keywords: ["5d change", "weekly change"],
-      example: "5D Change % > 5",
-      backendField: "refund_5d_p",
-    },
-    {
-      name: "Price Change 1D",
-      description: "1-day absolute price change",
+      name: "52 Week High",
+      description: "52-week high price",
       unit: "$",
-      keywords: ["price change 1d"],
-      example: "Price Change 1D > 1",
-      backendField: "price_change_1d",
+      keywords: ["52w high", "52 week high"],
+      example: "52 Week High > 100",
+      category: "Technical Analysis",
+      backendField: "week_52_high",
     },
     {
-      name: "Price Change 1Y",
-      description: "1-year price change",
+      name: "52 Week Low",
+      description: "52-week low price",
+      unit: "$",
+      keywords: ["52w low", "52 week low"],
+      example: "52 Week Low < 50",
+      category: "Technical Analysis",
+      backendField: "week_52_low",
+    },
+    {
+      name: "Change",
+      description: "Price change",
+      unit: "$",
+      keywords: ["change", "price change"],
+      example: "Change > 1",
+      category: "Technical Analysis",
+      backendField: "change",
+    },
+    {
+      name: "Change Percent",
+      description: "Price change percentage",
       unit: "%",
-      keywords: ["price change 1y", "annual change"],
-      example: "Price Change 1Y > 20",
-      backendField: "price_change_1y",
+      keywords: ["change percent", "% change"],
+      example: "Change Percent > 2",
+      category: "Technical Analysis",
+      backendField: "change_percent",
     },
   ],
   "Company Info": [
@@ -609,6 +855,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "text",
       keywords: ["sector"],
       example: 'Sector = "Technology"',
+      category: "Company Info",
       backendField: "sector",
     },
     {
@@ -617,6 +864,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "text",
       keywords: ["industry", "business"],
       example: 'Industry = "Software"',
+      category: "Company Info",
       backendField: "industry",
     },
     {
@@ -625,6 +873,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "text",
       keywords: ["exchange", "listing"],
       example: 'Exchange = "US"',
+      category: "Company Info",
       backendField: "exchange",
     },
     {
@@ -633,6 +882,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "text",
       keywords: ["country"],
       example: 'Country = "USA"',
+      category: "Company Info",
       backendField: "country",
     },
     {
@@ -641,6 +891,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "text",
       keywords: ["currency"],
       example: 'Currency = "USD"',
+      category: "Company Info",
       backendField: "currency",
     },
     {
@@ -649,7 +900,8 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "text",
       keywords: ["symbol", "ticker", "code"],
       example: 'Symbol = "AAPL"',
-      backendField: "code",
+      category: "Company Info",
+      backendField: "ticker",
     },
     {
       name: "Name",
@@ -657,6 +909,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "text",
       keywords: ["name", "company"],
       example: 'Name = "Apple"',
+      category: "Company Info",
       backendField: "name",
     },
   ],
@@ -667,7 +920,8 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "$",
       keywords: ["eps", "earnings per share"],
       example: "EPS > 5",
-      backendField: "eps_ttm",
+      category: "Earnings",
+      backendField: "earnings_share",
     },
     {
       name: "Diluted EPS",
@@ -675,33 +929,17 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "$",
       keywords: ["diluted eps"],
       example: "Diluted EPS > 4",
+      category: "Earnings",
       backendField: "diluted_eps_ttm",
     },
     {
       name: "Revenue",
       description: "Total Revenue (TTM)",
       unit: "USD",
-      keywords: ["revenue", "sales"],
+      keywords: ["revenue", "sales", "turnover"],
       example: "Revenue > 1000000000",
+      category: "Earnings",
       backendField: "revenue_ttm",
-    },
-    {
-      name: "Earnings",
-      description: "Net Earnings (TTM)",
-      unit: "USD",
-      keywords: ["earnings", "net income", "profit after tax"],
-      example: "Earnings > 100000000",
-      backendField: "earnings_ttm",
-    },
-  ],
-  "Price & Market": [
-    {
-      name: "Price",
-      description: "Current stock price",
-      unit: "$",
-      keywords: ["price", "current price", "stock price"],
-      example: "Price > 50",
-      backendField: "price",
     },
     {
       name: "Market Capitalization",
@@ -709,6 +947,7 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "USD",
       keywords: ["market cap", "mcap", "market value"],
       example: "Market Capitalization > 10000000000",
+      category: "Earnings",
       backendField: "market_cap",
     },
     {
@@ -717,15 +956,279 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       unit: "shares",
       keywords: ["volume", "trading volume"],
       example: "Volume > 1000000",
+      category: "Earnings",
       backendField: "volume",
     },
+  ],
+  "Balance Sheet": [
     {
-      name: "Average Volume",
-      description: "200-day average trading volume",
+      name: "Total Assets",
+      description: "Total assets from balance sheet",
+      unit: "USD",
+      keywords: ["total assets", "assets"],
+      example: "Total Assets > 1000000000",
+      category: "Balance Sheet",
+      backendField: "total_assets",
+    },
+    {
+      name: "Shares Outstanding",
+      description: "Total shares outstanding",
       unit: "shares",
-      keywords: ["avg volume", "average volume"],
-      example: "Average Volume > 500000",
-      backendField: "avg_volume_200d",
+      keywords: ["shares outstanding", "outstanding shares"],
+      example: "Shares Outstanding > 100000000",
+      category: "Balance Sheet",
+      backendField: "shares_outstanding",
+    },
+    {
+      name: "Shares Float",
+      description: "Shares available for trading",
+      unit: "shares",
+      keywords: ["shares float", "float", "tradeable shares"],
+      example: "Shares Float > 50000000",
+      category: "Balance Sheet",
+      backendField: "shares_float",
+    },
+    {
+      name: "Total Liabilities",
+      description: "Total liabilities from balance sheet",
+      unit: "USD",
+      keywords: ["total liabilities", "liabilities"],
+      example: "Total Liabilities < 5000000000",
+      backendField: "total_liabilities",
+      category: "Balance Sheet",
+    },
+    {
+      name: "Shareholder Equity",
+      description: "Total stockholders equity",
+      unit: "USD",
+      keywords: ["shareholder equity", "stockholders equity", "book value"],
+      example: "Shareholder Equity > 1000000000",
+      backendField: "total_stockholder_equity",
+      category: "Balance Sheet",
+    },
+    {
+      name: "Inventory",
+      description: "Current inventory",
+      unit: "USD",
+      keywords: ["inventory", "stock"],
+      example: "Inventory < 500000000",
+      backendField: "inventory",
+      category: "Balance Sheet",
+    },
+    {
+      name: "Receivables",
+      description: "Net receivables",
+      unit: "USD",
+      keywords: ["receivables", "accounts receivable"],
+      example: "Receivables < 1000000000",
+      backendField: "net_receivables",
+      category: "Balance Sheet",
+    },
+    {
+      name: "Current Assets",
+      description: "Total current assets",
+      unit: "USD",
+      keywords: ["current assets", "short term assets"],
+      example: "Current Assets > 2000000000",
+      backendField: "total_current_assets",
+      category: "Balance Sheet",
+    },
+    {
+      name: "Current Liabilities",
+      description: "Total current liabilities",
+      unit: "USD",
+      keywords: ["current liabilities", "short term liabilities"],
+      example: "Current Liabilities < 1000000000",
+      backendField: "total_current_liabilities",
+      category: "Balance Sheet",
+    },
+    {
+      name: "Long Term Debt",
+      description: "Long-term debt",
+      unit: "USD",
+      keywords: ["long term debt", "lt debt"],
+      example: "Long Term Debt < 2000000000",
+      backendField: "long_term_debt",
+      category: "Balance Sheet",
+    },
+    {
+      name: "Short Term Debt",
+      description: "Short-term debt",
+      unit: "USD",
+      keywords: ["short term debt", "st debt", "current debt"],
+      example: "Short Term Debt < 500000000",
+      backendField: "short_term_debt",
+      category: "Balance Sheet",
+    },
+    {
+      name: "Net Debt",
+      description: "Total Debt - Cash and Equivalents",
+      unit: "USD",
+      keywords: ["net debt"],
+      example: "Net Debt < 1000000000",
+      backendField: "net_debt",
+      category: "Balance Sheet",
+    },
+    {
+      name: "Retained Earnings",
+      description: "Retained earnings",
+      unit: "USD",
+      keywords: ["retained earnings"],
+      example: "Retained Earnings > 100000000",
+      backendField: "retained_earnings",
+      category: "Balance Sheet",
+    },
+    {
+      name: "Net Working Capital",
+      description: "Current Assets - Current Liabilities",
+      unit: "USD",
+      keywords: ["net working capital", "working capital"],
+      example: "Net Working Capital > 500000000",
+      backendField: "net_working_capital",
+      category: "Balance Sheet",
+    },
+  ],
+  "Income Statement": [
+    {
+      name: "EBITDA",
+      description: "Earnings before interest, tax, depreciation & amortization",
+      unit: "USD",
+      keywords: ["ebitda"],
+      example: "EBITDA > 1000000000",
+      backendField: "ebitda",
+      category: "Income Statement",
+    },
+    {
+      name: "Gross Profit",
+      description: "Gross profit",
+      unit: "USD",
+      keywords: ["gross profit"],
+      example: "Gross Profit > 500000000",
+      backendField: "gross_profit",
+      category: "Income Statement",
+    },
+    {
+      name: "Net Income",
+      description: "Net income",
+      unit: "USD",
+      keywords: ["net income", "earnings", "profit"],
+      example: "Net Income > 100000000",
+      backendField: "net_income",
+      category: "Income Statement",
+    },
+    {
+      name: "Total Revenue",
+      description: "Total revenue",
+      unit: "USD",
+      keywords: ["total revenue", "revenue", "sales"],
+      example: "Total Revenue > 1000000000",
+      backendField: "total_revenue",
+      category: "Income Statement",
+    },
+    {
+      name: "Cost of Revenue",
+      description: "Cost of revenue",
+      unit: "USD",
+      keywords: ["cost of revenue", "cogs"],
+      example: "Cost of Revenue < 500000000",
+      backendField: "cost_of_revenue",
+      category: "Income Statement",
+    },
+    {
+      name: "Operating Income",
+      description: "Operating income",
+      unit: "USD",
+      keywords: ["operating income", "operating profit"],
+      example: "Operating Income > 200000000",
+      backendField: "operating_income",
+      category: "Income Statement",
+    },
+    {
+      name: "EBIT",
+      description: "Earnings before interest and taxes",
+      unit: "USD",
+      keywords: ["ebit"],
+      example: "EBIT > 150000000",
+      backendField: "ebit",
+      category: "Income Statement",
+    },
+    {
+      name: "Interest Expense",
+      description: "Interest expense",
+      unit: "USD",
+      keywords: ["interest expense"],
+      example: "Interest Expense < 100000000",
+      backendField: "interest_expense",
+      category: "Income Statement",
+    },
+    {
+      name: "Income Tax Expense",
+      description: "Income tax expense",
+      unit: "USD",
+      keywords: ["income tax expense", "tax expense"],
+      example: "Income Tax Expense < 50000000",
+      backendField: "income_tax_expense",
+      category: "Income Statement",
+    },
+    {
+      name: "Research Development",
+      description: "Research and development expenses",
+      unit: "USD",
+      keywords: ["research development", "r&d"],
+      example: "Research Development > 50000000",
+      backendField: "research_development",
+      category: "Income Statement",
+    },
+  ],
+  "Dividends": [
+    {
+      name: "Dividend Per Share",
+      description: "Dividend per share",
+      unit: "$",
+      keywords: ["dividend per share", "dps"],
+      example: "Dividend Per Share > 2",
+      backendField: "dividend_per_share",
+      category: "Dividends",
+    },
+    {
+      name: "Payout Ratio",
+      description: "Dividend payout ratio",
+      unit: "%",
+      keywords: ["payout ratio", "dividend payout"],
+      example: "Payout Ratio < 60",
+      backendField: "payout_ratio",
+      category: "Dividends",
+    },
+  ],
+  "Analyst": [
+    {
+      name: "Analyst Rating",
+      description: "Analyst rating",
+      unit: "",
+      keywords: ["analyst rating", "rating"],
+      example: "Analyst Rating > 3",
+      backendField: "analyst_rating",
+      category: "Analyst",
+    },
+    {
+      name: "Analyst Target Price",
+      description: "Analyst consensus target price",
+      unit: "$",
+      keywords: ["target price", "analyst target", "target"],
+      example: "Analyst Target Price > Price * 1.2",
+      backendField: "analyst_target_price",
+      category: "Analyst",
+    },
+  ],
+  "Other Info": [
+    {
+      name: "Employees",
+      description: "Full-time employees",
+      unit: "",
+      keywords: ["employees", "full time employees"],
+      example: "Employees > 10000",
+      backendField: "employees",
+      category: "Other Info",
     },
   ],
 };
@@ -1019,6 +1522,34 @@ export const getAllFields = (): FieldDef[] => {
   return allFields;
 };
 
+// Value suggestions for specific fields
+export const VALUE_SUGGESTIONS: Record<string, string[]> = {
+  sector: [
+    "Technology",
+    "Financial Services",
+    "Healthcare",
+    "Consumer Cyclical",
+    "Industrials",
+    "Communication Services",
+    "Consumer Defensive",
+    "Energy",
+    "Real Estate",
+    "Basic Materials",
+    "Utilities",
+  ],
+  exchange: ["US", "NASDAQ", "NYSE", "AMEX", "BATS"],
+  country: [
+    "USA",
+    "India",
+    "UK",
+    "Canada",
+    "China",
+    "Germany",
+    "France",
+    "Japan",
+  ],
+};
+
 // Search function for auto-completion
 export const searchSuggestions = (
   input: string,
@@ -1027,9 +1558,39 @@ export const searchSuggestions = (
   const suggestions: QuerySuggestion[] = [];
 
   // Get the current word being typed
-  const beforeCursor = input.substring(0, cursorPosition);
+  const beforeCursor = input.substring(0, cursorPosition).trimStart();
   const words = beforeCursor.split(/\s+/);
   const currentWord = words[words.length - 1]?.toLowerCase() || "";
+
+  // Previous word might indicate we need value suggestions (e.g., "Sector =" or "Exchange IN")
+  const prevWord = words[words.length - 2]?.toLowerCase() || "";
+  const secondPrevWord = words[words.length - 3]?.toLowerCase() || "";
+
+  // Check for value suggestions (e.g., "Sector =", "Sector IN")
+  const valueField = ["=", "!=", "in", "like", "between"].includes(prevWord)
+    ? secondPrevWord
+    : ["=", "!=", "in", "like", "between"].includes(currentWord)
+      ? prevWord
+      : null;
+
+  if (valueField && VALUE_SUGGESTIONS[valueField.toLowerCase()]) {
+    const values = VALUE_SUGGESTIONS[valueField.toLowerCase()];
+    values.forEach((val) => {
+      if (
+        val.toLowerCase().includes(currentWord.replace(/['"]/g, "")) ||
+        currentWord === "=" ||
+        currentWord === "in"
+      ) {
+        suggestions.push({
+          text: val,
+          type: "value",
+          description: `Value for ${valueField}`,
+          insertText: `"${val}"`,
+        });
+      }
+    });
+    if (suggestions.length > 0) return suggestions.slice(0, 10);
+  }
 
   if (currentWord.length === 0) return [];
 
@@ -1079,8 +1640,91 @@ export const searchSuggestions = (
 };
 
 // Detect if left side of a condition is an arithmetic expression (contains +, -, *, /)
+// Also handles expressions wrapped in parentheses
 const isArithmeticExpression = (text: string): boolean => {
-  return /[+\-*/]/.test(text);
+  // Strip leading/trailing parentheses for checking
+  const stripped = text.replace(/^\(+/, "").replace(/\)+$/, "").trim();
+  return /[+\-*/]/.test(stripped);
+};
+
+// Extract field names from an arithmetic expression for validation
+const extractFieldsFromArithmetic = (text: string): string[] => {
+  // Remove parentheses
+  const stripped = text.replace(/[()]/g, " ");
+  // Split by arithmetic operators
+  const parts = stripped.split(/[+\-*/]/);
+  // Filter and clean field names (exclude pure numbers)
+  return parts
+    .map((p) => p.trim())
+    .filter((p) => p && !/^\d+(\.\d+)?$/.test(p));
+};
+
+// Split query by logical operators (AND/OR) but only when NOT inside parentheses
+// This prevents incorrectly splitting field names like "Cash and Equivalents"
+const splitByLogicalOperators = (query: string): string[] => {
+  const results: string[] = [];
+  let current = "";
+  let parenDepth = 0;
+  let i = 0;
+
+  let betweenDepth = 0;
+
+  while (i < query.length) {
+    const char = query[i];
+
+    if (char === "(") {
+      parenDepth++;
+      current += char;
+      i++;
+    } else if (char === ")") {
+      parenDepth--;
+      current += char;
+      i++;
+    } else if (parenDepth === 0) {
+      const remaining = query.slice(i);
+
+      // Track BETWEEN to avoid splitting on the 'AND' between values
+      const betweenStartMatch = remaining.match(/^(\bBETWEEN\b\s+)/i);
+      if (betweenStartMatch) {
+        betweenDepth++;
+        current += betweenStartMatch[1];
+        i += betweenStartMatch[1].length;
+        continue;
+      }
+
+      // Check for AND/OR only when NOT inside parentheses and NOT inside a BETWEEN clause
+      const andMatch = remaining.match(/^(\s*AND\s+)/i);
+      const orMatch = remaining.match(/^(\s*OR\s+)/i);
+
+      if (andMatch && (i === 0 || /\s$/.test(current))) {
+        if (betweenDepth > 0) {
+          // This AND is likely part of BETWEEN x AND y
+          betweenDepth--; // Finish one BETWEEN clause
+          current += andMatch[1];
+          i += andMatch[1].length;
+        } else {
+          if (current.trim()) results.push(current.trim());
+          results.push("AND");
+          current = "";
+          i += andMatch[1].length;
+        }
+      } else if (orMatch && (i === 0 || /\s$/.test(current))) {
+        if (current.trim()) results.push(current.trim());
+        results.push("OR");
+        current = "";
+        i += orMatch[1].length;
+      } else {
+        current += char;
+        i++;
+      }
+    } else {
+      current += char;
+      i++;
+    }
+  }
+
+  if (current.trim()) results.push(current.trim());
+  return results;
 };
 
 // Enhanced query validation that properly handles multi-word field names and multi-line queries
@@ -1088,6 +1732,17 @@ export const validateQuery = (query: string): QueryValidationError[] => {
   const errors: QueryValidationError[] = [];
   const lines = query.split("\n");
   const fieldNames = getAllFields().map((f) => f.name);
+
+  // Also get all keywords from fields for validation
+  const allKeywords = getAllFields().flatMap((f) => f.keywords || []);
+
+  // Also include BACKEND_FIELD_MAP keys as valid field names
+  const backendFieldKeys = Object.keys(BACKEND_FIELD_MAP);
+
+  // Combine all valid field identifiers (use Array.from for compatibility)
+  const allValidFields = Array.from(
+    new Set([...fieldNames, ...allKeywords, ...backendFieldKeys])
+  );
 
   // First, let's check the entire query as a whole for multi-line validation
   // const fullQuery = query.replace(/\n/g, ' ').trim();
@@ -1125,8 +1780,9 @@ export const validateQuery = (query: string): QueryValidationError[] => {
       });
     }
 
-    // Split by AND/OR to get individual conditions
-    const conditions = trimmedLine.split(/\s+(AND|OR)\s+/i);
+    // Split by AND/OR to get individual conditions, but only when NOT inside parentheses
+    // This prevents splitting "Cash and Equivalents" incorrectly
+    const conditions = splitByLogicalOperators(trimmedLine);
 
     conditions.forEach((condition) => {
       // Skip the AND/OR operators themselves
@@ -1136,12 +1792,15 @@ export const validateQuery = (query: string): QueryValidationError[] => {
       if (!conditionTrimmed) return;
 
       // Find operator in this condition
-      const operatorMatch = conditionTrimmed.match(/(>=|<=|!=|>|<|=)/);
+      // Find operator in this condition - now supports more operators
+      const operatorMatch = conditionTrimmed.match(
+        /(>=|<=|!=|>|<|=|\bIN\b|\bBETWEEN\b|\bLIKE\b|\bIS\s+NOT\s+NULL\b|\bIS\s+NULL\b)/i
+      );
 
       if (!operatorMatch) {
         // No operator found - decide if this is a known or unknown field fragment
         if (conditionTrimmed.length > 0) {
-          const isKnownField = fieldNames.some(
+          const isKnownField = allValidFields.some(
             (field) => field.toLowerCase() === conditionTrimmed.toLowerCase()
           );
 
@@ -1184,13 +1843,32 @@ export const validateQuery = (query: string): QueryValidationError[] => {
       // Validate field name
       if (fieldPart) {
         const isArithmetic = isArithmeticExpression(fieldPart);
-        const isValidField = fieldNames.some(
+        const isValidField = allValidFields.some(
           (field) => field.toLowerCase() === fieldPart.toLowerCase()
         );
 
-        if (!isValidField && !isArithmetic) {
+        if (isValidField) {
+          // Valid single field, nothing to do
+        } else if (isArithmetic) {
+          // Validate individual fields in arithmetic expression
+          const subFields = extractFieldsFromArithmetic(fieldPart);
+          subFields.forEach(subField => {
+            const isSubFieldValid = allValidFields.some(
+              (field) => field.toLowerCase() === subField.toLowerCase()
+            );
+            if (!isSubFieldValid) {
+              // Check for close match for subfield ? (Optional improvement)
+              errors.push({
+                line: lineIndex + 1,
+                column: trimmedLine.indexOf(subField) + 1,
+                message: `Unknown field "${subField}" in expression`,
+                severity: "error",
+              });
+            }
+          });
+        } else {
           // Try to find a close match
-          const closeMatch = fieldNames.find((field) => {
+          const closeMatch = allValidFields.find((field) => {
             const fieldLower = field.toLowerCase();
             const fieldPartLower = fieldPart.toLowerCase();
 
@@ -1208,9 +1886,9 @@ export const validateQuery = (query: string): QueryValidationError[] => {
             const fieldWords = fieldLower.split(/\s+/);
             const inputWords = fieldPartLower.split(/\s+/);
 
-            return inputWords.every((inputWord) =>
+            return inputWords.every((inputWord: string) =>
               fieldWords.some(
-                (fieldWord) =>
+                (fieldWord: string) =>
                   fieldWord.includes(inputWord) || inputWord.includes(fieldWord)
               )
             );
@@ -1309,12 +1987,17 @@ export const validateQuery = (query: string): QueryValidationError[] => {
 export const tokenizeQuery = (query: string) => {
   const tokens = [];
   const fieldNames = getAllFields().map((f) => f.name);
+  const allKeywords = getAllFields().flatMap((f) => f.keywords || []);
+  const backendFieldKeys = Object.keys(BACKEND_FIELD_MAP);
+  const allValidFields = Array.from(
+    new Set([...fieldNames, ...allKeywords, ...backendFieldKeys])
+  );
   const operatorSymbols = OPERATORS.map((o) => o.symbol);
   const functionNames = FUNCTIONS.map((f) => f.name);
 
   // Better tokenization that preserves spacing and handles multi-character operators
   const regex =
-    /(\s+|>=|<=|!=|AND|OR|NOT|[()><=]|\w+(?:\s+\w+)*|\d+(?:\.\d+)?|[^\w\s()><=])/g;
+    /(\s+|>=|<=|!=|AND|OR|NOT|IN|BETWEEN|LIKE|IS\s+NOT\s+NULL|IS\s+NULL|[()><=]|\w+(?:\s+\w+)*|\d+(?:\.\d+)?|[^\w\s()><=])/gi;
   let match;
   let lastIndex = 0;
 
@@ -1333,7 +2016,9 @@ export const tokenizeQuery = (query: string) => {
     // Determine token type
     if (/^\s+$/.test(matchedText)) {
       type = "whitespace";
-    } else if (fieldNames.includes(matchedText)) {
+    } else if (
+      allValidFields.some((f) => f.toLowerCase() === matchedText.toLowerCase())
+    ) {
       type = "field";
     } else if (operatorSymbols.includes(matchedText)) {
       type = "operator";
@@ -1347,7 +2032,7 @@ export const tokenizeQuery = (query: string) => {
       type = "punctuation";
     } else if (matchedText.length > 1) {
       // Check if it's a partial field name match
-      const partialMatch = fieldNames.find((name) =>
+      const partialMatch = allValidFields.find((name) =>
         name.toLowerCase().includes(matchedText.toLowerCase())
       );
       if (partialMatch) {

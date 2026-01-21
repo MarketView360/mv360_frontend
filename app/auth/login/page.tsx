@@ -24,7 +24,6 @@ function LoginPageSkeleton() {
   );
 }
 
-
 function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -138,6 +137,11 @@ function LoginPageContent() {
               Sign in to your account to continue
             </p>
           </div>
+
+          {/* Social Login */}
+          <SocialAuthButtons mode="login" />
+
+          <OrDivider />
 
           {/* Toggle between password and magic link */}
           <div className="flex gap-2 mb-6">
@@ -292,10 +296,6 @@ function LoginPageContent() {
               </div>
             </form>
           )}
-
-          {/* Alternative Login Methods */}
-          <OrDivider />
-          <SocialAuthButtons mode="login" />
 
           {/* Sign up link */}
           <p className="text-center text-sm text-slate-600 dark:text-slate-400 mt-6">

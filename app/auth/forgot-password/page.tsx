@@ -106,6 +106,9 @@ export default function ForgotPasswordPage() {
             <p className="text-slate-600 dark:text-slate-400 mt-2">
               No worries, we&apos;ll send you reset instructions.
             </p>
+            <p className="text-xs text-slate-500 dark:text-slate-500 mt-3">
+              If you usually sign in with Google/Microsoft (or another provider), you may not have a password here—use your provider to manage your password.
+            </p>
           </div>
 
           {/* Error message */}

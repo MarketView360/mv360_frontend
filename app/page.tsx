@@ -4,41 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import MarketOverview from "@/components/MarketOverview";
 import SearchBar from "@/components/SearchBar";
 
-const BACKEND_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
-
-async function fetchTopNews() {
-  try {
-    const res = await fetch(`${BACKEND_URL}/api/news?limit=4`, {
-      next: { revalidate: 300 },
-    });
-    if (!res.ok)
-      return [] as {
-        date: string;
-        title: string;
-        content: string;
-        link: string;
-      }[];
-    return (await res.json()) as {
-      date: string;
-      title: string;
-      content: string;
-      link: string;
-    }[];
-  } catch {
-    return [] as {
-      date: string;
-      title: string;
-      content: string;
-      link: string;
-    }[];
-  }
-}
-
 export default async function Home() {
-  const topNews = await fetchTopNews();
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col font-sans selection:bg-brand/20 transition-colors duration-300">
+    <div className="min-h-full bg-slate-50 dark:bg-slate-950 flex flex-col font-sans selection:bg-brand/20 transition-colors duration-300">
       {/* Hero Section */}
       <section className="relative w-full py-20 md:py-32 overflow-hidden">
         {/* Abstract Background Elements */}

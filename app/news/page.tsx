@@ -1,25 +1,27 @@
-import { Suspense } from "react";
-import { NewsHeader } from "./NewsHeader";
-import { NewsGrid } from "./NewsGrid";
-import { NewsSkeleton } from "./NewsSkeleton";
+"use client";
 
-export const dynamic = "force-dynamic";
-
-export const metadata = {
-  title: "Market News | MarketView360",
-  description: "Real-time market headlines with company filtering",
-};
+import { Suspense, useState } from "react";
+import { NewsHeader } from "./NewsHeaderNew";
+import { NewsGrid } from "./NewsGridNew";
+import { NewsSkeleton, NewsHeaderSkeleton } from "./NewsSkeletonNew";
+import { ScrollToTopFab } from "./ScrollToTopFab";
+import { SortOption } from "./NewsFilters";
 
 
 export default function NewsPage() {
+  const [sort, setSort] = useState<SortOption>("latest");
+
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-50 to-white dark:from-slate-950 dark:to-slate-900">
-      <NewsHeader />
-      <section className="mx-auto max-w-[1400px] px-4 md:px-8 py-8">
+    <main className="min-h-full bg-slate-50 dark:bg-slate-950">
+      <Suspense fallback={<NewsHeaderSkeleton />}>
+        <NewsHeader onSortChange={setSort} currentSort={sort} />
+      </Suspense>
+      <section className="mx-auto max-w-[1400px] px-4 md:px-6 lg:px-8 py-8">
         <Suspense fallback={<NewsSkeleton />}>
-          <NewsGrid />
+          <NewsGrid sort={sort} />
         </Suspense>
       </section>
+      <ScrollToTopFab />
     </main>
   );
 }

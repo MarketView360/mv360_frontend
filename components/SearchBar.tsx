@@ -690,8 +690,11 @@ const POPULAR_TICKERS: Record<string, string> = {
 
 function searchTickers(query: string) {
   const q = query.toUpperCase();
+  const qLower = query.toLowerCase();
   return Object.entries(POPULAR_TICKERS)
-    .filter(([ticker]) => ticker.startsWith(q))
+    .filter(([ticker, name]) =>
+      ticker.startsWith(q) || name.toLowerCase().includes(qLower) || name.toUpperCase().includes(q)
+    )
     .slice(0, 5)
     .map(([ticker, name]) => ({ ticker, name }));
 }
@@ -699,14 +702,35 @@ function searchTickers(query: string) {
 /* ------------------------------------------------------------------ */
 /* Component                                                          */
 /* ------------------------------------------------------------------ */
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+
 export default function SearchBar() {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [recent, setRecent] = useLocalStorage<RecentItem[]>("search-recent", []);
+  const [dataDate, setDataDate] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Fetch latest data date for freshness indicator
+  useEffect(() => {
+    async function fetchDataDate() {
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/company/AAPL`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.metrics?.date) {
+            setDataDate(data.metrics.date);
+          }
+        }
+      } catch {
+        // Ignore errors
+      }
+    }
+    fetchDataDate();
+  }, []);
 
   const suggestions = searchTickers(query);
   const showSuggestions = open && query.length > 0;
@@ -841,12 +865,21 @@ export default function SearchBar() {
         </div>
       </form>
 
+      {/* Data freshness indicator */}
+      {dataDate && (
+        <div className="flex justify-center mt-2">
+          <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-growth" />
+            Data as of {new Date(dataDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          </span>
+        </div>
+      )}
 
       {/* dropdown */}
       {(showSuggestions || showRecents) && (
         <div
           id="search-dropdown"
-          className="absolute top-full mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl z-50 overflow-hidden"
+          className="absolute top-full mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl z-[100] overflow-hidden"
         >
           {showRecents && !!recent.length && (
             <>
@@ -894,7 +927,6 @@ export default function SearchBar() {
           )}
         </div>
       )}
-
     </div>
   );
 }
