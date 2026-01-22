@@ -12,6 +12,8 @@ import {
   FileText,
   FileJson,
   FileDown,
+  Volume2,
+  StopCircle,
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import { toast } from "sonner";
@@ -23,9 +25,13 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { JovanResponse, stripJovanTags } from "../utils/jovanParser";
 import { Icons } from "./Icons";
 import { ReasoningBlock, ReasoningIndicator } from "./ReasoningBlock";
+
+// Try to satisfy the missing type definition without installing new packages if possible
+declare module 'dom-to-image-more';
 
 export interface Message {
   id: string;
@@ -228,10 +234,10 @@ export function ChatArea({ messages }: ChatAreaProps) {
   }, [messages, shouldAutoScroll]);
 
   return (
-    <div 
-        ref={scrollRef}
-        onScroll={handleScroll}
-        className="h-full w-full overflow-y-auto px-4 md:px-8 pt-4 scroll-smooth custom-scrollbar"
+    <div
+      ref={scrollRef}
+      onScroll={handleScroll}
+      className="h-full w-full overflow-y-auto px-4 md:px-8 pt-4 scroll-smooth custom-scrollbar"
     >
       <div className="max-w-5xl xl:max-w-6xl mx-auto space-y-8 pb-8 w-full">
         {messages.map((message) => (
@@ -245,8 +251,8 @@ export function ChatArea({ messages }: ChatAreaProps) {
             {/* Avatar */}
             <div className={cn(
               "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-sm",
-              message.role === "user" 
-                ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900" 
+              message.role === "user"
+                ? "bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"
                 : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
             )}>
               {message.role === "user" ? (
@@ -259,8 +265,8 @@ export function ChatArea({ messages }: ChatAreaProps) {
             {/* Content */}
             <div className={cn(
               "flex flex-col",
-              message.role === "user" 
-                ? "items-end max-w-[95%] sm:max-w-[90%] md:max-w-[82%] lg:max-w-[75%] ml-auto" 
+              message.role === "user"
+                ? "items-end max-w-[95%] sm:max-w-[90%] md:max-w-[82%] lg:max-w-[75%] ml-auto"
                 : "items-start max-w-[95%] md:max-w-[92%] lg:max-w-[88%]"
             )}>
               <div className="flex items-center gap-2 mb-1 px-1">
@@ -272,23 +278,23 @@ export function ChatArea({ messages }: ChatAreaProps) {
                   <ReasoningIndicator isActive={message.isStreaming && !message.content} />
                 )}
                 <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                    {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
 
               <div className={cn(
                 "rounded-2xl px-5 py-4 shadow-sm min-w-[200px]",
-                message.role === "user" 
-                  ? "bg-indigo-600 text-white rounded-tr-sm text-[15px] leading-relaxed" 
+                message.role === "user"
+                  ? "bg-indigo-600 text-white rounded-tr-sm text-[15px] leading-relaxed"
                   : "bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-sm"
               )}
-              ref={(node) => {
-                if (message.role === "assistant") {
-                  assistantBubbleRefs.current[message.id] = node;
-                }
-              }}>
+                ref={(node) => {
+                  if (message.role === "assistant") {
+                    assistantBubbleRefs.current[message.id] = node;
+                  }
+                }}>
                 {message.role === "user" ? (
-                  <div 
+                  <div
                     className="whitespace-pre-wrap"
                     dangerouslySetInnerHTML={{
                       __html: message.content.replace(
@@ -301,14 +307,14 @@ export function ChatArea({ messages }: ChatAreaProps) {
                   <>
                     {/* Reasoning block - shown when reasoning content exists */}
                     {(message.reasoning !== undefined) && (
-                      <ReasoningBlock 
-                        reasoning={message.reasoning} 
-                        isStreaming={message.isStreaming && !message.content} 
+                      <ReasoningBlock
+                        reasoning={message.reasoning}
+                        isStreaming={message.isStreaming && !message.content}
                       />
                     )}
-                    <JovanResponse 
-                      content={message.content} 
-                      isStreaming={message.isStreaming} 
+                    <JovanResponse
+                      content={message.content}
+                      isStreaming={message.isStreaming}
                     />
                   </>
                 )}
@@ -317,62 +323,70 @@ export function ChatArea({ messages }: ChatAreaProps) {
               {/* Message Actions (Assistant only, hide while streaming) */}
               {message.role === "assistant" && !message.isStreaming && (
                 <div className="flex items-center gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-6 w-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                      onClick={() => handleCopy(stripJovanTags(message.content), message.id)}
-                    >
-                        {copiedId === message.id ? (
-                          <Check className="w-3 h-3 text-green-500" />
-                        ) : (
-                          <Copy className="w-3 h-3" />
-                        )}
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                        <ThumbsUp className="w-3 h-3" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                        <ThumbsDown className="w-3 h-3" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                        <RefreshCw className="w-3 h-3" />
-                    </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    onClick={() => handleCopy(stripJovanTags(message.content), message.id)}
+                  >
+                    {copiedId === message.id ? (
+                      <Check className="w-3 h-3 text-green-500" />
+                    ) : (
+                      <Copy className="w-3 h-3" />
+                    )}
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <ThumbsUp className="w-3 h-3" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <ThumbsDown className="w-3 h-3" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <ThumbsDown className="w-3 h-3" />
+                  </Button>
+                  <div className="h-3 w-px bg-slate-200 dark:bg-slate-700 mx-1" />
+                  <SpeakButton
+                    content={stripJovanTags(message.content)}
+                    messageId={message.id}
+                  />
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <RefreshCw className="w-3 h-3" />
+                  </Button>
 
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                        >
-                          <Download className="w-3 h-3" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" side="top" className="w-44">
-                        <DropdownMenuItem
-                          onClick={() => handleExport(message, "pdf")}
-                          className="cursor-pointer"
-                        >
-                          <FileDown className="w-4 h-4 text-red-600" />
-                          <span className="ml-2">Export PDF</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleExport(message, "json")}
-                          className="cursor-pointer"
-                        >
-                          <FileJson className="w-4 h-4 text-blue-600" />
-                          <span className="ml-2">Export JSON</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleExport(message, "txt")}
-                          className="cursor-pointer"
-                        >
-                          <FileText className="w-4 h-4 text-slate-600" />
-                          <span className="ml-2">Export TXT</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                      >
+                        <Download className="w-3 h-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" side="top" className="w-44">
+                      <DropdownMenuItem
+                        onClick={() => handleExport(message, "pdf")}
+                        className="cursor-pointer"
+                      >
+                        <FileDown className="w-4 h-4 text-red-600" />
+                        <span className="ml-2">Export PDF</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleExport(message, "json")}
+                        className="cursor-pointer"
+                      >
+                        <FileJson className="w-4 h-4 text-blue-600" />
+                        <span className="ml-2">Export JSON</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleExport(message, "txt")}
+                        className="cursor-pointer"
+                      >
+                        <FileText className="w-4 h-4 text-slate-600" />
+                        <span className="ml-2">Export TXT</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               )}
             </div>
@@ -384,23 +398,59 @@ export function ChatArea({ messages }: ChatAreaProps) {
 }
 
 function ModelIcon({ modelId }: { modelId?: string }) {
-    if (!modelId) return <Icons.Auto className="w-5 h-5 text-indigo-500" />;
-    
-    if (modelId === 'gpt-oss') return <Icons.Jovan className="w-5 h-5" />;
-    
-    if (modelId.includes('gpt')) return <Icons.OpenAI className="w-5 h-5 text-slate-900 dark:text-white" />;
-    if (modelId.includes('claude')) return <Icons.Anthropic className="w-5 h-5 text-slate-900 dark:text-white" />;
-    if (modelId.includes('gemini')) return <Icons.Google className="w-5 h-5 text-blue-600" />;
-    
-    return <Icons.Auto className="w-5 h-5 text-indigo-500" />;
+  if (!modelId) return <Icons.Auto className="w-5 h-5 text-indigo-500" />;
+
+  if (modelId === 'gpt-oss') return <Icons.Jovan className="w-5 h-5" />;
+
+  if (modelId.includes('gpt')) return <Icons.OpenAI className="w-5 h-5 text-slate-900 dark:text-white" />;
+  if (modelId.includes('claude')) return <Icons.Anthropic className="w-5 h-5 text-slate-900 dark:text-white" />;
+  if (modelId.includes('gemini')) return <Icons.Google className="w-5 h-5 text-blue-600" />;
+
+  return <Icons.Auto className="w-5 h-5 text-indigo-500" />;
 }
 
 function getModelName(modelId?: string) {
-    if (!modelId) return "Assistant";
-    if (modelId === 'auto') return "Auto Model";
-    if (modelId === 'gpt-oss') return "Jovan Fast";
-    if (modelId === 'gpt-5.1') return "GPT 5.1";
-    if (modelId === 'claude-sonnet-4.5') return "Claude Sonnet";
-    if (modelId === 'gemini-3') return "Gemini 3";
-    return modelId;
+  if (!modelId) return "Assistant";
+  if (modelId === 'auto') return "Auto Model";
+  if (modelId === 'gpt-oss') return "Jovan Fast";
+  if (modelId === 'gpt-5.1') return "GPT 5.1";
+  if (modelId === 'claude-sonnet-4.5') return "Claude Sonnet";
+  if (modelId === 'gemini-3') return "Gemini 3";
+  return modelId;
+}
+
+function SpeakButton({ content, messageId }: { content: string; messageId: string }) {
+  const { speak, stop, state } = useTextToSpeech({
+    onError: (err) => toast.error("TTS Error", { description: err })
+  });
+
+  const [active, setActive] = useState(false);
+
+  useEffect(() => {
+    if (state === "idle") setActive(false);
+    if (state === "speaking") setActive(true);
+  }, [state]);
+
+  const toggle = () => {
+    if (active) {
+      stop();
+    } else {
+      speak(content);
+    }
+  };
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className={cn(
+        "h-6 w-6 transition-colors",
+        active ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+      )}
+      onClick={toggle}
+      title={active ? "Stop speaking" : "Read aloud"}
+    >
+      {active ? <StopCircle className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
+    </Button>
+  );
 }

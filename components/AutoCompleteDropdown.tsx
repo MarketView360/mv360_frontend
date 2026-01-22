@@ -152,6 +152,12 @@ export default function AutoCompleteDropdown({
                       <span className="font-medium text-slate-900 dark:text-slate-100 truncate text-sm">
                         {suggestion.text}
                       </span>
+                      {suggestion.tier === 'pro' && (
+                        <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-md text-[10px] uppercase font-bold tracking-wide">
+                          <Lock className="w-2.5 h-2.5" />
+                          Pro
+                        </span>
+                      )}
                       <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 rounded-md uppercase font-bold shrink-0">
                         {suggestion.type}
                       </span>

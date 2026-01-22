@@ -61,6 +61,11 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
+import { useAuth } from "@/providers/AuthProvider";
+import { PaywallModal } from "@/components/paywall/PaywallModal";
+import Link from "next/link";
+import { Lock } from "lucide-react";
+
 export default function ResultsPage() {
   return (
     <Suspense fallback={<ResultsPageSkeleton />}>
@@ -86,9 +91,25 @@ function ResultsPageContent() {
   const offset = Number(sp.get("offset") || 0);
   const exchange = sp.get("exchange") || "us";
 
+  const { session } = useAuth();
+  const isPro = session?.tier === "pro" || session?.tier === "elite";
+
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [rows, setRows] = useState<ScreenerRow[]>([]);
+  const [rawRows, setRawRows] = useState<ScreenerRow[]>([]);
+
+  // Apply limit for free users
+  // Apply limit for free users
+  const rows = useMemo(() => {
+    return rawRows;
+  }, [rawRows]);
+
+  const accessLimit = useMemo(() => {
+    if (!session) return 3;
+    if (isPro) return Infinity;
+    return 7;
+  }, [session, isPro]);
+
   const [source, setSource] = useState<string | undefined>(undefined);
   const [sortKey, setSortKey] = useState<string>("market_cap");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -96,6 +117,10 @@ function ResultsPageContent() {
   // New state for enhanced features
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearch = useDebounce(searchTerm, 300);
+
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [paywallFeature, setPaywallFeature] = useState("");
+
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
     new Set([
       "ticker",
@@ -209,14 +234,15 @@ function ResultsPageContent() {
           arr = data.results;
 
         if (!active) return;
-        setRows(arr || []);
+        setRawRows(arr || []);
         setSource(data?.url);
-        setShowPaywall((arr || []).length > 20);
+        // showPaywall state is now controlled by explicit user actions, not length
+        // setShowPaywall((arr || []).length > 20);
       } catch (e: any) {
         if (e.name === "AbortError") return;
         if (!active) return;
         setError(e?.message || "Failed to fetch results");
-        setRows([]);
+        setRawRows([]);
         setSource(undefined);
         setShowPaywall(false);
       } finally {
@@ -307,6 +333,12 @@ function ResultsPageContent() {
   // Export functionality with multiple formats
   const exportData = useCallback(
     async (format: "csv" | "json" | "excel" | "pdf") => {
+      if (!isPro) {
+        setPaywallFeature("Export Results");
+        setShowPaywall(true);
+        return;
+      }
+
       if (filteredRows.length === 0) return;
 
       // Export all filtered rows (remove paywall limit for export)
@@ -740,914 +772,995 @@ function ResultsPageContent() {
   };
 
   // Calculate visible row counts
-  const visibleAccessibleCount = Math.min(20, filteredRows.length);
-  const visibleRestrictedCount = Math.max(0, filteredRows.length - 20);
+  const visibleAccessibleCount = Math.min(accessLimit, filteredRows.length);
+  const visibleRestrictedCount = Math.max(0, filteredRows.length - visibleAccessibleCount);
+
+  const rowsToRender = useMemo(() => {
+    if (isPro) return filteredRows;
+    // Show a few extra blurred rows for effect
+    return filteredRows.slice(0, Math.min(filteredRows.length, accessLimit + 5));
+  }, [filteredRows, isPro, accessLimit]);
 
   return (
     <TooltipProvider>
-      <div className="w-full max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 py-4 md:py-6 space-y-4">
-        {/* Header */}
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              onClick={() => router.push("/screens?tab=builder")}
-              size="sm"
-              className="shrink-0"
-            >
-              <ChevronLeft className="w-4 h-4 mr-1" /> Back
-            </Button>
-            <div>
-              <h1 className="text-xl md:text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                Screener Results
-              </h1>
-              <p className="text-sm text-slate-600 dark:text-muted-foreground mt-0.5">
-                <span className="font-medium">Query:</span>{" "}
-                <span className="text-muted-foreground break-all">{query}</span>
-              </p>
-            </div>
-          </div>
-
-          {/* Search Bar */}
-          <div className="w-full md:w-auto flex items-center gap-2">
-            <div className="relative w-full md:w-80">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
-              <Input
-                placeholder="Search results..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-10 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:border-slate-400 dark:focus:border-slate-500 focus:ring-slate-400 dark:focus:ring-slate-500 dark:text-slate-100"
-              />
-              {searchTerm && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
-                  onClick={clearSearch}
+      <div className="flex bg-slate-50 dark:bg-slate-950 min-h-screen">
+        {/* Sidebar */}
+        <div className="hidden lg:block w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex-shrink-0 sticky top-0 h-screen overflow-y-auto">
+          <div className="p-6">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-6">Screen Templates</h2>
+            <div className="space-y-2">
+              {[
+                { name: "The Bull Cartel", color: "bg-yellow-500" },
+                { name: "Undervalued Growth", color: "bg-green-500" },
+                { name: "Coffee Can Portfolio", color: "bg-blue-500" },
+                { name: "Magic Formula", color: "bg-purple-500" },
+                { name: "Dividend Champions", color: "bg-indigo-500" },
+                { name: "Low Debt Quality", color: "bg-pink-500" },
+              ].map((template) => (
+                <button
+                  key={template.name}
+                  onClick={() => {
+                    // Logic to load template would go here, for now just redirect to generic
+                    router.push("/screens");
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-lg text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-2"
                 >
-                  <X className="w-3.5 h-3.5 text-muted-foreground/60 hover:text-slate-600" />
-                </Button>
-              )}
+                  <div className={`w-2 h-2 rounded-full ${template.color}`} />
+                  {template.name}
+                </button>
+              ))}
             </div>
-
-            {/* Column Visibility */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Filter className="w-4 h-4 mr-1" /> Columns
-                  <ChevronDown className="w-3 h-3 ml-1" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                {[
-                  { key: "code", label: "Code" },
-                  { key: "name", label: "Name" },
-                  { key: "exchange", label: "Exchange" },
-                  { key: "adjusted_close", label: "Price" },
-                  { key: "market_cap", label: "Market Cap" },
-                  { key: "dividend_yield", label: "Div Yield" },
-                  { key: "pe_ratio", label: "P/E" },
-                  { key: "forward_pe", label: "Fwd P/E" },
-                  { key: "peg_ratio", label: "PEG" },
-                  { key: "price_book_mrq", label: "P/B" },
-                  { key: "price_sales_ttm", label: "P/S" },
-                  { key: "ev_ebitda", label: "EV/EBITDA" },
-                  { key: "ev_revenue", label: "EV/Revenue" },
-                  { key: "enterprise_value", label: "Ent Value" },
-                  { key: "return_on_equity_ttm", label: "ROE" },
-                  { key: "return_on_assets_ttm", label: "ROA" },
-                  { key: "operating_margin_ttm", label: "OPM" },
-                  { key: "profit_margin", label: "Profit Margin" },
-                  { key: "payout_ratio", label: "Payout" },
-                  { key: "revenue_per_share", label: "Rev/Share" },
-                  { key: "book_value_per_share", label: "BV/Share" },
-                  { key: "net_debt", label: "Net Debt" },
-                  { key: "free_cash_flow", label: "FCF" },
-                  { key: "operating_cash_flow", label: "OCF" },
-                  { key: "diluted_eps_ttm", label: "EPS (TTM)" },
-                  { key: "revenue_ttm", label: "Sales (TTM)" },
-                  { key: "quarterly_revenue_growth_yoy", label: "Rev Growth" },
-                  { key: "quarterly_earnings_growth_yoy", label: "EPS Growth" },
-                  { key: "analyst_target_price", label: "Analyst Tgt" },
-                  { key: "analyst_rating", label: "Rating" },
-                  { key: "shares_outstanding", label: "Shares" },
-                  { key: "shares_float", label: "Float" },
-                  { key: "day_50_ma", label: "SMA50" },
-                  { key: "day_200_ma", label: "SMA200" },
-                  { key: "beta", label: "Beta" },
-                  { key: "week_52_high", label: "52W High" },
-                  { key: "week_52_low", label: "52W Low" },
-                ].map((col) => (
-                  <DropdownMenuItem
-                    key={col.key}
-                    className="flex items-center justify-between"
-                  >
-                    <Label
-                      htmlFor={`col-${col.key}`}
-                      className="cursor-pointer"
-                    >
-                      {col.label}
-                    </Label>
-                    <Switch
-                      id={`col-${col.key}`}
-                      checked={visibleColumns.has(col.key)}
-                      onCheckedChange={() => toggleColumn(col.key)}
-                    />
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="mt-8">
+              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">Your Screens</h3>
+              <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-lg text-center">
+                <p className="text-xs text-slate-500 mb-3">Login to save your custom screens</p>
+                <Link href="/login" className="text-xs font-medium text-brand hover:underline">Sign In / Register</Link>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Paywall Banner */}
-        {showPaywall && (
-          <div className="relative overflow-hidden rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-4">
-            <div className="absolute inset-y-0 left-0 w-1 bg-amber-500" />
-            <div className="flex items-center justify-between gap-4">
+        {/* Main Content */}
+        <div className="flex-1 min-w-0">
+          <div className="w-full max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 py-4 md:py-6 space-y-4">
+            {/* Header */}
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <Shield className="w-5 h-5 text-amber-600" />
+                <Button
+                  variant="outline"
+                  onClick={() => router.push("/screens?tab=builder")}
+                  size="sm"
+                  className="shrink-0"
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" /> Back
+                </Button>
                 <div>
-                  <p className="text-sm font-medium text-amber-900">
-                    Viewing {visibleAccessibleCount} of {filteredRows.length}{" "}
-                    results
-                  </p>
-                  <p className="text-xs text-amber-700 mt-0.5">
-                    Upgrade to unlock full historical data, exports, and
-                    advanced analytics
-                  </p>
-                </div>
-              </div>
-              <Button
-                size="sm"
-                className="bg-amber-500 hover:bg-amber-600 text-white shadow-sm"
-              >
-                <Shield className="w-4 h-4 mr-1.5" /> Upgrade Pro
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Results Card */}
-        <Card className="border-slate-200 dark:border-slate-700 shadow-sm bg-white dark:bg-slate-900 overflow-hidden w-full">
-          <CardHeader className="py-3 px-4 bg-slate-50 dark:bg-slate-800/50">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-medium flex items-center gap-2">
-                {loading ? (
-                  <span className="inline-flex items-center gap-2">
-                    <Loader2 className="w-5 h-5 animate-spin text-slate-600" />
-                    <span className="text-slate-600 dark:text-muted-foreground">
-                      Loading results...
-                    </span>
-                  </span>
-                ) : (
-                  <>
-                    <span className="text-slate-900 dark:text-slate-100">
-                      Results
-                    </span>
-                    <Badge
-                      variant="secondary"
-                      className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
-                    >
-                      {filteredRows.length}{" "}
-                      {filteredRows.length === 1 ? "stock" : "stocks"}
-                    </Badge>
-                    {searchTerm && (
-                      <Badge
-                        variant="outline"
-                        className="border-slate-300 dark:border-slate-600 text-slate-600 dark:text-muted-foreground"
-                      >
-                        {visibleAccessibleCount} visible
-                      </Badge>
-                    )}
-                  </>
-                )}
-              </CardTitle>
-
-              {/* Export Menu */}
-              {!loading && filteredRows.length > 0 && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={exporting !== null}
-                    >
-                      {exporting ? (
-                        <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-                      ) : (
-                        <Download className="w-4 h-4 mr-1.5" />
-                      )}
-                      Export
-                      <ChevronDown className="w-3 h-3 ml-1" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-40">
-                    <DropdownMenuItem onClick={() => exportData("csv")}>
-                      <span className="text-emerald-600 font-mono text-xs mr-2">
-                        CSV
-                      </span>
-                      Spreadsheet
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => exportData("json")}>
-                      <span className="text-blue-600 font-mono text-xs mr-2">
-                        JSON
-                      </span>
-                      Data File
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => exportData("excel")}>
-                      <span className="text-green-600 font-mono text-xs mr-2">
-                        XLSX
-                      </span>
-                      Excel Workbook
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => exportData("pdf")}>
-                      <span className="text-red-600 font-mono text-xs mr-2">
-                        PDF
-                      </span>
-                      Document
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
-          </CardHeader>
-
-          <CardContent className="p-0">
-            {/* Error State */}
-            {error && (
-              <div className="m-4 p-4 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 text-red-800 text-sm flex items-start gap-3">
-                <Shield className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="font-medium mb-1">Failed to load results</p>
-                  <p className="text-red-700">{error}</p>
-                  <p className="text-xs text-red-600 mt-2 font-mono bg-red-50 p-2 rounded">
-                    API: {source}
+                  <h1 className="text-xl md:text-2xl font-semibold text-slate-900 dark:text-slate-100">
+                    Screener Results
+                  </h1>
+                  <p className="text-sm text-slate-600 dark:text-muted-foreground mt-0.5">
+                    <span className="font-medium">Query:</span>{" "}
+                    <span className="text-muted-foreground break-all">{query}</span>
                   </p>
                 </div>
               </div>
-            )}
 
-            {/* Loading Table Skeleton */}
-            {loading && (
-              <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                {Array.from({ length: 10 }).map((_, i) => (
-                  <div
-                    key={`skeleton-${i}`}
-                    className="flex items-center gap-3 p-4 animate-pulse"
-                    style={{ animationDelay: `${i * 50}ms` }}
-                  >
-                    <div className="h-4 w-20 bg-slate-200 dark:bg-slate-700 rounded" />
-                    <div className="h-4 flex-1 bg-slate-200 dark:bg-slate-700 rounded" />
-                    <div className="h-4 w-24 bg-slate-200 dark:bg-slate-700 rounded" />
-                    <div className="h-4 w-16 bg-slate-200 dark:bg-slate-700 rounded" />
-                    <div className="h-4 w-20 bg-slate-200 dark:bg-slate-700 rounded" />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Empty State */}
-            {!loading && !error && filteredRows.length === 0 && (
-              <div className="p-12 text-center">
-                <div className="mx-auto w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
-                  <Search className="w-8 h-8 text-muted-foreground/60" />
-                </div>
-                <p className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">
-                  {searchTerm ? "No matches found" : "No results found"}
-                </p>
-                <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-4">
-                  {searchTerm
-                    ? "Try adjusting your search terms"
-                    : "Try adjusting your filters or search criteria"}
-                </p>
-                {source && (
-                  <div className="text-xs text-muted-foreground/80 break-all font-mono bg-slate-50 dark:bg-slate-800 p-3 rounded max-w-2xl mx-auto">
-                    API Request: {source}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Results Table */}
-            {!loading && !error && filteredRows.length > 0 && (
-              <div className="relative w-full">
-                <div className="overflow-x-auto max-h-[75vh]">
-                  <table className="w-full text-sm relative border-collapse min-w-[1200px]">
-                    <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-b-2 border-slate-200 dark:border-slate-700 shadow-sm">
-                      <tr>
-                        {visibleColumns.has("code") && (
-                          <th
-                            className="text-left px-4 py-3 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider w-24"
-                            onClick={() => toggleSort("code")}
-                          >
-                            <div className="flex items-center">
-                              Code <SortIcon column="code" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("name") && (
-                          <th
-                            className="text-left px-4 py-3 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider min-w-[200px]"
-                            onClick={() => toggleSort("name")}
-                          >
-                            <div className="flex items-center">
-                              Name <SortIcon column="name" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("exchange") && (
-                          <th
-                            className="text-center px-4 py-3 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider w-24"
-                            onClick={() => toggleSort("exchange")}
-                          >
-                            <div className="flex items-center justify-center">
-                              Exchange <SortIcon column="exchange" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("adjusted_close") && (
-                          <th
-                            className="text-right px-4 py-3 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("adjusted_close")}
-                          >
-                            <div className="flex items-center justify-end">
-                              Price <SortIcon column="adjusted_close" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("market_cap") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("market_cap")}
-                          >
-                            <div className="flex items-center justify-end">
-                              Market Cap{" "}
-                              <SortIcon column="market_cap" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("shares_outstanding") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("shares_outstanding")}
-                          >
-                            <div className="flex items-center justify-end">
-                              Shares <SortIcon column="shares_outstanding" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("shares_float") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("shares_float")}
-                          >
-                            <div className="flex items-center justify-end">
-                              Float <SortIcon column="shares_float" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("dividend_yield") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("dividend_yield")}
-                          >
-                            <div className="flex items-center justify-end">
-                              Div Yield <SortIcon column="dividend_yield" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("pe_ratio") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("pe_ratio")}
-                          >
-                            <div className="flex items-center justify-end">
-                              P/E <SortIcon column="pe_ratio" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("forward_pe") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("forward_pe")}
-                          >
-                            <div className="flex items-center justify-end">
-                              Fwd P/E <SortIcon column="forward_pe" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("peg_ratio") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("peg_ratio")}
-                          >
-                            <div className="flex items-center justify-end">
-                              PEG <SortIcon column="peg_ratio" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("price_book_mrq") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("price_book_mrq")}
-                          >
-                            <div className="flex items-center justify-end">
-                              P/B <SortIcon column="price_book_mrq" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("price_sales_ttm") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("price_sales_ttm")}
-                          >
-                            <div className="flex items-center justify-end">
-                              P/S <SortIcon column="price_sales_ttm" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("ev_ebitda") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("ev_ebitda")}
-                          >
-                            <div className="flex items-center justify-end">
-                              EV/EBITDA <SortIcon column="ev_ebitda" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("enterprise_value") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("enterprise_value")}
-                          >
-                            <div className="flex items-center justify-end">
-                              Ent Value <SortIcon column="enterprise_value" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("diluted_eps_ttm") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("diluted_eps_ttm")}
-                          >
-                            <div className="flex items-center justify-end">
-                              EPS (TTM) <SortIcon column="diluted_eps_ttm" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("net_debt") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("net_debt")}
-                          >
-                            <div className="flex items-center justify-end">
-                              Net Debt <SortIcon column="net_debt" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("payout_ratio") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("payout_ratio")}
-                          >
-                            <div className="flex items-center justify-end">
-                              Payout <SortIcon column="payout_ratio" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("revenue_per_share") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("revenue_per_share")}
-                          >
-                            <div className="flex items-center justify-end">
-                              Rev/Share <SortIcon column="revenue_per_share" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("book_value_per_share") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("book_value_per_share")}
-                          >
-                            <div className="flex items-center justify-end">
-                              BV/Share <SortIcon column="book_value_per_share" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("free_cash_flow") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("free_cash_flow")}
-                          >
-                            <div className="flex items-center justify-end">
-                              FCF <SortIcon column="free_cash_flow" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("operating_cash_flow") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("operating_cash_flow")}
-                          >
-                            <div className="flex items-center justify-end">
-                              OCF <SortIcon column="operating_cash_flow" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("quarterly_revenue_growth_yoy") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("quarterly_revenue_growth_yoy")}
-                          >
-                            <div className="flex items-center justify-end">
-                              Rev Growth <SortIcon column="quarterly_revenue_growth_yoy" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("quarterly_earnings_growth_yoy") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("quarterly_earnings_growth_yoy")}
-                          >
-                            <div className="flex items-center justify-end">
-                              EPS Growth <SortIcon column="quarterly_earnings_growth_yoy" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("analyst_target_price") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("analyst_target_price")}
-                          >
-                            <div className="flex items-center justify-end">
-                              Target <SortIcon column="analyst_target_price" />
-                            </div>
-                          </th>
-                        )}
-
-                        {visibleColumns.has("analyst_rating") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("analyst_rating")}
-                          >
-                            Rating <SortIcon column="analyst_rating" />
-                          </th>
-                        )}
-                        {visibleColumns.has("day_50_ma") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("day_50_ma")}
-                          >
-                            <div className="flex items-center justify-end">
-                              SMA50 <SortIcon column="day_50_ma" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("day_200_ma") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("day_200_ma")}
-                          >
-                            <div className="flex items-center justify-end">
-                              SMA200 <SortIcon column="day_200_ma" />
-                            </div>
-                          </th>
-                        )}
-                        {visibleColumns.has("beta") && (
-                          <th
-                            className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
-                            onClick={() => toggleSort("beta")}
-                          >
-                            <div className="flex items-center justify-end">
-                              Beta <SortIcon column="beta" />
-                            </div>
-                          </th>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {filteredRows.map((r, i) => {
-                        const isAccessible = i < 20;
-                        const isPositive1d = (r.change ?? 0) >= 0;
-                        const isPositive5d = (r.change_percent ?? 0) >= 0;
-                        const isEven = i % 2 === 0;
-
-                        return (
-                          <tr
-                            key={`${r.code}-${i}`}
-                            className={`
-                              transition-all duration-150 group
-                              ${isAccessible
-                                ? `${isEven
-                                  ? "bg-white dark:bg-slate-900"
-                                  : "bg-slate-50/50 dark:bg-slate-800/30"
-                                } hover:bg-blue-50 dark:hover:bg-slate-700/50 cursor-pointer`
-                                : "opacity-30 pointer-events-none select-none bg-slate-100/50 dark:bg-slate-800/50"
-                              }
-                            `}
-                            onClick={() => {
-                              if (isAccessible && r.code) {
-                                // Navigate to detail page or open modal
-                                router.push(`/company/${r.code}`);
-                              }
-                            }}
-                          >
-                            {visibleColumns.has("code") && (
-                              <td className="px-4 py-3 font-mono text-sm font-semibold text-blue-600 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300">
-                                {r.code || "—"}
-                              </td>
-                            )}
-                            {visibleColumns.has("name") && (
-                              <td className="px-4 py-3 text-slate-800 dark:text-slate-200 max-w-xs font-medium">
-                                <Tooltip>
-                                  <TooltipTrigger className="text-left w-full truncate">
-                                    {r.name || "—"}
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p className="max-w-sm">{r.name}</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </td>
-                            )}
-                            {visibleColumns.has("exchange") && (
-                              <td className="px-4 py-3 text-center">
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
-                                  {r.exchange || "—"}
-                                </span>
-                              </td>
-                            )}
-                            {visibleColumns.has("adjusted_close") && (
-                              <td className="px-4 py-3 text-right font-mono font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
-                                {fmtUsd(r.adjusted_close)}
-                              </td>
-                            )}
-                            {visibleColumns.has("market_cap") && (
-                              <td className="px-4 py-3 text-right font-mono font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
-                                {fmtCap(r.market_cap)}
-                              </td>
-                            )}
-                            {visibleColumns.has("shares_outstanding") && (
-                              <td className="px-4 py-3 text-right font-mono font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
-                                {fmtCap(r.shares_outstanding)}
-                              </td>
-                            )}
-                            {visibleColumns.has("shares_float") && (
-                              <td className="px-4 py-3 text-right font-mono font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
-                                {fmtCap(r.shares_float)}
-                              </td>
-                            )}
-                            {visibleColumns.has("dividend_yield") && (
-                              <td className="px-4 py-3 text-right font-mono text-slate-600 dark:text-muted-foreground tabular-nums">
-                                {r.dividend_yield != null
-                                  ? `${(r.dividend_yield * 100).toFixed(2)}%`
-                                  : "—"}
-                              </td>
-                            )}
-                            {/* P/E Ratio */}
-                            {visibleColumns.has("pe_ratio") && (
-                              <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.pe_ratio != null
-                                  ? r.pe_ratio.toFixed(2)
-                                  : "—"}
-                              </td>
-                            )}
-                            {/* Forward P/E */}
-                            {visibleColumns.has("forward_pe") && (
-                              <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.forward_pe != null
-                                  ? r.forward_pe.toFixed(2)
-                                  : "—"}
-                              </td>
-                            )}
-                            {/* PEG */}
-                            {visibleColumns.has("peg_ratio") && (
-                              <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.peg_ratio != null ? r.peg_ratio.toFixed(2) : "—"}
-                              </td>
-                            )}
-                            {/* P/B */}
-                            {visibleColumns.has("price_book_mrq") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
-                                {r.price_book_mrq != null ? r.price_book_mrq.toFixed(2) : "—"}
-                              </td>
-                            )}
-                            {/* P/S */}
-                            {visibleColumns.has("price_sales_ttm") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
-                                {r.price_sales_ttm != null
-                                  ? r.price_sales_ttm.toFixed(2)
-                                  : "—"}
-                              </td>
-                            )}
-                            {/* EV/EBITDA */}
-                            {visibleColumns.has("ev_ebitda") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
-                                {r.ev_ebitda != null
-                                  ? r.ev_ebitda.toFixed(2)
-                                  : "—"}
-                              </td>
-                            )}
-                            {/* Enterprise Value */}
-                            {visibleColumns.has("enterprise_value") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
-                                {fmtCap(r.enterprise_value)}
-                              </td>
-                            )}
-                            {/* EPS (TTM) / Diluted */}
-                            {visibleColumns.has("diluted_eps_ttm") && (
-                              <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.diluted_eps_ttm != null
-                                  ? `$${r.diluted_eps_ttm.toFixed(2)}`
-                                  : "—"}
-                              </td>
-                            )}
-                            {/* Net Debt */}
-                            {visibleColumns.has("net_debt") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
-                                {fmtCap(r.net_debt)}
-                              </td>
-                            )}
-                            {/* Payout */}
-                            {visibleColumns.has("payout_ratio") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
-                                {fmtPct(r.payout_ratio)}
-                              </td>
-                            )}
-                            {/* Rev/Share */}
-                            {visibleColumns.has("revenue_per_share") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
-                                {fmtUsd(r.revenue_per_share)}
-                              </td>
-                            )}
-                            {/* BV/Share */}
-                            {visibleColumns.has("book_value_per_share") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
-                                {fmtUsd(r.book_value_per_share)}
-                              </td>
-                            )}
-                            {/* FCF */}
-                            {visibleColumns.has("free_cash_flow") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
-                                {fmtCap(r.free_cash_flow)}
-                              </td>
-                            )}
-                            {/* OCF */}
-                            {visibleColumns.has("operating_cash_flow") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
-                                {fmtCap(r.operating_cash_flow)}
-                              </td>
-                            )}
-                            {/* Rev Growth */}
-                            {visibleColumns.has("quarterly_revenue_growth_yoy") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
-                                {fmtPct(r.quarterly_revenue_growth_yoy)}
-                              </td>
-                            )}
-                            {/* EPS Growth */}
-                            {visibleColumns.has("quarterly_earnings_growth_yoy") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
-                                {fmtPct(r.quarterly_earnings_growth_yoy)}
-                              </td>
-                            )}
-                            {/* Target Price */}
-                            {visibleColumns.has("analyst_target_price") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
-                                {fmtUsd(r.analyst_target_price)}
-                              </td>
-                            )}
-                            {/* Rating */}
-                            {visibleColumns.has("analyst_rating") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300">
-                                {r.analyst_rating ? Number(r.analyst_rating).toFixed(2) : "—"}
-                              </td>
-                            )}
-                            {/* SMA50 */}
-                            {visibleColumns.has("day_50_ma") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.day_50_ma != null
-                                  ? `$${r.day_50_ma.toFixed(2)}`
-                                  : "—"}
-                              </td>
-                            )}
-                            {/* SMA200 */}
-                            {visibleColumns.has("day_200_ma") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.day_200_ma != null
-                                  ? `$${r.day_200_ma.toFixed(2)}`
-                                  : "—"}
-                              </td>
-                            )}
-                            {/* Beta */}
-                            {visibleColumns.has("beta") && (
-                              <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
-                                {r.beta != null ? r.beta.toFixed(2) : "—"}
-                              </td>
-                            )}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Paywall Footer Message */}
-                {showPaywall && filteredRows.length > 20 && (
-                  <div className="sticky bottom-0 bg-white dark:bg-slate-900 p-4 border-t border-slate-200 dark:border-slate-700">
-                    <div className="flex items-center justify-center gap-3 text-sm text-slate-600 dark:text-muted-foreground">
-                      <div className="h-px bg-slate-200 dark:bg-slate-700 flex-1 max-w-24" />
-                      <Shield className="w-4 h-4 text-amber-500" />
-                      <span>
-                        {visibleRestrictedCount} additional results hidden
-                      </span>
-                      <Shield className="w-4 h-4 text-amber-500" />
-                      <div className="h-px bg-slate-200 dark:bg-slate-700 flex-1 max-w-24" />
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Pagination Footer */}
-            {!loading && !error && filteredRows.length > 0 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
-                <div className="text-sm text-slate-600 dark:text-muted-foreground flex items-center gap-2">
-                  <span>
-                    Showing{" "}
-                    <span className="font-semibold text-slate-900 dark:text-slate-100">
-                      {offset + 1}
-                    </span>{" "}
-                    to{" "}
-                    <span className="font-semibold text-slate-900 dark:text-slate-100">
-                      {Math.min(offset + limit, filteredRows.length)}
-                    </span>{" "}
-                    of{" "}
-                    <span className="font-semibold text-slate-900 dark:text-slate-100">
-                      {filteredRows.length}
-                    </span>{" "}
-                    results
-                  </span>
+              {/* Search Bar */}
+              <div className="w-full md:w-auto flex items-center gap-2">
+                <div className="relative w-full md:w-80">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
+                  <Input
+                    placeholder="Search results..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 pr-10 bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:border-slate-400 dark:focus:border-slate-500 focus:ring-slate-400 dark:focus:ring-slate-500 dark:text-slate-100"
+                  />
                   {searchTerm && (
-                    <Badge
-                      variant="secondary"
-                      className="bg-blue-50 text-blue-700"
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
+                      onClick={clearSearch}
                     >
-                      filtered
-                    </Badge>
+                      <X className="w-3.5 h-3.5 text-muted-foreground/60 hover:text-slate-600" />
+                    </Button>
                   )}
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onPrev}
-                    disabled={offset <= 0}
-                    className="min-w-24"
-                  >
-                    <ChevronLeft className="w-4 h-4 mr-1" /> Previous
-                  </Button>
+                {/* Column Visibility */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Filter className="w-4 h-4 mr-1" /> Columns
+                      <ChevronDown className="w-3 h-3 ml-1" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    {[
+                      { key: "code", label: "Code" },
+                      { key: "name", label: "Name" },
+                      { key: "exchange", label: "Exchange" },
+                      { key: "adjusted_close", label: "Price" },
+                      { key: "market_cap", label: "Market Cap" },
+                      { key: "dividend_yield", label: "Div Yield" },
+                      { key: "pe_ratio", label: "P/E" },
+                      { key: "forward_pe", label: "Fwd P/E" },
+                      { key: "peg_ratio", label: "PEG" },
+                      { key: "price_book_mrq", label: "P/B" },
+                      { key: "price_sales_ttm", label: "P/S" },
+                      { key: "ev_ebitda", label: "EV/EBITDA" },
+                      { key: "ev_revenue", label: "EV/Revenue" },
+                      { key: "enterprise_value", label: "Ent Value" },
+                      { key: "return_on_equity_ttm", label: "ROE" },
+                      { key: "return_on_assets_ttm", label: "ROA" },
+                      { key: "operating_margin_ttm", label: "OPM" },
+                      { key: "profit_margin", label: "Profit Margin" },
+                      { key: "payout_ratio", label: "Payout" },
+                      { key: "revenue_per_share", label: "Rev/Share" },
+                      { key: "book_value_per_share", label: "BV/Share" },
+                      { key: "net_debt", label: "Net Debt" },
+                      { key: "free_cash_flow", label: "FCF" },
+                      { key: "operating_cash_flow", label: "OCF" },
+                      { key: "diluted_eps_ttm", label: "EPS (TTM)" },
+                      { key: "revenue_ttm", label: "Sales (TTM)" },
+                      { key: "quarterly_revenue_growth_yoy", label: "Rev Growth" },
+                      { key: "quarterly_earnings_growth_yoy", label: "EPS Growth" },
+                      { key: "analyst_target_price", label: "Analyst Tgt" },
+                      { key: "analyst_rating", label: "Rating" },
+                      { key: "shares_outstanding", label: "Shares" },
+                      { key: "shares_float", label: "Float" },
+                      { key: "day_50_ma", label: "SMA50" },
+                      { key: "day_200_ma", label: "SMA200" },
+                      { key: "beta", label: "Beta" },
+                      { key: "week_52_high", label: "52W High" },
+                      { key: "week_52_low", label: "52W Low" },
+                    ].map((col) => (
+                      <DropdownMenuItem
+                        key={col.key}
+                        className="flex items-center justify-between"
+                      >
+                        <Label
+                          htmlFor={`col-${col.key}`}
+                          className="cursor-pointer"
+                        >
+                          {col.label}
+                        </Label>
+                        <Switch
+                          id={`col-${col.key}`}
+                          checked={visibleColumns.has(col.key)}
+                          onCheckedChange={() => toggleColumn(col.key)}
+                        />
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
 
-                  <div className="h-6 w-px bg-slate-300 dark:bg-slate-600" />
-
+            {/* Paywall Banner */}
+            {showPaywall && (
+              <div className="relative overflow-hidden rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-4">
+                <div className="absolute inset-y-0 left-0 w-1 bg-amber-500" />
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <Shield className="w-5 h-5 text-amber-600" />
+                    <div>
+                      <p className="text-sm font-medium text-amber-900">
+                        Viewing {visibleAccessibleCount} of {filteredRows.length}{" "}
+                        results
+                      </p>
+                      <p className="text-xs text-amber-700 mt-0.5">
+                        Upgrade to unlock full historical data, exports, and
+                        advanced analytics
+                      </p>
+                    </div>
+                  </div>
                   <Button
-                    variant="outline"
                     size="sm"
-                    onClick={onNext}
-                    disabled={filteredRows.length < limit}
-                    className="min-w-24"
+                    className="bg-amber-500 hover:bg-amber-600 text-white shadow-sm"
                   >
-                    Next <ChevronLeft className="w-4 h-4 ml-1 rotate-180" />
+                    <Shield className="w-4 h-4 mr-1.5" /> Upgrade Pro
                   </Button>
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
 
-        {/* Floating Export Button (Mobile) */}
-        <div className="fixed bottom-4 right-4 md:hidden">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="lg"
-                className="rounded-full shadow-lg bg-slate-900 hover:bg-slate-800"
-              >
-                <Download className="w-5 h-5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem onClick={() => exportData("csv")}>
-                Export CSV
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => exportData("json")}>
-                Export JSON
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            {/* Results Card */}
+            <Card className="border-slate-200 dark:border-slate-700 shadow-sm bg-white dark:bg-slate-900 overflow-hidden w-full">
+              <CardHeader className="py-3 px-4 bg-slate-50 dark:bg-slate-800/50">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg font-medium flex items-center gap-2">
+                    {loading ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Loader2 className="w-5 h-5 animate-spin text-slate-600" />
+                        <span className="text-slate-600 dark:text-muted-foreground">
+                          Loading results...
+                        </span>
+                      </span>
+                    ) : (
+                      <>
+                        <span className="text-slate-900 dark:text-slate-100">
+                          Results
+                        </span>
+                        <Badge
+                          variant="secondary"
+                          className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
+                        >
+                          {filteredRows.length}{" "}
+                          {filteredRows.length === 1 ? "stock" : "stocks"}
+                        </Badge>
+                        {searchTerm && (
+                          <Badge
+                            variant="outline"
+                            className="border-slate-300 dark:border-slate-600 text-slate-600 dark:text-muted-foreground"
+                          >
+                            {visibleAccessibleCount} visible
+                          </Badge>
+                        )}
+                      </>
+                    )}
+                  </CardTitle>
+
+                  {/* Export Menu */}
+                  {!loading && filteredRows.length > 0 && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={exporting !== null}
+                        >
+                          {exporting ? (
+                            <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                          ) : (
+                            <Download className="w-4 h-4 mr-1.5" />
+                          )}
+                          Export
+                          <ChevronDown className="w-3 h-3 ml-1" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-40">
+                        <DropdownMenuItem onClick={() => exportData("csv")}>
+                          <span className="text-emerald-600 font-mono text-xs mr-2">
+                            CSV
+                          </span>
+                          Spreadsheet
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => exportData("json")}>
+                          <span className="text-blue-600 font-mono text-xs mr-2">
+                            JSON
+                          </span>
+                          Data File
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => exportData("excel")}>
+                          <span className="text-green-600 font-mono text-xs mr-2">
+                            XLSX
+                          </span>
+                          Excel Workbook
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => exportData("pdf")}>
+                          <span className="text-red-600 font-mono text-xs mr-2">
+                            PDF
+                          </span>
+                          Document
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+              </CardHeader>
+
+              <CardContent className="p-0">
+                {/* Error State */}
+                {error && (
+                  <div className="m-4 p-4 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 text-red-800 text-sm flex items-start gap-3">
+                    <Shield className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium mb-1">Failed to load results</p>
+                      <p className="text-red-700">{error}</p>
+                      <p className="text-xs text-red-600 mt-2 font-mono bg-red-50 p-2 rounded">
+                        API: {source}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Loading Table Skeleton */}
+                {loading && (
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {Array.from({ length: 10 }).map((_, i) => (
+                      <div
+                        key={`skeleton-${i}`}
+                        className="flex items-center gap-3 p-4 animate-pulse"
+                        style={{ animationDelay: `${i * 50}ms` }}
+                      >
+                        <div className="h-4 w-20 bg-slate-200 dark:bg-slate-700 rounded" />
+                        <div className="h-4 flex-1 bg-slate-200 dark:bg-slate-700 rounded" />
+                        <div className="h-4 w-24 bg-slate-200 dark:bg-slate-700 rounded" />
+                        <div className="h-4 w-16 bg-slate-200 dark:bg-slate-700 rounded" />
+                        <div className="h-4 w-20 bg-slate-200 dark:bg-slate-700 rounded" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Empty State */}
+                {!loading && !error && filteredRows.length === 0 && (
+                  <div className="p-12 text-center">
+                    <div className="mx-auto w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
+                      <Search className="w-8 h-8 text-muted-foreground/60" />
+                    </div>
+                    <p className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">
+                      {searchTerm ? "No matches found" : "No results found"}
+                    </p>
+                    <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-4">
+                      {searchTerm
+                        ? "Try adjusting your search terms"
+                        : "Try adjusting your filters or search criteria"}
+                    </p>
+                    {source && (
+                      <div className="text-xs text-muted-foreground/80 break-all font-mono bg-slate-50 dark:bg-slate-800 p-3 rounded max-w-2xl mx-auto">
+                        API Request: {source}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Results Table */}
+                {!loading && !error && filteredRows.length > 0 && (
+                  <div className="relative w-full">
+                    <div className="overflow-x-auto max-h-[75vh]">
+                      <table className="w-full text-sm relative border-collapse min-w-[1200px]">
+                        <thead className="sticky top-0 z-10 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-b-2 border-slate-200 dark:border-slate-700 shadow-sm">
+                          <tr>
+                            {visibleColumns.has("code") && (
+                              <th
+                                className="text-left px-4 py-3 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider w-24"
+                                onClick={() => toggleSort("code")}
+                              >
+                                <div className="flex items-center">
+                                  Code <SortIcon column="code" />
+                                </div>
+                              </th>
+                            )}
+                            {visibleColumns.has("name") && (
+                              <th
+                                className="text-left px-4 py-3 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider min-w-[200px]"
+                                onClick={() => toggleSort("name")}
+                              >
+                                <div className="flex items-center">
+                                  Name <SortIcon column="name" />
+                                </div>
+                              </th>
+                            )}
+                            {visibleColumns.has("exchange") && (
+                              <th
+                                className="text-center px-4 py-3 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider w-24"
+                                onClick={() => toggleSort("exchange")}
+                              >
+                                <div className="flex items-center justify-center">
+                                  Exchange <SortIcon column="exchange" />
+                                </div>
+                              </th>
+                            )}
+                            {visibleColumns.has("adjusted_close") && (
+                              <th
+                                className="text-right px-4 py-3 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                                onClick={() => toggleSort("adjusted_close")}
+                              >
+                                <div className="flex items-center justify-end">
+                                  Price <SortIcon column="adjusted_close" />
+                                </div>
+                              </th>
+                            )}
+                            {visibleColumns.has("market_cap") && (
+                              <th
+                                className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                                onClick={() => toggleSort("market_cap")}
+                              >
+                                <div className="flex items-center justify-end">
+                                  Market Cap{" "}
+                                  <SortIcon column="market_cap" />
+                                </div>
+                              </th>
+                            )}
+                            {visibleColumns.has("shares_outstanding") && (
+                              <th
+                                className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                                onClick={() => toggleSort("shares_outstanding")}
+                              >
+                                <div className="flex items-center justify-end">
+                                  Shares <SortIcon column="shares_outstanding" />
+                                </div>
+                              </th>
+                            )}
+                            {visibleColumns.has("shares_float") && (
+                              <th
+                                className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                                onClick={() => toggleSort("shares_float")}
+                              >
+                                <div className="flex items-center justify-end">
+                                  Float <SortIcon column="shares_float" />
+                                </div>
+                              </th>
+                            )}
+                            {visibleColumns.has("dividend_yield") && (
+                              <th
+                                className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                                onClick={() => toggleSort("dividend_yield")}
+                              >
+                                <div className="flex items-center justify-end">
+                                  Div Yield <SortIcon column="dividend_yield" />
+                                </div>
+                              </th>
+                            )}
+                            {visibleColumns.has("pe_ratio") && (
+                              <th
+                                className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                                onClick={() => toggleSort("pe_ratio")}
+                              >
+                                <div className="flex items-center justify-end">
+                                  P/E <SortIcon column="pe_ratio" />
+                                </div>
+                              </th>
+                            )}
+                            {visibleColumns.has("forward_pe") && (
+                              <th
+                                className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                                onClick={() => toggleSort("forward_pe")}
+                              >
+                                <div className="flex items-center justify-end">
+                                  Fwd P/E <SortIcon column="forward_pe" />
+                                </div>
+                              </th>
+                            )}
+                            {visibleColumns.has("peg_ratio") && (
+                              <th
+                                className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                                onClick={() => toggleSort("peg_ratio")}
+                              >
+                                <div className="flex items-center justify-end">
+                                  PEG <SortIcon column="peg_ratio" />
+                                </div>
+                              </th>
+                            )}
+                            {visibleColumns.has("price_book_mrq") && (
+                              <th
+                                className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                                onClick={() => toggleSort("price_book_mrq")}
+                              >
+                                <div className="flex items-center justify-end">
+                                  P/B <SortIcon column="price_book_mrq" />
+                                </div>
+                              </th>
+                            )}
+                            {visibleColumns.has("price_sales_ttm") && (
+                              <th
+                                className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                                onClick={() => toggleSort("price_sales_ttm")}
+                              >
+                                <div className="flex items-center justify-end">
+                                  P/S <SortIcon column="price_sales_ttm" />
+                                </div>
+                              </th>
+                            )}
+                            {visibleColumns.has("ev_ebitda") && (
+                              <th
+                                className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                                onClick={() => toggleSort("ev_ebitda")}
+                              >
+                                <div className="flex items-center justify-end">
+                                  EV/EBITDA <SortIcon column="ev_ebitda" />
+                                </div>
+                              </th>
+                            )}
+                            {visibleColumns.has("enterprise_value") && (
+                              <th
+                                className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                                onClick={() => toggleSort("enterprise_value")}
+                              >
+                                <div className="flex items-center justify-end">
+                                  Ent Value <SortIcon column="enterprise_value" />
+                                </div>
+                              </th>
+                            )}
+                            {visibleColumns.has("diluted_eps_ttm") && (
+                              <th
+                                className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                                onClick={() => toggleSort("diluted_eps_ttm")}
+                              >
+                                <div className="flex items-center justify-end">
+                                  EPS (TTM) <SortIcon column="diluted_eps_ttm" />
+                                </div>
+                              </th>
+                            )}
+                            {visibleColumns.has("net_debt") && (
+                              <th
+                                className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                                onClick={() => toggleSort("net_debt")}
+                              >
+                                <div className="flex items-center justify-end">
+                                  Net Debt <SortIcon column="net_debt" />
+                                </div>
+                              </th>
+                            )}
+                            {visibleColumns.has("payout_ratio") && (
+                              <th
+                                className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                                onClick={() => toggleSort("payout_ratio")}
+                              >
+                                <div className="flex items-center justify-end">
+                                  Payout <SortIcon column="payout_ratio" />
+                                </div>
+                              </th>
+                            )}
+                            {visibleColumns.has("revenue_per_share") && (
+                              <th
+                                className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                                onClick={() => toggleSort("revenue_per_share")}
+                              >
+                                <div className="flex items-center justify-end">
+                                  Rev/Share <SortIcon column="revenue_per_share" />
+                                </div>
+                              </th>
+                            )}
+                            {visibleColumns.has("book_value_per_share") && (
+                              <th
+                                className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                                onClick={() => toggleSort("book_value_per_share")}
+                              >
+                                <div className="flex items-center justify-end">
+                                  BV/Share <SortIcon column="book_value_per_share" />
+                                </div>
+                              </th>
+                            )}
+                            {visibleColumns.has("free_cash_flow") && (
+                              <th
+                                className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                                onClick={() => toggleSort("free_cash_flow")}
+                              >
+                                <div className="flex items-center justify-end">
+                                  FCF <SortIcon column="free_cash_flow" />
+                                </div>
+                              </th>
+                            )}
+                            {visibleColumns.has("operating_cash_flow") && (
+                              <th
+                                className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                                onClick={() => toggleSort("operating_cash_flow")}
+                              >
+                                <div className="flex items-center justify-end">
+                                  OCF <SortIcon column="operating_cash_flow" />
+                                </div>
+                              </th>
+                            )}
+                            {visibleColumns.has("quarterly_revenue_growth_yoy") && (
+                              <th
+                                className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                                onClick={() => toggleSort("quarterly_revenue_growth_yoy")}
+                              >
+                                <div className="flex items-center justify-end">
+                                  Rev Growth <SortIcon column="quarterly_revenue_growth_yoy" />
+                                </div>
+                              </th>
+                            )}
+                            {visibleColumns.has("quarterly_earnings_growth_yoy") && (
+                              <th
+                                className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                                onClick={() => toggleSort("quarterly_earnings_growth_yoy")}
+                              >
+                                <div className="flex items-center justify-end">
+                                  EPS Growth <SortIcon column="quarterly_earnings_growth_yoy" />
+                                </div>
+                              </th>
+                            )}
+                            {visibleColumns.has("analyst_target_price") && (
+                              <th
+                                className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                                onClick={() => toggleSort("analyst_target_price")}
+                              >
+                                <div className="flex items-center justify-end">
+                                  Target <SortIcon column="analyst_target_price" />
+                                </div>
+                              </th>
+                            )}
+
+                            {visibleColumns.has("analyst_rating") && (
+                              <th
+                                className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                                onClick={() => toggleSort("analyst_rating")}
+                              >
+                                Rating <SortIcon column="analyst_rating" />
+                              </th>
+                            )}
+                            {visibleColumns.has("day_50_ma") && (
+                              <th
+                                className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                                onClick={() => toggleSort("day_50_ma")}
+                              >
+                                <div className="flex items-center justify-end">
+                                  SMA50 <SortIcon column="day_50_ma" />
+                                </div>
+                              </th>
+                            )}
+                            {visibleColumns.has("day_200_ma") && (
+                              <th
+                                className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                                onClick={() => toggleSort("day_200_ma")}
+                              >
+                                <div className="flex items-center justify-end">
+                                  SMA200 <SortIcon column="day_200_ma" />
+                                </div>
+                              </th>
+                            )}
+                            {visibleColumns.has("beta") && (
+                              <th
+                                className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                                onClick={() => toggleSort("beta")}
+                              >
+                                <div className="flex items-center justify-end">
+                                  Beta <SortIcon column="beta" />
+                                </div>
+                              </th>
+                            )}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800 relative">
+                          {rowsToRender.map((r, i) => {
+                            const isAccessible = i < accessLimit;
+                            const isPositive1d = (r.change ?? 0) >= 0;
+                            const isPositive5d = (r.change_percent ?? 0) >= 0;
+                            const isEven = i % 2 === 0;
+
+                            return (
+                              <tr
+                                key={`${r.code}-${i}`}
+                                className={`
+                              transition-all duration-150 group
+                              ${isAccessible
+                                    ? `${isEven
+                                      ? "bg-white dark:bg-slate-900"
+                                      : "bg-slate-50/50 dark:bg-slate-800/30"
+                                    } hover:bg-blue-50 dark:hover:bg-slate-700/50 cursor-pointer`
+                                    : "filter blur-sm select-none pointer-events-none opacity-50 bg-slate-100/30 dark:bg-slate-800/30"
+                                  }
+                            `}
+                                onClick={() => {
+                                  if (isAccessible && r.code) {
+                                    // Navigate to detail page or open modal
+                                    router.push(`/company/${r.code}`);
+                                  }
+                                }}
+                              >
+                                {visibleColumns.has("code") && (
+                                  <td className="px-4 py-3 font-mono text-sm font-semibold text-blue-600 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300">
+                                    {r.code || "—"}
+                                  </td>
+                                )}
+                                {visibleColumns.has("name") && (
+                                  <td className="px-4 py-3 text-slate-800 dark:text-slate-200 max-w-xs font-medium">
+                                    <Tooltip>
+                                      <TooltipTrigger className="text-left w-full truncate">
+                                        {r.name || "—"}
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p className="max-w-sm">{r.name}</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </td>
+                                )}
+                                {visibleColumns.has("exchange") && (
+                                  <td className="px-4 py-3 text-center">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                                      {r.exchange || "—"}
+                                    </span>
+                                  </td>
+                                )}
+                                {visibleColumns.has("adjusted_close") && (
+                                  <td className="px-4 py-3 text-right font-mono font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
+                                    {fmtUsd(r.adjusted_close)}
+                                  </td>
+                                )}
+                                {visibleColumns.has("market_cap") && (
+                                  <td className="px-4 py-3 text-right font-mono font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
+                                    {fmtCap(r.market_cap)}
+                                  </td>
+                                )}
+                                {visibleColumns.has("shares_outstanding") && (
+                                  <td className="px-4 py-3 text-right font-mono font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
+                                    {fmtCap(r.shares_outstanding)}
+                                  </td>
+                                )}
+                                {visibleColumns.has("shares_float") && (
+                                  <td className="px-4 py-3 text-right font-mono font-semibold text-slate-700 dark:text-slate-200 tabular-nums">
+                                    {fmtCap(r.shares_float)}
+                                  </td>
+                                )}
+                                {visibleColumns.has("dividend_yield") && (
+                                  <td className="px-4 py-3 text-right font-mono text-slate-600 dark:text-muted-foreground tabular-nums">
+                                    {r.dividend_yield != null
+                                      ? `${(r.dividend_yield * 100).toFixed(2)}%`
+                                      : "—"}
+                                  </td>
+                                )}
+                                {/* P/E Ratio */}
+                                {visibleColumns.has("pe_ratio") && (
+                                  <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 tabular-nums">
+                                    {r.pe_ratio != null
+                                      ? r.pe_ratio.toFixed(2)
+                                      : "—"}
+                                  </td>
+                                )}
+                                {/* Forward P/E */}
+                                {visibleColumns.has("forward_pe") && (
+                                  <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 tabular-nums">
+                                    {r.forward_pe != null
+                                      ? r.forward_pe.toFixed(2)
+                                      : "—"}
+                                  </td>
+                                )}
+                                {/* PEG */}
+                                {visibleColumns.has("peg_ratio") && (
+                                  <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 tabular-nums">
+                                    {r.peg_ratio != null ? r.peg_ratio.toFixed(2) : "—"}
+                                  </td>
+                                )}
+                                {/* P/B */}
+                                {visibleColumns.has("price_book_mrq") && (
+                                  <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                    {r.price_book_mrq != null ? r.price_book_mrq.toFixed(2) : "—"}
+                                  </td>
+                                )}
+                                {/* P/S */}
+                                {visibleColumns.has("price_sales_ttm") && (
+                                  <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                    {r.price_sales_ttm != null
+                                      ? r.price_sales_ttm.toFixed(2)
+                                      : "—"}
+                                  </td>
+                                )}
+                                {/* EV/EBITDA */}
+                                {visibleColumns.has("ev_ebitda") && (
+                                  <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                    {r.ev_ebitda != null
+                                      ? r.ev_ebitda.toFixed(2)
+                                      : "—"}
+                                  </td>
+                                )}
+                                {/* Enterprise Value */}
+                                {visibleColumns.has("enterprise_value") && (
+                                  <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                    {fmtCap(r.enterprise_value)}
+                                  </td>
+                                )}
+                                {/* EPS (TTM) / Diluted */}
+                                {visibleColumns.has("diluted_eps_ttm") && (
+                                  <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 tabular-nums">
+                                    {r.diluted_eps_ttm != null
+                                      ? `$${r.diluted_eps_ttm.toFixed(2)}`
+                                      : "—"}
+                                  </td>
+                                )}
+                                {/* Net Debt */}
+                                {visibleColumns.has("net_debt") && (
+                                  <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                    {fmtCap(r.net_debt)}
+                                  </td>
+                                )}
+                                {/* Payout */}
+                                {visibleColumns.has("payout_ratio") && (
+                                  <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                    {fmtPct(r.payout_ratio)}
+                                  </td>
+                                )}
+                                {/* Rev/Share */}
+                                {visibleColumns.has("revenue_per_share") && (
+                                  <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                    {fmtUsd(r.revenue_per_share)}
+                                  </td>
+                                )}
+                                {/* BV/Share */}
+                                {visibleColumns.has("book_value_per_share") && (
+                                  <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                    {fmtUsd(r.book_value_per_share)}
+                                  </td>
+                                )}
+                                {/* FCF */}
+                                {visibleColumns.has("free_cash_flow") && (
+                                  <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                    {fmtCap(r.free_cash_flow)}
+                                  </td>
+                                )}
+                                {/* OCF */}
+                                {visibleColumns.has("operating_cash_flow") && (
+                                  <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                    {fmtCap(r.operating_cash_flow)}
+                                  </td>
+                                )}
+                                {/* Rev Growth */}
+                                {visibleColumns.has("quarterly_revenue_growth_yoy") && (
+                                  <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                    {fmtPct(r.quarterly_revenue_growth_yoy)}
+                                  </td>
+                                )}
+                                {/* EPS Growth */}
+                                {visibleColumns.has("quarterly_earnings_growth_yoy") && (
+                                  <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                    {fmtPct(r.quarterly_earnings_growth_yoy)}
+                                  </td>
+                                )}
+                                {/* Target Price */}
+                                {visibleColumns.has("analyst_target_price") && (
+                                  <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                    {fmtUsd(r.analyst_target_price)}
+                                  </td>
+                                )}
+                                {/* Rating */}
+                                {visibleColumns.has("analyst_rating") && (
+                                  <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300">
+                                    {r.analyst_rating ? Number(r.analyst_rating).toFixed(2) : "—"}
+                                  </td>
+                                )}
+                                {/* SMA50 */}
+                                {visibleColumns.has("day_50_ma") && (
+                                  <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
+                                    {r.day_50_ma != null
+                                      ? `$${r.day_50_ma.toFixed(2)}`
+                                      : "—"}
+                                  </td>
+                                )}
+                                {/* SMA200 */}
+                                {visibleColumns.has("day_200_ma") && (
+                                  <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
+                                    {r.day_200_ma != null
+                                      ? `$${r.day_200_ma.toFixed(2)}`
+                                      : "—"}
+                                  </td>
+                                )}
+                                {/* Beta */}
+                                {visibleColumns.has("beta") && (
+                                  <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
+                                    {r.beta != null ? r.beta.toFixed(2) : "—"}
+                                  </td>
+                                )}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+
+                      {/* Glassmorphic Overlay for restricted results */}
+                      {!isPro && filteredRows.length > accessLimit && (
+                        <div className="absolute inset-x-0 bottom-0 z-20 flex flex-col justify-end pb-8 md:pb-12 items-center bg-linear-to-t from-slate-50 via-slate-50/90 to-transparent dark:from-slate-950 dark:via-slate-950/90 h-64 pointer-events-none">
+                          <div className="pointer-events-auto bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-700 p-6 md:p-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 max-w-sm w-full text-center mx-4 group relative overflow-hidden">
+                            <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+
+                            <Lock className="w-12 h-12 text-brand mx-auto mb-4 bg-brand/10 p-3 rounded-full" />
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+                              {session ? "Unlock All Results" : "Login to View More"}
+                            </h3>
+                            <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
+                              {session
+                                ? `Upgrade to Pro to see all ${filteredRows.length} matches and export data.`
+                                : "Create a free account to see more results."
+                              }
+                            </p>
+
+                            {session ? (
+                              <Link href="/pricing" className="block w-full">
+                                <Button className="w-full bg-brand hover:bg-brand/90 text-white font-medium h-11 shadow-lg shadow-brand/20">
+                                  Upgrade to Pro
+                                </Button>
+                              </Link>
+                            ) : (
+                              <Link href="/login" className="block w-full">
+                                <Button className="w-full bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 h-11">
+                                  Sign In / Register
+                                </Button>
+                              </Link>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Paywall Footer Message */}
+                    {showPaywall && filteredRows.length > 20 && (
+                      <div className="sticky bottom-0 bg-white dark:bg-slate-900 p-4 border-t border-slate-200 dark:border-slate-700">
+                        <div className="flex items-center justify-center gap-3 text-sm text-slate-600 dark:text-muted-foreground">
+                          <div className="h-px bg-slate-200 dark:bg-slate-700 flex-1 max-w-24" />
+                          <Shield className="w-4 h-4 text-amber-500" />
+                          <span>
+                            {visibleRestrictedCount} additional results hidden
+                          </span>
+                          <Shield className="w-4 h-4 text-amber-500" />
+                          <div className="h-px bg-slate-200 dark:bg-slate-700 flex-1 max-w-24" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Pagination Footer */}
+                {!loading && !error && filteredRows.length > 0 && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+                    <div className="text-sm text-slate-600 dark:text-muted-foreground flex items-center gap-2">
+                      <span>
+                        Showing{" "}
+                        <span className="font-semibold text-slate-900 dark:text-slate-100">
+                          {offset + 1}
+                        </span>{" "}
+                        to{" "}
+                        <span className="font-semibold text-slate-900 dark:text-slate-100">
+                          {Math.min(offset + limit, filteredRows.length)}
+                        </span>{" "}
+                        of{" "}
+                        <span className="font-semibold text-slate-900 dark:text-slate-100">
+                          {filteredRows.length}
+                        </span>{" "}
+                        results
+                      </span>
+                      {searchTerm && (
+                        <Badge
+                          variant="secondary"
+                          className="bg-blue-50 text-blue-700"
+                        >
+                          filtered
+                        </Badge>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={onPrev}
+                        disabled={offset <= 0}
+                        className="min-w-24"
+                      >
+                        <ChevronLeft className="w-4 h-4 mr-1" /> Previous
+                      </Button>
+
+                      <div className="h-6 w-px bg-slate-300 dark:bg-slate-600" />
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={onNext}
+                        disabled={filteredRows.length < limit}
+                        className="min-w-24"
+                      >
+                        Next <ChevronLeft className="w-4 h-4 ml-1 rotate-180" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Floating Export Button (Mobile) */}
+            <div className="fixed bottom-4 right-4 md:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="lg"
+                    className="rounded-full shadow-lg bg-slate-900 hover:bg-slate-800"
+                  >
+                    <Download className="w-5 h-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40">
+                  <DropdownMenuItem onClick={() => exportData("csv")}>
+                    Export CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => exportData("json")}>
+                    Export JSON
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
         </div>
       </div>
     </TooltipProvider>

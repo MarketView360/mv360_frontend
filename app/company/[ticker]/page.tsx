@@ -1,30 +1,18 @@
-// app/company/[ticker]/page.tsx
-import { notFound } from "next/navigation";
 import { Suspense } from "react";
-
-import { z } from "zod";
-
 import Link from "next/link";
+import { notFound } from "next/navigation";
+import { z } from "zod";
+import { Activity, Info } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-
 import { Progress } from "@/components/ui/progress";
-import { CompanyChartsSwitcher, type PriceHistoryPoint } from "@/components/company/CompanyChartsSwitcher";
-import { CompanyNavigation } from "@/components/company/CompanyNavigation";
-import { UsdValue } from "@/components/company/UsdValue";
-import { CompanyLogo } from "@/components/company/CompanyLogo";
-import { CompanyDescriptionModal } from "@/components/company/CompanyDescriptionModal";
-
-import { Activity, Info } from "lucide-react";
-import { PeerComparison } from "@/components/company/PeerComparison";
-import { NewsFeed, type NewsArticle } from "@/components/company/NewsFeed";
 import {
   Tooltip,
   TooltipContent,
@@ -32,7 +20,88 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-// Schemas for API validation
+import { CompanyChartsSwitcher, type PriceHistoryPoint } from "@/components/company/CompanyChartsSwitcher";
+import { CompanyDescriptionModal } from "@/components/company/CompanyDescriptionModal";
+import { CompanyLogo } from "@/components/company/CompanyLogo";
+import { CompanyNavigation } from "@/components/company/CompanyNavigation";
+import { FiftyTwoWeekRange } from "@/components/company/FiftyTwoWeekRange";
+import { NewsFeed, type NewsArticle } from "@/components/company/NewsFeed";
+import { PeerComparison } from "@/components/company/PeerComparison";
+import { UsdValue } from "@/components/company/UsdValue";
+
+// --- Types & Interfaces ---
+
+interface RatioItem {
+  label: string;
+  value: string;
+}
+
+interface ValuationMetric {
+  label: string;
+  value: number | null;
+}
+
+interface ValuationHistoryPoint {
+  date: string;
+  price: number | null;
+  pe_ratio: number | null;
+  forward_pe: number | null;
+}
+
+interface CompanyViewModel {
+  ticker: string;
+  name: string;
+  exchange: string | null;
+  sector: string | null;
+  industry: string | null;
+  country: string | null;
+  currency: string | null;
+  description: string | null;
+  ipoDate: string | null;
+  employees: number | null;
+  website: string | null;
+  price: number | null;
+  changePercent: number | null;
+  week52High: number | null;
+  week52Low: number | null;
+  priceHistory: PriceHistoryPoint[];
+  ratios: RatioItem[];
+  valuationMetrics: ValuationMetric[];
+  valuationHistory: ValuationHistoryPoint[];
+  revenueTtm: number | null;
+  earningsTtm: number | null;
+  netMargin: number | null;
+  opm: number | null;
+  analystData: {
+    rating: number | null;
+    targetPrice: number | null;
+    strongBuy: number;
+    buy: number;
+    hold: number;
+    sell: number;
+    strongSell: number;
+  } | null;
+}
+
+interface DetailItemProps {
+  label: string;
+  value?: string | number | null;
+  className?: string;
+  children?: React.ReactNode;
+}
+
+interface AnalystData {
+  rating: number | null;
+  targetPrice: number | null;
+  strongBuy: number;
+  buy: number;
+  hold: number;
+  sell: number;
+  strongSell: number;
+}
+
+// --- Zod Schemas ---
+
 const CompanySchema = z.object({
   id: z.union([z.string(), z.number()]),
   ticker: z.string(),
@@ -129,7 +198,8 @@ const ValuationHistoryPointSchema = z.object({
 
 const ValuationHistoryResponseSchema = z.array(ValuationHistoryPointSchema);
 
-// API Service Layer
+// --- API Service Layer ---
+
 const api = {
   baseUrl: process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000",
 
@@ -166,6 +236,10 @@ const api = {
   },
 };
 
+type CompanyResponse = Awaited<ReturnType<typeof api.fetchCompany>>;
+type PricesResponse = Awaited<ReturnType<typeof api.fetchPrices>>;
+type Metrics = z.infer<typeof MetricsSchema> | null;
+
 async function fetchValuationHistory(ticker: string) {
   const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
   const res = await fetch(
@@ -187,7 +261,182 @@ async function fetchValuationHistory(ticker: string) {
   }
 }
 
-// Loading Components
+async function fetchNews(ticker: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+  const params = new URLSearchParams({ ticker: ticker.toUpperCase(), limit: "10" });
+
+  try {
+    const res = await fetch(`${baseUrl}/api/news?${params.toString()}`, {
+      next: { revalidate: 900 },
+    });
+    if (!res.ok) {
+      console.error("Failed to fetch news from backend", res.status, res.statusText);
+      return [] as NewsArticle[];
+    }
+    const data = (await res.json()) as NewsArticle[];
+    return data;
+  } catch (error) {
+    console.error("Error fetching news from backend", error);
+    return [] as NewsArticle[];
+  }
+}
+
+async function fetchPeers(ticker: string, exchange: string | null) {
+  const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+  const params = new URLSearchParams();
+  if (exchange) {
+    params.set("exchange", exchange);
+  }
+
+  try {
+    const res = await fetch(
+      `${baseUrl}/api/company/${encodeURIComponent(ticker)}/peers?${params.toString()}`,
+      { next: { revalidate: 900 } }
+    );
+    if (res.ok) return await res.json();
+    return [];
+  } catch {
+    return [];
+  }
+}
+
+// --- Transformations & Helpers ---
+
+const formatMetrics = {
+  marketCap: (n: number | null) => {
+    if (n == null) return "—";
+    const abs = Math.abs(n);
+    if (abs >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+    if (abs >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+    if (abs >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
+    return `$${n.toLocaleString()}`;
+  },
+  number: (n: number | null, decimals = 2) => (n == null ? "—" : n.toFixed(decimals)),
+  percentage: (n: number | null, decimals = 2) =>
+    n == null ? "—" : `${(n * 100).toFixed(decimals)}%`,
+};
+
+function buildRatios(metrics: Metrics): RatioItem[] {
+  if (!metrics) return [];
+
+  // Handle both old and new API field names with fallbacks
+  const m = metrics as Record<string, unknown>;
+  const items: RatioItem[] = [
+    { label: "Market Cap", value: formatMetrics.marketCap((m.market_capitalization ?? m.market_cap) as number | null) },
+    { label: "P/E", value: formatMetrics.number((m.pe_ratio ?? m.trailing_pe) as number | null) },
+    { label: "Forward P/E", value: formatMetrics.number(m.forward_pe as number | null) },
+    { label: "P/S", value: formatMetrics.number((m.price_to_sales ?? m.price_sales_ttm) as number | null) },
+    { label: "P/B", value: formatMetrics.number((m.pb ?? m.price_book_mrq) as number | null) },
+    { label: "Dividend Yield", value: formatMetrics.percentage(m.dividend_yield as number | null) },
+    { label: "ROE", value: formatMetrics.percentage((m.roe ?? m.return_on_equity_ttm) as number | null) },
+    { label: "ROA", value: formatMetrics.percentage((m.roa ?? m.return_on_assets_ttm) as number | null) },
+    { label: "Operating Margin", value: formatMetrics.percentage((m.opm ?? m.operating_margin ?? m.operating_margin_ttm) as number | null) },
+    { label: "Net Margin", value: formatMetrics.percentage((m.net_margin ?? m.profit_margin) as number | null) },
+    { label: "Beta", value: formatMetrics.number(m.beta as number | null) },
+    { label: "Current Ratio", value: formatMetrics.number(m.current_ratio as number | null) },
+    { label: "Quick Ratio", value: formatMetrics.number(m.quick_ratio as number | null) },
+    { label: "Debt/Equity", value: formatMetrics.number(m.debt_to_equity as number | null) },
+  ];
+
+  return items;
+}
+
+function buildValuationMetrics(metrics: Metrics): ValuationMetric[] {
+  if (!metrics) return [];
+
+  const m = metrics as Record<string, unknown>;
+  return [
+    { label: "P/E", value: (m.pe_ratio ?? m.trailing_pe ?? null) as number | null },
+    { label: "Forward P/E", value: (m.forward_pe ?? null) as number | null },
+    { label: "P/S", value: (m.price_to_sales ?? m.price_sales_ttm ?? null) as number | null },
+    { label: "P/B", value: (m.pb ?? m.price_book_mrq ?? null) as number | null },
+    { label: "EV/EBITDA", value: (m.ev_ebitda ?? null) as number | null },
+  ];
+}
+
+function buildAnalystData(metrics: Metrics) {
+  if (!metrics) return null;
+
+  const m = metrics as Record<string, unknown>;
+  const strongBuy = (m.analyst_strong_buy as number | null) ?? 0;
+  const buy = (m.analyst_buy as number | null) ?? 0;
+  const hold = (m.analyst_hold as number | null) ?? 0;
+  const sell = (m.analyst_sell as number | null) ?? 0;
+  const strongSell = (m.analyst_strong_sell as number | null) ?? 0;
+
+  const rating = (m.analyst_rating as number | null) ?? null;
+  const targetPrice = (m.analyst_target_price as number | null) ?? null;
+
+  if (
+    strongBuy + buy + hold + sell + strongSell === 0 &&
+    rating == null &&
+    targetPrice == null
+  ) {
+    return null;
+  }
+
+  return {
+    rating,
+    targetPrice,
+    strongBuy,
+    buy,
+    hold,
+    sell,
+    strongSell,
+  };
+}
+
+function transformData(
+  companyData: CompanyResponse,
+  pricesData: PricesResponse,
+  valuationHistory: ValuationHistoryPoint[],
+) {
+  const company = companyData!.company!;
+  const metrics = companyData!.metrics;
+  const prices = pricesData?.prices || [];
+
+  const priceHistory: PriceHistoryPoint[] = prices.map((p) => ({
+    date: p.date,
+    price: p.adj_close ?? p.close ?? 0,
+    open: p.open ?? null,
+    high: p.high ?? null,
+    low: p.low ?? null,
+    close: p.close ?? null,
+    volume: p.volume ?? null,
+  }));
+
+  const latestPrice = priceHistory[priceHistory.length - 1]?.price ?? null;
+
+  return {
+    ticker: company.ticker,
+    name: company.name,
+    exchange: company.exchange,
+    sector: company.sector,
+    industry: company.industry,
+    country: company.country,
+    currency: company.currency,
+    description: company.description,
+    ipoDate: company.ipo_date,
+    employees: company.employees,
+    website: company.website,
+    price: latestPrice ?? metrics?.price ?? null,
+    changePercent: metrics?.refund_1d_p ?? null,
+    week52High: metrics?.week_52_high ?? null,
+    week52Low: metrics?.week_52_low ?? null,
+    priceHistory,
+    ratios: buildRatios(metrics),
+    valuationMetrics: buildValuationMetrics(metrics),
+    valuationHistory,
+    revenueTtm: metrics?.revenue_ttm ?? null,
+    earningsTtm: metrics?.earnings_ttm ?? null,
+    netMargin: metrics?.net_margin ?? metrics?.profit_margin ?? null,
+    opm: metrics?.opm ?? metrics?.operating_margin ?? metrics?.operating_margin_ttm ?? null,
+    analystData: buildAnalystData(metrics),
+  } as CompanyViewModel;
+}
+
+// --- Components ---
+
 function PageSkeleton() {
   return (
     <div className="min-h-full bg-slate-50 dark:bg-slate-950">
@@ -210,7 +459,6 @@ function Skeleton({ className }: { className: string }) {
   return <div className={`animate-pulse rounded-lg bg-slate-200 dark:bg-slate-700 ${className}`} />;
 }
 
-// Main Page Component
 export default async function CompanyPage({
   params,
 }: {
@@ -225,6 +473,7 @@ export default async function CompanyPage({
   );
 }
 
+// Separate component for async data fetching
 async function CompanyContent({ ticker }: { ticker: string }) {
   try {
     const [companyData, pricesData, valuationHistory] = await Promise.all([
@@ -241,7 +490,6 @@ async function CompanyContent({ ticker }: { ticker: string }) {
 
     return (
       <div className="min-h-full bg-slate-50 dark:bg-slate-950 pb-20">
-        {/* Sticky Header */}
         <PageHeader ticker={ticker} />
 
         <div className="mx-auto max-w-[1600px] py-6 px-4 md:px-8 lg:px-12 space-y-8">
@@ -303,195 +551,69 @@ async function CompanyContent({ ticker }: { ticker: string }) {
   }
 }
 
-// Helper types and transformation
-type CompanyResponse = Awaited<ReturnType<typeof api.fetchCompany>>;
-type PricesResponse = Awaited<ReturnType<typeof api.fetchPrices>>;
-type Metrics = z.infer<typeof MetricsSchema> | null;
+function CompanyHero({ data }: { data: CompanyViewModel }) {
+  const isPositive = (data.changePercent ?? 0) >= 0;
 
-interface RatioItem {
-  label: string;
-  value: string;
+  return (
+    <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-lg">
+      <div className="absolute inset-x-0 top-0 h-1 bg-brand" />
+      <div className="flex flex-col lg:flex-row gap-6 lg:items-center justify-between">
+        <div className="flex items-start gap-4">
+          <CompanyLogo ticker={data.ticker} name={data.name} />
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+              {data.name}
+            </h1>
+            <div className="flex items-center gap-3 mt-2 flex-wrap">
+              <Badge variant="secondary" className="font-semibold">
+                {data.ticker}
+              </Badge>
+              <span className="text-sm text-muted-foreground">{data.exchange ?? "US"}</span>
+              <span className="text-sm text-muted-foreground/60">•</span>
+              <span className="text-sm text-muted-foreground">{data.sector ?? "Sector"}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col md:flex-row md:items-end gap-6">
+          {/* 52-Week Range Visualization */}
+          {data.week52High && data.week52Low && data.price && (
+            <FiftyTwoWeekRange
+              high={data.week52High}
+              low={data.week52Low}
+              current={data.price}
+              className="hidden md:block" // Hide on small screens if too cramped
+            />
+          )}
+
+          <div className="flex flex-col items-end">
+            <div className="flex items-baseline gap-3">
+              <UsdValue
+                amount={data.price}
+                className="text-4xl font-bold text-slate-900 dark:text-white"
+              />
+
+              <Badge
+                variant="outline"
+                className={`text-lg font-semibold ${isPositive
+                  ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-400 dark:border-green-900"
+                  : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900"
+                  }`}
+              >
+                {isPositive ? "+" : ""}
+                {data.changePercent != null
+                  ? `${data.changePercent.toFixed(2)}%`
+                  : "—"}
+              </Badge>
+            </div>
+            <span className="text-xs text-muted-foreground mt-1">Market Close</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
-interface ValuationMetric {
-  label: string;
-  value: number | null;
-}
-
-interface ValuationHistoryPoint {
-  date: string;
-  price: number | null;
-  pe_ratio: number | null;
-  forward_pe: number | null;
-}
-
-interface CompanyViewModel {
-  ticker: string;
-  name: string;
-  exchange: string | null;
-  sector: string | null;
-  industry: string | null;
-  country: string | null;
-  currency: string | null;
-  description: string | null;
-  ipoDate: string | null;
-  employees: number | null;
-  website: string | null;
-  price: number | null;
-  changePercent: number | null;
-  priceHistory: PriceHistoryPoint[];
-  ratios: RatioItem[];
-  valuationMetrics: ValuationMetric[];
-  valuationHistory: ValuationHistoryPoint[];
-  revenueTtm: number | null;
-  earningsTtm: number | null;
-  netMargin: number | null;
-  opm: number | null;
-  analystData: {
-    rating: number | null;
-    targetPrice: number | null;
-    strongBuy: number;
-    buy: number;
-    hold: number;
-    sell: number;
-    strongSell: number;
-  } | null;
-}
-
-function transformData(
-  companyData: CompanyResponse,
-  pricesData: PricesResponse,
-  valuationHistory: ValuationHistoryPoint[],
-) {
-  const company = companyData!.company!;
-  const metrics = companyData!.metrics;
-  const prices = pricesData?.prices || [];
-
-  const priceHistory: PriceHistoryPoint[] = prices.map((p) => ({
-    date: p.date,
-    price: p.adj_close ?? p.close ?? 0,
-    open: p.open ?? null,
-    high: p.high ?? null,
-    low: p.low ?? null,
-    close: p.close ?? null,
-    volume: p.volume ?? null,
-  }));
-
-  const latestPrice = priceHistory[priceHistory.length - 1]?.price ?? null;
-
-  return {
-    ticker: company.ticker,
-    name: company.name,
-    exchange: company.exchange,
-    sector: company.sector,
-    industry: company.industry,
-    country: company.country,
-    currency: company.currency,
-    description: company.description,
-    ipoDate: company.ipo_date,
-    employees: company.employees,
-    website: company.website,
-    price: latestPrice ?? metrics?.price ?? null,
-    changePercent: metrics?.refund_1d_p ?? null,
-    priceHistory,
-    ratios: buildRatios(metrics),
-    valuationMetrics: buildValuationMetrics(metrics),
-    valuationHistory,
-    revenueTtm: metrics?.revenue_ttm ?? null,
-    earningsTtm: metrics?.earnings_ttm ?? null,
-    netMargin: metrics?.net_margin ?? metrics?.profit_margin ?? null,
-    opm: metrics?.opm ?? metrics?.operating_margin ?? metrics?.operating_margin_ttm ?? null,
-    analystData: buildAnalystData(metrics),
-  } as CompanyViewModel;
-}
-
-function buildRatios(metrics: Metrics): RatioItem[] {
-  if (!metrics) return [];
-
-  // Handle both old and new API field names with fallbacks
-  const m = metrics as Record<string, unknown>;
-  const items: RatioItem[] = [
-    { label: "Market Cap", value: formatMetrics.marketCap((m.market_capitalization ?? m.market_cap) as number | null) },
-    { label: "P/E", value: formatMetrics.number((m.pe_ratio ?? m.trailing_pe) as number | null) },
-    { label: "Forward P/E", value: formatMetrics.number(m.forward_pe as number | null) },
-    { label: "P/S", value: formatMetrics.number((m.price_to_sales ?? m.price_sales_ttm) as number | null) },
-    { label: "P/B", value: formatMetrics.number((m.pb ?? m.price_book_mrq) as number | null) },
-    { label: "Dividend Yield", value: formatMetrics.percentage(m.dividend_yield as number | null) },
-    { label: "ROE", value: formatMetrics.percentage((m.roe ?? m.return_on_equity_ttm) as number | null) },
-    { label: "ROA", value: formatMetrics.percentage((m.roa ?? m.return_on_assets_ttm) as number | null) },
-    { label: "Operating Margin", value: formatMetrics.percentage((m.opm ?? m.operating_margin ?? m.operating_margin_ttm) as number | null) },
-    { label: "Net Margin", value: formatMetrics.percentage((m.net_margin ?? m.profit_margin) as number | null) },
-    { label: "Beta", value: formatMetrics.number(m.beta as number | null) },
-    { label: "Current Ratio", value: formatMetrics.number(m.current_ratio as number | null) },
-    { label: "Quick Ratio", value: formatMetrics.number(m.quick_ratio as number | null) },
-    { label: "Debt/Equity", value: formatMetrics.number(m.debt_to_equity as number | null) },
-  ];
-
-  return items;
-}
-
-function buildValuationMetrics(metrics: Metrics): ValuationMetric[] {
-  if (!metrics) return [];
-
-  // Handle both old and new API field names with fallbacks
-  const m = metrics as Record<string, unknown>;
-  return [
-    { label: "P/E", value: (m.pe_ratio ?? m.trailing_pe ?? null) as number | null },
-    { label: "Forward P/E", value: (m.forward_pe ?? null) as number | null },
-    { label: "P/S", value: (m.price_to_sales ?? m.price_sales_ttm ?? null) as number | null },
-    { label: "P/B", value: (m.pb ?? m.price_book_mrq ?? null) as number | null },
-    { label: "EV/EBITDA", value: (m.ev_ebitda ?? null) as number | null },
-  ];
-}
-
-function buildAnalystData(metrics: Metrics) {
-  if (!metrics) return null;
-  
-  const m = metrics as Record<string, unknown>;
-  const strongBuy = (m.analyst_strong_buy as number | null) ?? 0;
-  const buy = (m.analyst_buy as number | null) ?? 0;
-  const hold = (m.analyst_hold as number | null) ?? 0;
-  const sell = (m.analyst_sell as number | null) ?? 0;
-  const strongSell = (m.analyst_strong_sell as number | null) ?? 0;
-  
-  const rating = (m.analyst_rating as number | null) ?? null;
-  const targetPrice = (m.analyst_target_price as number | null) ?? null;
-
-  // Only hide the card if *nothing* is available
-  if (
-    strongBuy + buy + hold + sell + strongSell === 0 &&
-    rating == null &&
-    targetPrice == null
-  ) {
-    return null;
-  }
-  
-  return {
-    rating,
-    targetPrice,
-    strongBuy,
-    buy,
-    hold,
-    sell,
-    strongSell,
-  };
-}
-
-const formatMetrics = {
-  marketCap: (n: number | null) => {
-    if (n == null) return "—";
-    const abs = Math.abs(n);
-    if (abs >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
-    if (abs >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
-    if (abs >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
-    return `$${n.toLocaleString()}`;
-  },
-  number: (n: number | null, decimals = 2) => (n == null ? "—" : n.toFixed(decimals)),
-  percentage: (n: number | null, decimals = 2) =>
-    n == null ? "—" : `${(n * 100).toFixed(decimals)}%`,
-};
-
-// Component: Page Header
 function PageHeader({ ticker }: { ticker: string }) {
   return (
     <div className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-slate-200 dark:border-slate-800">
@@ -505,7 +627,6 @@ function PageHeader({ ticker }: { ticker: string }) {
   );
 }
 
-// Component: Breadcrumb
 function Breadcrumb({ ticker }: { ticker: string }) {
   const items = [
     { label: "Home", href: "/" },
@@ -536,64 +657,10 @@ function Breadcrumb({ ticker }: { ticker: string }) {
   );
 }
 
-// Component: Page Actions (placeholder for now)
 function PageActions() {
   return <div />;
 }
 
-// Component: Company Hero
-function CompanyHero({ data }: { data: CompanyViewModel }) {
-  const isPositive = (data.changePercent ?? 0) >= 0;
-
-  return (
-    <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-lg">
-      <div className="absolute inset-x-0 top-0 h-1 bg-brand" />
-      <div className="flex flex-col lg:flex-row gap-6 lg:items-center justify-between">
-        <div className="flex items-start gap-4">
-          <CompanyLogo ticker={data.ticker} name={data.name} />
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
-              {data.name}
-            </h1>
-            <div className="flex items-center gap-3 mt-2 flex-wrap">
-              <Badge variant="secondary" className="font-semibold">
-                {data.ticker}
-              </Badge>
-              <span className="text-sm text-muted-foreground">{data.exchange ?? "US"}</span>
-              <span className="text-sm text-muted-foreground/60">•</span>
-              <span className="text-sm text-muted-foreground">{data.sector ?? "Sector"}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-col items-end">
-          <div className="flex items-baseline gap-3">
-            <UsdValue
-              amount={data.price}
-              className="text-4xl font-bold text-slate-900 dark:text-white"
-            />
-
-            <Badge
-              variant="outline"
-              className={`text-lg font-semibold ${isPositive
-                ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-400 dark:border-green-900"
-                : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900"
-                }`}
-            >
-              {isPositive ? "+" : ""}
-              {data.changePercent != null
-                ? `${data.changePercent.toFixed(2)}%`
-                : "—"}
-            </Badge>
-          </div>
-          <span className="text-xs text-muted-foreground mt-1">Market Close</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Component: Key Metrics Card
 function KeyMetricsCard({ metrics }: { metrics: RatioItem[] }) {
   return (
     <Card>
@@ -624,7 +691,6 @@ function MetricItem({ label, value }: RatioItem) {
   );
 }
 
-// Component: Company Profile
 function CompanyProfile({ data }: { data: CompanyViewModel }) {
   return (
     <Card>
@@ -652,13 +718,6 @@ function CompanyProfile({ data }: { data: CompanyViewModel }) {
   );
 }
 
-interface DetailItemProps {
-  label: string;
-  value?: string | number | null;
-  className?: string;
-  children?: React.ReactNode;
-}
-
 function DetailItem({ label, value, className, children }: DetailItemProps) {
   const displayValue = value === null || value === undefined || value === "" ? "Not available" : value;
   return (
@@ -669,17 +728,6 @@ function DetailItem({ label, value, className, children }: DetailItemProps) {
       </div>
     </div>
   );
-}
-
-// Component: Analyst Ratings
-interface AnalystData {
-  rating: number | null;
-  targetPrice: number | null;
-  strongBuy: number;
-  buy: number;
-  hold: number;
-  sell: number;
-  strongSell: number;
 }
 
 function AnalystRatings({ metrics }: { metrics: AnalystData | null }) {
@@ -699,15 +747,11 @@ function AnalystRatings({ metrics }: { metrics: AnalystData | null }) {
   const total = metrics.strongBuy + metrics.buy + metrics.hold + metrics.sell + metrics.strongSell;
   const buyShare = total > 0 ? (metrics.strongBuy + metrics.buy) / total : 0;
 
-  // Use the numeric rating (0-5) to drive the bar when available,
-  // so the visual matches the "Strong Buy / Buy / Hold / Sell" label.
-  // Fallback to the share of Buy+Strong Buy if rating is missing.
   const barPercent =
     metrics.rating != null
       ? Math.min(Math.max((metrics.rating / 5) * 100, 0), 100)
       : buyShare * 100;
 
-  // Derive consensus from rating score
   const getConsensus = (rating: number | null) => {
     if (rating == null) return "N/A";
     if (rating >= 4) return "Strong Buy";
@@ -744,13 +788,12 @@ function AnalystRatings({ metrics }: { metrics: AnalystData | null }) {
             </div>
             {metrics.targetPrice && (
               <div className="text-sm text-muted-foreground">
-                Target: <span className="font-semibold text-slate-900 dark:text-white">${metrics.targetPrice.toFixed(2)}</span>
+                Target: <span className="font-semibold text-slate-500 dark:text-white">${metrics.targetPrice.toFixed(2)}</span>
               </div>
             )}
           </div>
           <Progress value={barPercent} className="h-2" />
           <div className="grid grid-cols-5 gap-1 text-center text-xs">
-            {/* Most bearish on the left, most bullish on the right */}
             <div>
               <div className="font-semibold text-red-600">{metrics.strongSell}</div>
               <div className="text-muted-foreground">Strong Sell</div>
@@ -778,46 +821,6 @@ function AnalystRatings({ metrics }: { metrics: AnalystData | null }) {
   );
 }
 
-async function fetchNews(ticker: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
-  const params = new URLSearchParams({ ticker: ticker.toUpperCase(), limit: "10" });
-
-  try {
-    const res = await fetch(`${baseUrl}/api/news?${params.toString()}`, {
-      next: { revalidate: 900 },
-    });
-    if (!res.ok) {
-      console.error("Failed to fetch news from backend", res.status, res.statusText);
-      return [] as NewsArticle[];
-    }
-    const data = (await res.json()) as NewsArticle[];
-    return data;
-  } catch (error) {
-    console.error("Error fetching news from backend", error);
-    return [] as NewsArticle[];
-  }
-}
-
-async function fetchPeers(ticker: string, exchange: string | null) {
-  const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
-  const params = new URLSearchParams();
-  if (exchange) {
-    params.set("exchange", exchange);
-  }
-
-  try {
-    const res = await fetch(
-      `${baseUrl}/api/company/${encodeURIComponent(ticker)}/peers?${params.toString()}`,
-      { next: { revalidate: 900 } }
-    );
-    if (res.ok) return await res.json();
-    return [];
-  } catch {
-    return [];
-  }
-}
-
-// Error Boundary
 function CompanyError({ error }: { error: Error }) {
   return (
     <div className="min-h-screen flex items-center justify-center">
@@ -833,7 +836,6 @@ function CompanyError({ error }: { error: Error }) {
   );
 }
 
-// Add error boundary wrapper
 export function ErrorBoundary({ error }: { error: Error }) {
   return <CompanyError error={error} />;
 }

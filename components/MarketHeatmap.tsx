@@ -96,32 +96,41 @@ const BACKEND_URL =
   "http://localhost:4000";
 
 const getColor = (change: number) => {
-  if (change >= 3) return "#059669"; // emerald-600
-  if (change >= 1) return "#10b981"; // emerald-500
-  if (change > 0) return "#34d399"; // emerald-400
-  if (change === 0) return "#94a3b8"; // slate-400
-  if (change <= -3) return "#e11d48"; // rose-600
-  if (change <= -1) return "#f43f5e"; // rose-500
-  return "#fb7185"; // rose-400
+  // Exact TradingView Heatmap Colors
+  if (change >= 3.0) return "#00a96eff"; // Bright Green (Strong buy/gain)
+  if (change >= 0.1) return "#00897bff"; // Standard Green
+  if (change > -0.1 && change < 0.1) return "#434651ff"; // Neutral Dark Grey
+  if (change <= -3.0) return "#d50000ff"; // Bright Red (Strong sell/loss)
+  if (change <= -0.1) return "#f44336ff"; // Standard Red
+  return "#434651ff"; // Fallback Neutral
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     const isPositive = data.change >= 0;
+    const isNeutral = Math.abs(data.change) < 0.1;
+
+    let colorClass = isPositive ? "text-[#00a96e]" : "text-[#f44336]";
+    if (isNeutral) colorClass = "text-slate-400";
+
     return (
-      <div className="bg-slate-900 border border-slate-800 p-3 rounded-lg shadow-xl text-white min-w-[160px]">
-        <div className="flex justify-between items-center mb-1">
-          <span className="font-bold text-lg">{data.ticker}</span>
-          <span className={cn("text-sm font-bold", isPositive ? "text-emerald-400" : "text-rose-400")}>
+      <div className="bg-[#131722] border border-[#2a2e39] p-3 rounded-none shadow-2xl text-white min-w-[180px] z-50">
+        <div className="flex justify-between items-start mb-2">
+          <div>
+            <span className="font-bold text-lg block">{data.ticker}</span>
+            <span className="text-xs text-slate-400 capitalize">{data.name?.toLowerCase()}</span>
+          </div>
+          <span className={cn("text-base font-bold font-mono", colorClass)}>
             {isPositive ? "+" : ""}{data.change.toFixed(2)}%
           </span>
         </div>
-        <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-2">{data.sector}</div>
-        <div className="space-y-1 pt-2 border-t border-slate-800">
-          <div className="flex justify-between text-xs">
-            <span className="text-slate-500">Market Cap</span>
-            <span className="font-medium">
+        <div className="text-[11px] bg-[#2a2e39] text-[#b2b5be] px-2 py-0.5 rounded-sm w-fit mb-2">{data.sector}</div>
+        <div className="pt-2 border-t border-[#2a2e39]">
+          <div className="flex justify-between text-xs text-[#b2b5be]">
+            <span>Market Cap</span>
+            <span className="font-mono">
               {data.size >= 1e12
                 ? `$${(data.size / 1e12).toFixed(2)}T`
                 : data.size >= 1e9
@@ -136,86 +145,102 @@ const CustomTooltip = ({ active, payload }: any) => {
   return null;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const CustomTreemapCell = (props: any) => {
-  const { x, y, width, height, ticker, change, root, name, sector } = props;
+  const { x, y, width, height, ticker, change, name } = props;
 
-  // Don't render if too small
-  if (width < 20 || height < 20) return null;
+  // TradingView Style Constants
+  const GAP = 1; // Gap between cells
+
+  // Adjusted coordinates for gap
+  const padX = x + GAP;
+  const padY = y + GAP;
+  const padWidth = width - GAP * 2;
+  const padHeight = height - GAP * 2;
 
   const isSectorLabel = childrenCount(props) > 0;
 
   if (isSectorLabel) {
+    // Parent/Sector Node
     return (
       <g>
         <rect
-          x={x}
-          y={y}
-          width={width}
-          height={height}
+          x={padX}
+          y={padY}
+          width={padWidth}
+          height={padHeight}
           style={{
             fill: 'transparent',
-            stroke: 'rgba(255,255,255,0.1)',
-            strokeWidth: 1,
+            stroke: '#000000', // Deep black visual separation for sectors
+            strokeWidth: 4, // Thicker separation between groups
           }}
         />
-        {width > 60 && height > 20 && (
-          <text
-            x={x + 4}
-            y={y + 14}
-            fill="currentColor"
-            className="text-[10px] font-bold uppercase tracking-wider opacity-40 pointer-events-none text-slate-500 dark:text-slate-400"
-          >
-            {name}
-          </text>
+        {/* TradingView displays sector labels as headers or floating text. 
+            We'll use a floating label style in the top-left if space permits */}
+        {padWidth > 80 && padHeight > 30 && (
+          <foreignObject x={padX} y={padY} width={padWidth} height={padHeight} className="pointer-events-none overflow-visible">
+            <div className="p-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500/50 block truncate ml-1 mt-1">
+                {name}
+              </span>
+            </div>
+          </foreignObject>
         )}
       </g>
     );
   }
 
+  // Leaf/Stock Node
+  if (width < 10 || height < 10) return null;
+
+  // Font sizing - TradingView scales text dynamically but keeps it legible
+  const fontSizeTicker = Math.min(Math.max(width / 5, 10), Math.max(height / 4, 10), 24);
+  const fontSizeChange = Math.max(fontSizeTicker * 0.7, 10);
+
+  const showTicker = width > 30 && height > 20;
+  const showChange = width > 40 && height > 35;
+
   return (
     <g
-      className="cursor-pointer transition-all hover:brightness-110"
+      className="cursor-pointer hover:opacity-90 transition-opacity group"
       onClick={() => {
         if (props.onClick) props.onClick(ticker);
       }}
     >
       <rect
-        x={x}
-        y={y}
-        width={width}
-        height={height}
-        style={{
-          fill: getColor(change),
-          stroke: 'rgba(0,0,0,0.2)',
-          strokeWidth: 1,
-        }}
+        x={padX}
+        y={padY}
+        width={padWidth}
+        height={padHeight}
+        fill={getColor(change)}
       />
-      {width > 35 && height > 35 && (
+
+      {showTicker && (
         <>
           <text
-            x={x + width / 2}
-            y={y + height / 2 - (height > 50 ? 6 : 0)}
+            x={padX + padWidth / 2}
+            y={padY + padHeight / 2 - (showChange ? fontSizeChange * 0.6 : 0)}
             textAnchor="middle"
-            fill="#fff"
-            className={cn(
-              "font-bold pointer-events-none",
-              width > 60 ? "text-sm" : "text-[10px]"
-            )}
+            dominantBaseline="middle"
+            fill="#ffffff"
+            fontWeight="700"
+            fontSize={fontSizeTicker}
+            className="pointer-events-none drop-shadow-md select-none font-sans"
           >
             {ticker}
           </text>
-          {height > 50 && (
+          {showChange && (
             <text
-              x={x + width / 2}
-              y={y + height / 2 + 12}
+              x={padX + padWidth / 2}
+              y={padY + padHeight / 2 + fontSizeTicker * 0.7}
               textAnchor="middle"
-              fill="#fff"
-              className={cn(
-                "font-medium pointer-events-none",
-                width > 60 ? "text-xs" : "text-[8px]"
-              )}
+              dominantBaseline="middle"
+              fill="#ffffff"
+              fontWeight="500"
+              fontSize={fontSizeChange}
+              className="pointer-events-none drop-shadow-md select-none font-sans"
             >
-              {change > 0 ? "+" : ""}{change.toFixed(1)}%
+              {change > 0 ? "+" : ""}{change.toFixed(2)}%
             </text>
           )}
         </>
@@ -224,6 +249,7 @@ const CustomTreemapCell = (props: any) => {
   );
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const childrenCount = (props: any) => {
   return props.children ? props.children.length : 0;
 };
@@ -349,7 +375,7 @@ export default function MarketHeatmap({ sector, refreshToken }: MarketHeatmapPro
         if (!filtered.length) filtered = rows;
 
         return buildSectorsFromRows(filtered);
-      } catch (e) {
+      } catch {
         return null;
       }
     };
@@ -390,7 +416,7 @@ export default function MarketHeatmap({ sector, refreshToken }: MarketHeatmapPro
           setMarketData(fallback);
           setError("Showing a curated set of large caps while full market data is unavailable.");
         }
-      } catch (e) {
+      } catch {
         const fallback = await fetchFallbackData();
         setMarketData(fallback);
         setError("Unable to load full market universe. Showing a curated fallback heatmap instead.");
@@ -462,7 +488,7 @@ export default function MarketHeatmap({ sector, refreshToken }: MarketHeatmapPro
           <div className="w-full h-full">
             <ResponsiveContainer width="100%" height="100%">
               <Treemap
-                data={marketData.children as any}
+                data={marketData.children as any} // eslint-disable-line @typescript-eslint/no-explicit-any
                 dataKey="size"
                 aspectRatio={4 / 3}
                 stroke="#1e293b"

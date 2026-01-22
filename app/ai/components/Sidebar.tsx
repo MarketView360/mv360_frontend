@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState, useRef, useEffect } from "react";
-import { Plus, MessageSquare, History, PanelLeftClose, Settings, Zap, Trash2, Loader2, Pencil, MoreHorizontal, Check, X, AlertTriangle } from "lucide-react";
+import { Plus, MessageSquare, History, PanelLeftClose, Settings, Zap, Trash2, Loader2, Pencil, MoreHorizontal, Check, X, AlertTriangle, Search, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/alert-dialog-custom";
 import Link from "next/link";
 import type { SessionSummary } from "@/lib/utils/jovan/types";
+import { UsageIndicator } from "@/components/paywall/UsageIndicator";
+import { PaywallModal } from "@/components/paywall/PaywallModal";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -35,6 +37,11 @@ interface SidebarProps {
   onDeleteSession?: (id: string) => Promise<boolean>;
   onRenameSession?: (id: string, title: string) => Promise<boolean>;
   className?: string;
+  tier?: "free" | "pro" | "elite";
+  quota?: {
+    tokens: { used: number; limit: number };
+    reasoning: { used: number; limit: number };
+  } | null;
 }
 
 function groupSessionsByDate(sessions: SessionSummary[]): Record<string, SessionSummary[]> {
@@ -68,9 +75,9 @@ function groupSessionsByDate(sessions: SessionSummary[]): Record<string, Session
   return groups;
 }
 
-export function Sidebar({ 
-  isOpen, 
-  setIsOpen, 
+export function Sidebar({
+  isOpen,
+  setIsOpen,
   sessions = [],
   activeSessionId,
   loadingSessions = false,
@@ -78,9 +85,32 @@ export function Sidebar({
   onNewChat,
   onDeleteSession,
   onRenameSession,
-  className 
+  className,
+  tier = "free",
+  quota
 }: SidebarProps) {
-  const groupedSessions = useMemo(() => groupSessionsByDate(sessions), [sessions]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const isFree = tier === "free";
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+
+  // History Limit Logic
+  const displayedSessions = useMemo(() => {
+    if (isFree && sessions.length > 5) {
+      return sessions.slice(0, 5);
+    }
+    return sessions;
+  }, [sessions, isFree]);
+
+  const hiddenCount = sessions.length - displayedSessions.length;
+
+  const filteredSessions = useMemo(() => {
+    if (!searchQuery.trim()) return displayedSessions;
+    return displayedSessions.filter(s =>
+      (s.title || "").toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [displayedSessions, searchQuery]);
+
+  const groupedSessions = useMemo(() => groupSessionsByDate(filteredSessions), [filteredSessions]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -126,7 +156,7 @@ export function Sidebar({
 
   const handleConfirmDelete = async () => {
     if (!deletingId || !onDeleteSession) return;
-    
+
     setIsDeleting(true);
     try {
       await onDeleteSession(deletingId);
@@ -147,7 +177,7 @@ export function Sidebar({
   return (
     <>
       {/* Mobile Overlay */}
-      <div 
+      <div
         className={cn(
           "fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity duration-300",
           isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
@@ -164,159 +194,187 @@ export function Sidebar({
         )}
       >
         <div className="flex flex-col h-full">
-            <div className="p-4 pb-2 flex flex-col gap-4">
-                {/* Header */}
-                <div className="flex items-center justify-between min-w-[248px]">
-                    <div className="flex items-center gap-2 font-semibold text-slate-900 dark:text-slate-100">
-                        <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white">
-                            J
-                        </div>
-                        <span>Jovan AI</span>
-                    </div>
-                    <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                        <PanelLeftClose className="w-5 h-5" />
-                    </Button>
+          <div className="p-4 pb-2 flex flex-col gap-4">
+            {/* Header */}
+            <div className="flex items-center justify-between min-w-[248px]">
+              <div className="flex items-center gap-2 font-semibold text-slate-900 dark:text-slate-100">
+                <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white">
+                  J
                 </div>
-
-                {/* New Chat Button */}
-                <Button 
-                    className="w-full justify-start gap-2 min-w-[248px]" 
-                    variant="outline"
-                    onClick={onNewChat}
-                >
-                    <Plus className="w-4 h-4" />
-                    New Chat
-                </Button>
+                <span>Jovan AI</span>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                <PanelLeftClose className="w-5 h-5" />
+              </Button>
             </div>
 
-            {/* History List */}
-            <div className="flex-1 overflow-hidden px-2">
-                <ScrollArea className="h-full">
-                    <div className="space-y-4 min-w-[248px] px-2 py-2">
-                        {loadingSessions ? (
-                            <div className="flex items-center justify-center py-8">
-                                <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+            {/* New Chat Button */}
+            <Button
+              className="w-full justify-start gap-2 min-w-[248px]"
+              variant="outline"
+              onClick={onNewChat}
+            >
+              <Plus className="w-4 h-4" />
+              New Chat
+            </Button>
+          </div>
+
+          {/* History List */}
+          <div className="flex-1 overflow-hidden px-2">
+            <ScrollArea className="h-full">
+              <div className="space-y-4 min-w-[248px] px-2 py-2">
+                {loadingSessions ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+                  </div>
+                ) : sessions.length === 0 ? (
+                  <div className="text-center py-8 text-sm text-slate-400">
+                    No conversations yet
+                  </div>
+                ) : (
+                  <>
+                    {Object.entries(groupedSessions).map(([dateGroup, groupSessions]) => {
+                      if (groupSessions.length === 0) return null;
+
+                      return (
+                        <div key={dateGroup} className="space-y-1">
+                          <h3 className="text-xs font-medium text-slate-500 dark:text-slate-400 px-2 py-1 uppercase tracking-wider">
+                            {dateGroup}
+                          </h3>
+                          {groupSessions.map((session) => (
+                            <div key={session.id} className="group relative">
+                              {editingId === session.id ? (
+                                <div className="flex items-center gap-1 px-2 h-8">
+                                  <input
+                                    ref={inputRef}
+                                    type="text"
+                                    value={editTitle}
+                                    onChange={(e) => setEditTitle(e.target.value)}
+                                    onKeyDown={handleKeyDown}
+                                    onBlur={handleSaveRename}
+                                    className="flex-1 text-sm bg-transparent border-b border-indigo-500 focus:outline-none text-slate-900 dark:text-white"
+                                    maxLength={100}
+                                  />
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5 text-green-500"
+                                    onClick={handleSaveRename}
+                                  >
+                                    <Check className="w-3 h-3" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5 text-slate-400"
+                                    onClick={handleCancelRename}
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    onClick={() => onSelectSession?.(session.id)}
+                                    className={cn(
+                                      "w-full justify-start text-sm font-normal px-2 h-8 truncate pr-8",
+                                      activeSessionId === session.id
+                                        ? "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white"
+                                        : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                                    )}
+                                  >
+                                    {dateGroup === "Today" ? (
+                                      <MessageSquare className="w-4 h-4 mr-2 shrink-0 opacity-70" />
+                                    ) : (
+                                      <History className="w-4 h-4 mr-2 shrink-0 opacity-70" />
+                                    )}
+                                    <span className="truncate">{session.title || "Untitled"}</span>
+                                  </Button>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-100 focus:opacity-100 focus-visible:opacity-100 transition-opacity text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                                        onPointerDown={(e) => e.stopPropagation()}
+                                      >
+                                        <MoreHorizontal className="w-3 h-3" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-32 z-[100]">
+                                      <DropdownMenuItem
+                                        onClick={() => handleStartRename(session)}
+                                        className="cursor-pointer"
+                                      >
+                                        <Pencil className="w-3 h-3 mr-2" />
+                                        Rename
+                                      </DropdownMenuItem>
+                                      {onDeleteSession && (
+                                        <DropdownMenuItem
+                                          onClick={() => handleDeleteClick(session.id)}
+                                          className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/30 cursor-pointer"
+                                        >
+                                          <Trash2 className="w-3 h-3 mr-2" />
+                                          Delete
+                                        </DropdownMenuItem>
+                                      )}
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </>
+                              )}
                             </div>
-                        ) : sessions.length === 0 ? (
-                            <div className="text-center py-8 text-sm text-slate-400">
-                                No conversations yet
-                            </div>
-                        ) : (
-                            Object.entries(groupedSessions).map(([dateGroup, groupSessions]) => {
-                                if (groupSessions.length === 0) return null;
-                                
-                                return (
-                                    <div key={dateGroup} className="space-y-1">
-                                        <h3 className="text-xs font-medium text-slate-500 dark:text-slate-400 px-2 py-1 uppercase tracking-wider">
-                                            {dateGroup}
-                                        </h3>
-                                        {groupSessions.map((session) => (
-                                            <div key={session.id} className="group relative">
-                                                {editingId === session.id ? (
-                                                  <div className="flex items-center gap-1 px-2 h-8">
-                                                    <input
-                                                      ref={inputRef}
-                                                      type="text"
-                                                      value={editTitle}
-                                                      onChange={(e) => setEditTitle(e.target.value)}
-                                                      onKeyDown={handleKeyDown}
-                                                      onBlur={handleSaveRename}
-                                                      className="flex-1 text-sm bg-transparent border-b border-indigo-500 focus:outline-none text-slate-900 dark:text-white"
-                                                      maxLength={100}
-                                                    />
-                                                    <Button
-                                                      variant="ghost"
-                                                      size="icon"
-                                                      className="h-5 w-5 text-green-500"
-                                                      onClick={handleSaveRename}
-                                                    >
-                                                      <Check className="w-3 h-3" />
-                                                    </Button>
-                                                    <Button
-                                                      variant="ghost"
-                                                      size="icon"
-                                                      className="h-5 w-5 text-slate-400"
-                                                      onClick={handleCancelRename}
-                                                    >
-                                                      <X className="w-3 h-3" />
-                                                    </Button>
-                                                  </div>
-                                                ) : (
-                                                  <>
-                                                    <Button
-                                                        variant="ghost"
-                                                        onClick={() => onSelectSession?.(session.id)}
-                                                        className={cn(
-                                                            "w-full justify-start text-sm font-normal px-2 h-8 truncate pr-8",
-                                                            activeSessionId === session.id
-                                                                ? "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white"
-                                                                : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
-                                                        )}
-                                                    >
-                                                        {dateGroup === "Today" ? (
-                                                            <MessageSquare className="w-4 h-4 mr-2 shrink-0 opacity-70" />
-                                                        ) : (
-                                                            <History className="w-4 h-4 mr-2 shrink-0 opacity-70" />
-                                                        )}
-                                                        <span className="truncate">{session.title || "Untitled"}</span>
-                                                    </Button>
-                                                    <DropdownMenu>
-                                                      <DropdownMenuTrigger asChild>
-                                                        <Button
-                                                          variant="ghost"
-                                                          size="icon"
-                                                          className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-100 focus:opacity-100 focus-visible:opacity-100 transition-opacity text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                                                          onPointerDown={(e) => e.stopPropagation()}
-                                                        >
-                                                          <MoreHorizontal className="w-3 h-3" />
-                                                        </Button>
-                                                      </DropdownMenuTrigger>
-                                                      <DropdownMenuContent align="end" className="w-32 z-[100]">
-                                                        <DropdownMenuItem 
-                                                          onClick={() => handleStartRename(session)}
-                                                          className="cursor-pointer"
-                                                        >
-                                                          <Pencil className="w-3 h-3 mr-2" />
-                                                          Rename
-                                                        </DropdownMenuItem>
-                                                        {onDeleteSession && (
-                                                          <DropdownMenuItem 
-                                                            onClick={() => handleDeleteClick(session.id)}
-                                                            className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/30 cursor-pointer"
-                                                          >
-                                                            <Trash2 className="w-3 h-3 mr-2" />
-                                                            Delete
-                                                          </DropdownMenuItem>
-                                                        )}
-                                                      </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                  </>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                );
-                            })
-                        )}
-                    </div>
-                </ScrollArea>
-            </div>
+                          ))}
+                        </div>
+                      );
+                    })
+                    }
+                    {/* Unlock History Button */}
+                    {hiddenCount > 0 && (
+                      <div className="pt-2 pb-4">
+                        <Button
+                          variant="outline"
+                          className="w-full gap-2 border-dashed border-amber-300 bg-amber-50 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/20 text-amber-900 dark:text-amber-500 h-8 text-xs font-normal"
+                          onClick={() => setShowHistoryModal(true)}
+                        >
+                          <Lock className="w-3 h-3" />
+                          Unlock {hiddenCount} older chats
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
 
-            {/* Bottom Actions */}
-            <div className="mt-auto p-4 border-t border-slate-200 dark:border-slate-800 min-w-[248px] space-y-1">
-                 <Link href="/pricing" passHref>
-                    <Button variant="ghost" className="w-full justify-start text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 gap-2">
-                        <Zap className="w-4 h-4" />
-                        Upgrade Plan
-                    </Button>
-                </Link>
-                <Link href="/settings" passHref>
-                    <Button variant="ghost" className="w-full justify-start text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 gap-2">
-                        <Settings className="w-4 h-4" />
-                        Settings
-                    </Button>
-                </Link>
-            </div>
+          {/* Bottom Actions */}
+          <div className="mt-auto p-4 border-t border-slate-200 dark:border-slate-800 min-w-[248px] space-y-1">
+            {/* Usage Indicator */}
+            {quota && (
+              <div className="pb-3 border-b border-slate-100 dark:border-slate-800 mb-2">
+                <UsageIndicator
+                  label="Tokens"
+                  current={quota.tokens.used}
+                  limit={quota.tokens.limit}
+                  showUpgrade={isFree}
+                  className="text-xs px-2 py-1.5 border-none bg-slate-50 dark:bg-slate-900"
+                />
+              </div>
+            )}
+            <Link href="/pricing" passHref>
+              <Button variant="ghost" className="w-full justify-start text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 gap-2">
+                <Zap className="w-4 h-4" />
+                Upgrade Plan
+              </Button>
+            </Link>
+            <Link href="/settings" passHref>
+              <Button variant="ghost" className="w-full justify-start text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 gap-2">
+                <Settings className="w-4 h-4" />
+                Settings
+              </Button>
+            </Link>
+          </div>
         </div>
       </aside>
 
@@ -354,6 +412,19 @@ export function Sidebar({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Paywall Modal */}
+      <PaywallModal
+        isOpen={showHistoryModal}
+        onClose={() => setShowHistoryModal(false)}
+        feature="Unlimited Chat History"
+        benefits={[
+          "Access all your past conversations",
+          "Search through entire history",
+          "Export chat logs",
+          "Never lose context"
+        ]}
+      />
     </>
   );
 }

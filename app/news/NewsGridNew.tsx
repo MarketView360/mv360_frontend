@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
-import { Newspaper, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Newspaper, Loader2, ChevronLeft, ChevronRight, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NewsCard, Article } from "./NewsCardNew";
 import { NewsSkeleton } from "./NewsSkeletonNew";
@@ -10,6 +10,8 @@ import { ExternalLinkWarning, useExternalLinkWarning } from "./ExternalLinkWarni
 import { useNewsPreferences, PaginationStyle } from "@/hooks/useNewsPreferences";
 import { SortOption } from "./NewsFilters";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/providers/AuthProvider";
+import { PaywallModal } from "@/components/paywall/PaywallModal";
 
 const PAGE_SIZE = 12;
 
@@ -20,7 +22,10 @@ interface NewsGridProps {
 export function NewsGrid({ sort = "latest" }: NewsGridProps) {
   const searchParams = useSearchParams();
   const { preferences, isLoaded: prefsLoaded } = useNewsPreferences();
-  
+  const { session } = useAuth();
+  // Using a simplified check for Pro, assuming session is loaded or null (default false)
+  const isPro = session?.tier === "pro" || session?.tier === "elite";
+
   const ticker = searchParams.get("ticker") ?? undefined;
   const q = searchParams.get("q") ?? undefined;
   const from = searchParams.get("from") ?? undefined;
@@ -32,6 +37,8 @@ export function NewsGrid({ sort = "latest" }: NewsGridProps) {
   const [hasMore, setHasMore] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [hitPaywall, setHitPaywall] = useState(false);
+  const [showPaywallModal, setShowPaywallModal] = useState(false);
 
   const { warningState, showWarning, setWarningOpen, confirmNavigation } =
     useExternalLinkWarning();
@@ -58,7 +65,7 @@ export function NewsGrid({ sort = "latest" }: NewsGridProps) {
         const res = await fetch(`${baseUrl}/api/news?${sp.toString()}`);
         if (!res.ok) return { items: [], total: 0 };
         const data = await res.json();
-        
+
         if (Array.isArray(data)) {
           return { items: data, total: data.length > 0 ? 100 : 0 };
         }
@@ -78,20 +85,40 @@ export function NewsGrid({ sort = "latest" }: NewsGridProps) {
     setArticles([]);
     setPage(1);
     setHasMore(true);
+    setHitPaywall(false);
     setInitialLoading(true);
 
     fetchPage(1).then(({ items, total }) => {
-      setArticles(items);
+      let validItems = items as Article[];
+
+      // Paywall Logic: Filter older articles for free users
+      if (!isPro) {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const filtered = validItems.filter(a => new Date(a.date) >= sevenDaysAgo);
+
+        if (filtered.length < validItems.length) {
+          // We filtered some out, so we hit the paywall boundary
+          setHitPaywall(true);
+          setHasMore(false); // Stop loading more
+        }
+        validItems = filtered;
+      }
+
+      setArticles(validItems);
       setTotalPages(Math.ceil(total / PAGE_SIZE) || 1);
+
+      // Classic hasMore check
       if (!items.length || items.length < PAGE_SIZE) {
         setHasMore(false);
       }
+
       setInitialLoading(false);
     });
-  }, [fetchPage]);
+  }, [fetchPage, isPro]); // refetch if pro status changes
 
   const handleLoadMore = async () => {
-    if (loadingMore || !hasMore) return;
+    if (loadingMore || !hasMore || hitPaywall) return;
     setLoadingMore(true);
     const nextPage = page + 1;
 
@@ -100,7 +127,21 @@ export function NewsGrid({ sort = "latest" }: NewsGridProps) {
       if (!items.length) {
         setHasMore(false);
       } else {
-        setArticles((prev) => uniqueArticles(prev, items));
+        let validItems = items as Article[];
+
+        if (!isPro) {
+          const sevenDaysAgo = new Date();
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+          const filtered = validItems.filter(a => new Date(a.date) >= sevenDaysAgo);
+
+          if (filtered.length < validItems.length) {
+            setHitPaywall(true);
+            setHasMore(false);
+          }
+          validItems = filtered;
+        }
+
+        setArticles((prev) => uniqueArticles(prev, validItems));
         setPage(nextPage);
         if (items.length < PAGE_SIZE) setHasMore(false);
       }
@@ -114,10 +155,25 @@ export function NewsGrid({ sort = "latest" }: NewsGridProps) {
     setInitialLoading(true);
     setPage(newPage);
 
+    // Numbered pagination logic simpler - just load page. 
+    // Usually infinite scroll is preferred for news, but if forced paged:
     const { items } = await fetchPage(newPage);
-    setArticles(items);
+    let validItems = items as Article[];
+
+    if (!isPro) {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const filtered = validItems.filter(a => new Date(a.date) >= sevenDaysAgo);
+
+      if (filtered.length < validItems.length) {
+        setHitPaywall(true);
+      }
+      validItems = filtered;
+    }
+
+    setArticles(validItems);
     setInitialLoading(false);
-    
+
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -125,14 +181,14 @@ export function NewsGrid({ sort = "latest" }: NewsGridProps) {
     return <NewsSkeleton cards={PAGE_SIZE} />;
   }
 
-  if (!articles.length) return <EmptyState />;
+  if (!articles.length && !hitPaywall) return <EmptyState />;
 
   const paginationStyle: PaginationStyle = preferences.paginationStyle;
 
   return (
     <>
       {/* News Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-5">
         {articles.map((article, index) => (
           <NewsCard
             key={article.link}
@@ -141,22 +197,63 @@ export function NewsGrid({ sort = "latest" }: NewsGridProps) {
             onExternalLinkClick={showWarning}
           />
         ))}
+
+        {/* Paywall Card when hit */}
+        {hitPaywall && (
+          <div className="col-span-1 min-h-[300px] rounded-xl border border-dashed border-amber-300 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20 flex flex-col items-center justify-center p-6 text-center gap-4">
+            <div className="p-3 bg-amber-100 dark:bg-amber-900/40 rounded-full">
+              <Lock className="w-6 h-6 text-amber-700 dark:text-amber-500" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-900 dark:text-white">News Archive Restricted</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-[250px] mx-auto">
+                Historical news older than 7 days is available on Pro and Elite plans.
+              </p>
+            </div>
+            <Button
+              onClick={() => setShowPaywallModal(true)}
+              className="bg-amber-600 hover:bg-amber-700 text-white border-none shadow-sm"
+            >
+              Unlock Archive
+            </Button>
+          </div>
+        )}
       </div>
 
+      {/* If simple empty state due to restriction */}
+      {!articles.length && hitPaywall && (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="p-4 rounded-full bg-amber-100 dark:bg-amber-900/30 mb-4">
+            <Lock className="h-10 w-10 text-amber-600 dark:text-amber-500" />
+          </div>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+            Restricted Access
+          </h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mb-6">
+            The articles you are looking for are older than 7 days. Upgrade to Pro to access our full news archive.
+          </p>
+          <Button onClick={() => setShowPaywallModal(true)}>
+            View Plans
+          </Button>
+        </div>
+      )}
+
       {/* Pagination */}
-      {paginationStyle === "infinite" ? (
-        <InfiniteScrollPagination
-          hasMore={hasMore}
-          loadingMore={loadingMore}
-          onLoadMore={handleLoadMore}
-          totalLoaded={articles.length}
-        />
-      ) : (
-        <NumberedPagination
-          currentPage={page}
-          totalPages={totalPages}
-          onPageChange={handlePageChange}
-        />
+      {!hitPaywall && articles.length > 0 && (
+        paginationStyle === "infinite" ? (
+          <InfiniteScrollPagination
+            hasMore={hasMore}
+            loadingMore={loadingMore}
+            onLoadMore={handleLoadMore}
+            totalLoaded={articles.length}
+          />
+        ) : (
+          <NumberedPagination
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+          />
+        )
       )}
 
       {/* External Link Warning */}
@@ -165,6 +262,18 @@ export function NewsGrid({ sort = "latest" }: NewsGridProps) {
         onOpenChange={setWarningOpen}
         url={warningState.url}
         onConfirm={confirmNavigation}
+      />
+
+      <PaywallModal
+        isOpen={showPaywallModal}
+        onClose={() => setShowPaywallModal(false)}
+        feature="News Archive"
+        benefits={[
+          "Unlimited search history",
+          "Access to news archives (10+ years)",
+          "Downloadable reports",
+          "Sentiment analysis on historical data"
+        ]}
       />
     </>
   );
@@ -233,16 +342,16 @@ function NumberedPagination({
       for (let i = 1; i <= totalPages; i++) pages.push(i);
     } else {
       pages.push(1);
-      
+
       if (currentPage > 3) pages.push("...");
-      
+
       const start = Math.max(2, currentPage - 1);
       const end = Math.min(totalPages - 1, currentPage + 1);
-      
+
       for (let i = start; i <= end; i++) pages.push(i);
-      
+
       if (currentPage < totalPages - 2) pages.push("...");
-      
+
       pages.push(totalPages);
     }
 

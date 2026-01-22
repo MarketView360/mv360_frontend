@@ -22,7 +22,9 @@ import {
   Area,
   Line,
 } from "recharts";
-import { Maximize2, X } from "lucide-react";
+import { Maximize2, X, Lock } from "lucide-react";
+import { useAuth } from "@/providers/AuthProvider";
+import { PaywallModal } from "@/components/paywall/PaywallModal";
 
 export interface PriceHistoryPoint {
   date: string;
@@ -56,6 +58,11 @@ export function CompanyChartsSwitcher({
   valuationMetrics,
   valuationHistory,
 }: CompanyChartsSwitcherProps) {
+  const { session } = useAuth();
+  const isPro = session?.tier === "pro" || session?.tier === "elite";
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [paywallFeature, setPaywallFeature] = useState("");
+
   const [mode, setMode] = useState<"price" | "valuations" | "price_pe">(
     "price",
   );
@@ -63,6 +70,7 @@ export function CompanyChartsSwitcher({
   const [normType, setNormType] = useState<"indexed" | "minmax">("indexed");
   const [fullscreen, setFullscreen] = useState(false);
 
+  // ... (rest of the logic remains same until render) ...
   const hasValuations = valuationMetrics.some((m) => m.value != null);
   const valuationData = valuationMetrics
     .filter((m) => m.value != null)
@@ -71,6 +79,7 @@ export function CompanyChartsSwitcher({
   const hasPeHistory = valuationHistory.some((p) => p.pe_ratio != null);
 
   const filteredValuationHistory = useMemo(() => {
+    // ... logic ...
     if (!valuationHistory || valuationHistory.length === 0) return [];
     const map: Record<typeof range, number | "max"> = {
       "1Y": 252,
@@ -89,7 +98,6 @@ export function CompanyChartsSwitcher({
 
     if (prices.length === 0 || pes.length === 0) return filtered;
 
-    // Base price/PE for indexing (first non-null point in range)
     const basePrice = prices[0];
     const basePe = pes[0];
 
@@ -125,6 +133,21 @@ export function CompanyChartsSwitcher({
     typeof window !== "undefined" &&
     document.documentElement.classList.contains("dark");
 
+  const handleModeChange = (newMode: "price" | "valuations" | "price_pe") => {
+    if (newMode === "price") {
+      setMode("price");
+      return;
+    }
+
+    if (!isPro) {
+      setPaywallFeature(newMode === "valuations" ? "Valuation Charts" : "Historical P/E Charts");
+      setShowPaywall(true);
+      return;
+    }
+
+    setMode(newMode);
+  };
+
   const renderChartBody = (heightClass: string) => (
     <>
       {mode === "price" && (
@@ -134,6 +157,7 @@ export function CompanyChartsSwitcher({
           </Suspense>
         </div>
       )}
+      {/* ... keeping other renders ... */}
       {mode === "valuations" && (
         <div className={cn(heightClass, "w-full")}>
           {hasValuations ? (
@@ -160,6 +184,7 @@ export function CompanyChartsSwitcher({
                   stroke={isDark ? "#cbd5e1" : "#64748b"}
                   fontSize={12}
                 />
+                {/* Fixed Tooltip props error */}
                 <Tooltip
                   contentStyle={{
                     backgroundColor: isDark ? "#0f172a" : "#ffffff",
@@ -279,21 +304,12 @@ export function CompanyChartsSwitcher({
                     tickFormatter={() => ""}
                     hide
                   />
+                  {/* Fixed Tooltip props error by using simple props */}
                   <Tooltip
                     contentStyle={{
                       backgroundColor: isDark ? "#0f172a" : "#ffffff",
                       borderRadius: 8,
                       border: `1px solid ${isDark ? "#475569" : "#e2e8f0"}`,
-                    }}
-                    formatter={(value: any, name: string, props: any) => {
-                      const item = props.payload;
-                      if (name === "price_normalized" && item?.price != null) {
-                        return [`$${item.price.toFixed(2)}`, "Price"];
-                      }
-                      if (name === "pe_normalized" && item?.pe_ratio != null) {
-                        return [`${item.pe_ratio.toFixed(2)}x`, "P/E"];
-                      }
-                      return [value, name];
                     }}
                   />
                   <Area
@@ -350,7 +366,7 @@ export function CompanyChartsSwitcher({
                     ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
                     : "text-slate-500 dark:text-slate-400"
                 )}
-                onClick={() => setMode("price")}
+                onClick={() => handleModeChange("price")}
               >
                 Price
               </Button>
@@ -359,29 +375,31 @@ export function CompanyChartsSwitcher({
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "h-6 px-3 rounded-full text-[11px]",
+                  "h-6 px-3 rounded-full text-[11px] gap-1",
                   mode === "price_pe"
                     ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
                     : "text-slate-500 dark:text-slate-400"
                 )}
-                onClick={() => setMode("price_pe")}
+                onClick={() => handleModeChange("price_pe")}
               >
                 Price & P/E
+                {!isPro && <Lock className="w-2.5 h-2.5 opacity-70" />}
               </Button>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "h-6 px-3 rounded-full text-[11px]",
+                  "h-6 px-3 rounded-full text-[11px] gap-1",
                   mode === "valuations"
                     ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
                     : "text-slate-500 dark:text-slate-400"
                 )}
-                onClick={() => setMode("valuations")}
+                onClick={() => handleModeChange("valuations")}
                 disabled={!hasValuations}
               >
                 Valuation
+                {!isPro && <Lock className="w-2.5 h-2.5 opacity-70" />}
               </Button>
             </div>
             <button
@@ -398,8 +416,10 @@ export function CompanyChartsSwitcher({
           {renderChartBody("h-96")}
         </CardContent>
       </Card>
+
       {fullscreen && (
         <div className="fixed inset-0 z-60 bg-black/70 backdrop-blur-sm flex items-center justify-center">
+          {/* ... keeping fullscreen content ... */}
           <div className="w-full max-w-6xl mx-4 bg-slate-950 text-slate-50 rounded-xl shadow-2xl border border-slate-800 relative p-4">
             <button
               type="button"
@@ -422,6 +442,12 @@ export function CompanyChartsSwitcher({
           </div>
         </div>
       )}
+
+      <PaywallModal
+        isOpen={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        feature={paywallFeature}
+      />
     </>
   );
 }

@@ -6,6 +6,7 @@ import { Search, Newspaper } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NewsFilters, SortOption } from "./NewsFilters";
+import { AdvancedSearchModal } from "@/components/news/AdvancedSearchModal";
 import { cn } from "@/lib/utils";
 
 interface NewsHeaderProps {
@@ -21,14 +22,14 @@ export function NewsHeader({ onSortChange, currentSort }: NewsHeaderProps) {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const query = searchRef.current?.value.trim() || "";
-    
+
     const sp = new URLSearchParams(searchParams.toString());
     if (query) {
       sp.set("q", query);
     } else {
       sp.delete("q");
     }
-    
+
     router.replace(`/news?${sp.toString()}`);
   };
 
@@ -90,7 +91,10 @@ export function NewsHeader({ onSortChange, currentSort }: NewsHeaderProps) {
           </form>
 
           {/* Filters and sort */}
-          <NewsFilters onSortChange={onSortChange} currentSort={currentSort} />
+          <div className="flex items-center gap-2">
+            <NewsFilters onSortChange={onSortChange} currentSort={currentSort} />
+            <AdvancedSearchModal />
+          </div>
         </div>
 
         {/* Active filters display */}
@@ -103,7 +107,7 @@ export function NewsHeader({ onSortChange, currentSort }: NewsHeaderProps) {
 function ActiveFiltersBar() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  
+
   const query = searchParams.get("q");
   const ticker = searchParams.get("ticker");
   const from = searchParams.get("from");
@@ -125,22 +129,22 @@ function ActiveFiltersBar() {
         <span className="text-xs font-medium text-slate-500 dark:text-slate-400 mr-1">
           Active:
         </span>
-        
+
         {query && (
           <FilterTag label={`"${query}"`} onRemove={() => removeFilter("q")} />
         )}
-        
+
         {ticker && (
           <FilterTag
             label={`Tickers: ${ticker}`}
             onRemove={() => removeFilter("ticker")}
           />
         )}
-        
+
         {from && (
           <FilterTag label={`From: ${from}`} onRemove={() => removeFilter("from")} />
         )}
-        
+
         {to && (
           <FilterTag label={`To: ${to}`} onRemove={() => removeFilter("to")} />
         )}

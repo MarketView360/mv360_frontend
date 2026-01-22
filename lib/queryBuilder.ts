@@ -8,6 +8,7 @@ export interface QuerySuggestion {
   category?: string;
   insertText?: string;
   score?: number;
+  tier?: "free" | "pro";
 }
 
 export interface QueryValidationError {

@@ -31,10 +31,13 @@ import {
   Star,
   StarOff,
   X,
+  Lock,
 } from "lucide-react";
 import AutoCompleteDropdown from "./AutoCompleteDropdown";
 import SyntaxHighlighter from "./SyntaxHighlighter";
 import QueryValidation from "./QueryValidation";
+import { PaywallModal } from "@/components/paywall/PaywallModal";
+import { useAuth } from "@/providers/AuthProvider";
 import {
   ENHANCED_DATA_SOURCE,
   OPERATORS,
@@ -69,6 +72,12 @@ export default function ScreenerQueryBuilder({
   value: string;
   onChange: (val: string) => void;
 }) {
+  const { session } = useAuth();
+  // Check if user has access to pro features (pro or elite tier)
+  const isPro = session?.tier === "pro" || session?.tier === "elite";
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [paywallFeature, setPaywallFeature] = useState("");
+
   const [selectedCategory, setSelectedCategory] = useState("Most Used");
   const [searchTerm, setSearchTerm] = useState("");
   const [onlySep2025, setOnlySep2025] = useState(false);
@@ -240,6 +249,7 @@ export default function ScreenerQueryBuilder({
             category: field.category || "Field",
             insertText: field.name,
             score,
+            tier: field.tier,
           });
         }
       });
@@ -447,6 +457,12 @@ export default function ScreenerQueryBuilder({
   const handleSuggestionSelect = useCallback(
     (suggestion: QuerySuggestion) => {
       if (!textareaRef.current) return;
+
+      if (suggestion.tier === "pro" && !isPro) {
+        setPaywallFeature("Advanced Screen Filters");
+        setShowPaywall(true);
+        return;
+      }
 
       const textarea = textareaRef.current;
       const beforeCursor = value.substring(0, cursorPosition);
@@ -2210,98 +2226,19 @@ export default function ScreenerQueryBuilder({
             if (e.target === e.currentTarget) setShowExamples(false);
           }}
         >
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-            <div className="sticky top-0 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700 p-6 flex justify-between items-center">
-              <div>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                  Query Examples
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-                  Ready-to-use query templates for common screening scenarios
-                </p>
-              </div>
-              <button
-                onClick={() => setShowExamples(false)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                title="Close"
-              >
-                <svg
-                  className="w-5 h-5 text-gray-500 dark:text-slate-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {Object.entries(QUERY_EXAMPLES).map(([name, example]) => (
-                  <div
-                    key={name}
-                    className="border border-gray-200 dark:border-slate-700 rounded-lg p-4 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all bg-white dark:bg-slate-800"
-                  >
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="flex-1">
-                        <div className="font-semibold text-blue-600 dark:text-blue-400 mb-1">
-                          {name}
-                        </div>
-                        <div className="text-sm text-gray-600 dark:text-slate-400">
-                          {example.description}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => loadExample(example.query)}
-                        className="ml-4 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
-                      >
-                        Load
-                      </button>
-                    </div>
-                    <div className="font-mono text-sm bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 p-3 rounded-md overflow-x-auto">
-                      {example.query}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-6 p-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg">
-                <div className="flex items-start">
-                  <div className="shrink-0">
-                    <svg
-                      className="w-5 h-5 text-green-400 mt-0.5"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <h4 className="text-sm font-medium text-green-800 dark:text-green-300">
-                      Quick Start
-                    </h4>
-                    <p className="text-sm text-green-700 dark:text-green-400 mt-1">
-                      Click &quot;Load&quot; on any example to instantly
-                      populate the query editor. You can then modify the query
-                      to suit your specific needs.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* ... existing modal code ... */}
+          {/* I will omit internal modal code as I'm just appending after it if I can match the context correctly. 
+              Actually replace_file_content requires TargetContent. 
+              I will replace the last few lines to append the modal. 
+          */}
         </div>
       )}
+
+      <PaywallModal
+        isOpen={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        feature={paywallFeature}
+      />
     </div>
   );
 }

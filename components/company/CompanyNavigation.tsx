@@ -23,6 +23,9 @@ export function CompanyNavigation({ ticker, currentTab: initialTab }: CompanyNav
 
     const tabs: Tab[] = [
         { id: "overview", label: "Overview", href: `/company/${ticker}` },
+        { id: "financials", label: "Financials", href: `/company/${ticker}/financials` },
+        { id: "technicals", label: "Technicals", href: `/company/${ticker}/technicals` },
+        { id: "analysis", label: "Analysis", href: `/company/${ticker}/analysis` },
         { id: "peers", label: "Peers", href: `/company/${ticker}/peers` },
         { id: "news", label: "News", href: `/company/${ticker}/news` },
     ];

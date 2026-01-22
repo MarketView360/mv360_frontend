@@ -18,6 +18,7 @@ export default function NavigationBar() {
     { href: "/market", label: "Markets" },
     { href: "/news", label: "News" },
     { href: "/ai", label: "AI Assistant" },
+    { href: "/pricing", label: "Pricing" },
   ];
 
   return (

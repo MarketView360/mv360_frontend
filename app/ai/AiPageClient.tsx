@@ -8,6 +8,7 @@ import { ChatArea, Message } from "./components/ChatArea";
 import { MessageInput } from "./components/MessageInput";
 import { ModelSelector } from "./components/ModelSelector";
 import { LoginRequired } from "./components/LoginRequired";
+import { SuggestionSidebar, SuggestionSidebarToggle } from "./components/SuggestionSidebar";
 import { PanelLeftOpen, StopCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/providers/AuthProvider";
@@ -29,6 +30,7 @@ export default function AiPageClient() {
   const token = session?.access_token ?? null;
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSuggestionOpen, setIsSuggestionOpen] = useState(true);
   const [selectedModel, setSelectedModel] = useState("gpt-oss");
   const [isReasoningEnabled, setIsReasoningEnabled] = useState(false);
   const [greeting, setGreeting] = useState("");
@@ -304,6 +306,8 @@ export default function AiPageClient() {
         onNewChat={handleNewChatClick}
         onDeleteSession={handleDeleteSession}
         onRenameSession={handleRenameSession}
+        tier={(session as any)?.tier}
+        quota={quota}
       />
 
       {/* Main Content */}
@@ -380,7 +384,31 @@ export default function AiPageClient() {
             disabled={isStreaming}
           />
         </div>
+
+        {/* Suggestion Toggle */}
+        {!isSuggestionOpen && (
+          <div className="hidden lg:block relative h-0">
+            {/* Position toggle absolute relative to this container or relative main content? 
+                     The Toggle component uses absolute positioning.
+                     If I render it here, it will be at bottom of flex col?
+                     The Toggle component styles: absolute top-1/2 right-0
+                     The main content div is relative h-full. 
+                     So putting it anywhere inside main content div is fine.
+                 */}
+          </div>
+        )}
+        {!isSuggestionOpen && (
+          <SuggestionSidebarToggle onClick={() => setIsSuggestionOpen(true)} />
+        )}
       </div>
+
+      {/* Suggestion Sidebar */}
+      <SuggestionSidebar
+        isOpen={isSuggestionOpen}
+        onToggle={() => setIsSuggestionOpen(false)}
+        onSuggestionClick={handleSendMessage}
+        className="hidden lg:flex"
+      />
     </div>
   );
 }
