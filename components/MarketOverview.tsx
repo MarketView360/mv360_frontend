@@ -13,7 +13,9 @@ import {
   ArrowDownRight,
   Activity,
   Clock,
+  Info,
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
 
@@ -22,7 +24,9 @@ type ScreenerRow = {
   name: string;
   adjusted_close: number | null;
   refund_1d_p: number | null;
+  price_change_1d?: number | null;
   market_capitalization?: number | null;
+  market_cap?: number | null;
 };
 
 type NewsItem = {
@@ -64,86 +68,24 @@ export default function MarketOverview({
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const buildIndicesFromRows = (
-    rows: (ScreenerRow & { market_capitalization: number | null })[]
+  // Transform indices API response to MarketIndex format
+  const buildIndicesFromAPI = (
+    apiData: { name: string; symbol: string; price: number | null; changePercent: number | null }[]
   ): MarketIndex[] => {
-    if (!rows.length) return [];
-
-    const withMcap = rows.filter((r) => (r.market_capitalization ?? 0) > 0);
-    if (!withMcap.length) return [];
-
-    const buckets: { name: string; symbol: string; rows: typeof withMcap }[] =
-      [];
-
-    // Overall market -> S&P 500
-    buckets.push({ name: "S&P 500", symbol: "SPX", rows: withMcap });
-
-    // Large / Mid / Small based on rough market cap buckets
-    const large = withMcap.filter(
-      (r) => (r.market_capitalization ?? 0) >= 50_000_000_000
-    );
-    const mid = withMcap.filter((r) => {
-      const m = r.market_capitalization ?? 0;
-      return m >= 10_000_000_000 && m < 50_000_000_000;
-    });
-    const small = withMcap.filter(
-      (r) =>
-        (r.market_capitalization ?? 0) > 0 &&
-        (r.market_capitalization ?? 0) < 10_000_000_000
-    );
-
-    if (large.length)
-      buckets.push({ name: "Nasdaq", symbol: "COMP", rows: large });
-    if (mid.length)
-      buckets.push({ name: "Russell 2000", symbol: "RUT", rows: mid });
-    if (small.length)
-      buckets.push({ name: "Dow Jones", symbol: "DJI", rows: small });
-
-    const toIndex = (bucket: {
-      name: string;
-      symbol: string;
-      rows: typeof withMcap;
-    }): MarketIndex | null => {
-      const { name, symbol, rows } = bucket;
-      if (!rows.length) return null;
-
-      const changes = rows
-        .map((r) => r.refund_1d_p)
-        .filter((v): v is number => typeof v === "number" && !Number.isNaN(v));
-      const avgChange = changes.length
-        ? changes.reduce((acc, v) => acc + v, 0) / changes.length
-        : 0;
-
-      const totalMcap = rows.reduce(
-        (acc, r) => acc + (r.market_capitalization ?? 0),
-        0
-      );
-
-      const formatMcap = (val: number): string => {
-        if (val >= 1_000_000_000_000)
-          return `${(val / 1_000_000_000_000).toFixed(1)}T`;
-        if (val >= 1_000_000_000) return `${(val / 1_000_000_000).toFixed(1)}B`;
-        if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(1)}M`;
-        return val.toFixed(0);
-      };
-
-      const isPositive = avgChange >= 0;
-      const changeStr = `${isPositive ? "+" : ""}${avgChange.toFixed(2)}%`;
+    return apiData.map((idx) => {
+      const price = idx.price ?? 0;
+      const change = idx.changePercent ?? 0;
+      const isPositive = change >= 0;
 
       return {
-        name,
-        symbol,
-        value: formatMcap(totalMcap),
-        change: changeStr,
-        changePercent: avgChange,
+        name: idx.name,
+        symbol: idx.symbol,
+        value: price > 0 ? `$${price.toFixed(2)}` : "—",
+        change: `${isPositive ? "+" : ""}${change.toFixed(2)}%`,
+        changePercent: change,
         isPositive,
       };
-    };
-
-    return buckets
-      .map(toIndex)
-      .filter((x): x is MarketIndex => x !== null)
-      .slice(0, 4);
+    });
   };
 
   const fetchData = useCallback(async (isManualRefresh = false) => {
@@ -175,18 +117,10 @@ export default function MarketOverview({
           }),
         }),
         fetch(`${BACKEND_URL}/api/news?limit=3`),
-        fetch(`${BACKEND_URL}/api/run-query`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sort: "market_capitalization.desc",
-            limit: 300,
-            exchange: "us",
-          }),
-        }),
+        fetch(`${BACKEND_URL}/api/indices`),
       ]);
 
-      if (!gainersRes.ok || !losersRes.ok || !newsRes.ok || !indicesRes.ok) {
+      if (!gainersRes.ok || !losersRes.ok || !newsRes.ok) {
         throw new Error("Failed to load market overview data");
       }
 
@@ -197,18 +131,24 @@ export default function MarketOverview({
         data?: ScreenerRow[];
       };
       const newsJson = (await newsRes.json()) as NewsItem[];
-      const indicesJson = (await indicesRes.json()) as {
-        data?: (ScreenerRow & { market_capitalization: number | null })[];
-      };
+
+      // Parse indices data
+      let indicesData: { name: string; symbol: string; price: number | null; changePercent: number | null }[] = [];
+      if (indicesRes.ok) {
+        try {
+          indicesData = await indicesRes.json();
+        } catch {
+          indicesData = [];
+        }
+      }
 
       const gainersData = gainersJson.data ?? [];
       const losersData = losersJson.data ?? [];
-      const indicesRows = indicesJson.data ?? [];
 
       setGainers(gainersData);
       setLosers(losersData);
       setNews(newsJson ?? []);
-      setIndices(buildIndicesFromRows(indicesRows));
+      setIndices(buildIndicesFromAPI(indicesData));
       setLastUpdated(new Date());
     } catch (e) {
       console.error(e);
@@ -272,7 +212,7 @@ export default function MarketOverview({
   const losersToShow = losers
     .slice(0, 5)
     // losers query is asc (worst first). Keep as-is for display.
-    .filter((row) => row.refund_1d_p !== null);
+    .filter((row) => (row.refund_1d_p ?? row.price_change_1d) !== null);
 
   return (
     <div className="space-y-6">
@@ -364,10 +304,26 @@ export default function MarketOverview({
         {/* Movers */}
         <Card className="border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 h-full">
           <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
-            <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-900 dark:text-white">
-              <TrendingUp className="w-5 h-5 text-brand" />
-              Market Movers
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-900 dark:text-white">
+                <TrendingUp className="w-5 h-5 text-brand" />
+                Market Movers
+              </CardTitle>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button aria-label="Movers info" className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300">
+                      <Info className="w-4 h-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs text-xs">
+                    <p>
+                      Movers are calculated using end-of-day adjusted closing prices from the latest two trading sessions.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             {loading ? (
@@ -433,7 +389,7 @@ export default function MarketOverview({
                         </div>
                         <div className="text-right w-20 flex-shrink-0">
                           <div className="font-semibold text-emerald-600 dark:text-emerald-400">
-                            {formatChange(stock.refund_1d_p)}
+                            {formatChange(stock.refund_1d_p ?? stock.price_change_1d)}
                           </div>
                           <div className="text-[11px] text-slate-500 dark:text-slate-400">
                             ${formatPrice(stock.adjusted_close)}
@@ -481,7 +437,7 @@ export default function MarketOverview({
                         </div>
                         <div className="text-right w-20 flex-shrink-0">
                           <div className="font-semibold text-rose-600 dark:text-rose-400">
-                            {formatChange(stock.refund_1d_p)}
+                            {formatChange(stock.refund_1d_p ?? stock.price_change_1d)}
                           </div>
                           <div className="text-[11px] text-slate-500 dark:text-slate-400">
                             ${formatPrice(stock.adjusted_close)}

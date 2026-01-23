@@ -7,7 +7,6 @@ import { UserAvatar } from "@/components/auth/UserAvatar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -15,11 +14,9 @@ import {
   Mail,
   Crown,
   Calendar,
+  AlertCircle,
   MessageSquare,
   Sparkles,
-  Bell,
-  Megaphone,
-  AlertCircle,
   Save,
   Loader2,
   CheckCircle,
@@ -62,9 +59,6 @@ export default function ProfilePage() {
   // Form state
   const [displayName, setDisplayName] = useState("");
   const [fullName, setFullName] = useState("");
-  const [newsletterOptIn, setNewsletterOptIn] = useState(false);
-  const [announcementsOptIn, setAnnouncementsOptIn] = useState(false);
-  const [alertsOptIn, setAlertsOptIn] = useState(false);
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -87,9 +81,6 @@ export default function ProfilePage() {
       setProfile(profileData);
       setDisplayName(profileData.display_name || "");
       setFullName(profileData.full_name || "");
-      setNewsletterOptIn(profileData.newsletter_opt_in || false);
-      setAnnouncementsOptIn(profileData.announcements_opt_in || false);
-      setAlertsOptIn(profileData.alerts_opt_in || false);
 
       if (statsRes.ok) {
         const statsData = await statsRes.json();
@@ -159,7 +150,7 @@ export default function ProfilePage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+      <div className="min-h-full bg-slate-50 dark:bg-slate-950">
         <div className="mx-auto max-w-4xl py-10 px-4 md:px-8 space-y-6">
           <Skeleton className="h-10 w-48" />
           <div className="grid gap-6 md:grid-cols-3">
@@ -179,8 +170,8 @@ export default function ProfilePage() {
 
   const tierConfig = {
     free: { label: "Free", color: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },
-    premium: { label: "Premium", color: "bg-gradient-to-r from-amber-500 to-orange-500 text-white" },
-    pro: { label: "Pro", color: "bg-gradient-to-r from-purple-500 to-pink-500 text-white" },
+    premium: { label: "Premium", color: "bg-amber-500 text-white" },
+    pro: { label: "Pro", color: "bg-purple-600 text-white" },
   };
 
   const tier = (profile?.subscription_tier || "free") as keyof typeof tierConfig;
@@ -188,13 +179,13 @@ export default function ProfilePage() {
 
   const memberSince = stats?.memberSince
     ? new Date(stats.memberSince).toLocaleDateString("en-US", {
-        month: "long",
-        year: "numeric",
-      })
+      month: "long",
+      year: "numeric",
+    })
     : "—";
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+    <div className="min-h-full bg-slate-50 dark:bg-slate-950">
       <div className="mx-auto max-w-4xl py-10 px-4 md:px-8 space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -207,11 +198,10 @@ export default function ProfilePage() {
           <button
             onClick={handleSave}
             disabled={!hasChanges || saving}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-              hasChanges
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${hasChanges
                 ? "bg-brand text-white hover:bg-brand/90 shadow-lg shadow-brand/25"
                 : "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed"
-            }`}
+              }`}
           >
             {saving ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -293,7 +283,7 @@ export default function ProfilePage() {
                 </div>
               </div>
               {tier === "free" && (
-                <div className="mt-4 p-3 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/10 dark:to-orange-900/10 border border-amber-200 dark:border-amber-800/30 rounded-lg">
+                <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-lg">
                   <p className="text-sm text-amber-800 dark:text-amber-200">
                     <Crown className="h-4 w-4 inline mr-1" />
                     Upgrade to Premium for 20 reasoning queries/day and priority support.
@@ -362,61 +352,7 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* Notification Preferences */}
-        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg text-slate-900 dark:text-white">
-              <Bell className="h-5 w-5" />
-              Notification Preferences
-            </CardTitle>
-            <CardDescription>Choose what updates you want to receive</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                  <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div>
-                  <p className="font-medium text-slate-900 dark:text-white">Newsletter</p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Weekly market insights and platform updates
-                  </p>
-                </div>
-              </div>
-              <Switch checked={newsletterOptIn} onCheckedChange={setNewsletterOptIn} />
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                  <Megaphone className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                </div>
-                <div>
-                  <p className="font-medium text-slate-900 dark:text-white">Announcements</p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    New features and important platform news
-                  </p>
-                </div>
-              </div>
-              <Switch checked={announcementsOptIn} onCheckedChange={setAnnouncementsOptIn} />
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-                  <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                </div>
-                <div>
-                  <p className="font-medium text-slate-900 dark:text-white">Price Alerts</p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Notifications when your watched stocks hit price targets
-                  </p>
-                </div>
-              </div>
-              <Switch checked={alertsOptIn} onCheckedChange={setAlertsOptIn} />
-            </div>
-          </CardContent>
-        </Card>
-
+        
         {/* Account Info */}
         <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
           <CardHeader>
@@ -475,10 +411,10 @@ export default function ProfilePage() {
                 <span className="text-slate-700 dark:text-slate-300 text-xs">
                   {user.created_at
                     ? new Date(user.created_at).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
                     : "—"}
                 </span>
               </div>
@@ -487,10 +423,10 @@ export default function ProfilePage() {
                 <span className="text-slate-700 dark:text-slate-300 text-xs">
                   {profile?.updated_at
                     ? new Date(profile.updated_at).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
                     : "—"}
                 </span>
               </div>

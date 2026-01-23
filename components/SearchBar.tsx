@@ -690,8 +690,11 @@ const POPULAR_TICKERS: Record<string, string> = {
 
 function searchTickers(query: string) {
   const q = query.toUpperCase();
+  const qLower = query.toLowerCase();
   return Object.entries(POPULAR_TICKERS)
-    .filter(([ticker]) => ticker.startsWith(q))
+    .filter(([ticker, name]) => 
+      ticker.startsWith(q) || name.toLowerCase().includes(qLower) || name.toUpperCase().includes(q)
+    )
     .slice(0, 5)
     .map(([ticker, name]) => ({ ticker, name }));
 }
@@ -699,14 +702,35 @@ function searchTickers(query: string) {
 /* ------------------------------------------------------------------ */
 /* Component                                                          */
 /* ------------------------------------------------------------------ */
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+
 export default function SearchBar() {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [recent, setRecent] = useLocalStorage<RecentItem[]>("search-recent", []);
+  const [dataDate, setDataDate] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Fetch latest data date for freshness indicator
+  useEffect(() => {
+    async function fetchDataDate() {
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/company/AAPL`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.metrics?.date) {
+            setDataDate(data.metrics.date);
+          }
+        }
+      } catch {
+        // Ignore errors
+      }
+    }
+    fetchDataDate();
+  }, []);
 
   const suggestions = searchTickers(query);
   const showSuggestions = open && query.length > 0;
@@ -793,60 +817,64 @@ export default function SearchBar() {
   /* Render                                                             */
   /* ------------------------------------------------------------------ */
   return (
-    <div ref={wrapperRef} className="relative w-full max-w-2xl mx-auto group">
+    <div ref={wrapperRef} className="relative w-full max-w-2xl mx-auto">
       {/* glow */}
-      <div className="absolute -inset-1 bg-gradient-to-r from-brand via-blue-500 to-indigo-600 rounded-full opacity-10 group-focus-within:opacity-25 blur-xl transition duration-500" />
+      <div className="absolute -inset-1 bg-brand/20 rounded-full opacity-20 group-hover:opacity-30 blur transition duration-200" />
 
       {/* input */}
-      <form onSubmit={handleSubmit} className="relative">
+      <form onSubmit={handleSubmit} className="relative group">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 dark:text-slate-500 group-focus-within:text-brand transition-colors pointer-events-none" />
         <input
           ref={inputRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setOpen(true)}
           className={cn(
-            "flex h-16 w-full rounded-full border border-slate-200 dark:border-slate-800",
-            "bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl pl-8 pr-40 py-4 text-lg dark:text-white shadow-2xl",
-            "placeholder:text-slate-400 dark:placeholder:text-slate-600",
-            "focus:outline-none focus:ring-4 focus:ring-brand/10 focus:border-brand/40",
-            "transition-all"
+            "flex h-12 w-full rounded-full border border-slate-200 dark:border-slate-800",
+            "bg-white dark:bg-slate-900 pl-11 pr-24 py-2 text-base dark:text-white",
+            "placeholder:text-slate-400 dark:placeholder:text-slate-500",
+            "focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand",
+            "transition-all shadow-sm hover:shadow-md"
           )}
-          placeholder="Search for a company like AAPL, MSFT, TSLA..."
-          aria-label="Search for stocks by ticker symbol or company name"
+          placeholder="Search ticker, company or index..."
           aria-autocomplete="list"
-          aria-expanded={open}
-          aria-controls="search-dropdown"
-          role="combobox"
         />
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-          {query && (
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              className="h-10 w-10 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
-              onClick={() => setQuery("")}
-              aria-label="Clear query"
-            >
-              <X className="h-5 w-5 text-slate-400" />
-            </Button>
-          )}
+        {query && (
           <Button
-            type="submit"
-            className="h-10 px-6 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:scale-105 active:scale-95 transition-all font-semibold shadow-lg flex items-center gap-2"
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="absolute right-20 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:bg-transparent"
+            onClick={() => setQuery("")}
+            aria-label="Clear query"
           >
-            <Search className="h-4 w-4" />
-            Search
+            <X className="h-4 w-4 text-slate-400" />
           </Button>
-        </div>
+        )}
+        <Button
+          type="submit"
+          size="sm"
+          className="absolute right-1 top-1 h-10 px-6 rounded-full bg-brand hover:bg-brand/90 text-white shadow-sm"
+        >
+          Search
+        </Button>
       </form>
 
+      {/* Data freshness indicator */}
+      {dataDate && (
+        <div className="flex justify-center mt-2">
+          <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-growth" />
+            Data as of {new Date(dataDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          </span>
+        </div>
+      )}
 
       {/* dropdown */}
       {(showSuggestions || showRecents) && (
         <div
           id="search-dropdown"
-          className="absolute top-full mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl z-50 overflow-hidden"
+          className="absolute top-full mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl z-[100] overflow-hidden"
         >
           {showRecents && !!recent.length && (
             <>
@@ -894,7 +922,6 @@ export default function SearchBar() {
           )}
         </div>
       )}
-
     </div>
   );
 }

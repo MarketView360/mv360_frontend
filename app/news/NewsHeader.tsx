@@ -11,6 +11,8 @@ export function NewsHeader() {
   const searchParams = useSearchParams();
   const tickerRef = useRef<HTMLInputElement>(null);
   const qRef = useRef<HTMLInputElement>(null);
+  const fromRef = useRef<HTMLInputElement>(null);
+  const toRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -24,56 +26,74 @@ export function NewsHeader() {
   }, []);
 
   return (
-    <header className="border-b border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 backdrop-blur sticky top-0 z-20">
-      <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-12 py-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <header className="border-b border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/70 backdrop-blur sticky top-16 z-10">
+      <div className="mx-auto max-w-[1400px] px-4 md:px-8 py-6 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
             <PiNewspaper className="text-brand" />
             Market News
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Filter by ticker or search headlines
+            Real-time market headlines with advanced filtering
           </p>
         </div>
 
         <form
-          className="flex flex-col md:flex-row w-full md:w-auto gap-2"
+          className="flex flex-col md:flex-row gap-2 w-full xl:w-auto"
           onSubmit={(e) => {
             e.preventDefault();
             const ticker = tickerRef.current?.value.trim().toUpperCase() || "";
             const q = qRef.current?.value.trim() || "";
+            const from = fromRef.current?.value || "";
+            const to = toRef.current?.value || "";
+            
             const sp = new URLSearchParams();
             if (ticker) sp.set("ticker", ticker);
             if (q) sp.set("q", q);
+            if (from) sp.set("from", from);
+            if (to) sp.set("to", to);
+            
             router.replace(`/news?${sp.toString()}`);
           }}
         >
-          <div className="relative">
-            <label htmlFor="ticker-input" className="sr-only">Filter by ticker symbol</label>
+          <div className="flex gap-2">
             <input
-              id="ticker-input"
               ref={tickerRef}
               name="ticker"
               defaultValue={searchParams.get("ticker") ?? ""}
               placeholder="Ticker (e.g. AAPL)"
-              className="w-full md:w-40 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+              className="w-32 md:w-40 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
             />
-          </div>
-          <div className="relative">
-            <label htmlFor="headline-search" className="sr-only">Search headlines by keyword</label>
             <input
-              id="headline-search"
               ref={qRef}
               name="q"
               defaultValue={searchParams.get("q") ?? ""}
               placeholder="Headline keywords"
-              className="w-full md:w-64 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+              className="flex-1 md:w-64 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
             />
           </div>
-          <Button type="submit" size="sm" className="px-4">
-            <FiSearch className="mr-2" />
-            Search
-          </Button>
+          
+          <div className="flex gap-2">
+             <input
+              ref={fromRef}
+              name="from"
+              type="date"
+              defaultValue={searchParams.get("from") ?? ""}
+              className="w-full md:w-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand text-slate-500 dark:text-slate-400"
+            />
+            <span className="self-center text-slate-400 dark:text-slate-600">-</span>
+            <input
+              ref={toRef}
+              name="to"
+              type="date"
+              defaultValue={searchParams.get("to") ?? ""}
+              className="w-full md:w-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand text-slate-500 dark:text-slate-400"
+            />
+            <Button type="submit" size="sm" className="px-4 shrink-0">
+              <FiSearch className="mr-2" />
+              Search
+            </Button>
+          </div>
         </form>
       </div>
     </header>

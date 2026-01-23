@@ -13,8 +13,18 @@ interface ChatMessage {
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:4000";
+const AI_ENABLED = process.env.NEXT_PUBLIC_AI_ENABLED === "true";
 
 export function AiChatWidget() {
+  // Don't render the widget if AI is disabled
+  if (!AI_ENABLED) {
+    return null;
+  }
+
+  return <AiChatWidgetInner />;
+}
+
+function AiChatWidgetInner() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");

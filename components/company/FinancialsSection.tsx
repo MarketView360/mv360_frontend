@@ -105,7 +105,7 @@ const TrendIndicator = ({ current, previous }: { current: number | null; previou
   const change = ((current - previous) / Math.abs(previous)) * 100;
   if (change > 0) {
     return (
-      <span className="flex items-center text-green-600 dark:text-green-400 text-xs">
+      <span className="flex items-center text-growth-600 dark:text-growth-400 text-xs font-mono">
         <TrendingUp className="w-3 h-3 mr-1" />
         +{change.toFixed(1)}%
       </span>
@@ -113,7 +113,7 @@ const TrendIndicator = ({ current, previous }: { current: number | null; previou
   }
   if (change < 0) {
     return (
-      <span className="flex items-center text-red-600 dark:text-red-400 text-xs">
+      <span className="flex items-center text-danger-600 dark:text-danger-400 text-xs font-mono">
         <TrendingDown className="w-3 h-3 mr-1" />
         {change.toFixed(1)}%
       </span>
@@ -175,8 +175,10 @@ export function FinancialsSection({ ticker }: FinancialsSectionProps) {
           <CardTitle>Financial Statements</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            {error || "No financial data available. Run the financials sync to populate data."}
+          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md">
+            {error
+              ? "We couldn\'t load this company\'s financial statements right now. Please refresh the page or try again shortly."
+              : "Financial statements for this company aren\'t available yet. They\'ll appear here once reporting data has been processed."}
           </p>
         </CardContent>
       </Card>
@@ -405,8 +407,10 @@ export function FinancialsSection({ ticker }: FinancialsSectionProps) {
   );
 }
 
+export default FinancialsSection;
+
 // Helper component for table rows
-function TableRow({
+function TableRow<K extends keyof FinancialPeriod>({
   label,
   data,
   field,
@@ -414,7 +418,7 @@ function TableRow({
 }: {
   label: string;
   data: FinancialPeriod[];
-  field: keyof FinancialPeriod;
+  field: K;
   format: (value: number | null) => string;
 }) {
   return (
@@ -423,7 +427,7 @@ function TableRow({
       {data.map((f, idx) => (
         <td key={f.period_end} className="py-2 text-right font-medium text-slate-900 dark:text-white">
           <div className="flex flex-col items-end">
-            <span>{format(f[field] as number | null)}</span>
+            <span className="font-mono">{format(f[field] as number | null)}</span>
             {idx < data.length - 1 && (
               <TrendIndicator
                 current={f[field] as number | null}
@@ -436,5 +440,3 @@ function TableRow({
     </tr>
   );
 }
-
-export default FinancialsSection;

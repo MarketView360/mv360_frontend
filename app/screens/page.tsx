@@ -25,8 +25,8 @@ const SCREENS = [
       "High momentum stocks breaking out with strong price performance and volume.",
     tags: ["Momentum", "Technical"],
     color: "bg-yellow-500",
-    query: `Return over 1year > 50 AND
-Average Volume > 500000 AND
+    query: `Change Percent > 5 AND
+Volume > 500000 AND
 Market Capitalization > 1000`,
   },
   {
@@ -35,9 +35,9 @@ Market Capitalization > 1000`,
       "Companies with >20% revenue growth trading at a PEG ratio under 1.5.",
     tags: ["Growth", "Value"],
     color: "bg-green-500",
-    query: `Sales growth 3Years > 20 AND
-PEG Ratio < 1.5 AND
+    query: `PEG Ratio < 1.5 AND
 PEG Ratio > 0 AND
+Price to Sales < 5 AND
 Market Capitalization > 500`,
   },
   {
@@ -47,9 +47,8 @@ Market Capitalization > 500`,
     tags: ["Long Term", "Quality"],
     color: "bg-blue-500",
     query: `ROE > 15 AND
-ROCE > 15 AND
-Debt to equity < 0.5 AND
-Sales growth 3Years > 10 AND
+ROA > 10 AND
+Operating Margin > 15 AND
 Market Capitalization > 1000`,
   },
   {
@@ -57,7 +56,7 @@ Market Capitalization > 1000`,
     description: "High Return on Capital and High Earnings Yield (Greenblatt).",
     tags: ["Value", "Quality"],
     color: "bg-purple-500",
-    query: `ROCE > 20 AND
+    query: `ROA > 15 AND
 PE < 15 AND
 PE > 0 AND
 Market Capitalization > 500`,
@@ -67,11 +66,11 @@ Market Capitalization > 500`,
     description:
       "High dividend yield stocks with sustainable payout and strong fundamentals.",
     tags: ["Dividend", "Safe"],
-    color: "bg-emerald-500",
+    color: "bg-growth",
     query: `Dividend yield > 3 AND
 Dividend yield < 10 AND
 ROE > 12 AND
-Debt to equity < 1 AND
+Net Debt < 5000 AND
 Market Capitalization > 1000`,
   },
   {
@@ -79,10 +78,10 @@ Market Capitalization > 1000`,
     description: "Profitable companies with low debt and high profit margins.",
     tags: ["Quality", "Safe"],
     color: "bg-indigo-500",
-    query: `Debt to equity < 0.3 AND
+    query: `Net Debt < 1000 AND
 OPM > 15 AND
 ROE > 12 AND
-Current Ratio > 1.5 AND
+Current Assets > Current Liabilities AND
 Market Capitalization > 500`,
   },
 ];
@@ -103,12 +102,11 @@ function ScreensPageSkeleton() {
   );
 }
 
-
 function ScreensPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState(
-    "Market capitalization > 500 AND\nPrice to earning < 15 AND\nReturn on capital employed > 22%"
+    "Market Capitalization > 1000 AND\nPE < 25 AND\nROE > 15"
   );
 
   // Get current tab from URL params, default to 'screens' (Templates)
@@ -125,7 +123,7 @@ function ScreensPageContent() {
   const handleRunTemplate = (templateQuery: string) => {
     const params = new URLSearchParams({
       query: templateQuery,
-      sort: "market_capitalization.desc",
+      sort: "market_cap.desc",
       limit: String(50),
       offset: String(0),
       exchange: "us",
@@ -134,11 +132,10 @@ function ScreensPageContent() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20 font-sans transition-colors duration-300">
+    <div className="min-h-full bg-slate-50 dark:bg-slate-950 pb-20 font-sans transition-colors duration-300">
       {/* Header */}
       <div className="bg-linear-to-br from-white via-slate-50/50 to-white dark:from-slate-900 dark:via-slate-900/50 dark:to-slate-900 border-b border-slate-200 dark:border-slate-800 py-8 relative overflow-hidden transition-colors duration-300">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(120,119,198,0.05),transparent_50%)]"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(34,197,94,0.05),transparent_50%)]"></div>
+        <div className="absolute inset-0 bg-slate-50/50 dark:bg-slate-900/50"></div>
         <div className="mx-auto max-w-[1920px] px-4 md:px-6 lg:px-8 relative z-10">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="space-y-2">
@@ -174,7 +171,39 @@ function ScreensPageContent() {
           onValueChange={handleTabChange}
           className="w-full"
         >
-          {/* Tabs List */}
+          {/* Tab indicator dots */}
+          <div className="flex justify-center mb-6">
+            <div className="flex gap-2">
+              <div
+                className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                  currentTab === "screens"
+                    ? "bg-purple-500 w-8"
+                    : "bg-slate-300 dark:bg-slate-600"
+                }`}
+              ></div>
+              <div
+                className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                  currentTab === "strategies"
+                    ? "bg-growth w-8"
+                    : "bg-slate-300 dark:bg-slate-600"
+                }`}
+              ></div>
+              <div
+                className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                  currentTab === "builder"
+                    ? "bg-blue-500 w-8"
+                    : "bg-slate-300 dark:bg-slate-600"
+                }`}
+              ></div>
+              <div
+                className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                  currentTab === "community"
+                    ? "bg-amber-500 w-8"
+                    : "bg-slate-300 dark:bg-slate-600"
+                }`}
+              ></div>
+            </div>
+          </div>
           <div className="flex justify-center mb-12">
             <TabsList className="grid w-full max-w-4xl grid-cols-4 gap-3 h-auto bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
               <TabsTrigger
@@ -195,9 +224,9 @@ function ScreensPageContent() {
               </TabsTrigger>
               <TabsTrigger
                 value="strategies"
-                className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 relative group py-3 sm:py-4 px-3 rounded-xl bg-transparent hover:bg-slate-50 dark:hover:bg-slate-700/50 border-2 border-transparent data-[state=active]:border-emerald-400 data-[state=active]:bg-emerald-50 dark:data-[state=active]:bg-emerald-900/30 data-[state=active]:shadow-md transition-all duration-200"
+                className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 relative group py-3 sm:py-4 px-3 rounded-xl bg-transparent hover:bg-slate-50 dark:hover:bg-slate-700/50 border-2 border-transparent data-[state=active]:border-growth-400 data-[state=active]:bg-growth-50 dark:data-[state=active]:bg-growth-900/30 data-[state=active]:shadow-md transition-all duration-200"
               >
-                <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-emerald-500 flex items-center justify-center transition-all duration-300 shadow-lg shadow-emerald-500/25">
+                <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-growth flex items-center justify-center transition-all duration-300 shadow-lg shadow-growth/25">
                   <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                 </div>
                 <div className="text-center sm:text-left">
@@ -325,8 +354,8 @@ function ScreensPageContent() {
           >
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4 md:p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                  <BookOpen className="w-5 h-5 text-emerald-600" />
+                <div className="w-10 h-10 rounded-lg bg-growth/10 flex items-center justify-center">
+                  <BookOpen className="w-5 h-5 text-growth-600" />
                 </div>
                 <div>
                   <h2 className="text-xl font-semibold text-slate-800 dark:text-white">

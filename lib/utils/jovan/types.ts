@@ -25,3 +25,26 @@ export interface ReasoningQuota {
   limit: number;
   resetsAt: string;
 }
+
+/**
+ * Token-based quota status with 12-hour reset
+ * 
+ * Limits:
+ * - Free: 30,000 tokens / 12 hours, 3 reasoning / 12 hours
+ * - Premium: 300,000 tokens / 12 hours, 10 reasoning / 12 hours
+ */
+export interface QuotaStatus {
+  success: boolean;
+  tokens: {
+    used: number;
+    limit: number;
+    remaining: number;
+  };
+  reasoning: {
+    used: number;
+    limit: number;
+    remaining: number;
+  };
+  resetsAt: string;
+  tier: 'free' | 'premium';
+}

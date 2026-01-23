@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useAuth } from "@/providers/AuthProvider";
 import { Mail, AlertCircle, ArrowLeft, CheckCircle } from "lucide-react";
+import { Logo } from "@/components/common/Logo";
 
 export default function ForgotPasswordPage() {
   const { resetPassword } = useAuth();
@@ -85,26 +85,16 @@ export default function ForgotPasswordPage() {
           {/* Header */}
           <div className="text-center mb-8">
             <Link href="/" className="inline-block mb-4">
-              <Image
-                src="/logo.svg"
-                alt="Marketview360"
-                width={240}
-                height={56}
-                className="h-14 w-auto mx-auto dark:hidden"
-              />
-              <Image
-                src="/logo-dark.svg"
-                alt="Marketview360"
-                width={240}
-                height={56}
-                className="h-14 w-auto mx-auto hidden dark:block"
-              />
+              <Logo width={200} height={40} className="h-10 md:h-12" />
             </Link>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
               Forgot your password?
             </h1>
             <p className="text-slate-600 dark:text-slate-400 mt-2">
               No worries, we&apos;ll send you reset instructions.
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-500 mt-3">
+              If you usually sign in with Google/Microsoft (or another provider), you may not have a password here—use your provider to manage your password.
             </p>
           </div>
 

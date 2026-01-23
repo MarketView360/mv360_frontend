@@ -3,9 +3,9 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { useAuth } from "@/providers/AuthProvider";
 import { SocialAuthButtons, OrDivider } from "@/components/auth/SocialAuthButtons";
+import { Logo } from "@/components/common/Logo";
 import { Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, Sparkles } from "lucide-react";
 
 export default function LoginPage() {
@@ -23,7 +23,6 @@ function LoginPageSkeleton() {
     </div>
   );
 }
-
 
 function LoginPageContent() {
   const router = useRouter();
@@ -114,22 +113,9 @@ function LoginPageContent() {
 
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8">
           {/* Header */}
-          <div className="text-center mb-6">
+          <div className="text-center mb-8">
             <Link href="/" className="inline-block mb-4">
-              <Image
-                src="/logo.svg"
-                alt="Marketview360"
-                width={240}
-                height={56}
-                className="h-14 w-auto mx-auto dark:hidden"
-              />
-              <Image
-                src="/logo-dark.svg"
-                alt="Marketview360"
-                width={240}
-                height={56}
-                className="h-14 w-auto mx-auto hidden dark:block"
-              />
+              <Logo width={200} height={40} className="h-10 md:h-12" />
             </Link>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
               Welcome back
@@ -138,6 +124,11 @@ function LoginPageContent() {
               Sign in to your account to continue
             </p>
           </div>
+
+          {/* Social Login */}
+          <SocialAuthButtons mode="login" />
+
+          <OrDivider />
 
           {/* Toggle between password and magic link */}
           <div className="flex gap-2 mb-6">
@@ -172,7 +163,6 @@ function LoginPageContent() {
             </div>
           )}
 
-
           {/* Email/Password Form */}
           {!magicLinkMode ? (
             <form onSubmit={handleEmailLogin}>
@@ -191,7 +181,7 @@ function LoginPageContent() {
                       onChange={(e) => setEmail(e.target.value)}
                       required
                       placeholder="you@example.com"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-400 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-colors"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                     />
                   </div>
                 </div>
@@ -218,13 +208,12 @@ function LoginPageContent() {
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       placeholder="Enter your password"
-                      className="w-full pl-10 pr-12 py-2.5 rounded-lg border border-slate-400 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-colors"
+                      className="w-full pl-10 pr-12 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:rounded"
-                      aria-label={showPassword ? "Hide password" : "Show password"}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                     >
                       {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
@@ -292,10 +281,6 @@ function LoginPageContent() {
               </div>
             </form>
           )}
-
-          {/* Alternative Login Methods */}
-          <OrDivider />
-          <SocialAuthButtons mode="login" />
 
           {/* Sign up link */}
           <p className="text-center text-sm text-slate-600 dark:text-slate-400 mt-6">

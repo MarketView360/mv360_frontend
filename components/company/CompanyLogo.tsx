@@ -5,15 +5,24 @@ import { useState } from "react";
 interface CompanyLogoProps {
   ticker: string;
   name: string;
+  size?: "sm" | "md" | "lg";
 }
 
 const LOGO_DEV_BASE = "https://img.logo.dev/ticker";
 const LOGO_DEV_TOKEN = process.env.NEXT_PUBLIC_LOGO_DEV_PUBLISHABLE_KEY;
 
-export function CompanyLogo({ ticker, name }: CompanyLogoProps) {
+export function CompanyLogo({ ticker, name, size = "md" }: CompanyLogoProps) {
   const [error, setError] = useState(false);
 
-  const symbol = ticker?.toLowerCase();
+  const sizeClasses = {
+    sm: "w-8 h-8 text-xs rounded-md",
+    md: "w-16 h-16 text-2xl rounded-xl",
+    lg: "w-20 h-20 text-3xl rounded-xl",
+  };
+
+  // Strip .US suffix for logo lookup
+  const cleanTicker = ticker?.replace(/\.US$/i, '') ?? '';
+  const symbol = cleanTicker.toLowerCase();
   const hasToken = !!LOGO_DEV_TOKEN;
   const src = hasToken
     ? `${LOGO_DEV_BASE}/${encodeURIComponent(symbol)}?token=${LOGO_DEV_TOKEN}`
@@ -21,14 +30,14 @@ export function CompanyLogo({ ticker, name }: CompanyLogoProps) {
 
   if (!src || error) {
     return (
-      <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-brand to-blue-600 text-white flex items-center justify-center font-bold text-2xl shadow-lg flex-shrink-0">
+      <div className={`${sizeClasses[size]} bg-brand text-white flex items-center justify-center font-bold shadow-lg flex-shrink-0`}>
         {ticker?.[0] ?? "?"}
       </div>
     );
   }
 
   return (
-    <div className="w-16 h-16 rounded-xl bg-slate-100 dark:bg-slate-900 flex items-center justify-center overflow-hidden shadow-lg flex-shrink-0">
+    <div className={`${sizeClasses[size]} bg-slate-100 dark:bg-slate-900 flex items-center justify-center overflow-hidden shadow-lg flex-shrink-0`}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}

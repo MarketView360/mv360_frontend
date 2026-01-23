@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useAuth } from "@/providers/AuthProvider";
 import { SocialAuthButtons, OrDivider } from "@/components/auth/SocialAuthButtons";
+import { Logo } from "@/components/common/Logo";
 import { Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, User, Check, X } from "lucide-react";
 
 interface PasswordStrength {
@@ -126,20 +126,7 @@ export default function SignupPage() {
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8">
           <div className="text-center mb-8">
             <Link href="/" className="inline-block mb-4">
-              <Image
-                src="/logo.svg"
-                alt="Marketview360"
-                width={240}
-                height={56}
-                className="h-14 w-auto mx-auto dark:hidden"
-              />
-              <Image
-                src="/logo-dark.svg"
-                alt="Marketview360"
-                width={240}
-                height={56}
-                className="h-14 w-auto mx-auto hidden dark:block"
-              />
+              <Logo width={200} height={40} className="h-10 md:h-12" />
             </Link>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Create your account</h1>
             <p className="text-slate-600 dark:text-slate-400 mt-2">Start analyzing markets for free</p>
@@ -204,8 +191,7 @@ export default function SignupPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:rounded"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -248,8 +234,7 @@ export default function SignupPage() {
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:rounded"
-                    aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                   >
                     {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>

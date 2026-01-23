@@ -19,7 +19,7 @@ export function UserAvatar({ user, size = "md", className }: UserAvatarProps) {
   // Get initials from user's name or email
   const getInitials = () => {
     if (!user) return "?";
-    
+
     const fullName = user.user_metadata?.full_name;
     if (fullName) {
       const names = fullName.split(" ");
@@ -28,12 +28,12 @@ export function UserAvatar({ user, size = "md", className }: UserAvatarProps) {
       }
       return fullName[0].toUpperCase();
     }
-    
+
     const email = user.email;
     if (email) {
       return email[0].toUpperCase();
     }
-    
+
     return "?";
   };
 
@@ -57,7 +57,7 @@ export function UserAvatar({ user, size = "md", className }: UserAvatarProps) {
   return (
     <div
       className={cn(
-        "flex items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600 font-medium text-white ring-2 ring-slate-200 dark:ring-slate-700",
+        "flex items-center justify-center rounded-full bg-blue-600 font-medium text-white ring-2 ring-slate-200 dark:ring-slate-700",
         sizeClasses[size],
         className
       )}

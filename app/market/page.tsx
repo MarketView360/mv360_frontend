@@ -14,186 +14,48 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import MarketHeatmap from "@/components/MarketHeatmap";
+import { MarketBreadth } from "@/components/market/MarketBreadth";
+import { GlobalMarkets } from "@/components/market/GlobalMarkets";
+import { SectorPerformance } from "@/components/market/SectorPerformance";
+import { EconomicCalendar } from "@/components/market/EconomicCalendar";
 import MarketOverview from "@/components/MarketOverview";
-import { Kbd, KbdGroup } from "@/components/ui/kbd";
 
-const RANGE_OPTIONS = [
-  { label: "1D", value: "1D" },
-  { label: "1W", value: "1W" },
-  { label: "1M", value: "1M" },
-  { label: "3M", value: "3M" },
-  { label: "1Y", value: "1Y" },
-] as const;
+// Simple Kbd component since it was missing
+const Kbd = ({ children }: { children: React.ReactNode }) => (
+  <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+    {children}
+  </kbd>
+);
 
-type Range = typeof RANGE_OPTIONS[number]["value"];
+const KbdGroup = ({ children, className }: { children: React.ReactNode, className?: string }) => (
+  <div className={cn("flex items-center gap-1", className)}>
+    {children}
+  </div>
+);
 
-/* ---------- main ---------- */
-function MarketPageSkeleton() {
-  return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-brand" />
-    </div>
-  );
-}
+export default function MarketPage() {
+  const [sector, setSector] = useState<string>("");
+  const [refreshToken, setRefreshToken] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(true);
 
-function MarketPageContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
-  /* URL state */
-  const range = (searchParams.get("range") as Range) ?? "1D";
-  const sector = searchParams.get("sector") ?? "";
-
-  /* local state */
-  const [copied, setCopied] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [refreshToken, setRefreshToken] = useState(0);
-
-  /* update URL */
-  const setRange = useCallback(
-    (r: Range) => {
-      const params = new URLSearchParams(searchParams);
-      params.set("range", r);
-      router.replace(`/market?${params.toString()}`);
-    },
-    [router, searchParams]
-  );
-
-  const setSector = (s: string) => {
-    const params = new URLSearchParams(searchParams);
-    if (s) params.set("sector", s);
-    else params.delete("sector");
-    router.replace(`/market?${params.toString()}`);
-  };
-
-  /* keyboard shortcuts */
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
-      if (e.key.toLowerCase() === "r") {
-        e.preventDefault();
-        const idx = RANGE_OPTIONS.findIndex((o) => o.value === range);
-        const next = RANGE_OPTIONS[(idx + 1) % RANGE_OPTIONS.length].value;
-        setRange(next);
-      }
-      if (e.key.toLowerCase() === "s") {
-        e.preventDefault();
-        document.getElementById("sector-picker")?.focus();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [range, setRange]);
-
-  /* copy link */
-  const copyLink = () => {
-    navigator.clipboard.writeText(window.location.href);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  /* skeleton while loading (simulate fetch) */
+  // Simulate loading effect
   useEffect(() => {
     setLoading(true);
-    const t = setTimeout(() => setLoading(false), 600);
-    return () => clearTimeout(t);
-  }, [range, sector]);
-
-  /* breadcrumbs */
-  const breadcrumbs = [
-    { name: "Home", href: "/" },
-    { name: "Markets", href: "/market" },
-    { name: range, href: `/market?range=${range}` },
-  ];
+    const timer = setTimeout(() => setLoading(false), 1000);
+    return () => clearTimeout(timer);
+  }, [refreshToken, sector]);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20 font-sans transition-colors duration-300">
-      {/* Breadcrumbs + Copy Link */}
-      <div className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
-        <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-12 py-4 flex items-center justify-between">
-          <nav className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-            {breadcrumbs.map((crumb, i) => (
-              <React.Fragment key={i}>
-                {i > 0 && <ChevronRight className="h-4 w-4" />}
-                <a
-                  href={crumb.href}
-                  className={cn(
-                    "hover:text-brand transition-colors",
-                    i === breadcrumbs.length - 1 && "text-slate-900 dark:text-white font-medium"
-                  )}
-                >
-                  {crumb.name}
-                </a>
-              </React.Fragment>
-            ))}
-          </nav>
-          <button
-            onClick={copyLink}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-          >
-            {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-            Copy link
-          </button>
-        </div>
-      </div>
-
-      {/* Hero */}
-      <div className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
-        <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-12 py-8 md:py-10 lg:py-12">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8">
-            <div className="space-y-4 max-w-2xl">
-              <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
-                Live market snapshot
-              </div>
-              <div>
-                <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold font-heading tracking-tight text-slate-900 dark:text-white">
-                  Market Overview
-                </h1>
-                <p className="mt-3 text-sm md:text-base text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Monitor broad market breadth, sector rotation and real-time movers in a single, focused view
-                  built for active screening and analysis.
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
-                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 dark:border-slate-700 px-3 py-1 bg-white/60 dark:bg-transparent">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
-                  US session
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 dark:border-slate-700 px-3 py-1 bg-white/60 dark:bg-transparent">
-                  1D change focus
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 dark:border-slate-700 px-3 py-1 bg-white/60 dark:bg-transparent">
-                  Press <kbd className="px-1 border rounded">R</kbd> to cycle range
-                </span>
-              </div>
-            </div>
-
-            {/* Range picker */}
-            <div className="flex items-center gap-2" aria-label="Performance range selector">
-              {RANGE_OPTIONS.map((o) => (
-                <button
-                  key={o.value}
-                  onClick={() => setRange(o.value)}
-                  className={cn(
-                    "px-3 py-1.5 rounded-full text-sm font-medium transition-all border",
-                    range === o.value
-                      ? "bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white shadow-sm"
-                      : "bg-white/70 dark:bg-slate-900/70 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
-                  )}
-                >
-                  {o.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <div className="min-h-screen bg-slate-50 dark:bg-black font-sans">
       {/* Content */}
       <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-12 py-8 md:py-10 space-y-8">
         {/* Top bar: last updated, sector filter, refresh */}
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+              Market Overview
+            </h1>
+          </div>
           <div className="flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
             <Clock className="h-4 w-4" />
             <span>Last updated: just now</span>
@@ -243,6 +105,16 @@ function MarketPageContent() {
           </div>
         </div>
 
+        {/* New Row: Breadth & Global Markets */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1">
+            <MarketBreadth />
+          </div>
+          <div className="lg:col-span-2">
+            <GlobalMarkets />
+          </div>
+        </div>
+
         {/* Heatmap */}
         <div>
           {loading ? (
@@ -253,6 +125,16 @@ function MarketPageContent() {
           ) : (
             <MarketHeatmap sector={sector || undefined} refreshToken={refreshToken} />
           )}
+        </div>
+
+        {/* New Row: Sector Perf & Economic Calendar */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div>
+            <SectorPerformance />
+          </div>
+          <div>
+            <EconomicCalendar />
+          </div>
         </div>
 
         {/* Overview: Indices, Movers, News stacked */}
@@ -273,14 +155,7 @@ function MarketPageContent() {
           )}
         </div>
       </div>
-    </div>
+    </div >
   );
 }
 
-export default function MarketPage() {
-  return (
-    <Suspense fallback={<MarketPageSkeleton />}>
-      <MarketPageContent />
-    </Suspense>
-  );
-}
