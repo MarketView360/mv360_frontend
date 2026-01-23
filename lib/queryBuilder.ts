@@ -27,6 +27,7 @@ export interface FieldDef {
   example?: string;
   category?: string;
   backendField?: string; // Maps to backend database column
+  tier?: "free" | "pro"; // Access tier for gating fields
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
