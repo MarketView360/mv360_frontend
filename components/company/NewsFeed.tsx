@@ -1,3 +1,5 @@
+"use client";
+
 import { useAuth } from "@/providers/AuthProvider";
 import { Lock } from "lucide-react";
 import Link from 'next/link';
