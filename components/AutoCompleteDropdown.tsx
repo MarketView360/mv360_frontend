@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { QuerySuggestion } from '@/lib/queryBuilder';
-import { Hash, Code, Zap, TrendingUp, BarChart3, Calculator, Target } from 'lucide-react';
+import { Hash, Code, Zap, TrendingUp, BarChart3, Calculator, Target, Lock } from 'lucide-react';
 
 interface AutoCompleteDropdownProps {
   suggestions: QuerySuggestion[];

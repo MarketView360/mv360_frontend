@@ -171,7 +171,7 @@ function ResultsPageContent() {
     ])
   );
   const [exporting, setExporting] = useState<string | null>(null);
-  const [showPaywall, setShowPaywall] = useState(false);
+
 
   const backendUrl = useMemo(
     () =>

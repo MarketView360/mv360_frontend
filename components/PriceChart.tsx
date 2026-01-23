@@ -22,6 +22,7 @@ interface PriceData {
   low: number | null;
   close: number | null;
   volume: number | null;
+  drawdown?: number;
 }
 
 interface PriceChartProps {
