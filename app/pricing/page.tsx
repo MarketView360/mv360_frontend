@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useState, useEffect } from "react";
 import {
     Check,
     X,
@@ -9,10 +8,8 @@ import {
     Crown,
     Shield,
     RefreshCw,
-    Users,
     ChevronDown,
     ChevronUp,
-    Zap,
     LucideIcon,
 } from "lucide-react";
 
@@ -20,7 +17,7 @@ type BillingPeriod = "monthly" | "annually";
 
 interface PricingPlan {
     name: string;
-    tier: "free" | "pro" | "elite";
+    tier: "free" | "premium" | "max";
     monthlyPrice: number;
     annualPrice: number;
     description: string;
@@ -52,8 +49,8 @@ const plans: PricingPlan[] = [
         ],
     },
     {
-        name: "Professional",
-        tier: "pro",
+        name: "Premium",
+        tier: "premium",
         monthlyPrice: 19.99,
         annualPrice: 199.99,
         description: "For serious individual investors",
@@ -81,8 +78,8 @@ const plans: PricingPlan[] = [
         ],
     },
     {
-        name: "Elite Investor",
-        tier: "elite",
+        name: "Max",
+        tier: "max",
         monthlyPrice: 49.99,
         annualPrice: 499.99,
         description: "For professional traders & analysts",
@@ -240,9 +237,32 @@ export default function PricingPage() {
     const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
     const [showAllFeatures, setShowAllFeatures] = useState(false);
     const [openFaq, setOpenFaq] = useState<number | null>(null);
+    const [userSubscription, setUserSubscription] = useState<{ tier: string } | null>(null);
 
     const isAnnual = billingPeriod === "annually";
     const savingsPercent = 17;
+
+    // Fetch user subscription on mount
+    useEffect(() => {
+        async function fetchSubscription() {
+            try {
+                const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+                const response = await fetch(`${BACKEND_URL}/api/profile/subscription`, {
+                    credentials: "include",
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    setUserSubscription(data);
+                }
+            } catch (error) {
+                // User not logged in or error fetching subscription - that's fine
+                console.debug("Could not fetch subscription:", error);
+            }
+        }
+
+        fetchSubscription();
+    }, []);
 
     const getPrice = (plan: PricingPlan) => {
         if (plan.tier === "free") return "$0";
@@ -266,26 +286,26 @@ export default function PricingPage() {
                     </p>
 
                     {/* Billing Toggle */}
-                    <div className="inline-flex items-center gap-4 p-1.5 bg-slate-100 dark:bg-slate-800 rounded-full">
+                    <div className="inline-flex items-center gap-3 p-1.5 bg-slate-200 dark:bg-slate-800 rounded-full shadow-inner">
                         <button
                             onClick={() => setBillingPeriod("monthly")}
-                            className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${!isAnnual
-                                ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
-                                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                            className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-all ${!isAnnual
+                                ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-md"
+                                : "text-slate-700 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                                 }`}
                         >
                             Monthly
                         </button>
                         <button
                             onClick={() => setBillingPeriod("annually")}
-                            className={`px-6 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${isAnnual
-                                ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
-                                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                            className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-all flex items-center gap-2 ${isAnnual
+                                ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-md"
+                                : "text-slate-700 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                                 }`}
                         >
                             Annually
-                            <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-growth-500 text-white">
-                                Save {savingsPercent}%
+                            <span className="relative px-3 py-1 text-xs font-black rounded-full bg-gradient-to-r from-growth-500 via-growth-600 to-emerald-600 text-white shadow-lg shadow-growth-500/50 animate-pulse">
+                                🎉 SAVE {savingsPercent}%
                             </span>
                         </button>
                     </div>
@@ -302,6 +322,7 @@ export default function PricingPage() {
                                 plan={plan}
                                 price={getPrice(plan)}
                                 isAnnual={isAnnual}
+                                userSubscription={userSubscription}
                             />
                         ))}
                     </div>
@@ -312,15 +333,24 @@ export default function PricingPage() {
             <section className="py-12 md:py-16 bg-white dark:bg-slate-900 border-y border-slate-200 dark:border-slate-800">
                 <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-12">
                     <div className="text-center mb-8">
-                        <h2 className="text-2xl md:text-3xl font-bold font-heading text-slate-900 dark:text-white mb-2">
+                        <h2 className="text-2xl md:text-3xl font-bold font-heading text-slate-900 dark:text-white mb-4">
                             Compare Plans in Detail
                         </h2>
                         <button
                             onClick={() => setShowAllFeatures(!showAllFeatures)}
-                            className="inline-flex items-center gap-1 text-brand hover:text-brand-600 text-sm font-medium"
+                            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-brand to-brand/80 hover:from-brand/90 hover:to-brand/70 shadow-lg shadow-brand/25 hover:shadow-xl hover:shadow-brand/30 transition-all hover:scale-[1.02] border-2 border-brand/20"
                         >
-                            {showAllFeatures ? "Show Key Features" : "Show All Features"}
-                            {showAllFeatures ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                            {showAllFeatures ? (
+                                <>
+                                    <ChevronUp className="w-5 h-5" />
+                                    Show Key Features Only
+                                </>
+                            ) : (
+                                <>
+                                    <ChevronDown className="w-5 h-5" />
+                                    Show All Features
+                                </>
+                            )}
                         </button>
                     </div>
 
@@ -337,13 +367,13 @@ export default function PricingPage() {
                                     <th className="text-center py-4 px-4 font-medium text-warning">
                                         <span className="inline-flex items-center gap-1">
                                             <Lock className="w-4 h-4" />
-                                            Pro
+                                            Premium
                                         </span>
                                     </th>
                                     <th className="text-center py-4 px-4 font-medium text-elite">
                                         <span className="inline-flex items-center gap-1">
                                             <Crown className="w-4 h-4" />
-                                            Elite
+                                            Max
                                         </span>
                                     </th>
                                 </tr>
@@ -387,6 +417,16 @@ export default function PricingPage() {
                     </div>
                 </div>
             </section>
+            {/* Trust Signals */}
+            <section className="py-12 md:py-16 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
+                <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-12">
+                    <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12">
+                        <TrustSignal icon={Shield} text="30-Day Money-Back Guarantee" />
+                        <TrustSignal icon={RefreshCw} text="Cancel Anytime" />
+                        <TrustSignal icon={Lock} text="Secure Payment" />
+                    </div>
+                </div>
+            </section>
 
             {/* FAQ Section */}
             <section className="py-12 md:py-16">
@@ -424,40 +464,6 @@ export default function PricingPage() {
                     </div>
                 </div>
             </section>
-
-            {/* Trust Signals */}
-            <section className="py-12 md:py-16 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
-                <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-12">
-                    <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12">
-                        <TrustSignal icon={Shield} text="30-Day Money-Back Guarantee" />
-                        <TrustSignal icon={RefreshCw} text="Cancel Anytime" />
-                        <TrustSignal icon={Lock} text="Secure Payment" />
-                        <TrustSignal icon={Users} text="10,000+ Happy Investors" />
-                    </div>
-                </div>
-            </section>
-
-            {/* Final CTA */}
-            <section className="py-16 md:py-24 gradient-brand">
-                <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-12 text-center">
-                    <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                        Ready to start investing smarter?
-                    </h2>
-                    <p className="text-lg text-white/80 mb-8">
-                        Join thousands of investors using MarketView360
-                    </p>
-                    <Link
-                        href="/auth/signup"
-                        className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-brand font-semibold rounded-xl hover:bg-slate-50 transition-all hover:scale-[1.02] shadow-lg"
-                    >
-                        <Zap className="w-5 h-5" />
-                        Start Free Trial
-                    </Link>
-                    <p className="mt-4 text-sm text-white/60">
-                        No credit card required
-                    </p>
-                </div>
-            </section>
         </div>
     );
 }
@@ -467,14 +473,17 @@ function PricingCard({
     plan,
     price,
     isAnnual,
+    userSubscription,
 }: {
     plan: PricingPlan;
     price: string;
     isAnnual: boolean;
+    userSubscription: { tier: string } | null;
 }) {
-    const isPro = plan.tier === "pro";
-    const isElite = plan.tier === "elite";
+    const isPremium = plan.tier === "premium";
+    const isMax = plan.tier === "max";
     const isFree = plan.tier === "free";
+    const isCurrentPlan = userSubscription?.tier === plan.tier;
 
     return (
         <div
@@ -486,17 +495,24 @@ function PricingCard({
             {/* Badge */}
             {plan.badge && (
                 <div
-                    className={`absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs font-semibold text-white whitespace-nowrap ${isPro ? "gradient-pro" : isElite ? "gradient-elite" : "bg-slate-500"
+                    className={`absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs font-semibold text-white whitespace-nowrap ${isPremium ? "gradient-pro" : isMax ? "gradient-elite" : "bg-slate-500"
                         }`}
                 >
                     {plan.badge}
                 </div>
             )}
 
+            {/* Current Plan Badge */}
+            {isCurrentPlan && (
+                <div className="absolute -top-3 right-4 px-3 py-1 rounded-full text-xs font-semibold bg-brand text-white shadow-md">
+                    Current Plan
+                </div>
+            )}
+
             {/* Plan name */}
             <div className="flex items-center gap-2 mb-2">
-                {isPro && <Lock className="w-5 h-5 text-warning" />}
-                {isElite && <Crown className="w-5 h-5 text-elite" />}
+                {isPremium && <Lock className="w-5 h-5 text-warning" />}
+                {isMax && <Crown className="w-5 h-5 text-elite" />}
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
                     {plan.name}
                 </h3>
@@ -504,17 +520,31 @@ function PricingCard({
 
             {/* Price */}
             <div className="mb-1">
-                <span className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white">
-                    {price}
-                </span>
-                <span className="text-slate-500 dark:text-slate-400">/month</span>
+                {isAnnual && !isFree && (
+                    <div className="mb-2">
+                        <span className="text-2xl font-bold text-slate-400 dark:text-slate-500 line-through">
+                            ${plan.monthlyPrice.toFixed(2)}
+                        </span>
+                    </div>
+                )}
+                <div>
+                    <span className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white">
+                        {price}
+                    </span>
+                    <span className="text-slate-500 dark:text-slate-400">/month</span>
+                </div>
             </div>
 
             {/* Annual note */}
             {isAnnual && !isFree && (
-                <p className="text-sm text-growth-600 dark:text-growth-400 mb-4">
-                    Billed ${plan.annualPrice}/year
-                </p>
+                <div className="mb-4 p-3 rounded-lg bg-gradient-to-r from-growth-50 to-emerald-50 dark:from-growth-950/30 dark:to-emerald-950/30 border-2 border-growth-200 dark:border-growth-800">
+                    <p className="text-sm font-bold text-growth-700 dark:text-growth-300 text-center">
+                        💰 Billed ${plan.annualPrice.toFixed(2)}/year
+                    </p>
+                    <p className="text-lg font-black text-growth-600 dark:text-growth-400 text-center mt-1">
+                        Save ${((plan.monthlyPrice * 12) - plan.annualPrice).toFixed(2)} Annually!
+                    </p>
+                </div>
             )}
 
             {/* Description */}
@@ -523,21 +553,21 @@ function PricingCard({
             </p>
 
             {/* CTA */}
-            <Link
-                href={isFree ? "/auth/signup" : "/auth/signup?plan=" + plan.tier}
-                className={`w-full inline-flex items-center justify-center px-4 py-3 rounded-xl font-semibold transition-all hover:scale-[1.02] ${isFree
-                    ? "border-2 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-                    : isPro
+            <button
+                disabled
+                className={`w-full inline-flex items-center justify-center px-4 py-3 rounded-xl font-semibold transition-all opacity-60 cursor-not-allowed ${isFree
+                    ? "border-2 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-700"
+                    : isPremium
                         ? "gradient-pro text-white shadow-lg shadow-warning/25"
                         : "gradient-elite text-white shadow-lg shadow-elite/25"
                     }`}
             >
-                {isFree ? "Get Started Free" : "Start 14-Day Free Trial"}
-            </Link>
+                {isFree ? "Get Started Free" : "Subscribe Now"}
+            </button>
 
             {!isFree && (
                 <p className="text-center text-xs text-slate-400 dark:text-slate-500 mt-2">
-                    No credit card required
+                    Coming soon
                 </p>
             )}
 

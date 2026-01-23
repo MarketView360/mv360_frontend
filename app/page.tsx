@@ -3,7 +3,7 @@ import { Play } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import MarketOverview from "@/components/MarketOverview";
 import SearchBar from "@/components/SearchBar";
-import { PopularStocksCarousel, HeroMetrics } from "@/components/home/PopularStocksCarousel";
+import { PopularStocksCarousel } from "@/components/home/PopularStocksCarousel";
 
 export default async function Home() {
   return (
@@ -68,26 +68,25 @@ export default async function Home() {
               </Link>
             </div>
 
-            {/* Watch Demo Button */}
-            <div className="mt-6 flex justify-center">
-              <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                <Play className="w-4 h-4" />
-                Watch Demo
-              </button>
-            </div>
+            {/* Watch Demo Button - controlled by environment variable */}
+            {process.env.NEXT_PUBLIC_SHOW_DEMO_BUTTON === 'true' && (
+              <div className="mt-6 flex justify-center">
+                <button className="inline-flex items-center gap-2 px-6 py-3 rounded-full border-2 border-brand/20 bg-white dark:bg-slate-800/50 text-brand dark:text-brand font-semibold hover:bg-brand/5 dark:hover:bg-brand/10 hover:border-brand transition-all shadow-sm hover:shadow-md">
+                  <Play className="w-5 h-5" />
+                  Watch Demo
+                </button>
+              </div>
+            )}
           </div>
-
-          {/* Metrics Row */}
-          <HeroMetrics />
         </div>
       </section>
 
-      {/* Popular Stocks Section */}
+      {/* US Stocks Section */}
       <section className="w-full py-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
         <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-12">
           <div className="text-center mb-8">
             <h2 className="text-2xl md:text-3xl font-bold font-heading text-slate-900 dark:text-white mb-2">
-              Popular Stocks
+              US Stocks
             </h2>
             <p className="text-slate-600 dark:text-slate-300">
               Discover trending stocks and market movers

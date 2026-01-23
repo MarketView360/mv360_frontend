@@ -692,7 +692,7 @@ function searchTickers(query: string) {
   const q = query.toUpperCase();
   const qLower = query.toLowerCase();
   return Object.entries(POPULAR_TICKERS)
-    .filter(([ticker, name]) => 
+    .filter(([ticker, name]) =>
       ticker.startsWith(q) || name.toLowerCase().includes(qLower) || name.toUpperCase().includes(q)
     )
     .slice(0, 5)
@@ -854,7 +854,7 @@ export default function SearchBar() {
         <Button
           type="submit"
           size="sm"
-          className="absolute right-1 top-1 h-10 px-6 rounded-full bg-brand hover:bg-brand/90 text-white shadow-sm"
+          className="absolute right-1 top-1 h-10 px-6 rounded-full bg-brand hover:bg-brand/90 text-white font-medium shadow-sm hover:shadow-md transition-all"
         >
           Search
         </Button>

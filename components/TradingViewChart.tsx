@@ -1,15 +1,15 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import {
     createChart,
     ColorType,
     IChartApi,
-    Time,
     UTCTimestamp,
-    DeepPartial,
-    ChartOptions,
     CrosshairMode,
+    AreaSeries,
+    CandlestickSeries,
+    HistogramSeries,
 } from "lightweight-charts";
 
 export interface ChartDataPoint {
@@ -96,9 +96,9 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
         const uniqueData = Array.from(new Map(data.map(item => [item.time, item])).values())
             .sort((a, b) => a.time - b.time);
 
-        // Main Series
+        // Main Series - v5 uses addSeries with imported series type
         if (chartType === "area") {
-            const areaSeries = (chart as any).addAreaSeries({
+            const areaSeries = chart.addSeries(AreaSeries, {
                 lineColor,
                 topColor: areaTopColor,
                 bottomColor: areaBottomColor,
@@ -110,7 +110,7 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
                 }))
             );
         } else {
-            const candlestickSeries = (chart as any).addCandlestickSeries({
+            const candlestickSeries = chart.addSeries(CandlestickSeries, {
                 upColor,
                 downColor,
                 borderVisible: false,
@@ -130,7 +130,7 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
 
         // Volume Series
         if (uniqueData.some((d) => d.volume !== undefined)) {
-            const volumeSeries = (chart as any).addHistogramSeries({
+            const volumeSeries = chart.addSeries(HistogramSeries, {
                 priceFormat: {
                     type: "volume",
                 },
