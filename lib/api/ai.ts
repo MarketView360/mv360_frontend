@@ -180,6 +180,19 @@ export const aiApi = {
     }
   },
 
+  async deleteAllSessions(): Promise<{ deletedSessions: number; deletedMessages: number }> {
+    const response = await authFetch("/ai/sessions", {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      await handleApiError(response);
+    }
+
+    // Expected to return an object with deletedSessions and deletedMessages
+    return response.json();
+  },
+
   async sendMessage(params: SendMessageParams): Promise<ChatResponse> {
     const response = await authFetch("/ai/chat-auth", {
       method: "POST",

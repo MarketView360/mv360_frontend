@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Lock, MessageSquare, Trash2, AlertTriangle, Shield, Database, Eye } from "lucide-react";
 import { toast } from "sonner";
+import { aiApi } from "@/lib/api/ai";
 
 export default function PrivacyPage() {
   const { session } = useAuth();
@@ -16,22 +17,13 @@ export default function PrivacyPage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
 
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-
   const deleteAllChats = async () => {
     if (!session?.access_token || deleteConfirmText !== "DELETE") return;
 
     setDeleting(true);
 
     try {
-      const res = await fetch(`${apiBase}/settings/chats`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-
-      if (!res.ok) throw new Error("Failed to delete chats");
-
-      const result = await res.json();
+      const result = await aiApi.deleteAllSessions();
       setShowDeleteConfirm(false);
       setDeleteConfirmText("");
       toast.success(`Deleted ${result.deletedSessions} sessions and ${result.deletedMessages} messages`);
