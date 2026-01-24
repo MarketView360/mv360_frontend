@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/providers/AuthProvider";
@@ -29,7 +29,14 @@ function LoginPageContent() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirectTo") || "/";
 
-  const { signInWithEmail, signInWithMagicLink, loading } = useAuth();
+  const { session, signInWithEmail, signInWithMagicLink, loading } = useAuth();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (session) {
+      router.replace("/auth/already-logged-in");
+    }
+  }, [session, router]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

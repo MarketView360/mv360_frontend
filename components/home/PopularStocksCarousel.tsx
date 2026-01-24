@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { TrendingUp, TrendingDown, ArrowUp, ArrowDown, Activity } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
+import { CompanyLogo } from "@/components/company/CompanyLogo";
 
 interface Stock {
     ticker: string;
@@ -237,9 +238,7 @@ function StockCard({ stock }: { stock: Stock }) {
         >
             {/* Header */}
             <div className="flex items-center gap-3 mb-3">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-brand/10 to-brand/5 dark:from-brand/20 dark:to-brand/10 flex items-center justify-center font-bold text-sm text-brand">
-                    {stock.ticker.slice(0, 2)}
-                </div>
+                <CompanyLogo ticker={stock.ticker} name={stock.name} size="sm" />
                 <div className="flex-1 min-w-0">
                     <p className="font-bold text-slate-900 dark:text-white font-mono-numbers text-base">
                         {stock.ticker}

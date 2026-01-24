@@ -14,9 +14,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Palette, Sun, Moon, Monitor, Type, Wifi, Zap, LayoutGrid, Newspaper, List, Infinity } from "lucide-react";
+import { Palette, Sun, Moon, Monitor, Type, Wifi, Zap, LayoutGrid, Newspaper, List, Infinity, LineChart, BarChart3, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useNewsPreferences, PaginationStyle } from "@/hooks/useNewsPreferences";
+import { useChartPreferences } from "@/hooks/useChartPreferences";
 
 interface AppearanceSettings {
   theme: "light" | "dark" | "system";
@@ -32,6 +33,7 @@ export default function AppearancePage() {
   const [settings, setSettings] = useState<AppearanceSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const { preferences: newsPrefs, setPaginationStyle, isLoaded: newsPrefsLoaded } = useNewsPreferences();
+  const { preferences: chartPrefs, setShowVolume, setShowAnimations, setDefaultChartType, isLoaded: chartPrefsLoaded } = useChartPreferences();
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -328,6 +330,101 @@ export default function AppearancePage() {
           
           <p className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg">
             This preference is stored locally in your browser and will persist across sessions.
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Chart Preferences */}
+      <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <LineChart className="h-5 w-5 text-emerald-500" />
+            Chart Preferences
+          </CardTitle>
+          <CardDescription>Customize how price charts are displayed</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+                <Sparkles className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <Label className="font-medium text-slate-900 dark:text-white">Chart Animations</Label>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Enable smooth animations in price charts
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={chartPrefsLoaded ? chartPrefs.showAnimations : true}
+              onCheckedChange={(checked) => {
+                setShowAnimations(checked);
+                toast.success(checked ? "Chart animations enabled" : "Chart animations disabled");
+              }}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <BarChart3 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <Label className="font-medium text-slate-900 dark:text-white">Show Volume</Label>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Display volume bars below price charts
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={chartPrefsLoaded ? chartPrefs.showVolume : true}
+              onCheckedChange={(checked) => {
+                setShowVolume(checked);
+                toast.success(checked ? "Volume display enabled" : "Volume display disabled");
+              }}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                <LineChart className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <p className="font-medium text-slate-900 dark:text-white">Default Chart Type</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Choose your preferred chart style
+                </p>
+              </div>
+            </div>
+            <Select
+              value={chartPrefsLoaded ? chartPrefs.defaultChartType : "area"}
+              onValueChange={(value: "area" | "candlestick") => {
+                setDefaultChartType(value);
+                toast.success(`Default chart type set to ${value}`);
+              }}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="area">
+                  <div className="flex items-center gap-2">
+                    <LineChart className="h-4 w-4" /> Area
+                  </div>
+                </SelectItem>
+                <SelectItem value="candlestick">
+                  <div className="flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4" /> Candlestick
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <p className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg">
+            Chart preferences are stored locally in your browser and will persist across sessions.
           </p>
         </CardContent>
       </Card>

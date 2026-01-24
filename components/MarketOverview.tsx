@@ -18,6 +18,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
+import { CompanyLogo } from "@/components/company/CompanyLogo";
 
 type ScreenerRow = {
   code: string;
@@ -377,8 +378,9 @@ export default function MarketOverview({
                         key={stock.code}
                         type="button"
                         onClick={() => router.push(`/company/${stock.code}`)}
-                        className="w-full flex items-center justify-between gap-3 rounded-md px-2 py-2 text-left text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                        className="w-full flex items-center gap-2.5 rounded-md px-2 py-2 text-left text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                       >
+                        <CompanyLogo ticker={stock.code} name={stock.name} size="sm" />
                         <div className="flex-1 min-w-0">
                           <div className="font-semibold text-slate-900 dark:text-white truncate">
                             {stock.code}
@@ -387,7 +389,7 @@ export default function MarketOverview({
                             {stock.name}
                           </div>
                         </div>
-                        <div className="text-right w-20 flex-shrink-0">
+                        <div className="text-right w-20 shrink-0">
                           <div className="font-semibold text-emerald-600 dark:text-emerald-400">
                             {formatChange(stock.refund_1d_p ?? stock.price_change_1d)}
                           </div>
@@ -425,8 +427,9 @@ export default function MarketOverview({
                         key={stock.code}
                         type="button"
                         onClick={() => router.push(`/company/${stock.code}`)}
-                        className="w-full flex items-center justify-between gap-3 rounded-md px-2 py-2 text-left text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                        className="w-full flex items-center gap-2.5 rounded-md px-2 py-2 text-left text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                       >
+                        <CompanyLogo ticker={stock.code} name={stock.name} size="sm" />
                         <div className="flex-1 min-w-0">
                           <div className="font-semibold text-slate-900 dark:text-white truncate">
                             {stock.code}
@@ -435,7 +438,7 @@ export default function MarketOverview({
                             {stock.name}
                           </div>
                         </div>
-                        <div className="text-right w-20 flex-shrink-0">
+                        <div className="text-right w-20 shrink-0">
                           <div className="font-semibold text-rose-600 dark:text-rose-400">
                             {formatChange(stock.refund_1d_p ?? stock.price_change_1d)}
                           </div>

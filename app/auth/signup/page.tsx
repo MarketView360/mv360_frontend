@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/providers/AuthProvider";
 import { SocialAuthButtons, OrDivider } from "@/components/auth/SocialAuthButtons";
@@ -29,7 +30,15 @@ function getPasswordStrength(password: string): PasswordStrength {
 }
 
 export default function SignupPage() {
-  const { signUpWithEmail, loading } = useAuth();
+  const router = useRouter();
+  const { session, signUpWithEmail, loading } = useAuth();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (session) {
+      router.replace("/auth/already-logged-in");
+    }
+  }, [session, router]);
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");

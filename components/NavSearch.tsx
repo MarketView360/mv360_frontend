@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Search, TrendingUp } from "lucide-react";
+import { Search, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CompanyLogo } from "@/components/company/CompanyLogo";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
 
 const POPULAR_TICKERS: Record<string, string> = {
   AAPL: "Apple Inc.",
@@ -48,7 +50,7 @@ export function NavSearch() {
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   const suggestions = searchTickers(value);
-  const showSuggestions = open && value.length > 0 && suggestions.length > 0;
+  const showSuggestions = open && value.length > 0;
 
   const handleSelect = useCallback(
     (ticker: string) => {
@@ -90,6 +92,22 @@ export function NavSearch() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open, suggestions, activeIndex, handleSelect]);
 
+  // Global shortcut: Cmd/Ctrl + K focuses the nav search
+  useEffect(() => {
+    function onShortcut(e: KeyboardEvent) {
+      const isMac = navigator.platform.toLowerCase().includes("mac");
+      const isModifier = isMac ? e.metaKey : e.ctrlKey;
+      if (isModifier && (e.key === "k" || e.key === "K")) {
+        e.preventDefault();
+        inputRef.current?.focus();
+        setOpen(true);
+      }
+    }
+
+    window.addEventListener("keydown", onShortcut);
+    return () => window.removeEventListener("keydown", onShortcut);
+  }, []);
+
   // Click outside
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -125,26 +143,50 @@ export function NavSearch() {
           placeholder="Search ticker..."
           aria-autocomplete="list"
         />
+        {/* Keyboard shortcut hint */}
+        <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 hidden md:flex">
+          <KbdGroup>
+            <Kbd className="h-5 px-1.5">⌘</Kbd>
+            <Kbd className="h-5 px-1.5">K</Kbd>
+          </KbdGroup>
+        </div>
       </form>
 
       {showSuggestions && (
         <div className="absolute top-full mt-1 w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg z-[100] overflow-hidden">
-          {suggestions.map((s, i) => (
+          {suggestions.length > 0 && suggestions.map((s, i) => (
             <button
               key={s.ticker}
               type="button"
               onClick={() => handleSelect(s.ticker)}
               className={cn(
-                "w-full flex items-center gap-2 px-3 py-2 text-left text-sm transition",
+                "w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm transition",
                 "hover:bg-slate-100 dark:hover:bg-slate-800",
                 i === activeIndex && "bg-brand/10 dark:bg-brand/20"
               )}
             >
-              <TrendingUp className="h-3 w-3 text-slate-400" />
-              <span className="font-medium text-slate-900 dark:text-white">{s.ticker}</span>
-              <span className="text-xs text-slate-500 dark:text-slate-400 truncate">{s.name}</span>
+              <CompanyLogo ticker={s.ticker} name={s.name} size="sm" />
+              <div className="flex-1 min-w-0">
+                <span className="font-semibold text-slate-900 dark:text-white">{s.ticker}</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400 truncate block">{s.name}</span>
+              </div>
             </button>
           ))}
+          {/* Search for option */}
+          <button
+            type="button"
+            onClick={() => handleSelect(value.trim().toUpperCase())}
+            className={cn(
+              "w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm transition",
+              "hover:bg-slate-100 dark:hover:bg-slate-800 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50",
+              activeIndex === suggestions.length && "bg-brand/10 dark:bg-brand/20"
+            )}
+          >
+            <ExternalLink className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
+            <span className="text-xs text-slate-700 dark:text-slate-300">
+              Search for <span className="font-semibold text-slate-900 dark:text-white">&quot;{value.trim().toUpperCase()}&quot;</span>
+            </span>
+          </button>
         </div>
       )}
     </div>

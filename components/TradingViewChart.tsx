@@ -36,6 +36,7 @@ interface TradingViewChartProps {
     };
     chartType?: "area" | "candlestick";
     height?: number;
+    showVolume?: boolean;
 }
 
 export const TradingViewChart: React.FC<TradingViewChartProps> = ({
@@ -43,6 +44,7 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
     colors = {},
     chartType = "area",
     height = 300,
+    showVolume = true,
 }) => {
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartRef = useRef<IChartApi | null>(null);
@@ -128,8 +130,8 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
             );
         }
 
-        // Volume Series
-        if (uniqueData.some((d) => d.volume !== undefined)) {
+        // Volume Series - using distinct colors from candlesticks
+        if (showVolume && uniqueData.some((d) => d.volume !== undefined)) {
             const volumeSeries = chart.addSeries(HistogramSeries, {
                 priceFormat: {
                     type: "volume",
@@ -142,11 +144,16 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
                     bottom: 0,
                 },
             });
+            
+            // Use blue/purple colors for volume to differentiate from green/red candlesticks
+            const volumeUpColor = isDark ? "rgba(59, 130, 246, 0.5)" : "rgba(37, 99, 235, 0.5)"; // blue
+            const volumeDownColor = isDark ? "rgba(168, 85, 247, 0.5)" : "rgba(147, 51, 234, 0.5)"; // purple
+            
             volumeSeries.setData(
                 uniqueData.map((d) => ({
                     time: d.time as UTCTimestamp,
                     value: d.volume || 0,
-                    color: d.close >= d.open ? upColor : downColor,
+                    color: d.close >= d.open ? volumeUpColor : volumeDownColor,
                 }))
             );
         }
@@ -173,6 +180,7 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
         chartType,
         height,
         isDark,
+        showVolume,
     ]);
 
     // Handle theme changes

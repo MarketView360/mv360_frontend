@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Search, X, Clock, TrendingUp } from "lucide-react";
+import { Search, X, Clock, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { CompanyLogo } from "@/components/company/CompanyLogo";
 
 /* ------------------------------------------------------------------ */
 /* Types                                                              */
@@ -899,19 +900,32 @@ export default function SearchBar() {
 
           {showSuggestions && (
             <>
-              <div className="px-4 pt-3 pb-2">
-                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Popular</span>
-              </div>
-              {suggestions.map((s, i) => (
-                <ResultRow
-                  key={s.ticker}
-                  ticker={s.ticker}
-                  name={s.name}
-                  icon={<TrendingUp className="h-4 w-4" />}
-                  selected={i === activeIndex}
-                  onClick={() => handleSelect(s.ticker)}
-                />
-              ))}
+              {suggestions.length > 0 && (
+                <>
+                  <div className="px-4 pt-3 pb-2">
+                    <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Suggestions</span>
+                  </div>
+                  {suggestions.map((s, i) => (
+                    <ResultRow
+                      key={s.ticker}
+                      ticker={s.ticker}
+                      name={s.name}
+                      icon={null}
+                      selected={i === activeIndex}
+                      onClick={() => handleSelect(s.ticker)}
+                    />
+                  ))}
+                </>
+              )}
+              {/* Search for option */}
+              <ResultRow
+                ticker={query.trim().toUpperCase()}
+                name=""
+                icon={<ExternalLink className="h-4 w-4" />}
+                selected={activeIndex === suggestions.length}
+                onClick={() => handleSelect(query.trim().toUpperCase())}
+                isSearchOption
+              />
             </>
           )}
 
@@ -935,27 +949,48 @@ function ResultRow({
   icon,
   selected,
   onClick,
+  isSearchOption = false,
 }: {
   ticker: string;
   name: string;
   icon: React.ReactNode;
   selected: boolean;
   onClick: () => void;
+  isSearchOption?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        "w-full flex items-center gap-3 px-4 py-2 text-left transition",
+        "w-full flex items-center gap-3 px-4 py-2.5 text-left transition",
         "hover:bg-slate-100 dark:hover:bg-slate-800",
-        selected && "bg-brand/10 dark:bg-brand/20"
+        selected && "bg-brand/10 dark:bg-brand/20",
+        isSearchOption && "border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50"
       )}
       aria-selected={selected}
     >
-      <span className="text-slate-400 dark:text-slate-500">{icon}</span>
-      <span className="font-medium text-slate-900 dark:text-white">{ticker}</span>
-      <span className="text-sm text-slate-500 dark:text-slate-400 truncate">{name}</span>
+      {isSearchOption ? (
+        <>
+          <span className="text-slate-400 dark:text-slate-500">{icon}</span>
+          <div className="flex-1">
+            <span className="text-sm text-slate-700 dark:text-slate-300">
+              Search for <span className="font-semibold text-slate-900 dark:text-white">&quot;{ticker}&quot;</span>
+            </span>
+          </div>
+        </>
+      ) : (
+        <>
+          <CompanyLogo ticker={ticker} name={name} size="sm" />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-slate-900 dark:text-white">{ticker}</span>
+              {icon && <span className="text-slate-400 dark:text-slate-500">{icon}</span>}
+            </div>
+            <span className="text-xs text-slate-500 dark:text-slate-400 truncate block">{name}</span>
+          </div>
+        </>
+      )}
     </button>
   );
 }
