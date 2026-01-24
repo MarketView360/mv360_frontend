@@ -49,7 +49,7 @@ export default function AlreadyLoggedInPage() {
       title: "Screen Stocks",
       description: "Find your next investment",
       icon: BarChart3,
-      href: "/screener",
+      href: "/screenss",
       color: "from-purple-500 to-pink-500",
     },
     {
@@ -166,7 +166,7 @@ export default function AlreadyLoggedInPage() {
                 <span className="text-[11px] uppercase tracking-wide text-slate-400 dark:text-slate-500">Having troubles?</span>
                 <button
                   type="button"
-                  onClick={() => router.push("/support")}
+                  onClick={() => router.push("/contact")}
                   className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
                 >
                   <LifeBuoy className="h-3.5 w-3.5" />
@@ -177,7 +177,7 @@ export default function AlreadyLoggedInPage() {
                 <span className="text-[11px] uppercase tracking-wide text-slate-400 dark:text-slate-500">Is this a bug?</span>
                 <button
                   type="button"
-                  onClick={() => router.push("/feedback")}
+                  onClick={() => router.push("/contact")}
                   className="inline-flex items-center gap-1.5 text-xs font-medium text-rose-600 dark:text-rose-400 hover:underline"
                 >
                   <Bug className="h-3.5 w-3.5" />
