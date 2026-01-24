@@ -9,6 +9,16 @@ export interface ChartPreferences {
   showAnimations: boolean;
   defaultChartType: "area" | "candlestick";
   defaultRange: string;
+  priceDisplayMode: "rangeChange" | "absolute";
+  showDetailedTooltip: boolean;
+  // Chart type sub-preferences
+  areaStyle: "area" | "line";
+  candlestickStyle: "candlestick" | "heikin-ashi";
+  // Risk chart mode (renamed from drawdown)
+  riskMode: "drawdown" | "volatility" | "maxdd-table";
+  // Interactive features
+  showRiskZones: boolean;
+  showWhatIfSimulation: boolean;
 }
 
 const DEFAULT_PREFERENCES: ChartPreferences = {
@@ -16,6 +26,16 @@ const DEFAULT_PREFERENCES: ChartPreferences = {
   showAnimations: true,
   defaultChartType: "area",
   defaultRange: "1Y",
+  priceDisplayMode: "rangeChange",
+  showDetailedTooltip: true,
+  // Chart type sub-preferences
+  areaStyle: "area",
+  candlestickStyle: "candlestick",
+  // Risk chart mode
+  riskMode: "drawdown",
+  // Interactive features
+  showRiskZones: true,
+  showWhatIfSimulation: true,
 };
 
 export function useChartPreferences() {
@@ -69,6 +89,41 @@ export function useChartPreferences() {
     [savePreferences]
   );
 
+  const setPriceDisplayMode = useCallback(
+    (mode: "rangeChange" | "absolute") => savePreferences({ priceDisplayMode: mode }),
+    [savePreferences]
+  );
+
+  const setShowDetailedTooltip = useCallback(
+    (show: boolean) => savePreferences({ showDetailedTooltip: show }),
+    [savePreferences]
+  );
+
+  const setAreaStyle = useCallback(
+    (style: "area" | "line") => savePreferences({ areaStyle: style }),
+    [savePreferences]
+  );
+
+  const setCandlestickStyle = useCallback(
+    (style: "candlestick" | "heikin-ashi") => savePreferences({ candlestickStyle: style }),
+    [savePreferences]
+  );
+
+  const setRiskMode = useCallback(
+    (mode: "drawdown" | "volatility" | "maxdd-table") => savePreferences({ riskMode: mode }),
+    [savePreferences]
+  );
+
+  const setShowRiskZones = useCallback(
+    (show: boolean) => savePreferences({ showRiskZones: show }),
+    [savePreferences]
+  );
+
+  const setShowWhatIfSimulation = useCallback(
+    (show: boolean) => savePreferences({ showWhatIfSimulation: show }),
+    [savePreferences]
+  );
+
   return {
     preferences,
     isLoaded,
@@ -76,6 +131,13 @@ export function useChartPreferences() {
     setShowAnimations,
     setDefaultChartType,
     setDefaultRange,
+    setPriceDisplayMode,
+    setShowDetailedTooltip,
+    setAreaStyle,
+    setCandlestickStyle,
+    setRiskMode,
+    setShowRiskZones,
+    setShowWhatIfSimulation,
     savePreferences,
   };
 }
