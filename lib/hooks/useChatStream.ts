@@ -130,7 +130,8 @@ export function useChatStream(token: string | null, sessionId: string | null) {
           // Handle new session creation
           if (chunk.sessionId && !resolvedSessionId) {
             resolvedSessionId = chunk.sessionId;
-            resolvedTitle = chunk.title ? decodeURIComponent(chunk.title) : undefined;
+            // Title is already decoded in ai.ts from the header, don't decode again
+            resolvedTitle = chunk.title;
             // Mark that we just created a session to prevent refetching during streaming
             sessionJustCreatedRef.current = true;
             options.onSessionCreated?.(chunk.sessionId, resolvedTitle || "New chat");
@@ -207,7 +208,7 @@ export function useChatStream(token: string | null, sessionId: string | null) {
         abortControllerRef.current = null;
       }
     },
-    [token, sessionId, messages]
+    [token, sessionId]
   );
 
   const cancelStream = useCallback(() => {
