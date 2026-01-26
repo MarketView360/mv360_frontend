@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
-import { Activity, Info } from "lucide-react";
+import { Info } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ import { CompanyDescriptionModal } from "@/components/company/CompanyDescription
 import { CompanyLogo } from "@/components/company/CompanyLogo";
 import { CompanyNavigation } from "@/components/company/CompanyNavigation";
 import { FiftyTwoWeekRange } from "@/components/company/FiftyTwoWeekRange";
+import { KeyMetrics } from "@/components/company/KeyMetrics";
 import { NewsFeed, type NewsArticle } from "@/components/company/NewsFeed";
 import { PeerComparison } from "@/components/company/PeerComparison";
 import { UsdValue } from "@/components/company/UsdValue";
@@ -66,6 +67,8 @@ interface CompanyViewModel {
   week52Low: number | null;
   priceHistory: PriceHistoryPoint[];
   ratios: RatioItem[];
+  rawMetrics: Record<string, unknown>;
+  snapshotDate: string | null;
   valuationMetrics: ValuationMetric[];
   valuationHistory: ValuationHistoryPoint[];
   revenueTtm: number | null;
@@ -75,6 +78,7 @@ interface CompanyViewModel {
   analystData: {
     rating: number | null;
     targetPrice: number | null;
+    currentPrice: number | null;
     strongBuy: number;
     buy: number;
     hold: number;
@@ -93,6 +97,7 @@ interface DetailItemProps {
 interface AnalystData {
   rating: number | null;
   targetPrice: number | null;
+  currentPrice: number | null;
   strongBuy: number;
   buy: number;
   hold: number;
@@ -354,7 +359,7 @@ function buildValuationMetrics(metrics: Metrics): ValuationMetric[] {
   ];
 }
 
-function buildAnalystData(metrics: Metrics) {
+function buildAnalystData(metrics: Metrics, currentPrice: number | null) {
   if (!metrics) return null;
 
   const m = metrics as Record<string, unknown>;
@@ -378,6 +383,7 @@ function buildAnalystData(metrics: Metrics) {
   return {
     rating,
     targetPrice,
+    currentPrice,
     strongBuy,
     buy,
     hold,
@@ -425,13 +431,15 @@ function transformData(
     week52Low: metrics?.week_52_low ?? null,
     priceHistory,
     ratios: buildRatios(metrics),
+    rawMetrics: (metrics as Record<string, unknown>) ?? {},
+    snapshotDate: metrics?.snapshot_date ?? null,
     valuationMetrics: buildValuationMetrics(metrics),
     valuationHistory,
     revenueTtm: metrics?.revenue_ttm ?? null,
     earningsTtm: metrics?.earnings_ttm ?? null,
     netMargin: metrics?.net_margin ?? metrics?.profit_margin ?? null,
     opm: metrics?.opm ?? metrics?.operating_margin ?? metrics?.operating_margin_ttm ?? null,
-    analystData: buildAnalystData(metrics),
+    analystData: buildAnalystData(metrics, latestPrice ?? metrics?.price ?? null),
   } as CompanyViewModel;
 }
 
@@ -513,7 +521,11 @@ async function CompanyContent({ ticker }: { ticker: string }) {
               </div>
 
               {/* Key Metrics Grid */}
-              <KeyMetricsCard metrics={data.ratios} />
+              <KeyMetrics
+                metrics={data.rawMetrics}
+                snapshotDate={data.snapshotDate ?? undefined}
+                sector={data.sector}
+              />
 
               <div id="peers" className="scroll-mt-32">
                 {/* Peer Comparison */}
@@ -661,36 +673,6 @@ function PageActions() {
   return <div />;
 }
 
-function KeyMetricsCard({ metrics }: { metrics: RatioItem[] }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Activity className="w-5 h-5 text-brand" />
-          Key Metrics
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {metrics.map((metric, i) => (
-            <MetricItem key={i} {...metric} />
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function MetricItem({ label, value }: RatioItem) {
-  return (
-    <div className="group relative p-4 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-brand transition-colors bg-white dark:bg-slate-900">
-      <div className="absolute inset-y-0 left-0 w-1 bg-brand rounded-l-lg opacity-0 group-hover:opacity-100 transition-opacity" />
-      <div className="text-xs text-muted-foreground mb-1">{label}</div>
-      <div className="text-lg font-semibold text-slate-900 dark:text-white">{value}</div>
-    </div>
-  );
-}
-
 function CompanyProfile({ data }: { data: CompanyViewModel }) {
   return (
     <Card>
@@ -761,6 +743,14 @@ function AnalystRatings({ metrics }: { metrics: AnalystData | null }) {
     return "Strong Sell";
   };
 
+  // Calculate upside/downside percentage
+  const upsidePercent =
+    metrics.targetPrice != null && metrics.currentPrice != null && metrics.currentPrice > 0
+      ? ((metrics.targetPrice - metrics.currentPrice) / metrics.currentPrice) * 100
+      : null;
+
+  const isUpside = upsidePercent != null && upsidePercent >= 0;
+
   return (
     <Card>
       <CardHeader>
@@ -787,8 +777,26 @@ function AnalystRatings({ metrics }: { metrics: AnalystData | null }) {
               {getConsensus(metrics.rating)}
             </div>
             {metrics.targetPrice && (
-              <div className="text-sm text-muted-foreground">
-                Target: <span className="font-semibold text-slate-500 dark:text-white">${metrics.targetPrice.toFixed(2)}</span>
+              <div className="text-sm space-y-0.5">
+                <div className="text-muted-foreground">
+                  Target: <span className="font-semibold text-slate-900 dark:text-white">${metrics.targetPrice.toFixed(2)}</span>
+                  {upsidePercent != null && (
+                    <span
+                      className={`ml-1.5 font-semibold ${
+                        isUpside
+                          ? "text-green-600 dark:text-green-400"
+                          : "text-red-600 dark:text-red-400"
+                      }`}
+                    >
+                      ({isUpside ? "+" : ""}{upsidePercent.toFixed(1)}%)
+                    </span>
+                  )}
+                </div>
+                {total > 0 && (
+                  <div className="text-xs text-muted-foreground">
+                    Based on {total} analyst{total !== 1 ? "s" : ""}
+                  </div>
+                )}
               </div>
             )}
           </div>
