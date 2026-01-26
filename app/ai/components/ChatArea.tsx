@@ -341,9 +341,6 @@ export function ChatArea({ messages }: ChatAreaProps) {
                   <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                     <ThumbsDown className="w-3 h-3" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                    <ThumbsDown className="w-3 h-3" />
-                  </Button>
                   <div className="h-3 w-px bg-slate-200 dark:bg-slate-700 mx-1" />
                   <SpeakButton
                     content={stripJovanTags(message.content)}

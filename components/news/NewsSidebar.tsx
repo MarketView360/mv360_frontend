@@ -41,7 +41,7 @@ export function NewsSidebar() {
                             <Badge
                                 key={topic.name}
                                 variant="secondary"
-                                className="cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors font-normal"
+                                className="font-normal"
                             >
                                 {topic.name}
                             </Badge>

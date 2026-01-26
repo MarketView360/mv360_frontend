@@ -22,6 +22,11 @@ import { AIApiError } from "@/lib/api/ai";
 const ALLOW_ANONYMOUS_CHAT =
   process.env.NEXT_PUBLIC_ALLOW_ANONYMOUS_AI_CHAT !== "false";
 
+// Feature flag: Enable AI suggestions sidebar.
+// Default: true (if unset). Set NEXT_PUBLIC_ENABLE_AI_SUGGESTIONS=false to disable.
+const ENABLE_SUGGESTIONS =
+  process.env.NEXT_PUBLIC_ENABLE_AI_SUGGESTIONS !== "false";
+
 export default function AiPageClient() {
   const searchParams = useSearchParams();
   const urlSessionId = searchParams.get("session");
@@ -30,7 +35,7 @@ export default function AiPageClient() {
   const token = session?.access_token ?? null;
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isSuggestionOpen, setIsSuggestionOpen] = useState(true);
+  const [isSuggestionOpen, setIsSuggestionOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState("gpt-oss");
   const [isReasoningEnabled, setIsReasoningEnabled] = useState(false);
   const [greeting, setGreeting] = useState("");
@@ -386,18 +391,7 @@ export default function AiPageClient() {
         </div>
 
         {/* Suggestion Toggle */}
-        {!isSuggestionOpen && (
-          <div className="hidden lg:block relative h-0">
-            {/* Position toggle absolute relative to this container or relative main content? 
-                     The Toggle component uses absolute positioning.
-                     If I render it here, it will be at bottom of flex col?
-                     The Toggle component styles: absolute top-1/2 right-0
-                     The main content div is relative h-full. 
-                     So putting it anywhere inside main content div is fine.
-                 */}
-          </div>
-        )}
-        {!isSuggestionOpen && (
+        {ENABLE_SUGGESTIONS && !isSuggestionOpen && (
           <SuggestionSidebarToggle onClick={() => setIsSuggestionOpen(true)} />
         )}
       </div>

@@ -117,9 +117,10 @@ export function SuggestionSidebarToggle({ onClick }: { onClick: () => void }) {
                 variant="secondary"
                 size="icon"
                 onClick={onClick}
-                className="h-12 w-6 rounded-l-lg rounded-r-none border border-r-0 border-slate-200 dark:border-slate-800 shadow-md bg-white dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-900"
+                className="h-12 w-8 rounded-l-lg rounded-r-none border border-r-0 border-slate-200 dark:border-slate-800 shadow-md bg-white dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-900"
+                title="Show suggestions"
             >
-                <ChevronLeft className="w-4 h-4 text-slate-500" />
+                <Lightbulb className="w-4 h-4 text-amber-500" />
             </Button>
         </div>
     );
