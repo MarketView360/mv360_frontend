@@ -59,16 +59,16 @@ type MarketHeatmapProps = {
   refreshToken?: number;
 };
 
-// Map external sector filter values (from dropdown) to internal labels
+// Map external sector filter values (from dropdown) to actual database sector names
 const SECTOR_FILTER_MAP: Record<string, string> = {
   technology: "Technology",
   healthcare: "Healthcare",
-  financials: "Financials",
-  consumer: "Consumer",
+  financials: "Financial Services",
+  consumer: "Consumer Cyclical",  // Note: DB also has "Consumer Defensive"
   energy: "Energy",
   industrials: "Industrials",
   utilities: "Utilities",
-  materials: "Materials",
+  materials: "Basic Materials",
   "real-estate": "Real Estate",
   communication: "Communication Services",
 };
@@ -346,10 +346,19 @@ export default function MarketHeatmap({ sector, refreshToken }: MarketHeatmapPro
           }),
         });
 
-        if (!res.ok) return null;
+        if (!res.ok) {
+          console.error('[Heatmap] Backend fetch failed:', res.status, res.statusText);
+          return null;
+        }
 
         const json = (await res.json()) as { data?: ScreenerRow[] };
         let rows = json.data ?? [];
+
+        console.log('[Heatmap] Backend response:', {
+          rowCount: rows.length,
+          sampleRow: rows[0],
+          sampleChange: rows[0]?.price_change_1d
+        });
 
         // Fallback search strategy if specific sector query returns empty
         if (!rows.length && usedEquality && sector) {
