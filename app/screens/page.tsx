@@ -25,7 +25,7 @@ const SCREENS = [
       "High momentum stocks breaking out with strong price performance and volume.",
     tags: ["Momentum", "Technical"],
     color: "bg-yellow-500",
-    query: `Change Percent > 5 AND
+    query: `Price Change 1d > 5 AND
 Volume > 500000 AND
 Market Capitalization > 1000`,
   },
@@ -175,32 +175,28 @@ function ScreensPageContent() {
           <div className="flex justify-center mb-6">
             <div className="flex gap-2">
               <div
-                className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                  currentTab === "screens"
+                className={`w-2 h-2 rounded-full transition-all duration-300 ${currentTab === "screens"
                     ? "bg-purple-500 w-8"
                     : "bg-slate-300 dark:bg-slate-600"
-                }`}
+                  }`}
               ></div>
               <div
-                className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                  currentTab === "strategies"
+                className={`w-2 h-2 rounded-full transition-all duration-300 ${currentTab === "strategies"
                     ? "bg-growth w-8"
                     : "bg-slate-300 dark:bg-slate-600"
-                }`}
+                  }`}
               ></div>
               <div
-                className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                  currentTab === "builder"
+                className={`w-2 h-2 rounded-full transition-all duration-300 ${currentTab === "builder"
                     ? "bg-blue-500 w-8"
                     : "bg-slate-300 dark:bg-slate-600"
-                }`}
+                  }`}
               ></div>
               <div
-                className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                  currentTab === "community"
+                className={`w-2 h-2 rounded-full transition-all duration-300 ${currentTab === "community"
                     ? "bg-amber-500 w-8"
                     : "bg-slate-300 dark:bg-slate-600"
-                }`}
+                  }`}
               ></div>
             </div>
           </div>
