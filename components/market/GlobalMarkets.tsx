@@ -27,53 +27,35 @@ const INDICES: IndexData[] = [
 
 export function GlobalMarkets() {
     return (
-        <Card className="border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900">
-            <CardHeader className="pb-3">
-                <CardTitle className="text-base font-medium text-slate-800 dark:text-slate-100 flex items-center gap-2">
+        <Card className="border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 mb-6">
+            <CardHeader className="pb-2 border-b border-slate-100 dark:border-slate-800">
+                <CardTitle className="text-sm font-medium text-slate-800 dark:text-slate-100 flex items-center gap-2">
                     <Globe className="w-4 h-4 text-slate-500" />
                     Global Markets
                 </CardTitle>
             </CardHeader>
-            <CardContent>
-                <div className="space-y-4">
-                    {["Americas", "Europe", "Asia-Pacific"].map((region) => {
-                        const regionIndices = INDICES.filter(i => i.region === region);
-                        if (!regionIndices.length) return null;
-
-                        return (
-                            <div key={region} className="space-y-2">
-                                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{region}</h4>
-                                <div className="space-y-1">
-                                    {regionIndices.map((index) => (
-                                        <div key={index.symbol} className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-md px-2 -mx-2 transition-colors">
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-medium text-sm text-slate-900 dark:text-slate-200">{index.name}</span>
-                                                    {!index.status && ( // Placeholder for now
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
-                                                    )}
-                                                </div>
-                                                <div className="text-xs text-muted-foreground flex items-center gap-2">
-                                                    <span>{index.price.toLocaleString()}</span>
-                                                    <span className={index.status === "Open" ? "text-emerald-500" : "text-slate-400"}>
-                                                        {index.status === "Open" ? "• Market Open" : "• Closed"}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div className={`text-right ${index.change >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
-                                                <div className="text-sm font-semibold">
-                                                    {index.change > 0 ? "+" : ""}{index.changePercent.toFixed(2)}%
-                                                </div>
-                                                <div className="text-xs">
-                                                    {index.change > 0 ? "+" : ""}{index.change.toFixed(2)}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+            <CardContent className="pt-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                    {INDICES.map((index) => (
+                        <div key={index.symbol} className="flex flex-col p-2 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                            <div className="flex items-center justify-between mb-1">
+                                <span className="font-semibold text-xs text-slate-900 dark:text-slate-200">{index.name}</span>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${index.status === "Open" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"}`}>
+                                    {index.status === "Open" ? "Open" : "Closed"}
+                                </span>
                             </div>
-                        );
-                    })}
+                            <div className="flex items-baseline gap-2 mb-1">
+                                <span className="text-lg font-bold text-slate-900 dark:text-white">
+                                    {index.price.toLocaleString()}
+                                </span>
+                            </div>
+                            <div className={`flex items-center text-xs font-medium ${index.change >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                                <span>{index.change > 0 ? "+" : ""}{index.changePercent.toFixed(2)}%</span>
+                                <span className="mx-1 opacity-50">|</span>
+                                <span>{index.change > 0 ? "+" : ""}{index.change.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </CardContent>
         </Card>

@@ -28,7 +28,7 @@ export function MarketBreadth() {
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="space-y-6">
+                <div className="space-y-4">
                     {/* Gauge Visual */}
                     <div className="h-4 flex w-full rounded-full overflow-hidden">
                         <div

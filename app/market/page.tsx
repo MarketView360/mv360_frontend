@@ -105,35 +105,38 @@ export default function MarketPage() {
           </div>
         </div>
 
-        {/* New Row: Breadth & Global Markets */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1">
+        {/* Top: Global Markets Ticker */}
+        <div className="w-full">
+          <GlobalMarkets />
+        </div>
+
+        {/* Dashboard Grid: Sidebar (Left) + Main Content (Right) */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+          {/* Left Sidebar: Market Pulse */}
+          <div className="lg:col-span-1 space-y-6">
             <MarketBreadth />
-          </div>
-          <div className="lg:col-span-2">
-            <GlobalMarkets />
-          </div>
-        </div>
-
-        {/* Heatmap */}
-        <div>
-          {loading ? (
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 space-y-4">
-              <div className="h-8 w-1/3 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
-              <div className="h-64 rounded bg-slate-200 dark:bg-slate-700 animate-pulse" />
-            </div>
-          ) : (
-            <MarketHeatmap sector={sector || undefined} refreshToken={refreshToken} />
-          )}
-        </div>
-
-        {/* New Row: Sector Perf & Economic Calendar */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div>
-            <SectorPerformance />
-          </div>
-          <div>
             <EconomicCalendar />
+          </div>
+
+          {/* Main Content Area */}
+          <div className="lg:col-span-3 space-y-6">
+            {/* Heatmap Section */}
+            <div>
+              {loading ? (
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-4 h-[500px]">
+                  <div className="h-8 w-1/3 rounded bg-slate-100 dark:bg-slate-800 animate-pulse" />
+                  <div className="h-full rounded bg-slate-100 dark:bg-slate-800 animate-pulse" />
+                </div>
+              ) : (
+                <MarketHeatmap sector={sector || undefined} refreshToken={refreshToken} />
+              )}
+            </div>
+
+            {/* Sector Performance Section */}
+            <div>
+              <SectorPerformance />
+            </div>
           </div>
         </div>
 
