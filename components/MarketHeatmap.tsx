@@ -317,7 +317,9 @@ export default function MarketHeatmap({ sector, refreshToken }: MarketHeatmapPro
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            sort: "market_capitalization.desc",
+            // Explicitly select data to ensure we get what we need
+            select: ["code", "sector", "market_cap", "price_change_1d"],
+            sort: "market_cap.desc",
             limit: config.maxRows,
             exchange: "us",
             ...(query ? { query } : {}),
@@ -329,6 +331,7 @@ export default function MarketHeatmap({ sector, refreshToken }: MarketHeatmapPro
         const json = (await res.json()) as { data?: ScreenerRow[] };
         let rows = json.data ?? [];
 
+        // Fallback search strategy if specific sector query returns empty
         if (!rows.length && usedEquality && sector) {
           const raw = String(sector).toLowerCase();
           const MATCH_TOKEN_MAP: Record<string, string> = {
@@ -349,7 +352,8 @@ export default function MarketHeatmap({ sector, refreshToken }: MarketHeatmapPro
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                sort: "market_capitalization.desc",
+                select: ["code", "sector", "market_cap", "price_change_1d"],
+                sort: "market_cap.desc",
                 limit: config.maxRows,
                 exchange: "us",
                 query: `sector match "${token}"`,
@@ -474,7 +478,7 @@ export default function MarketHeatmap({ sector, refreshToken }: MarketHeatmapPro
           </div>
         </div>
       </CardHeader>
-      <CardContent className="h-[600px] p-4 pt-0">
+      <CardContent className="h-[500px] p-4 pt-0">
         {loading ? (
           <div className="flex flex-col items-center justify-center h-full gap-2 text-slate-500 dark:text-slate-400 text-sm">
             <div className="h-10 w-10 rounded-full border-2 border-slate-200 dark:border-slate-700 border-t-brand animate-spin" />
