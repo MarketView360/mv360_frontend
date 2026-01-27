@@ -171,21 +171,10 @@ const CustomTreemapCell = (props: any) => {
           height={padHeight}
           style={{
             fill: 'transparent',
-            stroke: '#000000', // Deep black visual separation for sectors
-            strokeWidth: 4, // Thicker separation between groups
+            stroke: '#000000',
+            strokeWidth: 3,
           }}
         />
-        {/* TradingView displays sector labels as headers or floating text. 
-            We'll use a floating label style in the top-left if space permits */}
-        {padWidth > 80 && padHeight > 30 && (
-          <foreignObject x={padX} y={padY} width={padWidth} height={padHeight} className="pointer-events-none overflow-visible">
-            <div className="p-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500/50 block truncate ml-1 mt-1">
-                {name}
-              </span>
-            </div>
-          </foreignObject>
-        )}
       </g>
     );
   }
@@ -193,16 +182,21 @@ const CustomTreemapCell = (props: any) => {
   // Leaf/Stock Node
   if (width < 10 || height < 10) return null;
 
-  // Font sizing - TradingView scales text dynamically but keeps it legible
-  const fontSizeTicker = Math.min(Math.max(width / 5, 10), Math.max(height / 4, 10), 24);
-  const fontSizeChange = Math.max(fontSizeTicker * 0.7, 10);
+  // Determine what to show based on tile size
+  const showTicker = padWidth > 35 && padHeight > 25;
+  const showChange = padWidth > 50 && padHeight > 40;
 
-  const showTicker = width > 30 && height > 20;
-  const showChange = width > 40 && height > 35;
+  // Calculate font sizes - more aggressive minimum sizes for legibility
+  const tickerFontSize = Math.min(
+    Math.max(padWidth / 4.5, 11),
+    Math.max(padHeight / 3.5, 11),
+    22
+  );
+  const changeFontSize = Math.min(tickerFontSize * 0.75, 14);
 
   return (
     <g
-      className="cursor-pointer hover:opacity-90 transition-opacity group"
+      className="cursor-pointer"
       onClick={() => {
         if (props.onClick) props.onClick(ticker);
       }}
@@ -213,37 +207,63 @@ const CustomTreemapCell = (props: any) => {
         width={padWidth}
         height={padHeight}
         fill={getColor(change)}
+        className="hover:brightness-110 transition-all"
       />
 
       {showTicker && (
-        <>
-          <text
-            x={padX + padWidth / 2}
-            y={padY + padHeight / 2 - (showChange ? fontSizeChange * 0.6 : 0)}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fill="#ffffff"
-            fontWeight="700"
-            fontSize={fontSizeTicker}
-            className="pointer-events-none drop-shadow-md select-none font-sans"
+        <foreignObject
+          x={padX}
+          y={padY}
+          width={padWidth}
+          height={padHeight}
+          className="pointer-events-none"
+        >
+          <div
+            style={{
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '2px',
+            }}
           >
-            {ticker}
-          </text>
-          {showChange && (
-            <text
-              x={padX + padWidth / 2}
-              y={padY + padHeight / 2 + fontSizeTicker * 0.7}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fill="#ffffff"
-              fontWeight="500"
-              fontSize={fontSizeChange}
-              className="pointer-events-none drop-shadow-md select-none font-sans"
+            <span
+              style={{
+                color: '#ffffff',
+                fontSize: `${tickerFontSize}px`,
+                fontWeight: 700,
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                textAlign: 'center',
+                lineHeight: 1.1,
+                textShadow: '1px 1px 2px rgba(0,0,0,0.6)',
+                WebkitFontSmoothing: 'antialiased',
+                MozOsxFontSmoothing: 'grayscale',
+              }}
             >
-              {change > 0 ? "+" : ""}{change.toFixed(2)}%
-            </text>
-          )}
-        </>
+              {ticker}
+            </span>
+            {showChange && (
+              <span
+                style={{
+                  color: '#ffffff',
+                  fontSize: `${changeFontSize}px`,
+                  fontWeight: 500,
+                  fontFamily: 'system-ui, -apple-system, sans-serif',
+                  textAlign: 'center',
+                  lineHeight: 1.2,
+                  marginTop: '2px',
+                  textShadow: '1px 1px 2px rgba(0,0,0,0.6)',
+                  WebkitFontSmoothing: 'antialiased',
+                  MozOsxFontSmoothing: 'grayscale',
+                }}
+              >
+                {change > 0 ? "+" : ""}{change.toFixed(2)}%
+              </span>
+            )}
+          </div>
+        </foreignObject>
       )}
     </g>
   );
