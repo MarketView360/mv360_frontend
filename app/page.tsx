@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Script from "next/script";
 import { Play } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import MarketOverview from "@/components/MarketOverview";
@@ -9,24 +8,6 @@ import { PopularStocksCarousel } from "@/components/home/PopularStocksCarousel";
 export default async function Home() {
   return (
     <div className="min-h-full bg-slate-50 dark:bg-slate-950 flex flex-col font-sans selection:bg-brand/20 transition-colors duration-300">
-      <Script
-        id="brevo-conversations-widget"
-        strategy="afterInteractive"
-        dangerouslySetInnerHTML={{
-          __html: `
-            (function(d, w, c) {
-              w.BrevoConversationsID = '693dc1bff4cd67e4c902b2a5';
-              w[c] = w[c] || function() {
-                (w[c].q = w[c].q || []).push(arguments);
-              };
-              var s = d.createElement('script');
-              s.async = true;
-              s.src = 'https://conversations-widget.brevo.com/brevo-conversations.js';
-              if (d.head) d.head.appendChild(s);
-            })(document, window, 'BrevoConversations');
-          `,
-        }}
-      />
       {/* Hero Section */}
       <section className="w-full py-24 md:py-32 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 relative">
         {/* Background Decorative Elements */}
