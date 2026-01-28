@@ -13,6 +13,7 @@ interface PaywallOverlayProps {
     showFreeTrial?: boolean;
     onClose?: () => void;
     className?: string;
+    compact?: boolean;
 }
 
 export function PaywallOverlay({
@@ -23,12 +24,44 @@ export function PaywallOverlay({
     showFreeTrial = true,
     onClose,
     className = "",
+    compact = false,
 }: PaywallOverlayProps) {
     const isPro = tier === "pro";
     const tierName = isPro ? "Pro" : "Elite";
     const defaultCta = showFreeTrial
         ? "Start 14-Day Free Trial"
         : `Upgrade to ${tierName}`;
+
+    // Compact version for smaller spaces
+    if (compact) {
+        return (
+            <div className={`glass-paywall px-6 py-4 max-w-sm mx-auto text-center relative z-50 animate-in fade-in zoom-in-95 duration-300 ${className}`}>
+                <div className="flex items-center justify-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isPro ? "gradient-pro" : "gradient-elite"}`}>
+                        {isPro ? (
+                            <Lock className="w-5 h-5 text-white" />
+                        ) : (
+                            <Crown className="w-5 h-5 text-white" />
+                        )}
+                    </div>
+                    <div className="text-left">
+                        <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                            Unlock {feature}
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Available in {tierName} plan
+                        </p>
+                    </div>
+                    <Link
+                        href="/pricing"
+                        className={`ml-auto px-4 py-2 rounded-lg font-semibold text-white text-sm transition-all hover:scale-[1.02] hover:shadow-lg flex-shrink-0 ${isPro ? "gradient-pro" : "gradient-elite"}`}
+                    >
+                        Upgrade
+                    </Link>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div

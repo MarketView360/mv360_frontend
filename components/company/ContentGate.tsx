@@ -7,24 +7,28 @@ import { PaywallOverlay } from "@/components/paywall/PaywallOverlay";
 export function ContentGate({
     children,
     feature = "Advanced Analysis",
-    tier = "pro"
+    tier = "pro",
+    compact = false
 }: {
     children: React.ReactNode;
     feature?: string;
     tier?: "pro" | "elite";
+    compact?: boolean;
 }) {
     const { session } = useAuth();
     const hasAccess = session?.tier === "pro" || session?.tier === "elite";
 
     if (!hasAccess) {
+        const minHeight = compact ? "min-h-[180px]" : "min-h-[400px]";
         return (
-            <div className="relative min-h-[400px] rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
+            <div className={`relative ${minHeight} rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800`}>
                 <div className="absolute inset-0 z-10 bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-md" />
                 <div className="absolute inset-0 z-20 flex items-center justify-center p-4">
                     <PaywallOverlay
                         tier={tier}
                         feature={feature}
-                        benefits={[
+                        compact={compact}
+                        benefits={compact ? [] : [
                             "Deep dive fundamental analysis",
                             "AI-powered growth forecasts",
                             "Risk assessment & red flags",
