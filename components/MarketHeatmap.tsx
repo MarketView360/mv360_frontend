@@ -152,11 +152,11 @@ const CustomTreemapCell = (props: any) => {
   // TradingView Style Constants
   const GAP = 1; // Gap between cells
 
-  // Adjusted coordinates for gap
+  // Adjusted coordinates for gap - but ensure minimum size
   const padX = x + GAP;
   const padY = y + GAP;
-  const padWidth = width - GAP * 2;
-  const padHeight = height - GAP * 2;
+  const padWidth = Math.max(width - GAP * 2, 1);
+  const padHeight = Math.max(height - GAP * 2, 1);
 
   const isSectorLabel = childrenCount(props) > 0;
 
@@ -179,8 +179,21 @@ const CustomTreemapCell = (props: any) => {
     );
   }
 
-  // Leaf/Stock Node
-  if (width < 10 || height < 10) return null;
+  // Leaf/Stock Node - always render at least a colored rectangle (no gaps)
+  if (width < 10 || height < 10) {
+    // Render a small colored cell without text to fill the gap
+    return (
+      <g>
+        <rect
+          x={x}
+          y={y}
+          width={Math.max(width, 1)}
+          height={Math.max(height, 1)}
+          fill={getColor(change)}
+        />
+      </g>
+    );
+  }
 
   // Determine what to show based on tile size
   const showTicker = padWidth > 35 && padHeight > 25;
@@ -523,7 +536,6 @@ export default function MarketHeatmap({ sector, refreshToken }: MarketHeatmapPro
               <Treemap
                 data={marketData.children as any} // eslint-disable-line @typescript-eslint/no-explicit-any
                 dataKey="size"
-                aspectRatio={4 / 3}
                 stroke="#1e293b"
                 content={<CustomTreemapCell onClick={handleTickerClick} />}
               >
