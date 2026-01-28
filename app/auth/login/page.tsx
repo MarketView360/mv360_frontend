@@ -31,12 +31,14 @@ function LoginPageContent() {
 
   const { session, signInWithEmail, signInWithMagicLink, loading } = useAuth();
 
-  // Redirect if already logged in
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  // Redirect if already logged in (but not during active login)
   useEffect(() => {
-    if (session) {
+    if (session && !isLoggingIn) {
       router.replace("/auth/already-logged-in");
     }
-  }, [session, router]);
+  }, [session, router, isLoggingIn]);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -50,12 +52,14 @@ function LoginPageContent() {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
+    setIsLoggingIn(true);
 
     const { error } = await signInWithEmail(email, password);
 
     if (error) {
       setError(error.message);
       setIsLoading(false);
+      setIsLoggingIn(false);
     } else {
       router.push(redirectTo);
       router.refresh();

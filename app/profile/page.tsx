@@ -59,6 +59,9 @@ export default function ProfilePage() {
   // Form state
   const [displayName, setDisplayName] = useState("");
   const [fullName, setFullName] = useState("");
+  const [newsletterOptIn, setNewsletterOptIn] = useState(false);
+  const [announcementsOptIn, setAnnouncementsOptIn] = useState(false);
+  const [alertsOptIn, setAlertsOptIn] = useState(false);
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -81,6 +84,9 @@ export default function ProfilePage() {
       setProfile(profileData);
       setDisplayName(profileData.display_name || "");
       setFullName(profileData.full_name || "");
+      setNewsletterOptIn(!!profileData.newsletter_opt_in);
+      setAnnouncementsOptIn(!!profileData.announcements_opt_in);
+      setAlertsOptIn(!!profileData.alerts_opt_in);
 
       if (statsRes.ok) {
         const statsData = await statsRes.json();
