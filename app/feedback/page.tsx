@@ -197,7 +197,7 @@ export default function FeedbackPage() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold text-slate-900 dark:text-white">
-                      Optional: Rate your experience with Marketview360
+                      Rate your experience with Marketview360
                     </p>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
                       A quick rating helps us understand how we&apos;re doing overall.

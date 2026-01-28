@@ -334,7 +334,7 @@ export default function HelpCenterPage() {
               Contact Support
             </Link>
             <Link
-              href="/jovan-chat"
+              href="/ai"
               className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-400 transition-colors"
             >
               <Zap className="h-4 w-4" />
