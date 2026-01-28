@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Script from "next/script";
+import { SupportWidget } from "@/components/support/SupportWidget";
 import { ArrowLeft, Mail, MessageSquare, Clock, Send, CheckCircle, AlertCircle, HelpCircle, Bug, Lightbulb, CreditCard, UserX } from "lucide-react";
 
 type ContactCategory = "general" | "support" | "bug" | "feature" | "billing" | "data-request";
@@ -45,24 +45,7 @@ export default function ContactPage() {
   if (submitted) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-12 px-4">
-        <Script
-          id="brevo-conversations-widget"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function(d, w, c) {
-                w.BrevoConversationsID = '693dc1bff4cd67e4c902b2a5';
-                w[c] = w[c] || function() {
-                  (w[c].q = w[c].q || []).push(arguments);
-                };
-                var s = d.createElement('script');
-                s.async = true;
-                s.src = 'https://conversations-widget.brevo.com/brevo-conversations.js';
-                if (d.head) d.head.appendChild(s);
-              })(document, window, 'BrevoConversations');
-            `,
-          }}
-        />
+        <SupportWidget />
         <div className="max-w-2xl mx-auto">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8 text-center">
             <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-6">
@@ -102,24 +85,7 @@ export default function ContactPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-12 px-4">
-      <Script
-        id="brevo-conversations-widget"
-        strategy="afterInteractive"
-        dangerouslySetInnerHTML={{
-          __html: `
-            (function(d, w, c) {
-              w.BrevoConversationsID = '693dc1bff4cd67e4c902b2a5';
-              w[c] = w[c] || function() {
-                (w[c].q = w[c].q || []).push(arguments);
-              };
-              var s = d.createElement('script');
-              s.async = true;
-              s.src = 'https://conversations-widget.brevo.com/brevo-conversations.js';
-              if (d.head) d.head.appendChild(s);
-            })(document, window, 'BrevoConversations');
-          `,
-        }}
-      />
+      <SupportWidget />
       <div className="max-w-4xl mx-auto">
         <Link
           href="/"

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Script from "next/script";
+import { SupportWidget } from "@/components/support/SupportWidget";
 import {
   ArrowLeft,
   Search,
@@ -207,24 +207,7 @@ export default function HelpCenterPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-12 px-4">
-      <Script
-        id="brevo-conversations-widget"
-        strategy="afterInteractive"
-        dangerouslySetInnerHTML={{
-          __html: `
-            (function(d, w, c) {
-              w.BrevoConversationsID = '693dc1bff4cd67e4c902b2a5';
-              w[c] = w[c] || function() {
-                (w[c].q = w[c].q || []).push(arguments);
-              };
-              var s = d.createElement('script');
-              s.async = true;
-              s.src = 'https://conversations-widget.brevo.com/brevo-conversations.js';
-              if (d.head) d.head.appendChild(s);
-            })(document, window, 'BrevoConversations');
-          `,
-        }}
-      />
+      <SupportWidget />
       <div className="max-w-5xl mx-auto">
         <Link
           href="/"
