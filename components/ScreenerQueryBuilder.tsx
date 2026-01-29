@@ -995,15 +995,7 @@ export default function ScreenerQueryBuilder({
               >
                 <Keyboard className="w-4 h-4" />
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowExamples(true)}
-                title="Query Examples"
-                className="hover:bg-slate-200 dark:hover:bg-slate-600"
-              >
-                <FileText className="w-4 h-4" />
-              </Button>
+
               <Button
                 variant="outline"
                 size="sm"
@@ -2065,248 +2057,63 @@ export default function ScreenerQueryBuilder({
         </div>
       </Card>
 
-      {/* Enhanced Help Guide Modal */}
-      {showGuide && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowGuide(false);
-          }}
-        >
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
-            <div className="sticky top-0 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700 p-6 flex justify-between items-center">
-              <div>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                  Complete Query Builder Guide
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-                  Everything you need to know about building powerful stock
-                  screening queries
-                </p>
-              </div>
-              <button
-                onClick={() => setShowGuide(false)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                title="Close"
-              >
-                <svg
-                  className="w-5 h-5 text-gray-500 dark:text-slate-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
 
-            <div className="p-6 space-y-8 overflow-y-auto max-h-[calc(90vh-100px)]">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div>
-                  <h4 className="font-semibold mb-3 text-blue-600 dark:text-blue-400">
-                    Available Fields
-                  </h4>
-                  <div className="text-sm space-y-2 max-h-60 overflow-y-auto">
-                    {getAllFields()
-                      .slice(0, 30)
-                      .map((field) => (
-                        <div
-                          key={field.name}
-                          className="p-2 border border-slate-200 dark:border-slate-700 rounded bg-white dark:bg-slate-800"
-                        >
-                          <div className="font-mono text-blue-600 dark:text-blue-400 text-xs">
-                            {field.name}
-                          </div>
-                          <div className="text-gray-500 dark:text-slate-400 text-xs">
-                            {field.description}
-                          </div>
-                          {field.example && (
-                            <div className="font-mono text-xs bg-gray-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 p-1 rounded mt-1">
-                              {field.example}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    <div className="text-gray-400 dark:text-slate-500 text-xs">
-                      ...and {getAllFields().length - 30} more fields
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold mb-3 text-purple-600 dark:text-purple-400">
-                    Operators
-                  </h4>
-                  <div className="text-sm space-y-2">
-                    {OPERATORS.map((op) => (
-                      <div
-                        key={op.symbol}
-                        className="p-2 border border-slate-200 dark:border-slate-700 rounded bg-white dark:bg-slate-800"
-                      >
-                        <div className="font-mono text-purple-600 dark:text-purple-400">
-                          {op.symbol}
-                        </div>
-                        <div className="text-gray-500 dark:text-slate-400 text-xs">
-                          {op.description}
-                        </div>
-                        <div className="font-mono text-xs bg-gray-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 p-1 rounded mt-1">
-                          {op.example}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold mb-3 text-green-600 dark:text-green-400">
-                    Functions
-                  </h4>
-                  <div className="text-sm space-y-2">
-                    {FUNCTIONS.map((func) => (
-                      <div
-                        key={func.name}
-                        className="p-2 border border-slate-200 dark:border-slate-700 rounded bg-white dark:bg-slate-800"
-                      >
-                        <div className="font-mono text-green-600 dark:text-green-400">
-                          {func.name}
-                        </div>
-                        <div className="text-gray-500 dark:text-slate-400 text-xs">
-                          {func.description}
-                        </div>
-                        <div className="font-mono text-xs bg-gray-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 p-1 rounded mt-1">
-                          {func.example}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-semibold mb-3 text-orange-600 dark:text-orange-400">
-                  Common Error Solutions
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {Object.entries(ERROR_SOLUTIONS).map(([error, solution]) => (
-                    <div
-                      key={error}
-                      className="p-3 border border-orange-200 dark:border-orange-800 rounded bg-orange-50 dark:bg-orange-900/30"
-                    >
-                      <div className="font-medium text-orange-800 dark:text-orange-300">
-                        {error}
-                      </div>
-                      <div className="text-sm text-orange-700 dark:text-orange-400 mt-1">
-                        {solution}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Enhanced Keyboard Shortcuts Modal */}
-      {showKeyboardShortcuts && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowKeyboardShortcuts(false);
-          }}
-        >
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-            <div className="sticky top-0 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700 p-6 flex justify-between items-center">
-              <div>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                  Keyboard Shortcuts
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-                  Master these shortcuts to boost your productivity
-                </p>
-              </div>
-              <button
-                onClick={() => setShowKeyboardShortcuts(false)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                title="Close"
-              >
-                <svg
-                  className="w-5 h-5 text-gray-500 dark:text-slate-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
+      {/* Keyboard Shortcuts Modal */}
+      <Dialog open={showKeyboardShortcuts} onOpenChange={setShowKeyboardShortcuts}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Keyboard Shortcuts</DialogTitle>
+            <DialogDescription>
+              Master these shortcuts to boost your productivity
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {Object.entries(KEYBOARD_SHORTCUTS).map(
+                ([shortcut, description]) => (
+                  <div
+                    key={shortcut}
+                    className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <kbd className="inline-flex items-center px-3 py-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md font-mono text-sm text-slate-800 dark:text-slate-300 shadow-sm">
+                      {shortcut}
+                    </kbd>
+                    <span className="text-sm text-slate-600 dark:text-slate-400 ml-4 flex-1 text-right">
+                      {description}
+                    </span>
+                  </div>
+                )
+              )}
             </div>
 
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {Object.entries(KEYBOARD_SHORTCUTS).map(
-                  ([shortcut, description]) => (
-                    <div
-                      key={shortcut}
-                      className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
-                    >
-                      <kbd className="inline-flex items-center px-3 py-1.5 bg-gray-100 dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-md font-mono text-sm text-gray-800 dark:text-slate-300 shadow-sm">
-                        {shortcut}
-                      </kbd>
-                      <span className="text-sm text-gray-600 dark:text-slate-400 ml-4 flex-1 text-right">
-                        {description}
-                      </span>
-                    </div>
-                  )
-                )}
-              </div>
-
-              <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">
-                <div className="flex items-start">
-                  <div className="shrink-0">
-                    <svg
-                      className="w-5 h-5 text-blue-400 mt-0.5"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300">
-                      Pro Tip
-                    </h4>
-                    <p className="text-sm text-blue-700 dark:text-blue-400 mt-1">
-                      Use{" "}
-                      <kbd className="px-1 py-0.5 bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 rounded text-xs">
-                        Ctrl+Space
-                      </kbd>{" "}
-                      to trigger auto-complete at any time, and{" "}
-                      <kbd className="px-1 py-0.5 bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 rounded text-xs">
-                        Tab
-                      </kbd>{" "}
-                      to quickly accept suggestions.
-                    </p>
-                  </div>
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex items-start">
+                <div className="shrink-0">
+                  <Lightbulb className="w-5 h-5 text-blue-400 mt-0.5" />
+                </div>
+                <div className="ml-3">
+                  <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                    Pro Tip
+                  </h4>
+                  <p className="text-sm text-blue-700 dark:text-blue-400 mt-1">
+                    Use{" "}
+                    <kbd className="px-1 py-0.5 bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 rounded text-xs">
+                      Ctrl+Space
+                    </kbd>{" "}
+                    to trigger auto-complete at any time, and{" "}
+                    <kbd className="px-1 py-0.5 bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 rounded text-xs">
+                      Tab
+                    </kbd>{" "}
+                    to quickly accept suggestions.
+                  </p>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
       {/* Help Guide Modal */}
       <Dialog open={showGuide} onOpenChange={setShowGuide}>
