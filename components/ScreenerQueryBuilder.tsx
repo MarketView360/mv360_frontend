@@ -1634,26 +1634,50 @@ export default function ScreenerQueryBuilder({
                   {PRESET_SCREENS.filter((s: Strategy) => s.feasibility === 'full').map((strategy: Strategy) => (
                     <div
                       key={strategy.id}
-                      className="group p-4 text-left rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all cursor-pointer flex flex-col h-full"
-                      onClick={() => onChange(strategy.logic)}
+                      className="group p-4 text-left rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all flex flex-col h-full"
                     >
                       <div className="flex items-start justify-between mb-2">
                         <h3 className="font-medium text-slate-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">
                           {strategy.name}
                         </h3>
-                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${strategy.category === "Value" ? "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800" :
-                          strategy.category === "Growth" ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800" :
-                            strategy.category === "Momentum" ? "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800" :
-                              "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
-                          }`}>
+                      </div>
+                      <div className="mb-3">
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
                           {strategy.category}
                         </Badge>
                       </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 line-clamp-2 flex-grow">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 line-clamp-3 flex-grow">
                         {strategy.description}
                       </p>
-                      <div className="mt-auto pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px] font-mono text-slate-400 dark:text-slate-500 truncate bg-slate-50 dark:bg-slate-900/50 p-1 rounded">
+
+                      {/* Logic Snippet */}
+                      <div className="mb-3 p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-100 dark:border-green-900/30 text-[10px] font-mono text-green-700 dark:text-green-400 overflow-hidden text-ellipsis whitespace-nowrap">
                         {strategy.logic}
+                      </div>
+
+                      <div className="mt-auto grid grid-cols-2 gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onChange(strategy.logic);
+                          }}
+                        >
+                          Replace
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onChange(value ? `${value} AND\n${strategy.logic}` : strategy.logic);
+                          }}
+                        >
+                          + Append
+                        </Button>
                       </div>
                     </div>
                   ))}

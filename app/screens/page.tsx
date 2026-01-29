@@ -1,6 +1,7 @@
 "use client";
 
 import React, { Suspense, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -30,15 +31,27 @@ function ScreensPageSkeleton() {
 }
 
 function ScreensPageContent() {
+  const router = useRouter();
   const [query, setQuery] = useState(
     "Market Capitalization > 1000 AND\nPE < 25 AND\nROE > 15"
   );
   const [showTemplates, setShowTemplates] = useState(false);
 
   // Handle template selection - populate query builder and close overlay
+  // Handle template selection - directly run the query
   const handleTemplateSelect = (templateQuery: string) => {
     setQuery(templateQuery);
     setShowTemplates(false);
+
+    // Auto-run: Navigate to results page
+    const params = new URLSearchParams({
+      query: templateQuery,
+      sort: "market_capitalization.desc",
+      limit: String(50),
+      offset: String(0),
+      exchange: "us",
+    });
+    router.push(`/screens/results?${params.toString()}`);
   };
 
   return (
@@ -58,25 +71,7 @@ function ScreensPageContent() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Button
-              variant="default"
-              size="sm"
-              className="bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 hidden sm:flex items-center gap-2 h-9"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Create New Screen</span>
-            </Button>
 
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white h-9"
-              onClick={() => window.location.href = '/auth'}
-            >
-              Sign In
-            </Button>
-
-            <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
 
             {/* Templates Toggle Button */}
             <Button

@@ -784,41 +784,7 @@ function ResultsPageContent() {
   return (
     <TooltipProvider>
       <div className="flex bg-slate-50 dark:bg-slate-950 min-h-screen">
-        {/* Sidebar */}
-        <div className="hidden lg:block w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex-shrink-0 sticky top-0 h-screen overflow-y-auto">
-          <div className="p-6">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-6">Screen Templates</h2>
-            <div className="space-y-2">
-              {[
-                { name: "The Bull Cartel", color: "bg-yellow-500" },
-                { name: "Undervalued Growth", color: "bg-green-500" },
-                { name: "Coffee Can Portfolio", color: "bg-blue-500" },
-                { name: "Magic Formula", color: "bg-purple-500" },
-                { name: "Dividend Champions", color: "bg-indigo-500" },
-                { name: "Low Debt Quality", color: "bg-pink-500" },
-              ].map((template) => (
-                <button
-                  key={template.name}
-                  onClick={() => {
-                    // Logic to load template would go here, for now just redirect to generic
-                    router.push("/screens");
-                  }}
-                  className="w-full text-left px-3 py-2 rounded-lg text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center gap-2"
-                >
-                  <div className={`w-2 h-2 rounded-full ${template.color}`} />
-                  {template.name}
-                </button>
-              ))}
-            </div>
-            <div className="mt-8">
-              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">Your Screens</h3>
-              <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-lg text-center">
-                <p className="text-xs text-slate-500 mb-3">Login to save your custom screens</p>
-                <Link href="/login" className="text-xs font-medium text-brand hover:underline">Sign In / Register</Link>
-              </div>
-            </div>
-          </div>
-        </div>
+
 
         {/* Main Content */}
         <div className="flex-1 min-w-0">
