@@ -1456,43 +1456,49 @@ export const KEYBOARD_SHORTCUTS = {
 };
 
 // Common query examples and templates
-export const QUERY_EXAMPLES = {
-  "Value Stocks": {
-    query: "PE < 15 AND PB < 2 AND ROE > 15 AND Debt to equity < 0.5",
-    description: "Find undervalued stocks with good fundamentals",
+// Example queries for the query builder
+export const QUERY_EXAMPLES = [
+  {
+    name: "High Market Cap",
+    query: "Market Cap > 100000000000",
+    description: "Stocks with a market capitalization greater than $100 billion.",
   },
-  "Growth Stocks": {
-    query: "Sales growth 3Years > 20 AND EPS growth 3Years > 25 AND ROE > 20",
-    description: "High growth companies with strong earnings",
+  {
+    name: "Undervalued Growth",
+    query: "PE < 20 AND ROE > 15 AND Revenue > 1000000000",
+    description: "Companies with reasonable valuation, high return on equity, and significant revenue.",
   },
-  "Dividend Stocks": {
-    query:
-      "Dividend yield > 3 AND Dividend growth 5Years > 8 AND Payout Ratio < 60",
-    description: "Reliable dividend paying stocks",
+  {
+    name: "Dividend Aristocrats",
+    query: "Dividend Yield > 3 AND Payout Ratio < 60",
+    description: "Sustainable dividend payers with yield over 3% and healthy payout ratio.",
   },
-  "Quality Stocks": {
-    query:
-      "ROE > 18 AND ROCE > 20 AND Current Ratio > 1.5 AND Interest Coverage > 5",
-    description: "High quality companies with strong financials",
+  {
+    name: "Tech Growth",
+    query: "Sector = 'Technology' AND Revenue > 500000000 AND PE < 50",
+    description: "Technology companies with significant revenue and growth potential.",
   },
-  "Small Cap Growth": {
-    query:
-      "Market Capitalization BETWEEN 500 AND 5000 AND Sales growth 3Years > 25",
-    description: "Small cap companies with high growth",
+  {
+    name: "Deep Value",
+    query: "Price to Book Value < 1 AND PE < 15 AND Net Debt < 0",
+    description: "Stocks trading below book value with low earnings multiples and strong balance sheets.",
   },
-  "Large Cap Stable": {
-    query: "Market Capitalization > 50000 AND Beta < 1.2 AND ROE > 12",
-    description: "Large stable companies with consistent returns",
+  {
+    name: "Momentum",
+    query: "Price > SMA200 AND Price > SMA50 AND RSI > 50",
+    description: "Stocks in an uptrend trading above their moving averages.",
   },
-  "Turnaround Stories": {
-    query: "Return over 1year > 50 AND Profit Growth 1Year > 100 AND PE < 25",
-    description: "Companies showing strong recovery",
+  {
+    name: "High Quality Defensives",
+    query: "Sector = 'Healthcare' OR Sector = 'Consumer Defensive' AND ROE > 20",
+    description: "High quality companies in defensive sectors.",
   },
-  "Cash Rich Companies": {
-    query: "Cash and Equivalents > Total Debt AND Free Cash Flow > 200",
-    description: "Companies with strong cash positions",
+  {
+    name: "Debt Free Cash Cows",
+    query: "Long Term Debt = 0 AND Free Cash Flow > 100000000",
+    description: "Companies with zero long term debt and strong free cash flow.",
   },
-};
+];
 
 // Common error patterns and solutions
 export const ERROR_SOLUTIONS = {

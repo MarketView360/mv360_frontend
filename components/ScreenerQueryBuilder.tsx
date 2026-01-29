@@ -3,6 +3,13 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -1006,6 +1013,16 @@ export default function ScreenerQueryBuilder({
               >
                 <BookOpen className="w-4 h-4 mr-1" />
                 Guide
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowExamples(true)}
+                title="Query Examples"
+                className=" bg-white border-slate-300 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                <Lightbulb className="w-4 h-4 mr-1" />
+                Examples
               </Button>
               <Button
                 variant="outline"
@@ -2291,21 +2308,92 @@ export default function ScreenerQueryBuilder({
         </div>
       )}
 
-      {/* Enhanced Query Examples Modal */}
-      {showExamples && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowExamples(false);
-          }}
-        >
-          {/* ... existing modal code ... */}
-          {/* I will omit internal modal code as I'm just appending after it if I can match the context correctly. 
-              Actually replace_file_content requires TargetContent. 
-              I will replace the last few lines to append the modal. 
-          */}
-        </div>
-      )}
+      {/* Help Guide Modal */}
+      <Dialog open={showGuide} onOpenChange={setShowGuide}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Screener Query Guide</DialogTitle>
+            <DialogDescription>
+              Learn how to build powerful queries to screen for stocks.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6">
+            <section>
+              <h3 className="text-lg font-semibold mb-2">Basic Syntax</h3>
+              <p className="text-slate-600 dark:text-slate-300 mb-2">
+                Queries are built using <code>Field Operator Value</code> pairs, combined with logical operators.
+              </p>
+              <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded-md font-mono text-sm">
+                Sales {">"} 100 AND PE {"<"} 25
+              </div>
+            </section>
+
+            <section>
+              <h3 className="text-lg font-semibold mb-2">Comparison Operators</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {OPERATORS.filter(op => op.category === "Comparison").map(op => (
+                  <div key={op.symbol} className="border border-slate-200 dark:border-slate-700 rounded p-3">
+                    <div className="font-mono font-bold text-blue-600 dark:text-blue-400 mb-1">{op.symbol}</div>
+                    <div className="text-sm font-medium mb-1">{op.description}</div>
+                    <div className="text-xs text-slate-500 font-mono bg-slate-50 dark:bg-slate-900 p-1 rounded">
+                      {op.example}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section>
+              <h3 className="text-lg font-semibold mb-2">Logical Operators</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {OPERATORS.filter(op => op.category === "Logical").map(op => (
+                  <div key={op.symbol} className="border border-slate-200 dark:border-slate-700 rounded p-3">
+                    <div className="font-mono font-bold text-purple-600 dark:text-purple-400 mb-1">{op.symbol}</div>
+                    <div className="text-sm font-medium mb-1">{op.description}</div>
+                    <div className="text-xs text-slate-500 font-mono bg-slate-50 dark:bg-slate-900 p-1 rounded">
+                      {op.example}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Query Examples Modal */}
+      <Dialog open={showExamples} onOpenChange={setShowExamples}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Query Examples</DialogTitle>
+            <DialogDescription>
+              Select an example to load it into the query builder.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {QUERY_EXAMPLES.map((example, index) => (
+              <div
+                key={index}
+                className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500 cursor-pointer bg-white dark:bg-slate-800 transition-colors group"
+                onClick={() => {
+                  onChange(example.query);
+                  setShowExamples(false);
+                }}
+              >
+                <h3 className="font-semibold text-slate-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                  {example.name}
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
+                  {example.description}
+                </p>
+                <div className="text-xs font-mono bg-slate-50 dark:bg-slate-900 p-2 rounded text-slate-700 dark:text-slate-300 break-words group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20">
+                  {example.query}
+                </div>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <PaywallModal
         isOpen={showPaywall}
