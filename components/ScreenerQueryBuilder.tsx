@@ -51,6 +51,7 @@ import {
   FieldDef,
   VALUE_SUGGESTIONS,
 } from "@/lib/queryBuilder";
+import { PRESET_SCREENS, type Strategy } from "@/components/StrategyLibrary";
 
 // Define ScreenerRow type for results
 interface ScreenerRow {
@@ -928,7 +929,10 @@ export default function ScreenerQueryBuilder({
     favoriteFields.includes(f.name)
   );
   const dataSourceWithFavorites: Record<string, FieldDef[]> = {
-    Favorites: favoritesList,
+    Strategies: [], // Placeholder to prevent crashes
+    Favorites: favoriteFields
+      .map((fieldName) => getAllFields().find((f) => f.name === fieldName))
+      .filter((f): f is FieldDef => !!f),
     ...ENHANCED_DATA_SOURCE,
   } as unknown as Record<string, FieldDef[]>;
   const baseList = searchTerm
@@ -1502,11 +1506,23 @@ export default function ScreenerQueryBuilder({
             </div>
 
             <div className="flex-1 overflow-y-auto py-2">
-              {Object.keys({ Favorites: [], ...ENHANCED_DATA_SOURCE }).map(
+              {/* Build categories with Strategies after Most Used */}
+              {(() => {
+                const allCategories = Object.keys({ Favorites: [], ...ENHANCED_DATA_SOURCE });
+                // Insert Strategies after "Most Used"
+                const mostUsedIndex = allCategories.indexOf("Most Used");
+                const orderedCategories = [
+                  ...allCategories.slice(0, mostUsedIndex + 1),
+                  "Strategies",
+                  ...allCategories.slice(mostUsedIndex + 1)
+                ];
+                return orderedCategories;
+              })().map(
                 (category) => (
                   <button
                     key={category}
                     onClick={() => {
+                      console.log("Selected category:", category);
                       setSelectedCategory(category);
                       setSearchTerm("");
                     }}
@@ -1518,7 +1534,9 @@ export default function ScreenerQueryBuilder({
                     <span>{category}</span>
                     <div className="flex items-center gap-2">
                       <span className="text-xs bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 px-2 py-1 rounded-full">
-                        {((dataSourceWithFavorites as Record<string, FieldDef[]>)[category]?.length) ?? 0}
+                        {category === "Strategies"
+                          ? (typeof PRESET_SCREENS !== 'undefined' ? PRESET_SCREENS.filter((s: Strategy) => s.feasibility === 'full').length : 0)
+                          : ((dataSourceWithFavorites as Record<string, FieldDef[]>)[category]?.length) ?? 0}
                       </span>
                       {selectedCategory === category && !searchTerm && (
                         <ChevronRight className="w-4 h-4 opacity-50" />
@@ -1611,184 +1629,215 @@ export default function ScreenerQueryBuilder({
                 </div>
               )}
 
-              {!showTableView && (
+              {selectedCategory === "Strategies" ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                  {filteredRatios.map((field) => (
+                  {PRESET_SCREENS.filter((s: Strategy) => s.feasibility === 'full').map((strategy: Strategy) => (
                     <div
-                      key={field.name}
-                      className="group p-4 text-left rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all"
+                      key={strategy.id}
+                      className="group p-4 text-left rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all cursor-pointer flex flex-col h-full"
+                      onClick={() => onChange(strategy.logic)}
                     >
                       <div className="flex items-start justify-between mb-2">
-                        <button
-                          className="font-medium text-slate-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors text-left"
-                          onClick={() => handleSmartInsert(field.name)}
-                        >
-                          {field.name}
-                        </button>
-                        <div className="flex items-center gap-2">
-                          <div className="text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-1 rounded-full">
-                            {field.unit === "₹" ? "$" : field.unit}
-                          </div>
+                        <h3 className="font-medium text-slate-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">
+                          {strategy.name}
+                        </h3>
+                        <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${strategy.category === "Value" ? "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800" :
+                          strategy.category === "Growth" ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800" :
+                            strategy.category === "Momentum" ? "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800" :
+                              "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"
+                          }`}>
+                          {strategy.category}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 line-clamp-2 flex-grow">
+                        {strategy.description}
+                      </p>
+                      <div className="mt-auto pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px] font-mono text-slate-400 dark:text-slate-500 truncate bg-slate-50 dark:bg-slate-900/50 p-1 rounded">
+                        {strategy.logic}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                !showTableView && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                    {filteredRatios.map((field) => (
+                      <div
+                        key={field.name}
+                        className="group p-4 text-left rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all"
+                      >
+                        <div className="flex items-start justify-between mb-2">
                           <button
-                            className="p-1 hover:text-yellow-600 text-slate-400 dark:text-slate-500"
-                            title={
-                              favoriteFields.includes(field.name)
-                                ? "Unpin"
-                                : "Pin"
-                            }
-                            onClick={() => toggleFavorite(field.name)}
+                            className="font-medium text-slate-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors text-left"
+                            onClick={() => handleSmartInsert(field.name)}
                           >
-                            {favoriteFields.includes(field.name) ? (
-                              <Star className="w-4 h-4 fill-yellow-400 text-yellow-500" />
-                            ) : (
-                              <StarOff className="w-4 h-4" />
-                            )}
+                            {field.name}
                           </button>
+                          <div className="flex items-center gap-2">
+                            <div className="text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-1 rounded-full">
+                              {field.unit === "₹" ? "$" : field.unit}
+                            </div>
+                            <button
+                              className="p-1 hover:text-yellow-600 text-slate-400 dark:text-slate-500"
+                              title={
+                                favoriteFields.includes(field.name)
+                                  ? "Unpin"
+                                  : "Pin"
+                              }
+                              onClick={() => toggleFavorite(field.name)}
+                            >
+                              {favoriteFields.includes(field.name) ? (
+                                <Star className="w-4 h-4 fill-yellow-400 text-yellow-500" />
+                              ) : (
+                                <StarOff className="w-4 h-4" />
+                              )}
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                      <div className="text-sm text-slate-500 dark:text-slate-400 mb-2">
-                        {field.description}
-                      </div>
-                      {field.example && (
-                        <div className="text-xs font-mono bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-1 rounded mb-2">
-                          {field.example}
+                        <div className="text-sm text-slate-500 dark:text-slate-400 mb-2">
+                          {field.description}
                         </div>
-                      )}
-                      <div className="flex items-center gap-2 mt-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 px-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600"
-                          onClick={() => handleSmartInsert(field.name)}
-                          title="Insert field"
-                        >
-                          Insert
-                        </Button>
-
-                        {/* Insert op button with inline popup */}
-                        <div className="relative">
+                        {field.example && (
+                          <div className="text-xs font-mono bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-1 rounded mb-2">
+                            {field.example}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 mt-2">
                           <Button
                             size="sm"
                             variant="outline"
                             className="h-8 px-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600"
-                            onClick={() =>
-                              setShowOperatorPopupFor(
-                                showOperatorPopupFor === field.name
-                                  ? null
-                                  : field.name
-                              )
-                            }
-                            title="Insert comparison template"
+                            onClick={() => handleSmartInsert(field.name)}
+                            title="Insert field"
                           >
-                            Insert op
+                            Insert
                           </Button>
 
-                          {/* Operator Selection Popup */}
-                          {showOperatorPopupFor === field.name && (
-                            <>
-                              {/* Backdrop to close on click outside */}
-                              <div
-                                className="fixed inset-0 z-40"
-                                onClick={() => setShowOperatorPopupFor(null)}
-                              />
-                              <div className="absolute top-full left-0 mt-2 z-50 animate-in fade-in-0 zoom-in-95 duration-200">
-                                <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xl p-4 min-w-[240px]">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <p className="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wide">
-                                      Select operator for {field.name}
-                                    </p>
-                                    <button
-                                      onClick={() =>
-                                        setShowOperatorPopupFor(null)
-                                      }
-                                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                                    >
-                                      <X className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                  <div className="grid grid-cols-4 gap-2 mb-3">
-                                    {[">", "<", ">=", "<="].map((op) => (
-                                      <button
-                                        key={op}
-                                        onClick={() =>
-                                          handleOperatorSelect(field.name, op)
-                                        }
-                                        className="h-10 px-3 font-mono text-sm font-medium rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 transition-colors"
-                                      >
-                                        {op}
-                                      </button>
-                                    ))}
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-2 mb-3">
-                                    {["=", "!="].map((op) => (
-                                      <button
-                                        key={op}
-                                        onClick={() =>
-                                          handleOperatorSelect(field.name, op)
-                                        }
-                                        className="h-10 px-3 font-mono text-sm font-medium rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 transition-colors"
-                                      >
-                                        {op}
-                                      </button>
-                                    ))}
-                                  </div>
-                                  <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
-                                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
-                                      Logical Operators
-                                    </p>
-                                    <div className="flex gap-2">
+                          {/* Insert op button with inline popup */}
+                          <div className="relative">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 px-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600"
+                              onClick={() =>
+                                setShowOperatorPopupFor(
+                                  showOperatorPopupFor === field.name
+                                    ? null
+                                    : field.name
+                                )
+                              }
+                              title="Insert comparison template"
+                            >
+                              Insert op
+                            </Button>
+
+                            {/* Operator Selection Popup */}
+                            {showOperatorPopupFor === field.name && (
+                              <>
+                                {/* Backdrop to close on click outside */}
+                                <div
+                                  className="fixed inset-0 z-40"
+                                  onClick={() => setShowOperatorPopupFor(null)}
+                                />
+                                <div className="absolute top-full left-0 mt-2 z-50 animate-in fade-in-0 zoom-in-95 duration-200">
+                                  <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xl p-4 min-w-[240px]">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <p className="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wide">
+                                        Select operator for {field.name}
+                                      </p>
                                       <button
                                         onClick={() =>
-                                          handleOperatorSelect(
-                                            field.name,
-                                            "AND"
-                                          )
+                                          setShowOperatorPopupFor(null)
                                         }
-                                        className="flex-1 h-10 px-3 text-sm font-semibold rounded-lg bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/70 border border-blue-200 dark:border-blue-800 transition-colors"
+                                        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                                       >
-                                        AND
+                                        <X className="w-4 h-4" />
                                       </button>
-                                      <button
-                                        onClick={() =>
-                                          handleOperatorSelect(field.name, "OR")
-                                        }
-                                        className="flex-1 h-10 px-3 text-sm font-semibold rounded-lg bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/70 border border-purple-200 dark:border-purple-800 transition-colors"
-                                      >
-                                        OR
-                                      </button>
+                                    </div>
+                                    <div className="grid grid-cols-4 gap-2 mb-3">
+                                      {[">", "<", ">=", "<="].map((op) => (
+                                        <button
+                                          key={op}
+                                          onClick={() =>
+                                            handleOperatorSelect(field.name, op)
+                                          }
+                                          className="h-10 px-3 font-mono text-sm font-medium rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 transition-colors"
+                                        >
+                                          {op}
+                                        </button>
+                                      ))}
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2 mb-3">
+                                      {["=", "!="].map((op) => (
+                                        <button
+                                          key={op}
+                                          onClick={() =>
+                                            handleOperatorSelect(field.name, op)
+                                          }
+                                          className="h-10 px-3 font-mono text-sm font-medium rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 transition-colors"
+                                        >
+                                          {op}
+                                        </button>
+                                      ))}
+                                    </div>
+                                    <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                                        Logical Operators
+                                      </p>
+                                      <div className="flex gap-2">
+                                        <button
+                                          onClick={() =>
+                                            handleOperatorSelect(
+                                              field.name,
+                                              "AND"
+                                            )
+                                          }
+                                          className="flex-1 h-10 px-3 text-sm font-semibold rounded-lg bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/70 border border-blue-200 dark:border-blue-800 transition-colors"
+                                        >
+                                          AND
+                                        </button>
+                                        <button
+                                          onClick={() =>
+                                            handleOperatorSelect(field.name, "OR")
+                                          }
+                                          className="flex-1 h-10 px-3 text-sm font-semibold rounded-lg bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/70 border border-purple-200 dark:border-purple-800 transition-colors"
+                                        >
+                                          OR
+                                        </button>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
-                              </div>
-                            </>
-                          )}
+                              </>
+                            )}
+                          </div>
                         </div>
+                        {field.keywords.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {field.keywords.slice(0, 3).map((keyword: string) => (
+                              <span
+                                key={keyword}
+                                className="text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded"
+                              >
+                                {keyword}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      {field.keywords.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {field.keywords.slice(0, 3).map((keyword: string) => (
-                            <span
-                              key={keyword}
-                              className="text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded"
-                            >
-                              {keyword}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    ))}
 
-                  {filteredRatios.length === 0 && (
-                    <div className="col-span-full py-12 text-center text-slate-500 dark:text-slate-400">
-                      <Search className="w-8 h-8 mx-auto mb-3 opacity-50" />
-                      <div>No fields found matching your search.</div>
-                      <div className="text-sm mt-1">
-                        Try different keywords or browse categories.
+                    {filteredRatios.length === 0 && (
+                      <div className="col-span-full py-12 text-center text-slate-500 dark:text-slate-400">
+                        <Search className="w-8 h-8 mx-auto mb-3 opacity-50" />
+                        <div>No fields found matching your search.</div>
+                        <div className="text-sm mt-1">
+                          Try different keywords or browse categories.
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
+                )
               )}
 
               {showTableView && (
