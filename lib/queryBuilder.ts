@@ -129,6 +129,14 @@ export const FIELD_ALIASES: Record<string, FieldMapping> = {
     table: "company_metrics_ttm",
     column: "dividend_per_share",
   },
+  forward_dividend_yield: {
+    table: "company_metrics_ttm",
+    column: "forward_annual_dividend_yield",
+  },
+  forward_annual_dividend_yield: {
+    table: "company_metrics_ttm",
+    column: "forward_annual_dividend_yield",
+  },
   payout_ratio: { table: "company_metrics_ttm", column: "payout_ratio" },
 
   // Earnings (company_metrics_ttm table)
@@ -375,6 +383,10 @@ export const BACKEND_FIELD_MAP: Record<string, string> = {
   "dividend per share": "dividend_per_share",
   dividend_per_share: "dividend_per_share",
   "dividend share": "dividend_per_share",
+  "forward dividend yield": "forward_annual_dividend_yield",
+  forward_dividend_yield: "forward_annual_dividend_yield",
+  forward_annual_dividend_yield: "forward_annual_dividend_yield",
+  "forward div yield": "forward_annual_dividend_yield",
   "payout ratio": "payout_ratio",
   payout_ratio: "payout_ratio",
   "dividend payout ratio": "payout_ratio",
@@ -1193,6 +1205,15 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       category: "Dividends",
     },
     {
+      name: "Forward Dividend Yield",
+      description: "Expected annual dividend yield based on forward rate",
+      unit: "%",
+      keywords: ["forward dividend yield", "forward dividend", "forward div yield"],
+      example: "Forward Dividend Yield > 3",
+      backendField: "forward_annual_dividend_yield",
+      category: "Dividends",
+    },
+    {
       name: "Payout Ratio",
       description: "Dividend payout ratio",
       unit: "%",
@@ -1799,7 +1820,105 @@ export const validateQuery = (query: string): QueryValidationError[] => {
       const conditionTrimmed = condition.trim();
       if (!conditionTrimmed) return;
 
-      // Find operator in this condition
+      // If this condition is a parenthesized expression, recursively validate its contents
+      if (conditionTrimmed.startsWith("(") && conditionTrimmed.endsWith(")")) {
+        // Extract the content inside the parentheses
+        const innerContent = conditionTrimmed.substring(1, conditionTrimmed.length - 1).trim();
+        
+        // Recursively split and validate the inner expression
+        const innerConditions = splitByLogicalOperators(innerContent);
+        
+        innerConditions.forEach((innerCondition) => {
+          if (["AND", "OR"].includes(innerCondition.toUpperCase())) return;
+          
+          const innerTrimmed = innerCondition.trim();
+          if (!innerTrimmed) return;
+          
+          // Recursively handle nested parentheses
+          if (innerTrimmed.startsWith("(") && innerTrimmed.endsWith(")")) {
+            // For deeply nested parentheses, we'll just validate them at the current level
+            // This prevents infinite recursion while still catching basic issues
+            return;
+          }
+          
+          // Validate this inner condition
+          const operatorMatch = innerTrimmed.match(
+            /(>=|<=|!=|>|<|=|\bIN\b|\bBETWEEN\b|\bLIKE\b|\bIS\s+NOT\s+NULL\b|\bIS\s+NULL\b)/i
+          );
+          
+          if (!operatorMatch) {
+            const isKnownField = allValidFields.some(
+              (field) => field.toLowerCase() === innerTrimmed.toLowerCase()
+            );
+            
+            if (isKnownField) {
+              errors.push({
+                line: lineIndex + 1,
+                column: trimmedLine.indexOf(innerTrimmed) + 1,
+                message: `Field "${innerTrimmed}" needs an operator and value`,
+                severity: "error",
+              });
+            } else if (innerTrimmed.length > 0) {
+              errors.push({
+                line: lineIndex + 1,
+                column: Math.max(1, trimmedLine.indexOf(innerTrimmed) + 1),
+                message: `Unknown field "${innerTrimmed}"`,
+                severity: "error",
+              });
+            }
+            return;
+          }
+          
+          const operator = operatorMatch[0];
+          const operatorIndex = innerTrimmed.indexOf(operator);
+          const fieldPart = innerTrimmed.substring(0, operatorIndex).trim();
+          const valuePart = innerTrimmed.substring(operatorIndex + operator.length).trim();
+          
+          // Validate field in parenthesized expression
+          if (fieldPart) {
+            const isValidField = allValidFields.some(
+              (field) => field.toLowerCase() === fieldPart.toLowerCase()
+            );
+            
+            if (!isValidField) {
+              const closeMatch = allValidFields.find((field) => {
+                const fieldLower = field.toLowerCase();
+                const fieldPartLower = fieldPart.toLowerCase();
+                return fieldLower.includes(fieldPartLower) || fieldPartLower.includes(fieldLower);
+              });
+              
+              if (closeMatch) {
+                errors.push({
+                  line: lineIndex + 1,
+                  column: trimmedLine.indexOf(fieldPart) + 1,
+                  message: `Did you mean "${closeMatch}"?`,
+                  severity: "warning",
+                });
+              } else {
+                errors.push({
+                  line: lineIndex + 1,
+                  column: trimmedLine.indexOf(fieldPart) + 1,
+                  message: `Unknown field "${fieldPart}"`,
+                  severity: "error",
+                });
+              }
+            }
+          }
+          
+          // Validate value for IS NULL/IS NOT NULL - no value needed
+          if (!valuePart && !/(IS\s+NULL|IS\s+NOT\s+NULL)$/i.test(operator)) {
+            errors.push({
+              line: lineIndex + 1,
+              column: trimmedLine.indexOf(operator) + operator.length + 1,
+              message: `Operator "${operator}" needs a value after it`,
+              severity: "error",
+            });
+          }
+        });
+        
+        return; // Skip further processing for parenthesized expressions
+      }
+
       // Find operator in this condition - now supports more operators
       const operatorMatch = conditionTrimmed.match(
         /(>=|<=|!=|>|<|=|\bIN\b|\bBETWEEN\b|\bLIKE\b|\bIS\s+NOT\s+NULL\b|\bIS\s+NULL\b)/i
@@ -1927,15 +2046,17 @@ export const validateQuery = (query: string): QueryValidationError[] => {
         });
       }
 
-      // Validate value
-      if (!valuePart) {
+      // Validate value - IS NULL and IS NOT NULL don't need values
+      const isNullOperator = /^IS\s+(NOT\s+)?NULL$/i.test(operator);
+      
+      if (!valuePart && !isNullOperator) {
         errors.push({
           line: lineIndex + 1,
           column: trimmedLine.indexOf(operator) + operator.length + 1,
           message: `Operator "${operator}" needs a value after it`,
           severity: "error",
         });
-      } else {
+      } else if (valuePart) {
         // Detect missing logical operator between adjacent conditions
         // Strategy: search for any known field name inside valuePart (case-insensitive),
         // and if immediately followed (after optional spaces) by an operator OR any token (number/word), report error.

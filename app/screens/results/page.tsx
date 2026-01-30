@@ -22,7 +22,7 @@ import {
   Filter,
   Shield,
   ChevronDown,
-  Info,
+  Sparkles,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -104,6 +104,36 @@ const QUERY_FIELD_MAP: Record<string, string> = {
   'float': 'shares_float', 'shares float': 'shares_float',
 };
 
+// Define related column groups for smart suggestions
+const RELATED_COLUMNS: Record<string, string[]> = {
+  // Valuation metrics are related
+  'pe_ratio': ['forward_pe', 'peg_ratio', 'price_book_mrq', 'price_sales_ttm', 'enterprise_value'],
+  'forward_pe': ['pe_ratio', 'peg_ratio', 'analyst_target_price'],
+  'peg_ratio': ['pe_ratio', 'forward_pe', 'quarterly_earnings_growth_yoy'],
+  'price_book_mrq': ['pe_ratio', 'book_value_per_share', 'return_on_equity_ttm'],
+  'price_sales_ttm': ['pe_ratio', 'revenue_ttm', 'revenue_per_share'],
+  'ev_ebitda': ['enterprise_value', 'ev_revenue', 'operating_margin_ttm'],
+  'enterprise_value': ['market_cap', 'net_debt', 'ev_ebitda'],
+  // Profitability metrics
+  'return_on_equity_ttm': ['return_on_assets_ttm', 'profit_margin', 'operating_margin_ttm', 'price_book_mrq'],
+  'return_on_assets_ttm': ['return_on_equity_ttm', 'profit_margin', 'operating_margin_ttm'],
+  'operating_margin_ttm': ['profit_margin', 'return_on_equity_ttm', 'ev_ebitda'],
+  'profit_margin': ['operating_margin_ttm', 'return_on_equity_ttm', 'return_on_assets_ttm'],
+  // Growth metrics
+  'quarterly_revenue_growth_yoy': ['quarterly_earnings_growth_yoy', 'revenue_ttm', 'revenue_per_share'],
+  'quarterly_earnings_growth_yoy': ['quarterly_revenue_growth_yoy', 'diluted_eps_ttm', 'peg_ratio'],
+  // Dividend metrics
+  'dividend_yield': ['payout_ratio', 'dividend_policy', 'free_cash_flow'],
+  'payout_ratio': ['dividend_yield', 'free_cash_flow', 'diluted_eps_ttm'],
+  // Cash flow metrics
+  'free_cash_flow': ['operating_cash_flow', 'dividend_yield', 'payout_ratio'],
+  'operating_cash_flow': ['free_cash_flow', 'net_debt'],
+  // Size/liquidity metrics
+  'market_cap': ['shares_outstanding', 'shares_float', 'enterprise_value'],
+  'shares_outstanding': ['shares_float', 'market_cap'],
+  'shares_float': ['shares_outstanding', 'market_cap'],
+};
+
 // Parse query string to extract fields used in filters
 function extractQueryFields(query: string): string[] {
   if (!query) return [];
@@ -139,6 +169,28 @@ function extractQueryFields(query: string): string[] {
   return Array.from(foundFields);
 }
 
+// Get smart column suggestions: query fields + related secondary columns
+function getSmartColumns(queryFields: string[]): string[] {
+  const smartCols = new Set<string>(queryFields);
+  
+  // Add up to 2 related columns per query field for context
+  for (const field of queryFields) {
+    const related = RELATED_COLUMNS[field];
+    if (related) {
+      // Add first 2 related columns that aren't already in the set
+      let added = 0;
+      for (const rel of related) {
+        if (!smartCols.has(rel) && added < 2) {
+          smartCols.add(rel);
+          added++;
+        }
+      }
+    }
+  }
+  
+  return Array.from(smartCols);
+}
+
 import { useAuth } from "@/providers/AuthProvider";
 import { PaywallModal } from "@/components/paywall/PaywallModal";
 import Link from "next/link";
@@ -147,9 +199,11 @@ import { useMetricsPreferences } from "@/hooks/useMetricsPreferences";
 
 export default function ResultsPage() {
   return (
-    <Suspense fallback={<ResultsPageSkeleton />}>
-      <ResultsPageContent />
-    </Suspense>
+    <TooltipProvider>
+      <Suspense fallback={<ResultsPageSkeleton />}>
+        <ResultsPageContent />
+      </Suspense>
+    </TooltipProvider>
   );
 }
 
@@ -278,16 +332,17 @@ function ResultsPageContent() {
     }
   }, [metricsPrefsLoaded, preferences.enableSmartScreenerColumns]);
 
-  // Smart column selection: extract fields from query and auto-show them when enabled
+  // Smart column selection: extract fields from query and auto-show them with related columns
   useEffect(() => {
     if (!metricsPrefsLoaded || !preferences.enableSmartScreenerColumns) return;
 
     const extracted = extractQueryFields(query);
+    const smartCols = getSmartColumns(extracted);
 
-    if (extracted.length > 0) {
+    if (smartCols.length > 0) {
       setVisibleColumns((prev) => {
-        const updated = new Set(prev);
-        for (const field of extracted) {
+        const updated = new Set(BASE_COLUMNS);
+        for (const field of smartCols) {
           updated.add(field);
         }
         return updated;
@@ -380,23 +435,27 @@ function ResultsPageContent() {
   }, [backendUrl, query, sort, limit, offset, exchange]);
 
   // Sort rows
+  // For free users: slice BEFORE sorting/filtering to respect paywall
+  const accessibleRows = useMemo(() => {
+    if (isPro) return rows;
+    return rows.slice(0, accessLimit);
+  }, [rows, isPro, accessLimit]);
+
   const sortedRows = useMemo(() => {
-    const arr = [...rows];
-    const key = sortKey as keyof ScreenerRow;
-    arr.sort((a, b) => {
-      const av = (a[key] as number | string | undefined) ?? 0;
-      const bv = (b[key] as number | string | undefined) ?? 0;
-      if (typeof av === "number" && typeof bv === "number") {
-        return sortDir === "asc" ? av - bv : bv - av;
-      }
-      return sortDir === "asc"
-        ? String(av).localeCompare(String(bv))
-        : String(bv).localeCompare(String(av));
+    if (!sortKey) return accessibleRows;
+    return [...accessibleRows].sort((a, b) => {
+      const aVal = a[sortKey as keyof ScreenerRow];
+      const bVal = b[sortKey as keyof ScreenerRow];
+      if (aVal == null && bVal == null) return 0;
+      if (aVal == null) return 1;
+      if (bVal == null) return -1;
+      const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+      return sortDir === "asc" ? cmp : -cmp;
     });
-    return arr;
-  }, [rows, sortKey, sortDir]);
+  }, [accessibleRows, sortKey, sortDir]);
 
   // Filter rows based on search
+  // Filtering also constrained to accessible rows for free users
   const filteredRows = useMemo(() => {
     if (!debouncedSearch.trim()) return sortedRows;
 
@@ -904,13 +963,10 @@ function ResultsPageContent() {
   }, [filteredRows, isPro, accessLimit]);
 
   return (
-    <TooltipProvider>
-      <div className="flex bg-slate-50 dark:bg-slate-950 min-h-screen">
-
-
-        {/* Main Content */}
-        <div className="flex-1 min-w-0">
-          <div className="w-full max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 py-4 md:py-6 space-y-4">
+    <div className="flex bg-slate-50 dark:bg-slate-950 min-h-screen">
+      {/* Main Content */}
+      <div className="flex-1 min-w-0">
+        <div className="w-full max-w-[1920px] mx-auto px-4 md:px-6 lg:px-8 py-4 md:py-6 space-y-4">
             {/* Header */}
             <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -923,9 +979,30 @@ function ResultsPageContent() {
                   <ChevronLeft className="w-4 h-4 mr-1" /> Back
                 </Button>
                 <div>
-                  <h1 className="text-xl md:text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                    Screener Results
-                  </h1>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-xl md:text-2xl font-semibold text-slate-900 dark:text-slate-100">
+                      Screener Results
+                    </h1>
+                    {metricsPrefsLoaded && preferences.enableSmartScreenerColumns && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="inline-flex items-center justify-center rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                            aria-label="Smart columns are enabled"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs">
+                          <p className="text-xs">
+                            Smart columns are enabled. The table prioritizes metrics used in your screener query.
+                            You can change this in <span className="font-semibold">Settings → Key Metrics</span>.
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </div>
                   <p className="text-sm text-slate-600 dark:text-muted-foreground mt-0.5">
                     <span className="font-medium">Query:</span>{" "}
                     <span className="text-muted-foreground break-all">{query}</span>
@@ -1868,6 +1945,5 @@ function ResultsPageContent() {
           </div>
         </div>
       </div>
-    </TooltipProvider>
   );
 }
