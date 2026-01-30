@@ -321,6 +321,7 @@ function StockTile({
   onClick: (ticker: string) => void;
 }) {
   const stock = node.data;
+  const [logoError, setLogoError] = useState(false);
   const bgColor = getChangeColor(stock.change_1d);
   const textColor = getTextColor(stock.change_1d);
 
@@ -329,6 +330,17 @@ function StockTile({
   const showTicker = minDim > 25;
   const showChange = minDim > 40;
   const showName = minDim > 80 && node.width > 100;
+
+  // Build logo URL similar to CompanyLogo component
+  const cleanTicker = stock.ticker?.replace(/\.US$/i, "") ?? "";
+  const symbol = cleanTicker.toLowerCase();
+  const logoToken = process.env.NEXT_PUBLIC_LOGO_DEV_PUBLISHABLE_KEY;
+  const logoSrc = logoToken && symbol
+    ? `https://img.logo.dev/ticker/${encodeURIComponent(symbol)}?token=${logoToken}`
+    : null;
+
+  // Only show logo when tile is reasonably large
+  const showLogo = !!logoSrc && !logoError && minDim > 40;
 
   // Font sizes based on tile size
   const tickerSize = minDim > 100 ? "text-sm" : minDim > 60 ? "text-xs" : "text-[10px]";
@@ -349,6 +361,17 @@ function StockTile({
             }}
             onClick={() => onClick(stock.ticker)}
           >
+            {showLogo && (
+              <div className="absolute left-0.5 top-0.5 z-10">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={logoSrc}
+                  alt={`${stock.ticker} logo`}
+                  className="w-4 h-4 object-contain opacity-80"
+                  onError={() => setLogoError(true)}
+                />
+              </div>
+            )}
             <div
               className="w-full h-full flex flex-col items-center justify-center p-0.5 overflow-hidden"
               style={{ color: textColor }}
