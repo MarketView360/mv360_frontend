@@ -48,7 +48,12 @@ function useLocalStorage<T>(key: string, fallback: T) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Auto-complete mock                                                 */
+/* Types for search results                                           */
+/* ------------------------------------------------------------------ */
+type SearchResult = { ticker: string; name: string; exchange: string };
+
+/* ------------------------------------------------------------------ */
+/* Auto-complete mock (fallback)                                      */
 /* ------------------------------------------------------------------ */
 const POPULAR_TICKERS: Record<string, string> = {
   AAPL: "Apple Inc.",
@@ -689,15 +694,50 @@ const POPULAR_TICKERS: Record<string, string> = {
   ZTS: "Zoetis Inc.",
 };
 
-function searchTickers(query: string) {
+/**
+ * Debounced search function to avoid excessive API calls
+ */
+let searchTimeout: NodeJS.Timeout | null = null;
+
+/**
+ * Search tickers from backend API with debouncing
+ */
+async function searchTickersFromAPI(query: string, signal: AbortSignal): Promise<SearchResult[]> {
+  if (!query || query.length < 1) return [];
+  
+  try {
+    const response = await fetch(
+      `${BACKEND_URL}/api/screener/search?q=${encodeURIComponent(query)}&limit=20`,
+      { signal }
+    );
+    
+    if (!response.ok) {
+      throw new Error('Search failed');
+    }
+    
+    const results = await response.json();
+    return results || [];
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      return [];
+    }
+    console.error('Search error:', error);
+    return [];
+  }
+}
+
+/**
+ * Fallback: Simple in-memory ticker search from known popular stocks.
+ */
+function searchTickersFallback(query: string): SearchResult[] {
+  if (!query) return [];
   const q = query.toUpperCase();
-  const qLower = query.toLowerCase();
   return Object.entries(POPULAR_TICKERS)
-    .filter(([ticker, name]) =>
-      ticker.startsWith(q) || name.toLowerCase().includes(qLower) || name.toUpperCase().includes(q)
-    )
-    .slice(0, 5)
-    .map(([ticker, name]) => ({ ticker, name }));
+    .filter(([ticker, name]) => {
+      return ticker.startsWith(q) || name.toUpperCase().includes(q);
+    })
+    .slice(0, 10)
+    .map(([ticker, name]) => ({ ticker, name, exchange: 'US' }));
 }
 
 /* ------------------------------------------------------------------ */
@@ -712,8 +752,10 @@ export default function SearchBar() {
   const [activeIndex, setActiveIndex] = useState(-1);
   const [recent, setRecent] = useLocalStorage<RecentItem[]>("search-recent", []);
   const [dataDate, setDataDate] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<SearchResult[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Fetch latest data date for freshness indicator
   useEffect(() => {
@@ -733,8 +775,48 @@ export default function SearchBar() {
     fetchDataDate();
   }, []);
 
-  const suggestions = searchTickers(query);
-  const showSuggestions = open && query.length > 0;
+  // Fetch suggestions from API when query changes
+  useEffect(() => {
+    if (!query || query.length < 1) {
+      setSuggestions([]);
+      return;
+    }
+
+    // Cancel previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    // Create new abort controller for this request
+
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    // Debounce the API call
+
+    if (searchTimeout) clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(async () => {
+      try {
+        const results = await searchTickersFromAPI(query, abortController.signal);
+        if (!abortController.signal.aborted) {
+          setSuggestions(results.length > 0 ? results : searchTickersFallback(query));
+
+        }
+      } catch (error) {
+        if (!abortController.signal.aborted) {
+          setSuggestions(searchTickersFallback(query));
+
+        }
+      }
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => {
+      if (searchTimeout) clearTimeout(searchTimeout);
+      abortController.abort();
+    };
+  }, [query]);
+
+  const showSuggestions = open && query.length > 0 && suggestions.length > 0;
   const showRecents = open && !query;
 
   /* ------------------ actions --------------------------------------- */
@@ -742,10 +824,11 @@ export default function SearchBar() {
     (ticker: string) => {
       setQuery(ticker);
       setOpen(false);
+      const selectedSuggestion = suggestions.find(s => s.ticker === ticker);
       setRecent((prev) => {
         const filtered = prev.filter((r) => r.ticker !== ticker);
         return [
-          { ticker, name: POPULAR_TICKERS[ticker] ?? ticker, timestamp: Date.now() },
+          { ticker, name: selectedSuggestion?.name ?? POPULAR_TICKERS[ticker] ?? ticker, timestamp: Date.now() },
           ...filtered,
         ].slice(0, MAX_RECENTS);
       });
@@ -818,7 +901,8 @@ export default function SearchBar() {
   /* Render                                                             */
   /* ------------------------------------------------------------------ */
   return (
-    <div ref={wrapperRef} className="relative w-full max-w-2xl mx-auto">
+    <div ref={wrapperRef} className="relative w-full max-w-2xl mx-auto z-[40]">
+
       {/* glow */}
       <div className="absolute -inset-1 bg-brand/20 rounded-full opacity-20 group-hover:opacity-30 blur transition duration-200" />
 
@@ -875,7 +959,8 @@ export default function SearchBar() {
       {(showSuggestions || showRecents) && (
         <div
           id="search-dropdown"
-          className="absolute top-full mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl z-[100] overflow-hidden"
+          className="absolute top-full mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl z-[9999] overflow-hidden"
+
         >
           {showRecents && !!recent.length && (
             <>
