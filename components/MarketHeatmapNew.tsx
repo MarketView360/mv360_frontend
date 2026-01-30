@@ -397,6 +397,7 @@ function StockTile({
         </TooltipTrigger>
         <TooltipContent
           side="top"
+          sideOffset={12}
           className="bg-gray-900 border-gray-700 text-white p-3 z-[100]"
         >
           <div className="space-y-1.5">

@@ -218,22 +218,16 @@ export default function MarketOverview({
   return (
     <div className="space-y-6">
       {/* Market snapshot / status */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          {loading && (
-            <span className="text-sm text-slate-500 dark:text-slate-400">
-              Refreshing…
-            </span>
-          )}
-          {error && <span className="text-sm text-rose-500">{error}</span>}
-          {!loading && !error && (
-            <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              Updated {lastUpdated.toLocaleTimeString()}
-            </span>
-          )}
-        </div>
-        {!hideRefresh && (
+      {!hideRefresh && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {loading && (
+              <span className="text-sm text-slate-500 dark:text-slate-400">
+                Refreshing…
+              </span>
+            )}
+            {error && <span className="text-sm text-rose-500">{error}</span>}
+          </div>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -253,53 +247,8 @@ export default function MarketOverview({
               </KbdGroup>
             </Button>
           </div>
-        )}
-      </div>
-
-      {/* Market Indices */}
-      <Card className="border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-900 dark:text-white">
-            <Activity className="w-5 h-5 text-brand" />
-            Market Indices
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-4">
-            {indices.map((index) => (
-              <div
-                key={index.symbol}
-                className="flex flex-col p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer group"
-                onClick={() => router.push(`/market?symbol=${index.symbol}`)}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                    {index.name}
-                  </span>
-                  {index.isPositive ? (
-                    <ArrowUpRight className="h-3 w-3 text-emerald-500" />
-                  ) : (
-                    <ArrowDownRight className="h-3 w-3 text-rose-500" />
-                  )}
-                </div>
-                <div className="text-lg font-bold text-slate-900 dark:text-white mb-1">
-                  {index.value}
-                </div>
-                <div
-                  className={cn(
-                    "text-xs font-medium",
-                    index.isPositive
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-rose-600 dark:text-rose-400"
-                  )}
-                >
-                  {index.change}
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Movers */}
