@@ -962,6 +962,22 @@ function ResultsPageContent() {
     return filteredRows.slice(0, Math.min(filteredRows.length, accessLimit + 5));
   }, [filteredRows, isPro, accessLimit]);
 
+  useEffect(() => {
+    if (isPro) {
+      setShowPaywall(false);
+      return;
+    }
+
+    if (filteredRows.length > accessLimit) {
+      if (!paywallFeature) {
+        setPaywallFeature("See all screener results");
+      }
+      setShowPaywall(true);
+    } else {
+      setShowPaywall(false);
+    }
+  }, [isPro, filteredRows.length, accessLimit, paywallFeature]);
+
   return (
     <div className="flex bg-slate-50 dark:bg-slate-950 min-h-screen">
       {/* Main Content */}
