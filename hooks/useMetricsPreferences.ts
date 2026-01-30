@@ -17,6 +17,8 @@ export interface MetricsPreferences {
   defaultView: "compact" | "expanded";
   showQualityTags: boolean;
   showDefinitionsOnHover: boolean;
+  // Screener behavior
+  enableSmartScreenerColumns: boolean;
   
   // Visible categories (all shown by default)
   visibleCategories: Record<MetricCategory, boolean>;
@@ -32,6 +34,7 @@ const DEFAULT_PREFERENCES: MetricsPreferences = {
   defaultView: "compact",
   showQualityTags: true,
   showDefinitionsOnHover: true,
+  enableSmartScreenerColumns: true,
   
   visibleCategories: {
     valuation: true,
@@ -122,6 +125,13 @@ export function useMetricsPreferences() {
   const setShowDefinitionsOnHover = useCallback(
     (show: boolean) => {
       updatePreferences({ showDefinitionsOnHover: show });
+    },
+    [updatePreferences]
+  );
+
+  const setEnableSmartScreenerColumns = useCallback(
+    (enabled: boolean) => {
+      updatePreferences({ enableSmartScreenerColumns: enabled });
     },
     [updatePreferences]
   );
@@ -234,6 +244,7 @@ export function useMetricsPreferences() {
     setDefaultView,
     setShowQualityTags,
     setShowDefinitionsOnHover,
+    setEnableSmartScreenerColumns,
     setShowAdvancedMetrics,
     setCategoryVisible,
     setCategoryExpanded,

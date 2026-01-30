@@ -36,6 +36,7 @@ export default function MetricsSettingsPage() {
     setShowQualityTags,
     setShowDefinitionsOnHover,
     setShowAdvancedMetrics,
+    setEnableSmartScreenerColumns,
     setCategoryVisible,
     setCategoryExpanded,
     expandAllCategories,
@@ -160,6 +161,37 @@ export default function MetricsSettingsPage() {
               id="advanced"
               checked={preferences.showAdvancedMetrics}
               onCheckedChange={setShowAdvancedMetrics}
+            />
+          </div>
+
+          {/* Smart Screener Columns */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="smart-columns" className="text-sm font-medium">
+                  Smart Screener Columns
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Automatically prioritize and show columns used in your screener query. You can still toggle other columns from the results table.
+                </p>
+              </div>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-[260px]">
+                    <p className="text-xs">
+                      When enabled, the results table highlights metrics referenced in your query (for example ROE, P/E, dividend yield) and keeps the layout focused. Disable if you prefer a fixed set of columns.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <Switch
+              id="smart-columns"
+              checked={preferences.enableSmartScreenerColumns}
+              onCheckedChange={setEnableSmartScreenerColumns}
             />
           </div>
         </CardContent>

@@ -22,6 +22,7 @@ import {
   Filter,
   Shield,
   ChevronDown,
+  Info,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -142,6 +143,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { PaywallModal } from "@/components/paywall/PaywallModal";
 import Link from "next/link";
 import { Lock } from "lucide-react";
+import { useMetricsPreferences } from "@/hooks/useMetricsPreferences";
 
 export default function ResultsPage() {
   return (
@@ -198,62 +200,90 @@ function ResultsPageContent() {
   const [showPaywall, setShowPaywall] = useState(false);
   const [paywallFeature, setPaywallFeature] = useState("");
 
+  // Base columns always shown
+  const BASE_COLUMNS: string[] = [
+    "ticker",
+    "code",
+    "name",
+    "exchange",
+    "adjusted_close",
+    "market_cap",
+  ];
+
+  // Full set of optional columns that can be toggled
+  const ALL_OPTIONAL_COLUMNS: string[] = [
+    "dividend_yield",
+    "dividend_policy",
+    // Valuation metrics
+    "pe_ratio",
+    "forward_pe",
+    "peg_ratio",
+    "price_book_mrq",
+    "price_sales_ttm",
+    "ev_ebitda",
+    "ev_revenue",
+    "enterprise_value",
+    // Financial strength
+    "net_debt",
+    // Earnings & Growth
+    "diluted_eps_ttm",
+    "revenue_ttm",
+    "quarterly_revenue_growth_yoy",
+    "quarterly_earnings_growth_yoy",
+    "payout_ratio",
+    "revenue_per_share",
+    "book_value_per_share",
+    // Cash Flow
+    "free_cash_flow",
+    "operating_cash_flow",
+    // Technical
+    "day_50_ma",
+    "day_200_ma",
+    "beta",
+    "week_52_high",
+    "week_52_low",
+    // Profitability
+    "return_on_equity_ttm",
+    "return_on_assets_ttm",
+    "operating_margin_ttm",
+    "profit_margin",
+    // Analyst & Shares
+    "analyst_target_price",
+    "analyst_rating",
+    "shares_outstanding",
+    "shares_float",
+  ];
+
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
-    new Set([
-      "ticker",
-      "code", // alias for ticker
-      "name",
-      "exchange",
-      "adjusted_close",
-      "market_cap",
-      "dividend_yield",
-      // Valuation metrics
-      "pe_ratio",
-      "forward_pe",
-      "peg_ratio",
-      "price_book_mrq",
-      "price_sales_ttm",
-      "ev_ebitda",
-      "ev_revenue",
-      "enterprise_value",
-      // Financial strength
-      "net_debt",
-      // Earnings & Growth
-      "diluted_eps_ttm",
-      "revenue_ttm",
-      "quarterly_revenue_growth_yoy",
-      "quarterly_earnings_growth_yoy",
-      "payout_ratio",
-      "revenue_per_share",
-      "book_value_per_share",
-      // Cash Flow
-      "free_cash_flow",
-      "operating_cash_flow",
-      // Technical
-      "day_50_ma",
-      "day_200_ma",
-      "beta",
-      "week_52_high",
-      "week_52_low",
-      // Profitability
-      "return_on_equity_ttm",
-      "return_on_assets_ttm",
-      "operating_margin_ttm",
-      "profit_margin",
-      // Analyst & Shares
-      "analyst_target_price",
-      "analyst_rating",
-      "shares_outstanding",
-      "shares_float",
-    ])
+    () => new Set(BASE_COLUMNS)
   );
   const [exporting, setExporting] = useState<string | null>(null);
 
-  // Smart column selection: extract fields from query and auto-show them
+  const { preferences, isLoaded: metricsPrefsLoaded } = useMetricsPreferences();
+
+  // Initialize columns based on smart column preference
   useEffect(() => {
+    if (!metricsPrefsLoaded) return;
+
+    if (preferences.enableSmartScreenerColumns) {
+      // Ensure base columns are always visible, keep any user toggles for others
+      setVisibleColumns((prev) => {
+        const updated = new Set(prev);
+        BASE_COLUMNS.forEach((c) => updated.add(c));
+        return updated;
+      });
+    } else {
+      // When smart columns are disabled, show full default set
+      setVisibleColumns(new Set([...BASE_COLUMNS, ...ALL_OPTIONAL_COLUMNS]));
+    }
+  }, [metricsPrefsLoaded, preferences.enableSmartScreenerColumns]);
+
+  // Smart column selection: extract fields from query and auto-show them when enabled
+  useEffect(() => {
+    if (!metricsPrefsLoaded || !preferences.enableSmartScreenerColumns) return;
+
     const extracted = extractQueryFields(query);
-    
-    // Auto-enable columns that are used in the query filter
+
     if (extracted.length > 0) {
       setVisibleColumns((prev) => {
         const updated = new Set(prev);
@@ -263,7 +293,7 @@ function ResultsPageContent() {
         return updated;
       });
     }
-  }, [query]);
+  }, [query, metricsPrefsLoaded, preferences.enableSmartScreenerColumns]);
 
   const backendUrl = useMemo(
     () =>
@@ -1624,7 +1654,9 @@ function ResultsPageContent() {
                                 {/* Payout */}
                                 {visibleColumns.has("payout_ratio") && (
                                   <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
-                                    {fmtPct(r.payout_ratio)}
+                                    {r.payout_ratio != null
+                                      ? `${(Number(r.payout_ratio) * 100).toFixed(2)}%`
+                                      : "—"}
                                   </td>
                                 )}
                                 {/* Rev/Share */}
