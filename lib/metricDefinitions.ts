@@ -447,6 +447,14 @@ export const METRIC_DEFINITIONS: MetricDefinition[] = [
     format: "date",
     isAdvanced: true,
   },
+  {
+    key: "dividend_policy",
+    label: "Dividend Policy",
+    category: "dividends",
+    definition: "Classification of company's dividend payment behavior based on multiple signals including yield, payout ratio, and payment history.",
+    format: "text",
+    isAdvanced: false,
+  },
 
   // ═══════════════════════════════════════════════════════════════════════════
   // RISK & VOLATILITY METRICS

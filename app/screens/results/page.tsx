@@ -849,6 +849,7 @@ function ResultsPageContent() {
                       { key: "adjusted_close", label: "Price" },
                       { key: "market_cap", label: "Market Cap" },
                       { key: "dividend_yield", label: "Div Yield" },
+                      { key: "dividend_policy", label: "Div Policy" },
                       { key: "pe_ratio", label: "P/E" },
                       { key: "forward_pe", label: "Fwd P/E" },
                       { key: "peg_ratio", label: "PEG" },
@@ -1161,6 +1162,13 @@ function ResultsPageContent() {
                                 </div>
                               </th>
                             )}
+                            {visibleColumns.has("dividend_policy") && (
+                              <th
+                                className="text-left px-4 py-3.5 font-semibold text-xs uppercase tracking-wider"
+                              >
+                                Div Policy
+                              </th>
+                            )}
                             {visibleColumns.has("pe_ratio") && (
                               <th
                                 className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
@@ -1447,6 +1455,13 @@ function ResultsPageContent() {
                                   <td className="px-4 py-3 text-right font-mono text-slate-600 dark:text-muted-foreground tabular-nums">
                                     {r.dividend_yield != null
                                       ? `${(r.dividend_yield * 100).toFixed(2)}%`
+                                      : "—"}
+                                  </td>
+                                )}
+                                {visibleColumns.has("dividend_policy") && (
+                                  <td className="px-4 py-3 text-left text-xs text-slate-600 dark:text-slate-400">
+                                    {r.dividend_policy && typeof r.dividend_policy === "object" && "label" in r.dividend_policy
+                                      ? (r.dividend_policy as { label: string }).label
                                       : "—"}
                                   </td>
                                 )}

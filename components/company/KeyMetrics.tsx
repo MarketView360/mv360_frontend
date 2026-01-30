@@ -93,6 +93,7 @@ const METRIC_KEY_MAP: Record<string, string[]> = {
   forward_dividend_yield: ["forward_annual_dividend_yield"],
   payout_ratio: ["payout_ratio"],
   ex_dividend_date: ["ex_dividend_date"],
+  dividend_policy: ["dividend_policy"],
   beta: ["beta"],
   week_52_high: ["week_52_high"],
   week_52_low: ["week_52_low"],
@@ -299,6 +300,13 @@ export function KeyMetrics({ metrics, snapshotDate, sector }: KeyMetricsProps) {
             const result = formatPayoutRatio(rawValue, metrics, effectiveDefinition);
             formattedValue = result.value;
             suppressQuality = result.suppressQuality;
+          } else if (effectiveDefinition.key === "dividend_policy") {
+            // Extract label from dividend_policy object: { type: string, label: string }
+            if (rawValue && typeof rawValue === "object" && "label" in rawValue) {
+              formattedValue = (rawValue as { label: string }).label;
+            } else {
+              formattedValue = String(rawValue);
+            }
           } else {
             formattedValue = formatMetricValue(rawValue, effectiveDefinition);
           }
