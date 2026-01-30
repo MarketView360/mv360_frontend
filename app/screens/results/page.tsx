@@ -61,6 +61,83 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
+// Field name mapping for query parsing (maps natural language to DB field names)
+const QUERY_FIELD_MAP: Record<string, string> = {
+  // Valuation
+  'pe': 'pe_ratio', 'p/e': 'pe_ratio', 'pe ratio': 'pe_ratio', 'trailing pe': 'pe_ratio',
+  'forward pe': 'forward_pe', 'fwd pe': 'forward_pe', 'forward p/e': 'forward_pe',
+  'peg': 'peg_ratio', 'peg ratio': 'peg_ratio',
+  'pb': 'price_book_mrq', 'p/b': 'price_book_mrq', 'price to book': 'price_book_mrq', 'price book': 'price_book_mrq',
+  'ps': 'price_sales_ttm', 'p/s': 'price_sales_ttm', 'price to sales': 'price_sales_ttm', 'price sales': 'price_sales_ttm',
+  'ev/ebitda': 'ev_ebitda', 'ev ebitda': 'ev_ebitda',
+  'ev/revenue': 'ev_revenue', 'ev revenue': 'ev_revenue', 'ev sales': 'ev_revenue',
+  'enterprise value': 'enterprise_value', 'ev': 'enterprise_value',
+  'market cap': 'market_cap', 'market capitalization': 'market_cap', 'marketcap': 'market_cap',
+  // Dividends
+  'dividend yield': 'dividend_yield', 'div yield': 'dividend_yield', 'yield': 'dividend_yield',
+  'payout ratio': 'payout_ratio', 'payout': 'payout_ratio',
+  // Profitability
+  'roe': 'return_on_equity_ttm', 'return on equity': 'return_on_equity_ttm',
+  'roa': 'return_on_assets_ttm', 'return on assets': 'return_on_assets_ttm',
+  'operating margin': 'operating_margin_ttm', 'opm': 'operating_margin_ttm',
+  'profit margin': 'profit_margin', 'net margin': 'profit_margin',
+  // Growth
+  'revenue growth': 'quarterly_revenue_growth_yoy', 'sales growth': 'quarterly_revenue_growth_yoy',
+  'earnings growth': 'quarterly_earnings_growth_yoy', 'eps growth': 'quarterly_earnings_growth_yoy',
+  // Technical
+  'beta': 'beta',
+  'sma50': 'day_50_ma', '50 day ma': 'day_50_ma', '50 ma': 'day_50_ma',
+  'sma200': 'day_200_ma', '200 day ma': 'day_200_ma', '200 ma': 'day_200_ma',
+  '52 week high': 'week_52_high', '52w high': 'week_52_high', 'week 52 high': 'week_52_high',
+  '52 week low': 'week_52_low', '52w low': 'week_52_low', 'week 52 low': 'week_52_low',
+  // Analyst
+  'analyst target': 'analyst_target_price', 'target price': 'analyst_target_price',
+  'analyst rating': 'analyst_rating', 'rating': 'analyst_rating',
+  // Other
+  'eps': 'diluted_eps_ttm', 'eps ttm': 'diluted_eps_ttm',
+  'revenue': 'revenue_ttm', 'sales': 'revenue_ttm', 'revenue ttm': 'revenue_ttm',
+  'fcf': 'free_cash_flow', 'free cash flow': 'free_cash_flow',
+  'ocf': 'operating_cash_flow', 'operating cash flow': 'operating_cash_flow',
+  'net debt': 'net_debt',
+  'shares outstanding': 'shares_outstanding', 'shares': 'shares_outstanding',
+  'float': 'shares_float', 'shares float': 'shares_float',
+};
+
+// Parse query string to extract fields used in filters
+function extractQueryFields(query: string): string[] {
+  if (!query) return [];
+  const lowerQuery = query.toLowerCase();
+  const foundFields = new Set<string>();
+  
+  // Sort by length descending to match longer phrases first
+  const sortedKeys = Object.keys(QUERY_FIELD_MAP).sort((a, b) => b.length - a.length);
+  
+  for (const key of sortedKeys) {
+    if (lowerQuery.includes(key)) {
+      foundFields.add(QUERY_FIELD_MAP[key]);
+    }
+  }
+  
+  // Also check for direct DB field names in the query
+  const dbFields = [
+    'pe_ratio', 'forward_pe', 'peg_ratio', 'price_book_mrq', 'price_sales_ttm',
+    'ev_ebitda', 'ev_revenue', 'enterprise_value', 'market_cap', 'dividend_yield',
+    'payout_ratio', 'return_on_equity_ttm', 'return_on_assets_ttm', 'operating_margin_ttm',
+    'profit_margin', 'quarterly_revenue_growth_yoy', 'quarterly_earnings_growth_yoy',
+    'beta', 'day_50_ma', 'day_200_ma', 'week_52_high', 'week_52_low',
+    'analyst_target_price', 'analyst_rating', 'diluted_eps_ttm', 'revenue_ttm',
+    'free_cash_flow', 'operating_cash_flow', 'net_debt', 'shares_outstanding', 'shares_float',
+  ];
+  
+  for (const field of dbFields) {
+    if (lowerQuery.includes(field.replace(/_/g, ' ')) || lowerQuery.includes(field)) {
+      foundFields.add(field);
+    }
+  }
+  
+  return Array.from(foundFields);
+}
+
 import { useAuth } from "@/providers/AuthProvider";
 import { PaywallModal } from "@/components/paywall/PaywallModal";
 import Link from "next/link";
@@ -172,6 +249,21 @@ function ResultsPageContent() {
   );
   const [exporting, setExporting] = useState<string | null>(null);
 
+  // Smart column selection: extract fields from query and auto-show them
+  useEffect(() => {
+    const extracted = extractQueryFields(query);
+    
+    // Auto-enable columns that are used in the query filter
+    if (extracted.length > 0) {
+      setVisibleColumns((prev) => {
+        const updated = new Set(prev);
+        for (const field of extracted) {
+          updated.add(field);
+        }
+        return updated;
+      });
+    }
+  }, [query]);
 
   const backendUrl = useMemo(
     () =>

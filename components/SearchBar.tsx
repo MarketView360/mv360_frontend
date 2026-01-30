@@ -901,7 +901,7 @@ export default function SearchBar() {
   /* Render                                                             */
   /* ------------------------------------------------------------------ */
   return (
-    <div ref={wrapperRef} className="relative w-full max-w-2xl mx-auto z-[40]">
+    <div ref={wrapperRef} className="relative w-full max-w-2xl mx-auto z-40">
 
       {/* glow */}
       <div className="absolute -inset-1 bg-brand/20 rounded-full opacity-20 group-hover:opacity-30 blur transition duration-200" />
@@ -959,14 +959,13 @@ export default function SearchBar() {
       {(showSuggestions || showRecents) && (
         <div
           id="search-dropdown"
-          className="absolute top-full mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl z-[9999] overflow-hidden"
-
+          className="absolute top-full mt-6 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl z-50 overflow-hidden"
         >
-          {showRecents && !!recent.length && (
+          {showRecents && (
             <>
               <div className="px-4 pt-3 pb-2 flex items-center justify-between">
                 <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Recent</span>
-                <Button variant="link" size="sm" className="text-xs h-auto p-0" onClick={clearRecents}>
+                <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={clearRecents}>
                   Clear
                 </Button>
               </div>
