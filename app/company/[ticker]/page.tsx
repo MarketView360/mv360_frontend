@@ -731,19 +731,42 @@ function AnalystRatings({ metrics }: { metrics: AnalystData | null }) {
   const total = metrics.strongBuy + metrics.buy + metrics.hold + metrics.sell + metrics.strongSell;
   const buyShare = total > 0 ? (metrics.strongBuy + metrics.buy) / total : 0;
 
-  const barPercent =
-    metrics.rating != null
-      ? Math.min(Math.max((metrics.rating / 5) * 100, 0), 100)
-      : buyShare * 100;
-
-  const getConsensus = (rating: number | null) => {
-    if (rating == null) return "N/A";
-    if (rating >= 4) return "Strong Buy";
-    if (rating >= 3) return "Buy";
-    if (rating >= 2) return "Hold";
-    if (rating >= 1) return "Sell";
-    return "Strong Sell";
+  // Calculate weighted consensus from actual analyst counts
+  const getConsensus = () => {
+    // If we have individual counts, calculate weighted average
+    if (total > 0) {
+      // Weights: Strong Sell=1, Sell=2, Hold=3, Buy=4, Strong Buy=5
+      const weightedSum =
+        metrics.strongSell * 1 +
+        metrics.sell * 2 +
+        metrics.hold * 3 +
+        metrics.buy * 4 +
+        metrics.strongBuy * 5;
+      
+      const avgRating = weightedSum / total;
+      
+      // Determine consensus based on weighted average
+      // Use stricter thresholds to avoid premature Buy/Sell ratings
+      if (avgRating >= 4.5) return "Strong Buy";
+      if (avgRating >= 4.0) return "Buy";
+      if (avgRating >= 2.5) return "Hold";
+      if (avgRating >= 2.0) return "Sell";
+      return "Strong Sell";
+    }
+    
+    // Fallback to rating field if no counts available
+    if (metrics.rating != null) {
+      if (metrics.rating >= 4.5) return "Strong Buy";
+      if (metrics.rating >= 4.0) return "Buy";
+      if (metrics.rating >= 2.5) return "Hold";
+      if (metrics.rating >= 2.0) return "Sell";
+      return "Strong Sell";
+    }
+    
+    return "N/A";
   };
+
+  const barPercent = getConsensus() === "N/A" ? 0 : buyShare * 100;
 
   // Calculate upside/downside percentage
   const upsidePercent =
@@ -776,7 +799,7 @@ function AnalystRatings({ metrics }: { metrics: AnalystData | null }) {
         <div className="space-y-4">
           <div className="text-center">
             <div className="text-2xl font-bold text-brand mb-1">
-              {getConsensus(metrics.rating)}
+              {getConsensus()}
             </div>
             {metrics.targetPrice && (
               <div className="text-sm space-y-0.5">
