@@ -220,12 +220,17 @@ function ResultsPageContent() {
   const router = useRouter();
   const query = sp.get("query") || "";
   const sort = sp.get("sort") || "market_capitalization.desc";
-  const limit = Number(sp.get("limit") || 50);
-  const offset = Number(sp.get("offset") || 0);
   const exchange = sp.get("exchange") || "us";
+  
+  // Premium users need more rows per fetch for proper pagination
+  const limit = Number(sp.get("limit") || 500);
+  const offset = Number(sp.get("offset") || 0);
 
   const { session } = useAuth();
-  const isPremium = session?.tier === "premium" || session?.tier === "elite";
+  
+  // Tier is fetched from database by backend, not from session metadata
+  const [backendTier, setBackendTier] = useState<string | null>(null);
+  const isPremium = backendTier === "premium" || backendTier === "elite";
 
   const [loading, setLoading] = useState<boolean>(false);
   const [streaming, setStreaming] = useState<boolean>(false);
@@ -240,10 +245,12 @@ function ResultsPageContent() {
   }, [rawRows]);
 
   const accessLimit = useMemo(() => {
-    if (!session) return 3;
-    if (isPremium) return Infinity;
-    return 7;
-  }, [session, isPremium]);
+    // Use backendTier which is fetched from database
+    if (backendTier === "premium" || backendTier === "elite") return Infinity;
+    if (backendTier === "free") return 7;
+    if (!session) return 3; // anonymous
+    return 7; // default to free if tier not yet loaded
+  }, [session, backendTier]);
 
   const [source, setSource] = useState<string | undefined>(undefined);
   const [sortKey, setSortKey] = useState<string>("market_cap");
@@ -415,13 +422,16 @@ function ResultsPageContent() {
       setTotalCount(0);
 
       try {
-        // Determine user tier for streaming endpoint
-        const tier = session?.tier || undefined;
+        // Build headers with JWT token if available
+        const headers: HeadersInit = { "Content-Type": "application/json" };
+        if (session?.access_token) {
+          headers["Authorization"] = `Bearer ${session.access_token}`;
+        }
         
         const resp = await fetch(`${backendUrl}/api/stream-query`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query, sort, limit, offset, exchange, tier }),
+          headers,
+          body: JSON.stringify({ query, sort, limit, offset, exchange }),
           signal: controller.signal,
         });
 
@@ -451,11 +461,15 @@ function ResultsPageContent() {
             try {
               const msg = JSON.parse(line);
               
-              if (msg.type === "row" && msg.data) {
+              if (msg.type === "meta" && msg.tier) {
+                // Capture tier from backend (fetched from database)
+                setBackendTier(msg.tier);
+              } else if (msg.type === "row" && msg.data) {
                 // Add row progressively
                 setRawRows((prev) => [...prev, msg.data as ScreenerRow]);
               } else if (msg.type === "done") {
                 setTotalCount(msg.totalCount || 0);
+                if (msg.tier) setBackendTier(msg.tier);
                 setStreaming(false);
               } else if (msg.type === "error") {
                 throw new Error(msg.error);
@@ -499,14 +513,14 @@ function ResultsPageContent() {
       active = false;
       controller.abort();
     };
-  }, [backendUrl, query, sort, limit, offset, exchange, session?.tier]);
+  }, [backendUrl, query, sort, limit, offset, exchange, session?.access_token]);
 
   // Sort rows
-  // For free users: slice BEFORE sorting/filtering to respect paywall
+  // Backend already limits rows based on tier, so just use all rows
+  // The accessLimit is only used for UI display (paywall banner, etc.)
   const accessibleRows = useMemo(() => {
-    if (isPremium) return rows;
-    return rows.slice(0, accessLimit);
-  }, [rows, isPremium, accessLimit]);
+    return rows;
+  }, [rows]);
 
   const sortedRows = useMemo(() => {
     if (!sortKey) return accessibleRows;
@@ -1027,15 +1041,14 @@ function ResultsPageContent() {
     );
   };
 
-  // Calculate visible row counts
-  const visibleAccessibleCount = Math.min(accessLimit, filteredRows.length);
-  const visibleRestrictedCount = Math.max(0, filteredRows.length - visibleAccessibleCount);
+  // Calculate visible row counts - backend already limits rows based on tier
+  const visibleAccessibleCount = filteredRows.length;
+  const visibleRestrictedCount = Math.max(0, totalCount - filteredRows.length);
 
   const rowsToRender = useMemo(() => {
-    if (isPremium) return paginatedRows;
-    // Show a few extra blurred rows for effect
-    return paginatedRows.slice(0, Math.min(paginatedRows.length, accessLimit + 5));
-  }, [paginatedRows, isPremium, accessLimit]);
+    // Backend already limits rows based on tier, just render all paginated rows
+    return paginatedRows;
+  }, [paginatedRows]);
 
   // Number of skeleton rows to show during streaming
   const skeletonRows = useMemo(() => {
@@ -1046,22 +1059,24 @@ function ResultsPageContent() {
   }, [streaming, pageSize, rawRows.length]);
 
   useEffect(() => {
-    // Premium/Elite users never see the paywall for results
-    if (isPremium) {
+    // Premium/Elite users never see paywall (they can paginate through all results)
+    if (backendTier === 'premium' || backendTier === 'elite') {
       setShowPaywall(false);
       return;
     }
 
-    // For anon/free users, show paywall once their tier limit (3 or 7 rows)
-    // is lower than the total matches (i.e. there are more results available
-    // than they are allowed to see).
-    const reachedTierLimit =
+    // Show paywall if backend limited results due to tier (not pagination)
+    // For free users: backend sends max 7 rows even if totalCount is higher
+    // For anonymous: backend sends max 3 rows
+    const isTierLimited =
       !streaming &&
-      accessLimit !== Infinity &&
       totalCount > 0 &&
-      totalCount > accessLimit;
+      rawRows.length > 0 &&
+      totalCount > rawRows.length &&
+      backendTier !== 'premium' &&
+      backendTier !== 'elite';
 
-    if (reachedTierLimit) {
+    if (isTierLimited) {
       if (!paywallFeature) {
         setPaywallFeature("See all screener results");
       }
@@ -1069,7 +1084,7 @@ function ResultsPageContent() {
     } else {
       setShowPaywall(false);
     }
-  }, [isPremium, streaming, accessLimit, totalCount, paywallFeature]);
+  }, [streaming, totalCount, rawRows.length, paywallFeature, backendTier]);
 
   return (
     <div className="flex bg-slate-50 dark:bg-slate-950 min-h-screen">
@@ -1097,15 +1112,16 @@ function ResultsPageContent() {
                       <TooltipTrigger asChild>
                         <button
                           type="button"
-                          className="inline-flex items-center justify-center rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 p-1 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                          className="inline-flex items-center justify-center rounded-full border border-amber-300 bg-amber-50/60 dark:bg-amber-950/20 px-1.5 py-0.5 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors text-[11px] leading-none"
                           aria-label="Smart columns are enabled"
                         >
-                          <Sparkles className="w-3 h-3" />
+                          <Sparkles className="w-3 h-3 mr-1" />
+                          Smart
                         </button>
                       </TooltipTrigger>
                       <TooltipContent className="max-w-xs">
                         <p className="text-xs">
-                          Smart columns are enabled. The table prioritizes metrics used in your screener query.
+                          <span className="font-semibold">✨ Smart columns enabled:</span> The table prioritizes metrics used in your screener query.
                           You can change this in <span className="font-semibold">Settings → Key Metrics</span>.
                         </p>
                       </TooltipContent>
@@ -1251,7 +1267,7 @@ function ResultsPageContent() {
                   <Shield className="w-5 h-5 text-amber-600" />
                   <div>
                     <p className="text-sm font-medium text-amber-900">
-                      Viewing {visibleAccessibleCount} of {filteredRows.length}{" "}
+                      Viewing {visibleAccessibleCount} of {totalCount > 0 ? totalCount : filteredRows.length}{" "}
                       results
                     </p>
                     <p className="text-xs text-amber-700 mt-0.5">
@@ -1291,8 +1307,8 @@ function ResultsPageContent() {
                         variant="secondary"
                         className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
                       >
-                        {filteredRows.length}{" "}
-                        {filteredRows.length === 1 ? "stock" : "stocks"}
+                        {filteredRows.length} of {totalCount > 0 ? totalCount : filteredRows.length}{" "}
+                        {totalCount === 1 ? "match" : "matches"}
                       </Badge>
                       {streaming && (
                         <div className="flex items-center gap-1.5 text-sm text-brand animate-pulse">
@@ -1981,7 +1997,7 @@ function ResultsPageContent() {
                     </table>
 
                     {/* Login/Upgrade section below restricted results */}
-                    {!isPremium && rawRows.length > accessLimit && (
+                    {(backendTier !== 'premium' && backendTier !== 'elite') && totalCount > rawRows.length && (
                       <div className="py-8 px-4 text-center border-t border-slate-200 dark:border-slate-700 bg-gradient-to-b from-slate-50 to-white dark:from-slate-800/50 dark:to-slate-900">
                         <div className="max-w-md mx-auto">
                           {/* Icon */}
@@ -1995,7 +2011,7 @@ function ResultsPageContent() {
 
                           <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">
                             {session
-                              ? `Upgrade your account to Premium to see all ${rawRows.length} matches and export data.`
+                              ? `Upgrade your account to Premium to see all ${totalCount > 0 ? totalCount : rawRows.length} matches and export data.`
                               : "Create a free account to see more results."
                             }
                           </p>

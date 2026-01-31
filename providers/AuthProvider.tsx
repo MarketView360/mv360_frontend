@@ -26,43 +26,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [supabase, setSupabase] = useState<ReturnType<typeof createClient> | null>(null);
-  const [authDisabled, setAuthDisabled] = useState(false);
 
   useEffect(() => {
-    // Try to create the Supabase client, skip auth if credentials are missing
-    try {
-      const client = createClient();
-      setSupabase(client);
-    } catch (error) {
-      console.warn('Supabase auth bypassed: Missing credentials or explicitly disabled for UI verification');
-      setAuthDisabled(true);
-      setLoading(false);
-
-      // Mock user for UI verification
-      const mockUser: User = {
-        id: 'mock-user-id',
-        email: 'dev@marketview360.io',
-        app_metadata: {},
-        user_metadata: { full_name: 'Mock Developer' },
-        aud: 'authenticated',
-        created_at: new Date().toISOString(),
-      };
-
-      const mockSession: Session = {
-        access_token: 'mock-token',
-        refresh_token: 'mock-refresh-token',
-        expires_in: 3600,
-        token_type: 'bearer',
-        user: mockUser,
-      };
-
-      setUser(mockUser);
-      setSession(mockSession);
-    }
+    // Create the Supabase client
+    const client = createClient();
+    setSupabase(client);
   }, []);
 
   useEffect(() => {
-    if (!supabase || authDisabled) return;
+    if (!supabase) return;
 
     // Get initial session
     const getInitialSession = async () => {
@@ -86,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, [supabase, authDisabled]);
+  }, [supabase]);
 
   const signInWithEmail = useCallback(async (email: string, password: string) => {
     if (!supabase) return { error: new Error('Auth not available') };
