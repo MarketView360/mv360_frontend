@@ -57,23 +57,23 @@ const ENTERPRISE_RANGES = ["Max"];
 
 export function PriceChart({ data }: PriceChartProps) {
   const chartContainerRef = React.useRef<HTMLDivElement>(null);
-  const { 
-    preferences, 
-    setShowVolume, 
-    setPriceDisplayMode, 
+  const {
+    preferences,
+    setShowVolume,
+    setPriceDisplayMode,
     setShowDetailedTooltip,
     setAreaStyle,
     setCandlestickStyle,
     setRiskMode,
     setShowRiskZones,
     setShowWhatIfSimulation,
-    isLoaded 
+    isLoaded
   } = useChartPreferences();
   const { session } = useAuth();
-  
+
   const isEnterprise = session?.tier === "enterprise" || session?.tier === "elite";
   const isPro = session?.tier === "pro" || session?.tier === "elite" || session?.tier === "enterprise";
-  
+
   const [range, setRange] = React.useState("1Y");
   const [view, setView] = React.useState<"price" | "risk" | "candlestick">("price");
   const [showVolume, setShowVolumeLocal] = React.useState(true);
@@ -123,22 +123,22 @@ export function PriceChart({ data }: PriceChartProps) {
     if (!chartContainerRef.current) return;
     const canvas = chartContainerRef.current.querySelector("canvas");
     if (!canvas) return;
-    
+
     try {
       // For different color schemes, we'll adjust the canvas rendering
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
-      
+
       // Create a temporary canvas for color scheme adjustments
       const tempCanvas = document.createElement("canvas");
       tempCanvas.width = canvas.width;
       tempCanvas.height = canvas.height;
       const tempCtx = tempCanvas.getContext("2d");
       if (!tempCtx) return;
-      
+
       // Draw original canvas
       tempCtx.drawImage(canvas, 0, 0);
-      
+
       // Apply color scheme filters
       if (colorScheme === "light") {
         // Invert for light background
@@ -156,7 +156,7 @@ export function PriceChart({ data }: PriceChartProps) {
         tempCtx.filter = "grayscale(100%)";
         tempCtx.drawImage(canvas, 0, 0);
       }
-      
+
       const link = document.createElement("a");
       link.download = `chart-${colorScheme}-${new Date().toISOString().slice(0, 10)}.png`;
       link.href = tempCanvas.toDataURL("image/png");
@@ -186,21 +186,53 @@ export function PriceChart({ data }: PriceChartProps) {
 
   const filteredData = React.useMemo(() => {
     if (!enriched || enriched.length === 0) return enriched;
+    if (range === "Max") return enriched;
 
-    const map: Record<string, number | "max"> = {
-      "1M": 21,
-      "6M": 126,
-      "1Y": 252,
-      "3Y": 252 * 3,
-      "5Y": 252 * 5,
-      "10Y": 252 * 10,
-      Max: "max",
-    };
+    // Get the latest date from the data as our anchor
+    const lastPoint = enriched[enriched.length - 1];
+    const latestDate = new Date(lastPoint.date);
 
-    const windowSize = map[range] ?? "max";
-    if (windowSize === "max") return enriched;
-    if (enriched.length <= windowSize) return enriched;
-    return enriched.slice(-windowSize);
+    // Calculate cutoff date based on range relative to latest data point
+    const cutoffDate = new Date(latestDate);
+
+    switch (range) {
+      case "1M":
+        cutoffDate.setMonth(cutoffDate.getMonth() - 1);
+        break;
+      case "6M":
+        cutoffDate.setMonth(cutoffDate.getMonth() - 6);
+        break;
+      case "1Y":
+        cutoffDate.setFullYear(cutoffDate.getFullYear() - 1);
+        break;
+      case "3Y":
+        cutoffDate.setFullYear(cutoffDate.getFullYear() - 3);
+        break;
+      case "5Y":
+        cutoffDate.setFullYear(cutoffDate.getFullYear() - 5);
+        break;
+      case "10Y":
+        cutoffDate.setFullYear(cutoffDate.getFullYear() - 10);
+        break;
+      default:
+        return enriched;
+    }
+
+    // Filter points on or after cutoff date
+    // Note: data.date is a string, so we compare timestamp or string ISO
+    const cutoffTime = cutoffDate.getTime();
+
+    // Debug logging
+    console.log('[PriceChart] Debug:', {
+      range,
+      enrichedLen: enriched.length,
+      firstEnrichedDate: enriched[0]?.date,
+      lastEnrichedDate: lastPoint.date,
+      latestDateObj: latestDate.toISOString(),
+      cutoffDateObj: cutoffDate.toISOString()
+    });
+
+    return enriched.filter(p => new Date(p.date).getTime() >= cutoffTime);
   }, [enriched, range]);
 
   const rangeStats = React.useMemo(() => {
@@ -249,7 +281,7 @@ export function PriceChart({ data }: PriceChartProps) {
   // Recharts Risk Data (drawdown, volatility, etc.)
   const riskData = React.useMemo(() => {
     if (view !== "risk" || !filteredData) return [];
-    
+
     if (riskMode === "volatility") {
       // Calculate rolling volatility (20-day when possible, shorter window for short ranges)
       const maxWindow = 20;
@@ -287,7 +319,7 @@ export function PriceChart({ data }: PriceChartProps) {
         return { date: d.date, value: volatility };
       });
     }
-    
+
     // Default: drawdown
     return filteredData.map((d) => ({
       date: d.date,
@@ -299,14 +331,14 @@ export function PriceChart({ data }: PriceChartProps) {
   const whatIfStats = React.useMemo(() => {
     if (!showWhatIfSimulation || whatIfIndex === null || !filteredData || filteredData.length === 0) return null;
     if (whatIfIndex < 0 || whatIfIndex >= filteredData.length) return null;
-    
+
     const buyPoint = filteredData[whatIfIndex];
     const currentPoint = filteredData[filteredData.length - 1];
     const buyPrice = buyPoint.close ?? buyPoint.price;
     const currentPrice = currentPoint.close ?? currentPoint.price;
-    
+
     const returnPct = ((currentPrice - buyPrice) / buyPrice) * 100;
-    
+
     // Calculate max drawdown from buy point
     let peak = buyPrice;
     let maxDrawdown = 0;
@@ -316,11 +348,11 @@ export function PriceChart({ data }: PriceChartProps) {
       const dd = ((price - peak) / peak) * 100;
       if (dd < maxDrawdown) maxDrawdown = dd;
     }
-    
+
     const buyDate = new Date(buyPoint.date);
     const currentDate = new Date(currentPoint.date);
     const daysHeld = Math.floor((currentDate.getTime() - buyDate.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     return {
       buyDate: buyPoint.date,
       returnPct,
@@ -332,12 +364,12 @@ export function PriceChart({ data }: PriceChartProps) {
   // Calculate risk zones (overbought/oversold based on momentum, high volatility)
   const riskZonesData: RiskZone[] = React.useMemo(() => {
     if (!showRiskZones || !tvData) return [];
-    
+
     const zones: RiskZone[] = [];
     const rsiPeriod = 14;
     const volPeriod = 20;
     const volThreshold = 40; // Annualized volatility > 40% = high volatility
-    
+
     // Require at least enough points to compute RSI meaningfully
     if (tvData.length <= rsiPeriod + 1) {
       return [];
@@ -346,13 +378,13 @@ export function PriceChart({ data }: PriceChartProps) {
     // Calculate RSI-like momentum indicator
     const gains: number[] = [];
     const losses: number[] = [];
-    
+
     for (let i = 1; i < tvData.length; i++) {
       const change = tvData[i].close - tvData[i - 1].close;
       gains.push(change > 0 ? change : 0);
       losses.push(change < 0 ? Math.abs(change) : 0);
     }
-    
+
     // Check each point for overbought/oversold/high-volatility
     for (let i = rsiPeriod; i < tvData.length; i++) {
       // RSI calculation
@@ -360,15 +392,15 @@ export function PriceChart({ data }: PriceChartProps) {
       const avgLoss = losses.slice(i - rsiPeriod, i).reduce((a, b) => a + b, 0) / rsiPeriod;
       const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
       const rsi = 100 - (100 / (1 + rs));
-      
+
       // Volatility calculation
       if (i >= volPeriod) {
         const slice = tvData.slice(i - volPeriod, i);
-        const returns = slice.map((p, j) => j > 0 ? Math.log(p.close / slice[j-1].close) : 0).slice(1);
+        const returns = slice.map((p, j) => j > 0 ? Math.log(p.close / slice[j - 1].close) : 0).slice(1);
         const mean = returns.reduce((a, b) => a + b, 0) / returns.length;
         const variance = returns.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / returns.length;
         const volatility = Math.sqrt(variance * 252) * 100;
-        
+
         if (volatility > volThreshold) {
           zones.push({
             startTime: tvData[i].time,
@@ -377,7 +409,7 @@ export function PriceChart({ data }: PriceChartProps) {
           });
         }
       }
-      
+
       // RSI zones
       if (rsi > 70) {
         zones.push({
@@ -393,7 +425,7 @@ export function PriceChart({ data }: PriceChartProps) {
         });
       }
     }
-    
+
     // Limit to most recent significant zones (to avoid cluttering chart)
     return zones.slice(-20);
   }, [showRiskZones, tvData]);
@@ -492,8 +524,8 @@ export function PriceChart({ data }: PriceChartProps) {
                     (rangeStats.rangeChangePct ?? 0) > 0
                       ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-300 dark:border-emerald-900"
                       : (rangeStats.rangeChangePct ?? 0) < 0
-                      ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-300 dark:border-red-900"
-                      : "bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700"
+                        ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/20 dark:text-red-300 dark:border-red-900"
+                        : "bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700"
                   )}
                 >
                   Period {formatPercentLabel(rangeStats.rangeChangePct)}
@@ -506,8 +538,8 @@ export function PriceChart({ data }: PriceChartProps) {
                     (rangeStats.dayChangePct ?? 0) > 0
                       ? "bg-emerald-50/80 text-emerald-600 border-emerald-200/80 dark:bg-emerald-950/15 dark:text-emerald-400 dark:border-emerald-900/80"
                       : (rangeStats.dayChangePct ?? 0) < 0
-                      ? "bg-red-50/80 text-red-600 border-red-200/80 dark:bg-red-950/15 dark:text-red-400 dark:border-red-900/80"
-                      : "bg-slate-50/80 text-slate-500 border-slate-200/80 dark:bg-slate-800/30 dark:text-slate-400 dark:border-slate-700/80"
+                        ? "bg-red-50/80 text-red-600 border-red-200/80 dark:bg-red-950/15 dark:text-red-400 dark:border-red-900/80"
+                        : "bg-slate-50/80 text-slate-500 border-slate-200/80 dark:bg-slate-800/30 dark:text-slate-400 dark:border-slate-700/80"
                   )}
                 >
                   1D Change {formatPercentLabel(rangeStats.dayChangePct)}
@@ -528,8 +560,8 @@ export function PriceChart({ data }: PriceChartProps) {
                     range === r
                       ? "bg-brand text-white"
                       : isLocked
-                      ? "text-slate-400 dark:text-slate-500"
-                      : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
+                        ? "text-slate-400 dark:text-slate-500"
+                        : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
                   )}
                 >
                   {r}
@@ -784,7 +816,7 @@ export function PriceChart({ data }: PriceChartProps) {
                 <span className="font-mono text-slate-900 dark:text-slate-100">{whatIfStats.daysHeld}</span>
               </div>
             </div>
-            <button 
+            <button
               onClick={() => setWhatIfIndex(null)}
               className="mt-2 text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
             >
@@ -800,72 +832,72 @@ export function PriceChart({ data }: PriceChartProps) {
                 Volatility analysis is not available for very short periods. Try a longer range like 3M or 1Y.
               </div>
             ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart
-                data={riskData}
-                margin={{ top: 8, right: 8, bottom: 28, left: 0 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  vertical={false}
-                  stroke={isDark ? "#475569" : "#e2e8f0"}
-                />
-                <XAxis
-                  dataKey="date"
-                  stroke={isDark ? "#94a3b8" : "#64748b"}
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={formatDateLabel}
-                  interval="preserveStartEnd"
-                  angle={-45}
-                  textAnchor="end"
-                  height={64}
-                />
-                <YAxis
-                  stroke={isDark ? "#94a3b8" : "#64748b"}
-                  fontSize={12}
-                  tick={{ className: "font-mono" }}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(value) => `${value?.toFixed(0) ?? 0}%`}
-                />
-                <Tooltip
-                  content={({ active, payload, label }) => {
-                    if (!active || !payload?.length) return null;
-                    const dataPoint = payload[0].payload;
-                    return (
-                      <div className={cn(
-                        "p-3 rounded-lg border shadow-xl transition-colors duration-300",
-                        isDark ? "bg-slate-900 border-slate-700 text-slate-100" : "bg-white border-slate-200 text-slate-900"
-                      )}>
-                        <div className="text-xs font-bold text-slate-500 mb-2 border-b border-slate-100 dark:border-slate-800 pb-1">
-                          {label}
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between gap-4">
-                            <span className="text-xs text-slate-500">{riskMode === "volatility" ? "Volatility" : "Drawdown"}</span>
-                            <span className="font-mono font-bold text-orange-500">
-                              {dataPoint.value?.toFixed(2) ?? "—"}%
-                            </span>
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart
+                  data={riskData}
+                  margin={{ top: 8, right: 8, bottom: 28, left: 0 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke={isDark ? "#475569" : "#e2e8f0"}
+                  />
+                  <XAxis
+                    dataKey="date"
+                    stroke={isDark ? "#94a3b8" : "#64748b"}
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={formatDateLabel}
+                    interval="preserveStartEnd"
+                    angle={-45}
+                    textAnchor="end"
+                    height={64}
+                  />
+                  <YAxis
+                    stroke={isDark ? "#94a3b8" : "#64748b"}
+                    fontSize={12}
+                    tick={{ className: "font-mono" }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => `${value?.toFixed(0) ?? 0}%`}
+                  />
+                  <Tooltip
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null;
+                      const dataPoint = payload[0].payload;
+                      return (
+                        <div className={cn(
+                          "p-3 rounded-lg border shadow-xl transition-colors duration-300",
+                          isDark ? "bg-slate-900 border-slate-700 text-slate-100" : "bg-white border-slate-200 text-slate-900"
+                        )}>
+                          <div className="text-xs font-bold text-slate-500 mb-2 border-b border-slate-100 dark:border-slate-800 pb-1">
+                            {label}
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between gap-4">
+                              <span className="text-xs text-slate-500">{riskMode === "volatility" ? "Volatility" : "Drawdown"}</span>
+                              <span className="font-mono font-bold text-orange-500">
+                                {dataPoint.value?.toFixed(2) ?? "—"}%
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke={riskMode === "volatility" ? "#8b5cf6" : "#f97316"}
-                  strokeWidth={2}
-                  fillOpacity={0.05}
-                  fill={riskMode === "volatility" ? "#8b5cf6" : "#f97316"}
-                  connectNulls
-                  isAnimationActive={false}
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
+                      );
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="value"
+                    stroke={riskMode === "volatility" ? "#8b5cf6" : "#f97316"}
+                    strokeWidth={2}
+                    fillOpacity={0.05}
+                    fill={riskMode === "volatility" ? "#8b5cf6" : "#f97316"}
+                    connectNulls
+                    isAnimationActive={false}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
             )
           ) : (
             <TradingViewChart

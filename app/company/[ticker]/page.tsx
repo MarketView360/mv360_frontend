@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 import { Info } from "lucide-react";
 
+export const dynamic = 'force-dynamic';
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -782,11 +784,10 @@ function AnalystRatings({ metrics }: { metrics: AnalystData | null }) {
                   Target: <span className="font-semibold text-slate-900 dark:text-white">${metrics.targetPrice.toFixed(2)}</span>
                   {upsidePercent != null && (
                     <span
-                      className={`ml-1.5 font-semibold ${
-                        isUpside
+                      className={`ml-1.5 font-semibold ${isUpside
                           ? "text-green-600 dark:text-green-400"
                           : "text-red-600 dark:text-red-400"
-                      }`}
+                        }`}
                     >
                       ({isUpside ? "+" : ""}{upsidePercent.toFixed(1)}%)
                     </span>
