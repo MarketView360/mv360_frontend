@@ -135,7 +135,7 @@ export function NavSearch() {
           onFocus={() => setOpen(true)}
           className={cn(
             "flex h-9 w-64 lg:w-80 rounded-full border border-slate-200 dark:border-slate-800",
-            "bg-slate-50 dark:bg-slate-900 pl-9 pr-16 py-1 text-sm shadow-sm",
+            "bg-slate-50 dark:bg-slate-900 pl-9 pr-20 py-1 text-sm shadow-sm",
             "transition-all focus-visible:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand",
             "placeholder:text-slate-400 dark:placeholder:text-slate-500",
             "dark:text-white"
@@ -144,7 +144,7 @@ export function NavSearch() {
           aria-autocomplete="list"
         />
         {/* Keyboard shortcut hint */}
-        <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 hidden md:flex">
+        <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 hidden md:flex">
           <KbdGroup>
             <Kbd className="h-5 px-1.5">⌘</Kbd>
             <Kbd className="h-5 px-1.5">K</Kbd>
