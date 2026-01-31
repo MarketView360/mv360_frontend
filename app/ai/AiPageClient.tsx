@@ -11,6 +11,7 @@ import { LoginRequired } from "./components/LoginRequired";
 import { SuggestionSidebar, SuggestionSidebarToggle } from "./components/SuggestionSidebar";
 import { PanelLeftOpen, StopCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/providers/AuthProvider";
 import { useChatSession } from "@/lib/hooks/useChatSession";
 import { useChatStream } from "@/lib/hooks/useChatStream";
@@ -299,9 +300,10 @@ export default function AiPageClient() {
   }
 
   return (
-    <div className="flex h-full w-full bg-white dark:bg-slate-950 overflow-hidden">
-      {/* Sidebar */}
-      <Sidebar
+    <TooltipProvider delayDuration={200} skipDelayDuration={300}>
+      <div className="flex h-full w-full bg-white dark:bg-slate-950 overflow-hidden">
+        {/* Sidebar */}
+        <Sidebar
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
         sessions={sessions}
@@ -416,6 +418,7 @@ export default function AiPageClient() {
         onSuggestionClick={handleSendMessage}
         className="hidden lg:flex"
       />
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }
