@@ -332,9 +332,22 @@ export default function AiPageClient() {
               </Button>
             )}
             <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100 hidden md:block">
-              {activeSessionId
-                ? sessions.find((s) => s.id === activeSessionId)?.title || "AI Chat"
-                : "AI Chat"}
+              {activeSessionId ? (
+                (() => {
+                  const activeSession = sessions.find((s) => s.id === activeSessionId);
+                  if (activeSession?.titleGenerating) {
+                    return (
+                      <span className="flex items-center gap-2">
+                        <span className="inline-block h-2 w-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-pulse" />
+                        <span className="text-slate-400 dark:text-slate-500">Generating title...</span>
+                      </span>
+                    );
+                  }
+                  return activeSession?.title || "AI Chat";
+                })()
+              ) : (
+                "AI Chat"
+              )}
             </h1>
           </div>
 

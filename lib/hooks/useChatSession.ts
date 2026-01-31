@@ -103,7 +103,8 @@ export function useChatSession(token: string | null, urlSession: string | null) 
     setSessions((prev) => {
       const exists = prev.some((s) => s.id === session.id);
       if (exists) return prev;
-      return [session, ...prev];
+      // Mark new session as titleGenerating since AI will generate title in background
+      return [{ ...session, titleGenerating: true }, ...prev];
     });
     
     // Only update URL and active session if not already set
@@ -118,7 +119,12 @@ export function useChatSession(token: string | null, urlSession: string | null) 
       }
       return currentId;
     });
-  }, []);
+
+    // Poll for title update after 3 seconds (AI title generation time)
+    setTimeout(() => {
+      void fetchSessions();
+    }, 3000);
+  }, [fetchSessions]);
 
   return {
     sessions,

@@ -11,6 +11,7 @@ export interface SessionSummary {
   id: string;
   title: string | null;
   created_at: string;
+  titleGenerating?: boolean; // Client-side flag for loading state
 }
 
 export type ToolType =

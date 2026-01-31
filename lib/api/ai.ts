@@ -180,7 +180,7 @@ export const aiApi = {
     }
   },
 
-  async deleteAllSessions(): Promise<{ deletedSessions: number; deletedMessages: number }> {
+  async deleteAllSessions(): Promise<{ success: boolean; deletedCount: number }> {
     const response = await authFetch("/ai/sessions", {
       method: "DELETE",
     });
@@ -189,7 +189,6 @@ export const aiApi = {
       await handleApiError(response);
     }
 
-    // Expected to return an object with deletedSessions and deletedMessages
     return response.json();
   },
 
