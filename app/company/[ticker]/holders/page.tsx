@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { CompanyNavigation } from "@/components/company/CompanyNavigation";
+
 import { CompanyLogo } from "@/components/company/CompanyLogo";
 import { UsdValue } from "@/components/company/UsdValue";
 import { Badge } from "@/components/ui/badge";
@@ -59,7 +59,7 @@ export default async function HoldersPage({ params }: { params: { ticker: string
             </div>
 
             {/* Navigation Tabs */}
-            <CompanyNavigation ticker={ticker} currentTab="holders" />
+
 
             <div className="mx-auto max-w-[1600px] py-8 px-4 md:px-8 lg:px-12 text-center">
                 <Card className="max-w-2xl mx-auto py-12">

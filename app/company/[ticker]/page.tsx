@@ -25,7 +25,7 @@ import {
 import { CompanyChartsSwitcher, type PriceHistoryPoint } from "@/components/company/CompanyChartsSwitcher";
 import { CompanyDescriptionModal } from "@/components/company/CompanyDescriptionModal";
 import { CompanyLogo } from "@/components/company/CompanyLogo";
-import { CompanyNavigation } from "@/components/company/CompanyNavigation";
+
 import { FiftyTwoWeekRange } from "@/components/company/FiftyTwoWeekRange";
 import { KeyMetrics } from "@/components/company/KeyMetrics";
 import { NewsFeed, type NewsArticle } from "@/components/company/NewsFeed";
@@ -507,7 +507,7 @@ async function CompanyContent({ ticker }: { ticker: string }) {
           <CompanyHero data={data} />
 
           {/* Navigation Tabs */}
-          <CompanyNavigation ticker={ticker} currentTab="overview" />
+
 
           {/* Main Grid */}
           <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
@@ -785,8 +785,8 @@ function AnalystRatings({ metrics }: { metrics: AnalystData | null }) {
                   {upsidePercent != null && (
                     <span
                       className={`ml-1.5 font-semibold ${isUpside
-                          ? "text-green-600 dark:text-green-400"
-                          : "text-red-600 dark:text-red-400"
+                        ? "text-green-600 dark:text-green-400"
+                        : "text-red-600 dark:text-red-400"
                         }`}
                     >
                       ({isUpside ? "+" : ""}{upsidePercent.toFixed(1)}%)

@@ -43,8 +43,9 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
-// For Excel/PDF exports (install: npm install xlsx jspdf)
-import * as XLSX from "xlsx";
+// For Excel/PDF exports (install: npm install exceljs file-saver jspdf)
+// import * as XLSX from "xlsx"; // Removed for security
+
 import { jsPDF } from "jspdf";
 
 // Import screener types aligned with backend
@@ -221,13 +222,13 @@ function ResultsPageContent() {
   const query = sp.get("query") || "";
   const sort = sp.get("sort") || "market_capitalization.desc";
   const exchange = sp.get("exchange") || "us";
-  
+
   // Premium users need more rows per fetch for proper pagination
   const limit = Number(sp.get("limit") || 500);
   const offset = Number(sp.get("offset") || 0);
 
   const { session } = useAuth();
-  
+
   // Tier is fetched from database by backend, not from session metadata
   const [backendTier, setBackendTier] = useState<string | null>(null);
   const isPremium = backendTier === "premium" || backendTier === "elite";
@@ -269,7 +270,7 @@ function ResultsPageContent() {
   // Available sectors for filter
   const SECTORS = [
     "Technology",
-    "Healthcare", 
+    "Healthcare",
     "Financial Services",
     "Consumer Cyclical",
     "Communication Services",
@@ -427,7 +428,7 @@ function ResultsPageContent() {
         if (session?.access_token) {
           headers["Authorization"] = `Bearer ${session.access_token}`;
         }
-        
+
         const resp = await fetch(`${backendUrl}/api/stream-query`, {
           method: "POST",
           headers,
@@ -460,7 +461,7 @@ function ResultsPageContent() {
             if (!line.trim()) continue;
             try {
               const msg = JSON.parse(line);
-              
+
               if (msg.type === "meta" && msg.tier) {
                 // Capture tier from backend (fetched from database)
                 setBackendTier(msg.tier);
@@ -857,40 +858,56 @@ function ResultsPageContent() {
           }
 
           case "excel": {
-            const wsData = [
-              exportColumns.map((c) => c.label),
-              ...rowsToExport.map((r) =>
-                exportColumns.map((col) => {
-                  const raw = r[col.key];
-                  // Return raw numbers for Excel, formatted strings for text
-                  if (
-                    col.key === "code" ||
-                    col.key === "name" ||
-                    col.key === "exchange"
-                  ) {
-                    return raw ?? "";
-                  }
-                  return raw != null ? Number(raw) : "";
-                })
-              ),
-            ];
-            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            const ExcelJS = await import("exceljs");
+            const { saveAs } = await import("file-saver");
 
-            // Auto-size columns
-            const colWidths = exportColumns.map((col, i) => {
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet("Screener Results");
+
+            // Add headers
+            const headers = exportColumns.map(col => col.label);
+            worksheet.addRow(headers);
+
+            // Add data rows
+            rowsToExport.forEach(row => {
+              const rowData = exportColumns.map(col => {
+                const raw = row[col.key];
+                // For number fields, try to keep as number for Excel aggregation
+                const val = col.format(raw);
+                if (
+                  typeof raw === 'number' &&
+                  (col.key.includes('market_cap') ||
+                    col.key.includes('price') ||
+                    col.key !== 'code')
+                ) {
+                  // Use the formatted string for consistency
+                  return val;
+                }
+                return val;
+              });
+              worksheet.addRow(rowData);
+            });
+
+            // Styling: Bold header
+            const headerRow = worksheet.getRow(1);
+            headerRow.font = { bold: true };
+
+            // Auto column widths
+            worksheet.columns.forEach((column, i) => {
+              const colDef = exportColumns[i];
               const maxLen = Math.max(
-                col.label.length,
+                colDef.label.length,
                 ...rowsToExport.map(
-                  (r) => String(col.format(r[col.key])).length
+                  (r) => String(colDef.format(r[colDef.key])).length
                 )
               );
-              return { wch: Math.min(maxLen + 2, 30) };
+              column.width = Math.min(maxLen + 2, 30);
             });
-            ws["!cols"] = colWidths;
 
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Screener Results");
-            XLSX.writeFile(wb, `screener-results-${timestamp}.xlsx`);
+            // Write and save
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+            saveAs(blob, `screener-results-${timestamp}.xlsx`);
             break;
           }
 
