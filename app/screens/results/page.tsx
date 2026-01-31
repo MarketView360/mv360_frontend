@@ -23,6 +23,7 @@ import {
   Shield,
   ChevronDown,
   Sparkles,
+  Building2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -192,7 +193,6 @@ function getSmartColumns(queryFields: string[]): string[] {
 }
 
 import { useAuth } from "@/providers/AuthProvider";
-import { PaywallModal } from "@/components/paywall/PaywallModal";
 import Link from "next/link";
 import { Lock } from "lucide-react";
 import { useMetricsPreferences } from "@/hooks/useMetricsPreferences";
@@ -225,11 +225,13 @@ function ResultsPageContent() {
   const exchange = sp.get("exchange") || "us";
 
   const { session } = useAuth();
-  const isPro = session?.tier === "pro" || session?.tier === "elite";
+  const isPremium = session?.tier === "premium" || session?.tier === "elite";
 
   const [loading, setLoading] = useState<boolean>(false);
+  const [streaming, setStreaming] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [rawRows, setRawRows] = useState<ScreenerRow[]>([]);
+  const [totalCount, setTotalCount] = useState<number>(0);
 
   // Apply limit for free users
   // Apply limit for free users
@@ -239,9 +241,9 @@ function ResultsPageContent() {
 
   const accessLimit = useMemo(() => {
     if (!session) return 3;
-    if (isPro) return Infinity;
+    if (isPremium) return Infinity;
     return 7;
-  }, [session, isPro]);
+  }, [session, isPremium]);
 
   const [source, setSource] = useState<string | undefined>(undefined);
   const [sortKey, setSortKey] = useState<string>("market_cap");
@@ -253,6 +255,24 @@ function ResultsPageContent() {
 
   const [showPaywall, setShowPaywall] = useState(false);
   const [paywallFeature, setPaywallFeature] = useState("");
+  const [selectedSector, setSelectedSector] = useState<string>("");
+  const [pageSize, setPageSize] = useState<number>(25);
+  const [currentPage, setCurrentPage] = useState<number>(0);
+
+  // Available sectors for filter
+  const SECTORS = [
+    "Technology",
+    "Healthcare", 
+    "Financial Services",
+    "Consumer Cyclical",
+    "Communication Services",
+    "Industrials",
+    "Consumer Defensive",
+    "Energy",
+    "Basic Materials",
+    "Real Estate",
+    "Utilities",
+  ];
 
   // Base columns always shown
   const BASE_COLUMNS: string[] = [
@@ -381,7 +401,7 @@ function ResultsPageContent() {
     [fmt]
   );
 
-  // Fetch data
+  // Fetch data using streaming endpoint for progressive loading
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
@@ -389,41 +409,88 @@ function ResultsPageContent() {
     const run = async () => {
       if (!query.trim()) return;
       setLoading(true);
+      setStreaming(true);
       setError(null);
+      setRawRows([]);
+      setTotalCount(0);
 
       try {
-        const resp = await fetch(`${backendUrl}/api/run-query`, {
+        // Determine user tier for streaming endpoint
+        const tier = session?.tier || undefined;
+        
+        const resp = await fetch(`${backendUrl}/api/stream-query`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query, sort, limit, offset, exchange }),
+          body: JSON.stringify({ query, sort, limit, offset, exchange, tier }),
           signal: controller.signal,
         });
 
-        const data = await resp.json();
-        if (!resp.ok) throw new Error(data?.error || `HTTP ${resp.status}`);
+        if (!resp.ok) {
+          const errorData = await resp.json().catch(() => ({}));
+          throw new Error(errorData?.error || `HTTP ${resp.status}`);
+        }
 
-        // Parse response data
-        let arr: ScreenerRow[] = [];
-        if (Array.isArray(data?.data?.data)) arr = data.data.data;
-        else if (Array.isArray(data?.data)) arr = data.data;
-        else if (Array.isArray(data)) arr = data;
-        else if (data?.results && Array.isArray(data.results))
-          arr = data.results;
+        // Process NDJSON stream
+        const reader = resp.body?.getReader();
+        if (!reader) throw new Error("No response body");
 
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (!active) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || ""; // Keep incomplete line in buffer
+
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            try {
+              const msg = JSON.parse(line);
+              
+              if (msg.type === "row" && msg.data) {
+                // Add row progressively
+                setRawRows((prev) => [...prev, msg.data as ScreenerRow]);
+              } else if (msg.type === "done") {
+                setTotalCount(msg.totalCount || 0);
+                setStreaming(false);
+              } else if (msg.type === "error") {
+                throw new Error(msg.error);
+              }
+            } catch {
+              console.warn("Failed to parse stream line:", line);
+            }
+          }
+        }
+
+        // Process any remaining buffer
+        if (buffer.trim() && active) {
+          try {
+            const msg = JSON.parse(buffer);
+            if (msg.type === "done") {
+              setTotalCount(msg.totalCount || 0);
+            }
+          } catch {
+            // Ignore parse errors on final buffer
+          }
+        }
+
+      } catch (e: unknown) {
+        const err = e as Error;
+        if (err.name === "AbortError") return;
         if (!active) return;
-        setRawRows(arr || []);
-        setSource(data?.url);
-        // showPaywall state is now controlled by explicit user actions, not length
-        // setShowPaywall((arr || []).length > 20);
-      } catch (e: any) {
-        if (e.name === "AbortError") return;
-        if (!active) return;
-        setError(e?.message || "Failed to fetch results");
+        setError(err?.message || "Failed to fetch results");
         setRawRows([]);
         setSource(undefined);
         setShowPaywall(false);
       } finally {
-        if (active) setLoading(false);
+        if (active) {
+          setLoading(false);
+          setStreaming(false);
+        }
       }
     };
 
@@ -432,14 +499,14 @@ function ResultsPageContent() {
       active = false;
       controller.abort();
     };
-  }, [backendUrl, query, sort, limit, offset, exchange]);
+  }, [backendUrl, query, sort, limit, offset, exchange, session?.tier]);
 
   // Sort rows
   // For free users: slice BEFORE sorting/filtering to respect paywall
   const accessibleRows = useMemo(() => {
-    if (isPro) return rows;
+    if (isPremium) return rows;
     return rows.slice(0, accessLimit);
-  }, [rows, isPro, accessLimit]);
+  }, [rows, isPremium, accessLimit]);
 
   const sortedRows = useMemo(() => {
     if (!sortKey) return accessibleRows;
@@ -454,28 +521,57 @@ function ResultsPageContent() {
     });
   }, [accessibleRows, sortKey, sortDir]);
 
-  // Filter rows based on search
+  // Filter rows based on search and sector
   // Filtering also constrained to accessible rows for free users
   const filteredRows = useMemo(() => {
-    if (!debouncedSearch.trim()) return sortedRows;
+    let result = sortedRows;
 
-    const term = debouncedSearch.toLowerCase();
-    return sortedRows.filter((row) => {
-      const searchableFields = [
-        row.code,
-        row.name,
-        row.exchange,
-        row.market_capitalization?.toString(),
-        row.adjusted_close?.toString(),
-        row.dividend_yield?.toString(),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
+    // Apply sector filter
+    if (selectedSector) {
+      result = result.filter((row) => {
+        const rowSector = (row as Record<string, unknown>).sector as string | undefined;
+        return rowSector?.toLowerCase() === selectedSector.toLowerCase();
+      });
+    }
 
-      return searchableFields.includes(term);
-    });
-  }, [sortedRows, debouncedSearch]);
+    // Apply search filter
+    if (debouncedSearch.trim()) {
+      const term = debouncedSearch.toLowerCase();
+      result = result.filter((row) => {
+        const searchableFields = [
+          row.code,
+          row.name,
+          row.exchange,
+          row.market_capitalization?.toString(),
+          row.adjusted_close?.toString(),
+          row.dividend_yield?.toString(),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        return searchableFields.includes(term);
+      });
+    }
+
+    return result;
+  }, [sortedRows, debouncedSearch, selectedSector]);
+
+  // Paginate filtered rows for display (client-side pagination)
+  const paginatedRows = useMemo(() => {
+    const start = currentPage * pageSize;
+    const end = start + pageSize;
+    return filteredRows.slice(start, end);
+  }, [filteredRows, currentPage, pageSize]);
+
+  const totalPages = useMemo(() => {
+    return Math.ceil(filteredRows.length / pageSize);
+  }, [filteredRows.length, pageSize]);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [debouncedSearch, selectedSector, pageSize]);
 
   const toggleSort = useCallback((key: string) => {
     setSortKey((prev) => {
@@ -488,33 +584,12 @@ function ResultsPageContent() {
     });
   }, []);
 
-  const updateParams = useCallback(
-    (newOffset: number) => {
-      const params = new URLSearchParams({
-        query,
-        sort,
-        limit: String(limit),
-        offset: String(newOffset),
-        exchange,
-      });
-      router.push(`/screens/results?${params.toString()}`);
-    },
-    [query, sort, limit, exchange, router]
-  );
-
-  const onNext = useCallback(
-    () => updateParams(offset + limit),
-    [offset, limit, updateParams]
-  );
-  const onPrev = useCallback(
-    () => updateParams(Math.max(0, offset - limit)),
-    [offset, limit, updateParams]
-  );
+  // Client-side pagination used instead of URL-based navigation
 
   // Export functionality with multiple formats
   const exportData = useCallback(
     async (format: "csv" | "json" | "excel" | "pdf") => {
-      if (!isPro) {
+      if (!isPremium) {
         setPaywallFeature("Export Results");
         setShowPaywall(true);
         return;
@@ -957,18 +1032,36 @@ function ResultsPageContent() {
   const visibleRestrictedCount = Math.max(0, filteredRows.length - visibleAccessibleCount);
 
   const rowsToRender = useMemo(() => {
-    if (isPro) return filteredRows;
+    if (isPremium) return paginatedRows;
     // Show a few extra blurred rows for effect
-    return filteredRows.slice(0, Math.min(filteredRows.length, accessLimit + 5));
-  }, [filteredRows, isPro, accessLimit]);
+    return paginatedRows.slice(0, Math.min(paginatedRows.length, accessLimit + 5));
+  }, [paginatedRows, isPremium, accessLimit]);
+
+  // Number of skeleton rows to show during streaming
+  const skeletonRows = useMemo(() => {
+    if (!streaming) return 0;
+    // Show skeleton rows to fill up to expected count
+    const expected = Math.min(pageSize, 10);
+    return Math.max(0, expected - rawRows.length);
+  }, [streaming, pageSize, rawRows.length]);
 
   useEffect(() => {
-    if (isPro) {
+    // Premium/Elite users never see the paywall for results
+    if (isPremium) {
       setShowPaywall(false);
       return;
     }
 
-    if (rawRows.length > accessLimit) {
+    // For anon/free users, show paywall once their tier limit (3 or 7 rows)
+    // is lower than the total matches (i.e. there are more results available
+    // than they are allowed to see).
+    const reachedTierLimit =
+      !streaming &&
+      accessLimit !== Infinity &&
+      totalCount > 0 &&
+      totalCount > accessLimit;
+
+    if (reachedTierLimit) {
       if (!paywallFeature) {
         setPaywallFeature("See all screener results");
       }
@@ -976,7 +1069,7 @@ function ResultsPageContent() {
     } else {
       setShowPaywall(false);
     }
-  }, [isPro, filteredRows.length, accessLimit, paywallFeature]);
+  }, [isPremium, streaming, accessLimit, totalCount, paywallFeature]);
 
   return (
     <div className="flex bg-slate-50 dark:bg-slate-950 min-h-screen">
@@ -1048,15 +1141,44 @@ function ResultsPageContent() {
                 )}
               </div>
 
-              {/* Column Visibility */}
+              {/* Sector Filter */}
               <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Building2 className="w-4 h-4 mr-1" />
+                    {selectedSector || "Sector"}
+                    <ChevronDown className="w-3 h-3 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem
+                    onClick={() => setSelectedSector("")}
+                    className={!selectedSector ? "bg-slate-100 dark:bg-slate-700" : ""}
+                  >
+                    All Sectors
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {SECTORS.map((sector) => (
+                    <DropdownMenuItem
+                      key={sector}
+                      onClick={() => setSelectedSector(sector)}
+                      className={selectedSector === sector ? "bg-slate-100 dark:bg-slate-700" : ""}
+                    >
+                      {sector}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Column Visibility - stays open on toggle */}
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm">
                     <Filter className="w-4 h-4 mr-1" /> Columns
                     <ChevronDown className="w-3 h-3 ml-1" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="w-48 max-h-80 overflow-y-auto">
                   {[
                     { key: "code", label: "Code" },
                     { key: "name", label: "Name" },
@@ -1100,10 +1222,11 @@ function ResultsPageContent() {
                     <DropdownMenuItem
                       key={col.key}
                       className="flex items-center justify-between"
+                      onSelect={(e) => e.preventDefault()}
                     >
                       <Label
                         htmlFor={`col-${col.key}`}
-                        className="cursor-pointer"
+                        className="cursor-pointer flex-1"
                       >
                         {col.label}
                       </Label>
@@ -1132,16 +1255,16 @@ function ResultsPageContent() {
                       results
                     </p>
                     <p className="text-xs text-amber-700 mt-0.5">
-                      Upgrade to unlock full historical data, exports, and
-                      advanced analytics
+                      Upgrade your account to <span className="font-semibold">Premium</span> to unlock full historical data,
+                      exports, and advanced analytics.
                     </p>
                   </div>
                 </div>
                 <Button
                   size="sm"
-                  className="bg-amber-500 hover:bg-amber-600 text-white shadow-sm"
+                  className="bg-amber-400 hover:bg-amber-500 text-amber-950 font-semibold shadow-sm"
                 >
-                  <Shield className="w-4 h-4 mr-1.5" /> Upgrade Pro
+                  <Shield className="w-4 h-4 mr-1.5" /> Upgrade account
                 </Button>
               </div>
             </div>
@@ -1171,6 +1294,12 @@ function ResultsPageContent() {
                         {filteredRows.length}{" "}
                         {filteredRows.length === 1 ? "stock" : "stocks"}
                       </Badge>
+                      {streaming && (
+                        <div className="flex items-center gap-1.5 text-sm text-brand animate-pulse">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Loading...</span>
+                        </div>
+                      )}
                       {searchTerm && (
                         <Badge
                           variant="outline"
@@ -1596,28 +1725,51 @@ function ResultsPageContent() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800 relative">
-                        {rowsToRender.map((r, i) => {
-                          const isAccessible = i < accessLimit;
-                          const isPositive1d = (r.change ?? 0) >= 0;
-                          const isPositive5d = (r.change_percent ?? 0) >= 0;
-                          const isEven = i % 2 === 0;
+                        {/* Skeleton loading rows during streaming */}
+                        {streaming && skeletonRows > 0 && Array.from({ length: skeletonRows }).map((_, idx) => (
+                          <tr key={`skeleton-${idx}`} className="animate-pulse">
+                            {visibleColumns.has("code") && (
+                              <td className="px-4 py-3"><div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-16" /></td>
+                            )}
+                            {visibleColumns.has("name") && (
+                              <td className="px-4 py-3"><div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-32" /></td>
+                            )}
+                            {visibleColumns.has("exchange") && (
+                              <td className="px-4 py-3"><div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-12 mx-auto" /></td>
+                            )}
+                            {visibleColumns.has("adjusted_close") && (
+                              <td className="px-4 py-3"><div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-16 ml-auto" /></td>
+                            )}
+                            {visibleColumns.has("market_cap") && (
+                              <td className="px-4 py-3"><div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-20 ml-auto" /></td>
+                            )}
+                            {visibleColumns.has("dividend_yield") && (
+                              <td className="px-4 py-3"><div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-12 ml-auto" /></td>
+                            )}
+                            {visibleColumns.has("pe_ratio") && (
+                              <td className="px-4 py-3"><div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-12 ml-auto" /></td>
+                            )}
+                          </tr>
+                        ))}
+                        {rowsToRender.map((r, rowIndex) => {
+                          const isAccessible = rowIndex < accessLimit;
+                          const isEven = rowIndex % 2 === 0;
 
                           return (
                             <tr
-                              key={`${r.code}-${i}`}
+                              key={`${r.code}-${rowIndex}`}
                               className={`
                               transition-all duration-150 group
                               ${isAccessible
                                   ? `${isEven
                                     ? "bg-white dark:bg-slate-900"
                                     : "bg-slate-50/50 dark:bg-slate-800/30"
-                                  } hover:bg-blue-50 dark:hover:bg-slate-700/50 cursor-pointer`
+                                  } hover:bg-blue-100/70 dark:hover:bg-slate-700 hover:shadow-sm cursor-pointer`
                                   : "filter blur-sm select-none pointer-events-none opacity-50 bg-slate-100/30 dark:bg-slate-800/30"
                                 }
                             `}
                               onClick={() => {
                                 if (isAccessible && r.code) {
-                                  // Navigate to detail page or open modal
                                   router.push(`/company/${r.code}`);
                                 }
                               }}
@@ -1829,7 +1981,7 @@ function ResultsPageContent() {
                     </table>
 
                     {/* Login/Upgrade section below restricted results */}
-                    {!isPro && rawRows.length > accessLimit && (
+                    {!isPremium && rawRows.length > accessLimit && (
                       <div className="py-8 px-4 text-center border-t border-slate-200 dark:border-slate-700 bg-gradient-to-b from-slate-50 to-white dark:from-slate-800/50 dark:to-slate-900">
                         <div className="max-w-md mx-auto">
                           {/* Icon */}
@@ -1843,15 +1995,15 @@ function ResultsPageContent() {
 
                           <p className="text-slate-600 dark:text-slate-400 text-sm mb-1">
                             {session
-                              ? `Upgrade to Pro to see all ${rawRows.length} matches and export data.`
+                              ? `Upgrade your account to Premium to see all ${rawRows.length} matches and export data.`
                               : "Create a free account to see more results."
                             }
                           </p>
 
                           {session ? (
                             <Link href="/pricing">
-                              <Button className="bg-gradient-to-r from-brand to-brand/90 hover:from-brand/90 hover:to-brand text-white font-semibold h-10 px-6 rounded-lg shadow-md transition-all hover:shadow-lg hover:scale-[1.02]">
-                                Upgrade to Pro
+                              <Button className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold h-10 px-6 rounded-lg shadow-md transition-all hover:shadow-lg hover:scale-[1.02]">
+                                Upgrade account
                               </Button>
                             </Link>
                           ) : (
@@ -1891,11 +2043,11 @@ function ResultsPageContent() {
                     <span>
                       Showing{" "}
                       <span className="font-semibold text-slate-900 dark:text-slate-100">
-                        {offset + 1}
+                        {currentPage * pageSize + 1}
                       </span>{" "}
                       to{" "}
                       <span className="font-semibold text-slate-900 dark:text-slate-100">
-                        {Math.min(offset + limit, filteredRows.length)}
+                        {Math.min((currentPage + 1) * pageSize, filteredRows.length)}
                       </span>{" "}
                       of{" "}
                       <span className="font-semibold text-slate-900 dark:text-slate-100">
@@ -1911,30 +2063,89 @@ function ResultsPageContent() {
                         filtered
                       </Badge>
                     )}
+                    {selectedSector && (
+                      <Badge
+                        variant="secondary"
+                        className="bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                      >
+                        {selectedSector}
+                      </Badge>
+                    )}
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={onPrev}
-                      disabled={offset <= 0}
-                      className="min-w-24"
-                    >
-                      <ChevronLeft className="w-4 h-4 mr-1" /> Previous
-                    </Button>
+                  <div className="flex items-center gap-3">
+                    {/* Results per page selector */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-slate-500 dark:text-slate-400">Per page:</span>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="min-w-16">
+                            {pageSize}
+                            <ChevronDown className="w-3 h-3 ml-1" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {[10, 25, 50, 100].map((size) => (
+                            <DropdownMenuItem
+                              key={size}
+                              onClick={() => setPageSize(size)}
+                              className={pageSize === size ? "bg-slate-100 dark:bg-slate-700" : ""}
+                            >
+                              {size}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
 
                     <div className="h-6 w-px bg-slate-300 dark:bg-slate-600" />
 
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={onNext}
-                      disabled={filteredRows.length < limit}
-                      className="min-w-24"
-                    >
-                      Next <ChevronLeft className="w-4 h-4 ml-1 rotate-180" />
-                    </Button>
+                    {/* Page navigation */}
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(0)}
+                        disabled={currentPage === 0}
+                        className="px-2"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        <ChevronLeft className="w-4 h-4 -ml-2" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+                        disabled={currentPage === 0}
+                        className="min-w-20"
+                      >
+                        <ChevronLeft className="w-4 h-4 mr-1" /> Prev
+                      </Button>
+
+                      <span className="px-3 text-sm text-slate-600 dark:text-slate-300">
+                        Page <span className="font-semibold">{currentPage + 1}</span> of <span className="font-semibold">{totalPages || 1}</span>
+                      </span>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
+                        disabled={currentPage >= totalPages - 1}
+                        className="min-w-20"
+                      >
+                        Next <ChevronLeft className="w-4 h-4 ml-1 rotate-180" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(totalPages - 1)}
+                        disabled={currentPage >= totalPages - 1}
+                        className="px-2"
+                      >
+                        <ChevronLeft className="w-4 h-4 rotate-180" />
+                        <ChevronLeft className="w-4 h-4 -ml-2 rotate-180" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}

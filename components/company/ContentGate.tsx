@@ -7,16 +7,16 @@ import { PaywallOverlay } from "@/components/paywall/PaywallOverlay";
 export function ContentGate({
     children,
     feature = "Advanced Analysis",
-    tier = "pro",
+    tier = "premium",
     compact = false
 }: {
     children: React.ReactNode;
     feature?: string;
-    tier?: "pro" | "elite";
+    tier?: "premium" | "elite";
     compact?: boolean;
 }) {
     const { session } = useAuth();
-    const hasAccess = session?.tier === "pro" || session?.tier === "elite";
+    const hasAccess = session?.tier === "premium" || session?.tier === "elite";
 
     if (!hasAccess) {
         const minHeight = compact ? "min-h-[180px]" : "min-h-[400px]";

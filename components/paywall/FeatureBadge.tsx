@@ -3,7 +3,7 @@
 import { Lock, Crown } from "lucide-react";
 
 export type BadgeSize = "sm" | "md" | "lg";
-export type BadgeTier = "pro" | "elite";
+export type BadgeTier = "premium" | "elite";
 
 interface FeatureBadgeProps {
     tier: BadgeTier;
@@ -30,16 +30,16 @@ export function FeatureBadge({
     showIcon = true,
     className = "",
 }: FeatureBadgeProps) {
-    const isPro = tier === "pro";
-    const label = isPro ? "PRO" : "ELITE";
-    const Icon = isPro ? Lock : Crown;
+    const isPremium = tier === "premium";
+    const label = isPremium ? "PREMIUM" : "ELITE";
+    const Icon = isPremium ? Lock : Crown;
 
     return (
         <span
             className={`
         inline-flex items-center gap-1 font-semibold rounded-full uppercase tracking-wider
         ${sizeClasses[size]}
-        ${isPro ? "gradient-pro" : "gradient-elite"}
+        ${isPremium ? "gradient-premium" : "gradient-elite"}
         text-white shadow-sm
         ${className}
       `}

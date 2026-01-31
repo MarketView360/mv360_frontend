@@ -7,7 +7,7 @@ import { TierType } from "./PaywallOverlay";
 
 interface PricingPlan {
     name: string;
-    tier: "free" | "pro" | "elite";
+    tier: "free" | "premium" | "elite";
     price: string;
     period: string;
     description: string;
@@ -34,8 +34,8 @@ const plans: PricingPlan[] = [
         ],
     },
     {
-        name: "Professional",
-        tier: "pro",
+        name: "Premium",
+        tier: "premium",
         price: "$19.99",
         period: "/month",
         description: "For serious individual investors",
@@ -61,7 +61,7 @@ const plans: PricingPlan[] = [
         description: "For professional traders",
         badge: "Best Value",
         features: [
-            "Everything in Pro, plus:",
+            "Everything in Premium, plus:",
             "Real-time data",
             "Pre-market & after-hours data",
             "Unlimited AI questions",
@@ -86,7 +86,7 @@ interface PaywallModalProps {
 export function PaywallModal({
     isOpen,
     onClose,
-    tier = "pro",
+    tier = "premium",
     feature,
     comparisonMode = true,
     benefits,
@@ -208,7 +208,7 @@ interface PricingCardProps {
 }
 
 function PricingCard({ plan, recommended }: PricingCardProps) {
-    const isPro = plan.tier === "pro";
+    const isPremium = plan.tier === "premium";
     const isElite = plan.tier === "elite";
     const isFree = plan.tier === "free";
 
@@ -222,7 +222,7 @@ function PricingCard({ plan, recommended }: PricingCardProps) {
             {/* Badge */}
             {plan.badge && (
                 <div
-                    className={`absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-semibold text-white ${isPro ? "gradient-pro" : isElite ? "gradient-elite" : "bg-slate-500"
+                    className={`absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-semibold text-white ${isPremium ? "gradient-premium" : isElite ? "gradient-elite" : "bg-slate-500"
                         }`}
                 >
                     {plan.badge}
@@ -231,7 +231,7 @@ function PricingCard({ plan, recommended }: PricingCardProps) {
 
             {/* Plan name */}
             <div className="flex items-center gap-2 mb-2">
-                {isPro && <Lock className="w-4 h-4 text-warning" />}
+                {isPremium && <Lock className="w-4 h-4 text-warning" />}
                 {isElite && <Crown className="w-4 h-4 text-elite" />}
                 <h3 className="font-semibold text-slate-900 dark:text-white">
                     {plan.name}
@@ -258,8 +258,8 @@ function PricingCard({ plan, recommended }: PricingCardProps) {
                 href="/pricing"
                 className={`w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg font-medium transition-all hover:scale-[1.02] ${isFree
                     ? "border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-                    : isPro
-                        ? "gradient-pro text-white"
+                    : isPremium
+                        ? "gradient-premium text-white"
                         : "gradient-elite text-white"
                     }`}
             >
