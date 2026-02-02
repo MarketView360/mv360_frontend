@@ -2,28 +2,37 @@
 
 import { useEffect, useState } from "react";
 import { checkMaintenanceStatus, shouldShowMaintenanceBanner, type MaintenanceStatus } from "@/lib/maintenance";
+import { getActiveAnnouncements, type Announcement } from "@/lib/announcements";
 import { MaintenancePage } from "./MaintenancePage";
 import { MaintenanceBanner } from "./MaintenanceBanner";
+import { AnnouncementsBanner } from "./AnnouncementsBanner";
 
 // Simple, reliable wrapper: always fetch fresh status on mount,
 // then re-check on a short interval. No localStorage caching.
 export function MaintenanceWrapper({ children }: { children: React.ReactNode }) {
   const [maintenance, setMaintenance] = useState<MaintenanceStatus | null>(null);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
     let intervalId: NodeJS.Timeout | null = null;
 
-    async function fetchMaintenance() {
+    async function fetchData() {
       try {
-        const data = await checkMaintenanceStatus();
+        // Fetch both maintenance and announcement data
+        const [maintenanceData, announcementData] = await Promise.all([
+          checkMaintenanceStatus(),
+          getActiveAnnouncements(),
+        ]);
+        
         if (isMounted) {
-          setMaintenance(data);
+          setMaintenance(maintenanceData);
+          setAnnouncements(announcementData);
           setIsLoading(false);
         }
       } catch (error) {
-        console.error('Failed to check maintenance:', error);
+        console.error('Failed to fetch data:', error);
         if (isMounted) {
           setIsLoading(false);
         }
@@ -31,10 +40,10 @@ export function MaintenanceWrapper({ children }: { children: React.ReactNode }) 
     }
 
     // Initial fetch
-    fetchMaintenance();
+    fetchData();
 
-    // Optional: keep status reasonably fresh without aggressive polling
-    intervalId = setInterval(fetchMaintenance, 60000); // 60s
+    // Keep status reasonably fresh without aggressive polling
+    intervalId = setInterval(fetchData, 60000); // 60s
 
     return () => {
       isMounted = false;
@@ -70,9 +79,22 @@ export function MaintenanceWrapper({ children }: { children: React.ReactNode }) 
     maintenance.ends_at,
   );
 
+  // Check if we have at least one valid announcement to display
+  const activeAnnouncements = announcements.filter((a) => a.isActive && a.text);
+  const showAnnouncement = activeAnnouncements.length > 0;
+
   return (
     <>
       {showBanner && <MaintenanceBanner maintenance={maintenance} />}
+      {showAnnouncement && (
+        <AnnouncementsBanner 
+          announcements={activeAnnouncements.map((a) => ({
+            id: a.id,
+            text: a.text as string,
+            isClickable: a.isClickable ?? false,
+          }))}
+        />
+      )}
       {children}
     </>
   );
