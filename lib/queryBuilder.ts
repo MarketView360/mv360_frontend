@@ -360,6 +360,10 @@ export const BACKEND_FIELD_MAP: Record<string, string> = {
   "price/sales": "price_sales_ttm",
   "p/s": "price_sales_ttm",
   ps: "price_sales_ttm",
+  "price to cash flow": "price_to_cash_flow",
+  "price/cash flow": "price_to_cash_flow",
+  "p/cf": "price_to_cash_flow",
+  pcf: "price_to_cash_flow",
   "ev/ebitda": "ev_ebitda",
   "ev to ebitda": "ev_ebitda",
   "ev/revenue": "ev_revenue",
@@ -709,6 +713,15 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       example: "Price to Sales < 5",
       category: "Valuation",
       backendField: "price_sales_ttm",
+    },
+    {
+      name: "Price to Cash Flow",
+      description: "Market price relative to operating cash flow per share",
+      unit: "x",
+      keywords: ["pcf", "price cash flow", "p/cf"],
+      example: "Price to Cash Flow < 10",
+      category: "Valuation",
+      backendField: "price_to_cash_flow",
     },
   ],
   Profitability: [
@@ -1966,7 +1979,15 @@ export const validateQuery = (query: string): QueryValidationError[] => {
               const closeMatch = allValidFields.find((field) => {
                 const fieldLower = field.toLowerCase();
                 const fieldPartLower = fieldPart.toLowerCase();
-                return fieldLower.includes(fieldPartLower) || fieldPartLower.includes(fieldLower);
+                if (fieldLower === fieldPartLower) return true;
+                const lenRatio = Math.min(fieldLower.length, fieldPartLower.length) / Math.max(fieldLower.length, fieldPartLower.length);
+                if (lenRatio > 0.5) {
+                  if (fieldLower.includes(fieldPartLower) || fieldPartLower.includes(fieldLower)) return true;
+                }
+                const fieldWords = fieldLower.split(/\s+/);
+                const inputWords = fieldPartLower.split(/\s+/);
+                if (Math.abs(fieldWords.length - inputWords.length) > 1) return false;
+                return inputWords.every((w: string) => fieldWords.some((fw: string) => fw.includes(w) || w.includes(fw)));
               });
 
               if (closeMatch) {
@@ -2084,16 +2105,24 @@ export const validateQuery = (query: string): QueryValidationError[] => {
             // Exact match
             if (fieldLower === fieldPartLower) return true;
 
-            // Contains match
-            if (
-              fieldLower.includes(fieldPartLower) ||
-              fieldPartLower.includes(fieldLower)
-            )
-              return true;
+            // Contains match - but only when lengths are similar to avoid
+            // short fields like "Price" matching long inputs like "price to Cash Flow"
+            const lenRatio = Math.min(fieldLower.length, fieldPartLower.length) / Math.max(fieldLower.length, fieldPartLower.length);
+            if (lenRatio > 0.5) {
+              if (
+                fieldLower.includes(fieldPartLower) ||
+                fieldPartLower.includes(fieldLower)
+              )
+                return true;
+            }
 
             // Word-based match for multi-word fields
             const fieldWords = fieldLower.split(/\s+/);
             const inputWords = fieldPartLower.split(/\s+/);
+
+            // Require that the word counts are similar (within 1) to avoid
+            // single-word fields matching multi-word inputs
+            if (Math.abs(fieldWords.length - inputWords.length) > 1) return false;
 
             return inputWords.every((inputWord: string) =>
               fieldWords.some(
