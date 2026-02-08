@@ -32,6 +32,7 @@ import {
 import { useWatchlist, type WatchlistWithItems } from "@/hooks/useWatchlist";
 import { useAuth } from "@/providers/AuthProvider";
 import { WatchlistStockTable } from "@/components/watchlist/WatchlistStockTable";
+import { WatchlistMovers } from "@/components/watchlist/WatchlistMovers";
 
 const WATCHLIST_COLORS = [
   "#3b82f6",
@@ -305,11 +306,18 @@ function WatchlistPageContent() {
                           </Link>
                         </div>
                       ) : (
-                        <WatchlistStockTable
-                          items={watchlist.items}
-                          watchlistId={watchlist.id}
-                          onRemoveStock={handleRemoveStock}
-                        />
+                        <>
+                          <WatchlistMovers
+                            items={watchlist.items}
+                            watchlistId={watchlist.id}
+                            onRemoveStock={handleRemoveStock}
+                          />
+                          <WatchlistStockTable
+                            items={watchlist.items}
+                            watchlistId={watchlist.id}
+                            onRemoveStock={handleRemoveStock}
+                          />
+                        </>
                       )}
                     </div>
                   )}
