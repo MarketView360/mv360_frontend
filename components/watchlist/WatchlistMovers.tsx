@@ -3,14 +3,23 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import {
   ResponsiveContainer,
-  LineChart,
+  LineChart as RechartsLineChart,
   Line,
   XAxis,
   YAxis,
   Tooltip,
   ReferenceLine,
 } from "recharts";
-import { X, Loader2 } from "lucide-react";
+import {
+  createChart,
+  ColorType,
+  IChartApi,
+  UTCTimestamp,
+  CrosshairMode,
+  CandlestickSeries,
+  HistogramSeries,
+} from "lightweight-charts";
+import { X, Loader2, BarChart3, LineChart as LineChartIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CompanyLogo } from "@/components/company/CompanyLogo";
 import { createClient } from "@/lib/supabase/client";
@@ -83,8 +92,15 @@ function getStartDate(period: Period): string {
 interface RawPriceRow {
   code: string;
   date: string;
+  open: string | number;
+  high: string | number;
+  low: string | number;
+  close: string | number;
   adjusted_close: string | number;
+  volume: string | number;
 }
+
+type ChartMode = "line" | "candlestick";
 
 interface StockSummary {
   code: string;
@@ -107,10 +123,14 @@ export function WatchlistMovers({
   watchlistId,
 }: WatchlistMoversProps) {
   const [period, setPeriod] = useState<Period>("YTD");
+  const [chartMode, setChartMode] = useState<ChartMode>("line");
+  const [selectedStock, setSelectedStock] = useState<string | null>(null);
   const [rawData, setRawData] = useState<RawPriceRow[]>([]);
   const [stockNames, setStockNames] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const supabaseRef = useRef(createClient());
+  const candlestickContainerRef = useRef<HTMLDivElement>(null);
+  const candlestickChartRef = useRef<IChartApi | null>(null);
 
   const tickers = useMemo(
     () => items.map((i) => i.ticker.toUpperCase()).sort(),
@@ -291,18 +311,139 @@ export function WatchlistMovers({
     return { chartData, stockSummaries: summaries };
   }, [rawData, period, stockNames, colorMap]);
 
+  // Build OHLCV data for candlestick chart (grouped by code)
+  const candlestickDataByCode = useMemo(() => {
+    const map = new Map<string, { time: number; open: number; high: number; low: number; close: number; volume: number }[]>();
+    for (const row of rawData) {
+      const o = Number(row.open);
+      const h = Number(row.high);
+      const l = Number(row.low);
+      const c = Number(row.close);
+      const v = Number(row.volume);
+      if (isNaN(o) || isNaN(h) || isNaN(l) || isNaN(c)) continue;
+      if (!map.has(row.code)) map.set(row.code, []);
+      const time = Math.floor(new Date(row.date).getTime() / 1000);
+      map.get(row.code)!.push({ time, open: o, high: h, low: l, close: c, volume: isNaN(v) ? 0 : v });
+    }
+    // Sort each by time
+    Array.from(map.values()).forEach((arr) => arr.sort((a, b) => a.time - b.time));
+    return map;
+  }, [rawData]);
+
+  // Auto-select first stock when switching to candlestick mode
+  useEffect(() => {
+    if (chartMode === "candlestick" && !selectedStock && stockCodes.length > 0) {
+      setSelectedStock(stockCodes[0]);
+    }
+  }, [chartMode, selectedStock, stockCodes]);
+
+  // Detect dark mode
+  const isDark = typeof window !== "undefined" && document.documentElement.classList.contains("dark");
+
+  // Render candlestick chart with lightweight-charts
+  useEffect(() => {
+    if (chartMode !== "candlestick" || !selectedStock || loading) return;
+    if (!candlestickContainerRef.current) return;
+
+    const ohlcData = candlestickDataByCode.get(selectedStock);
+    if (!ohlcData || ohlcData.length === 0) return;
+
+    // Clean up previous chart
+    if (candlestickChartRef.current) {
+      candlestickChartRef.current.remove();
+      candlestickChartRef.current = null;
+    }
+
+    const container = candlestickContainerRef.current;
+    const chart = createChart(container, {
+      layout: {
+        background: { type: ColorType.Solid, color: "transparent" },
+        textColor: isDark ? "#94a3b8" : "#64748b",
+      },
+      width: container.clientWidth,
+      height: 200,
+      grid: {
+        vertLines: { color: isDark ? "#1e293b" : "#f1f5f9" },
+        horzLines: { color: isDark ? "#1e293b" : "#f1f5f9" },
+      },
+      crosshair: { mode: CrosshairMode.Normal },
+      rightPriceScale: {
+        borderColor: isDark ? "#334155" : "#e2e8f0",
+      },
+      timeScale: {
+        borderColor: isDark ? "#334155" : "#e2e8f0",
+        fixLeftEdge: true,
+        fixRightEdge: true,
+      },
+    });
+
+    candlestickChartRef.current = chart;
+
+    // Deduplicate by time
+    const uniqueData = Array.from(new Map(ohlcData.map((d) => [d.time, d])).values())
+      .sort((a, b) => a.time - b.time);
+
+    // Candlestick series
+    const candleSeries = chart.addSeries(CandlestickSeries, {
+      upColor: "#26a69a",
+      downColor: "#ef5350",
+      borderVisible: false,
+      wickUpColor: "#26a69a",
+      wickDownColor: "#ef5350",
+    });
+    candleSeries.setData(
+      uniqueData.map((d) => ({
+        time: d.time as UTCTimestamp,
+        open: d.open,
+        high: d.high,
+        low: d.low,
+        close: d.close,
+      }))
+    );
+
+    // Volume series
+    if (uniqueData.some((d) => d.volume > 0)) {
+      const volumeSeries = chart.addSeries(HistogramSeries, {
+        priceFormat: { type: "volume" },
+        priceScaleId: "",
+      });
+      volumeSeries.priceScale().applyOptions({
+        scaleMargins: { top: 0.8, bottom: 0 },
+      });
+      const volUp = isDark ? "rgba(59, 130, 246, 0.4)" : "rgba(37, 99, 235, 0.4)";
+      const volDown = isDark ? "rgba(168, 85, 247, 0.4)" : "rgba(147, 51, 234, 0.4)";
+      volumeSeries.setData(
+        uniqueData.map((d) => ({
+          time: d.time as UTCTimestamp,
+          value: d.volume,
+          color: d.close >= d.open ? volUp : volDown,
+        }))
+      );
+    }
+
+    chart.timeScale().fitContent();
+
+    // Handle resize
+    const handleResize = () => {
+      if (candlestickContainerRef.current) {
+        chart.applyOptions({ width: candlestickContainerRef.current.clientWidth });
+      }
+    };
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      chart.remove();
+      candlestickChartRef.current = null;
+    };
+  }, [chartMode, selectedStock, candlestickDataByCode, loading, isDark]);
+
   const formatDateTick = (dateStr: string) => {
     const d = new Date(dateStr);
     const months = [
       "Jan", "Feb", "Mar", "Apr", "May", "Jun",
       "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ];
-    if (period === "1D") {
-      return `${months[d.getMonth()]} ${d.getDate()}`;
-    }
-    if (period === "1M") {
-      return `${months[d.getMonth()]} ${d.getDate()}`;
-    }
     return `${months[d.getMonth()]} ${d.getDate()}`;
   };
 
@@ -310,10 +451,52 @@ export function WatchlistMovers({
 
   return (
     <div className="px-4 py-4">
+      {/* Header: title + chart mode toggle + period pills */}
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-          Watchlist Movers
-        </h3>
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+            Watchlist Movers
+          </h3>
+          {/* Chart mode toggle */}
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-md p-0.5">
+            <button
+              onClick={() => setChartMode("line")}
+              className={`p-1 rounded transition-colors ${
+                chartMode === "line"
+                  ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                  : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+              }`}
+              title="Comparison line chart"
+            >
+              <LineChartIcon className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setChartMode("candlestick")}
+              className={`p-1 rounded transition-colors ${
+                chartMode === "candlestick"
+                  ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                  : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+              }`}
+              title="Candlestick chart"
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          {/* Stock selector for candlestick mode */}
+          {chartMode === "candlestick" && stockCodes.length > 1 && (
+            <select
+              value={selectedStock || ""}
+              onChange={(e) => setSelectedStock(e.target.value)}
+              className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-0 rounded-md px-2 py-1 focus:ring-1 focus:ring-brand outline-none"
+            >
+              {stockCodes.map((code) => (
+                <option key={code} value={code}>
+                  {stockNames.get(code) || code}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
         <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
           {PERIODS.map((p) => (
             <button
@@ -331,71 +514,77 @@ export function WatchlistMovers({
         </div>
       </div>
 
-      {/* Chart */}
+      {/* Chart area */}
       <div className="h-[200px] w-full mb-3">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-5 h-5 animate-spin text-brand" />
           </div>
-        ) : chartData.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-sm text-slate-400">
-            No price data available
-          </div>
-        ) : (
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData}>
-              <XAxis
-                dataKey="date"
-                tickFormatter={formatDateTick}
-                tick={{ fontSize: 11 }}
-                stroke="#94a3b8"
-                tickLine={false}
-                axisLine={false}
-                minTickGap={40}
-              />
-              <YAxis
-                tickFormatter={(v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`}
-                tick={{ fontSize: 11 }}
-                stroke="#94a3b8"
-                tickLine={false}
-                axisLine={false}
-                width={55}
-              />
-              <ReferenceLine y={0} stroke="#64748b" strokeDasharray="4 4" strokeOpacity={0.5} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "rgba(15, 23, 42, 0.9)",
-                  border: "1px solid rgba(51, 65, 85, 0.5)",
-                  borderRadius: "8px",
-                  fontSize: "12px",
-                  color: "#f8fafc",
-                }}
-                labelFormatter={(label: string) => {
-                  const d = new Date(label);
-                  return d.toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  });
-                }}
-                formatter={(value: number, name: string) => [
-                  `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`,
-                  name,
-                ]}
-              />
-              {stockCodes.map((code) => (
-                <Line
-                  key={code}
-                  type="monotone"
-                  dataKey={code}
-                  stroke={colorMap.get(code)}
-                  strokeWidth={2}
-                  dot={false}
-                  connectNulls
+        ) : chartMode === "line" ? (
+          /* Multi-line comparison chart */
+          chartData.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-sm text-slate-400">
+              No price data available
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <RechartsLineChart data={chartData}>
+                <XAxis
+                  dataKey="date"
+                  tickFormatter={formatDateTick}
+                  tick={{ fontSize: 11 }}
+                  stroke="#94a3b8"
+                  tickLine={false}
+                  axisLine={false}
+                  minTickGap={40}
                 />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
+                <YAxis
+                  tickFormatter={(v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`}
+                  tick={{ fontSize: 11 }}
+                  stroke="#94a3b8"
+                  tickLine={false}
+                  axisLine={false}
+                  width={55}
+                />
+                <ReferenceLine y={0} stroke="#64748b" strokeDasharray="4 4" strokeOpacity={0.5} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "rgba(15, 23, 42, 0.9)",
+                    border: "1px solid rgba(51, 65, 85, 0.5)",
+                    borderRadius: "8px",
+                    fontSize: "12px",
+                    color: "#f8fafc",
+                  }}
+                  labelFormatter={(label: string) => {
+                    const d = new Date(label);
+                    return d.toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    });
+                  }}
+                  formatter={(value: number, name: string) => [
+                    `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`,
+                    name,
+                  ]}
+                />
+                {stockCodes.map((code) => (
+                  <Line
+                    key={code}
+                    type="monotone"
+                    dataKey={code}
+                    stroke={colorMap.get(code)}
+                    strokeWidth={2}
+                    dot={false}
+                    connectNulls
+                  />
+                ))}
+              </RechartsLineChart>
+            </ResponsiveContainer>
+          )
+        ) : (
+          /* Candlestick chart */
+          <div ref={candlestickContainerRef} className="w-full h-full" />
         )}
       </div>
 
@@ -408,15 +597,23 @@ export function WatchlistMovers({
             );
             const originalTicker = item?.ticker || stock.code;
             const isPositive = stock.percentChange >= 0;
+            const isSelected = chartMode === "candlestick" && selectedStock === stock.code;
 
             return (
               <div
                 key={stock.code}
-                className="flex items-center gap-3 py-2.5 group"
+                className={`flex items-center gap-3 py-2.5 group transition-colors ${
+                  isSelected
+                    ? "bg-slate-50 dark:bg-slate-800/50"
+                    : ""
+                } ${chartMode === "candlestick" ? "cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/30" : ""}`}
+                onClick={chartMode === "candlestick" ? () => setSelectedStock(stock.code) : undefined}
               >
                 {/* Color indicator */}
                 <div
-                  className="w-1 h-8 rounded-full flex-shrink-0"
+                  className={`w-1 h-8 rounded-full flex-shrink-0 transition-opacity ${
+                    chartMode === "candlestick" && !isSelected ? "opacity-30" : ""
+                  }`}
                   style={{ backgroundColor: stock.color }}
                 />
 
@@ -424,6 +621,12 @@ export function WatchlistMovers({
                 <Link
                   href={`/company/${originalTicker}`}
                   className="flex items-center gap-2.5 flex-1 min-w-0"
+                  onClick={(e) => {
+                    if (chartMode === "candlestick") {
+                      e.preventDefault();
+                      setSelectedStock(stock.code);
+                    }
+                  }}
                 >
                   <CompanyLogo
                     ticker={originalTicker}
@@ -431,7 +634,11 @@ export function WatchlistMovers({
                     size="sm"
                   />
                   <div className="min-w-0">
-                    <p className="font-semibold text-slate-900 dark:text-white text-sm truncate">
+                    <p className={`font-semibold text-sm truncate ${
+                      isSelected
+                        ? "text-brand"
+                        : "text-slate-900 dark:text-white"
+                    }`}>
                       {stock.name}
                     </p>
                     <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
@@ -480,7 +687,10 @@ export function WatchlistMovers({
                   variant="ghost"
                   size="sm"
                   className="h-7 w-7 p-0 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                  onClick={() => onRemoveStock(watchlistId, originalTicker)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRemoveStock(watchlistId, originalTicker);
+                  }}
                 >
                   <X className="w-4 h-4" />
                 </Button>
