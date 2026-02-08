@@ -125,8 +125,8 @@ export function NavSearch() {
   }, [value]);
 
   return (
-    <div ref={wrapperRef} className="relative w-full max-w-sm">
-      <form onSubmit={handleSubmit} className="relative group">
+    <div ref={wrapperRef} className="relative w-fit">
+      <form onSubmit={handleSubmit} className="relative group w-64 lg:w-80">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500 group-focus-within:text-brand transition-colors" />
         <input
           ref={inputRef}
@@ -134,7 +134,7 @@ export function NavSearch() {
           onChange={(e) => setValue(e.target.value)}
           onFocus={() => setOpen(true)}
           className={cn(
-            "flex h-9 w-64 lg:w-80 rounded-full border border-slate-200 dark:border-slate-800",
+            "flex h-9 w-full rounded-full border border-slate-200 dark:border-slate-800",
             "bg-slate-50 dark:bg-slate-900 pl-9 pr-20 py-1 text-sm shadow-sm",
             "transition-all focus-visible:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand",
             "placeholder:text-slate-400 dark:placeholder:text-slate-500",
@@ -144,7 +144,7 @@ export function NavSearch() {
           aria-autocomplete="list"
         />
         {/* Keyboard shortcut hint */}
-        <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 hidden md:flex">
+        <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 hidden md:flex">
           <KbdGroup>
             <Kbd className="h-5 px-1.5">⌘</Kbd>
             <Kbd className="h-5 px-1.5">K</Kbd>
