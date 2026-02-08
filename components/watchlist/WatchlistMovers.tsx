@@ -164,7 +164,7 @@ export function WatchlistMovers({
         setLoading(true);
         const { data, error } = await supabaseRef.current.rpc(
           "get_watchlist_historical_prices",
-          { ticker_codes: codes, start_date: startDate }
+          { ticker_codes: codes, start_date: startDate, max_points_per_stock: 250 }
         );
 
         if (cancelled) return;
@@ -208,13 +208,18 @@ export function WatchlistMovers({
     if (rawData.length === 0)
       return { chartData: [], stockSummaries: [] as StockSummary[] };
 
-    // Group by code
+    // Group by code and build date->price maps for O(1) lookup
     const byCode = new Map<string, { date: string; price: number }[]>();
+    const dateMaps = new Map<string, Map<string, number>>(); // code -> (date -> price)
     for (const row of rawData) {
       const price = Number(row.adjusted_close);
       if (isNaN(price)) continue;
-      if (!byCode.has(row.code)) byCode.set(row.code, []);
+      if (!byCode.has(row.code)) {
+        byCode.set(row.code, []);
+        dateMaps.set(row.code, new Map());
+      }
       byCode.get(row.code)!.push({ date: row.date, price });
+      dateMaps.get(row.code)!.set(row.date, price);
     }
 
     // Get base price (first data point) for each code
@@ -232,34 +237,39 @@ export function WatchlistMovers({
           const lastTwo = points.slice(-2);
           byCode.set(code, lastTwo);
           basePrices.set(code, lastTwo[0].price);
+          const newDateMap = new Map<string, number>();
+          lastTwo.forEach((p) => newDateMap.set(p.date, p.price));
+          dateMaps.set(code, newDateMap);
         }
       });
     }
 
-    // Collect all unique dates
+    // Collect all unique dates (server already downsampled if needed)
     const allDates = new Set<string>();
     Array.from(byCode.values()).forEach((points) => {
       points.forEach((p: { date: string; price: number }) => allDates.add(p.date));
     });
     const sortedDates = Array.from(allDates).sort();
 
-    // Build chart rows
+    // Build chart rows using O(1) Map lookups
+    const codes = Array.from(byCode.keys());
     const chartData = sortedDates.map((date) => {
       const row: Record<string, string | number> = { date };
-      Array.from(byCode.entries()).forEach(([code, points]) => {
-        const point = points.find((p: { date: string }) => p.date === date);
+      codes.forEach((code) => {
+        const priceMap = dateMaps.get(code);
+        const price = priceMap?.get(date);
         const base = basePrices.get(code);
-        if (point && base) {
-          row[code] = ((point.price - base) / base) * 100;
+        if (price !== undefined && base) {
+          row[code] = ((price - base) / base) * 100;
         }
       });
       return row;
     });
 
-    // Build summaries
+    // Build summaries (use full data, not downsampled)
     const summaries: StockSummary[] = [];
     Array.from(byCode.entries()).forEach(([code, points]) => {
-      if (points.length < 2) return;
+      if (points.length < 1) return;
       const base = basePrices.get(code) ?? points[0].price;
       const latest = points[points.length - 1].price;
       const dollarChange = latest - base;
