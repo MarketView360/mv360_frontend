@@ -10,7 +10,9 @@ import {
   X,
   Users,
   Plus,
+  Star,
 } from "lucide-react";
+import Link from "next/link";
 import ScreenerQueryBuilder from "@/components/ScreenerQueryBuilder";
 import ScreenTemplatesSidebar from "@/components/ScreenTemplatesSidebar";
 
@@ -71,7 +73,17 @@ function ScreensPageContent() {
           </div>
 
           <div className="flex items-center gap-3">
-
+            {/* Watchlists Button */}
+            <Link href="/watchlist">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2 h-9 bg-white dark:bg-slate-800"
+              >
+                <Star className="w-4 h-4" />
+                <span className="hidden sm:inline">Watchlists</span>
+              </Button>
+            </Link>
 
             {/* Templates Toggle Button */}
             <Button

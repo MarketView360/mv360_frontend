@@ -22,6 +22,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+import { AddToWatchlistButton } from "@/components/company/AddToWatchlistButton";
 import { CompanyChartsSwitcher, type PriceHistoryPoint } from "@/components/company/CompanyChartsSwitcher";
 import { CompanyDescriptionModal } from "@/components/company/CompanyDescriptionModal";
 import { CompanyLogo } from "@/components/company/CompanyLogo";
@@ -622,6 +623,8 @@ function CompanyHero({ data }: { data: CompanyViewModel }) {
             </div>
             <span className="text-xs text-muted-foreground mt-1">Market Close</span>
           </div>
+
+          <AddToWatchlistButton ticker={data.ticker} />
         </div>
       </div>
     </div>

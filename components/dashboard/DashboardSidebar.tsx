@@ -14,21 +14,21 @@ import {
     Crown,
     ChevronUp,
 } from "lucide-react";
-import { FeatureBadge } from "@/components/paywall";
+import { FeatureBadge, type BadgeTier } from "@/components/paywall";
 
 interface NavItem {
     href: string;
     label: string;
     icon: React.ComponentType<{ className?: string }>;
-    badge?: "pro" | "elite";
+    badge?: BadgeTier;
 }
 
 const navItems: NavItem[] = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/dashboard/watchlists", label: "My Watchlists", icon: Star },
+    { href: "/watchlist", label: "My Watchlists", icon: Star },
     { href: "/dashboard/screeners", label: "My Screeners", icon: Filter },
-    { href: "/dashboard/portfolio", label: "My Portfolio", icon: Briefcase, badge: "pro" },
-    { href: "/dashboard/alerts", label: "Alerts", icon: Bell, badge: "pro" },
+    { href: "/dashboard/portfolio", label: "My Portfolio", icon: Briefcase, badge: "premium" },
+    { href: "/dashboard/alerts", label: "Alerts", icon: Bell, badge: "premium" },
     { href: "/dashboard/ai-history", label: "AI History", icon: MessageSquare },
     { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];

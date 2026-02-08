@@ -94,7 +94,7 @@ export default function DashboardPage() {
                             My Watchlists
                         </h2>
                         <Link
-                            href="/dashboard/watchlists"
+                            href="/watchlist"
                             className="text-sm text-brand hover:text-brand-600 font-medium flex items-center gap-1"
                         >
                             View All <ArrowRight className="w-4 h-4" />
