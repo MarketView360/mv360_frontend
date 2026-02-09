@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useRef } from "react";
 import Link from "next/link";
-import { X, Loader2 } from "lucide-react";
+import { X, Loader2, GitCompareArrows } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CompanyLogo } from "@/components/company/CompanyLogo";
 import { createClient } from "@/lib/supabase/client";
@@ -30,6 +30,8 @@ interface WatchlistStockTableProps {
   items: WatchlistItem[];
   watchlistId: string;
   onRemoveStock: (watchlistId: string, ticker: string) => void;
+  onCompareStock?: (ticker: string) => void;
+  compareTickers?: string[];
 }
 
 const RETURN_COLUMNS: { key: SortField; label: string }[] = [
@@ -52,7 +54,7 @@ function percentColor(val: number | null | undefined): string {
   return "text-slate-500 dark:text-slate-400";
 }
 
-export function WatchlistStockTable({ items, watchlistId, onRemoveStock }: WatchlistStockTableProps) {
+export function WatchlistStockTable({ items, watchlistId, onRemoveStock, onCompareStock, compareTickers = [] }: WatchlistStockTableProps) {
   const [stockData, setStockData] = useState<Map<string, StockRowData>>(new Map());
   const [loading, setLoading] = useState(true);
   const [sortField, setSortField] = useState<SortField>("price");
@@ -206,6 +208,7 @@ export function WatchlistStockTable({ items, watchlistId, onRemoveStock }: Watch
                 </button>
               </th>
             ))}
+            {onCompareStock && <th className="w-10" />}
             <th className="w-10" />
           </tr>
         </thead>
@@ -252,6 +255,23 @@ export function WatchlistStockTable({ items, watchlistId, onRemoveStock }: Watch
                     </td>
                   );
                 })}
+                {onCompareStock && (
+                  <td className="px-1 py-3">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={`h-7 w-7 p-0 transition-opacity ${
+                        compareTickers.includes(cleanTicker(item.ticker))
+                          ? "text-brand opacity-100"
+                          : "text-slate-400 hover:text-brand opacity-0 group-hover:opacity-100"
+                      }`}
+                      onClick={() => onCompareStock(item.ticker)}
+                      title="Add to compare"
+                    >
+                      <GitCompareArrows className="w-4 h-4" />
+                    </Button>
+                  </td>
+                )}
                 <td className="px-2 py-3">
                   <Button
                     variant="ghost"

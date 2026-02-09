@@ -32,7 +32,7 @@ import {
 import { useWatchlist, type WatchlistWithItems } from "@/hooks/useWatchlist";
 import { useAuth } from "@/providers/AuthProvider";
 import { WatchlistStockTable } from "@/components/watchlist/WatchlistStockTable";
-import { WatchlistMovers } from "@/components/watchlist/WatchlistMovers";
+import { StockCompare } from "@/components/watchlist/StockCompare";
 
 const WATCHLIST_COLORS = [
   "#3b82f6",
@@ -77,6 +77,17 @@ function WatchlistPageContent() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedWatchlist, setSelectedWatchlist] = useState<WatchlistWithItems | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [compareTickers, setCompareTickers] = useState<string[]>([]);
+
+  const handleAddCompare = (ticker: string) => {
+    const clean = ticker.replace(/\.US$/i, "").toUpperCase();
+    setCompareTickers((prev) => prev.includes(clean) ? prev : [...prev, clean]);
+  };
+
+  const handleRemoveCompare = (ticker: string) => {
+    const clean = ticker.replace(/\.US$/i, "").toUpperCase();
+    setCompareTickers((prev) => prev.filter((t) => t !== clean));
+  };
 
   const [newName, setNewName] = useState("");
   const [newDescription, setNewDescription] = useState("");
@@ -205,8 +216,17 @@ function WatchlistPageContent() {
             </Button>
           </div>
         ) : (
-          /* Watchlist Cards */
-          <div className="space-y-4">
+          <>
+          {/* Stock Compare Module */}
+          <StockCompare
+            tickers={compareTickers}
+            onAddTicker={handleAddCompare}
+            onRemoveTicker={handleRemoveCompare}
+            onClear={() => setCompareTickers([])}
+          />
+
+          {/* Watchlist Cards */}
+          <div className="space-y-4 mt-4">
             {watchlists.map((watchlist) => {
               const isExpanded = expandedId === watchlist.id;
 
@@ -306,18 +326,13 @@ function WatchlistPageContent() {
                           </Link>
                         </div>
                       ) : (
-                        <>
-                          <WatchlistMovers
-                            items={watchlist.items}
-                            watchlistId={watchlist.id}
-                            onRemoveStock={handleRemoveStock}
-                          />
-                          <WatchlistStockTable
-                            items={watchlist.items}
-                            watchlistId={watchlist.id}
-                            onRemoveStock={handleRemoveStock}
-                          />
-                        </>
+                        <WatchlistStockTable
+                          items={watchlist.items}
+                          watchlistId={watchlist.id}
+                          onRemoveStock={handleRemoveStock}
+                          onCompareStock={handleAddCompare}
+                          compareTickers={compareTickers}
+                        />
                       )}
                     </div>
                   )}
@@ -325,6 +340,7 @@ function WatchlistPageContent() {
               );
             })}
           </div>
+          </>
         )}
       </div>
 
