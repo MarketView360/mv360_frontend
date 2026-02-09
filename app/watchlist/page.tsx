@@ -81,7 +81,9 @@ function WatchlistPageContent() {
 
   const handleAddCompare = (ticker: string) => {
     const clean = ticker.replace(/\.US$/i, "").toUpperCase();
-    setCompareTickers((prev) => prev.includes(clean) ? prev : [...prev, clean]);
+    setCompareTickers((prev) =>
+      prev.includes(clean) ? prev.filter((t) => t !== clean) : [...prev, clean]
+    );
   };
 
   const handleRemoveCompare = (ticker: string) => {
