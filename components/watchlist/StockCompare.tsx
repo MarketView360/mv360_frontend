@@ -16,7 +16,6 @@ import {
   IChartApi,
   UTCTimestamp,
   CrosshairMode,
-  LineSeries,
   CandlestickSeries,
   HistogramSeries,
 } from "lightweight-charts";
@@ -263,26 +262,20 @@ export function StockCompare({ tickers, onAddTicker, onRemoveTicker, onClear }: 
       timeScale: { borderColor: isDark ? "#334155" : "#e2e8f0", fixLeftEdge: true, fixRightEdge: true },
     });
     candlestickChartRef.current = chart;
-    stockCodes.forEach((code) => {
-      const ohlcData = candlestickDataByCode.get(code);
-      if (!ohlcData || ohlcData.length === 0) return;
+    const activeCode = selectedStock || stockCodes[0];
+    const ohlcData = candlestickDataByCode.get(activeCode);
+    if (ohlcData && ohlcData.length > 0) {
       const uniqueData = Array.from(new Map(ohlcData.map((d) => [d.time, d])).values()).sort((a, b) => a.time - b.time);
-      const color = colorMap.get(code) || LINE_COLORS[0];
-      if (selectedStock === code) {
-        const cs = chart.addSeries(CandlestickSeries, { upColor: "#26a69a", downColor: "#ef5350", borderVisible: false, wickUpColor: "#26a69a", wickDownColor: "#ef5350", priceScaleId: "right" });
-        cs.setData(uniqueData.map((d) => ({ time: d.time as UTCTimestamp, open: d.open, high: d.high, low: d.low, close: d.close })));
-        if (uniqueData.some((d) => d.volume > 0)) {
-          const vs = chart.addSeries(HistogramSeries, { priceFormat: { type: "volume" }, priceScaleId: "volume" });
-          vs.priceScale().applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } });
-          const vu = isDark ? "rgba(59,130,246,0.35)" : "rgba(37,99,235,0.35)";
-          const vd = isDark ? "rgba(168,85,247,0.35)" : "rgba(147,51,234,0.35)";
-          vs.setData(uniqueData.map((d) => ({ time: d.time as UTCTimestamp, value: d.volume, color: d.close >= d.open ? vu : vd })));
-        }
-      } else {
-        const ls = chart.addSeries(LineSeries, { color, lineWidth: 2, priceScaleId: "right", crosshairMarkerVisible: true, lastValueVisible: false, priceLineVisible: false });
-        ls.setData(uniqueData.map((d) => ({ time: d.time as UTCTimestamp, value: d.close })));
+      const cs = chart.addSeries(CandlestickSeries, { upColor: "#26a69a", downColor: "#ef5350", borderVisible: false, wickUpColor: "#26a69a", wickDownColor: "#ef5350", priceScaleId: "right" });
+      cs.setData(uniqueData.map((d) => ({ time: d.time as UTCTimestamp, open: d.open, high: d.high, low: d.low, close: d.close })));
+      if (uniqueData.some((d) => d.volume > 0)) {
+        const vs = chart.addSeries(HistogramSeries, { priceFormat: { type: "volume" }, priceScaleId: "volume" });
+        vs.priceScale().applyOptions({ scaleMargins: { top: 0.85, bottom: 0 } });
+        const vu = isDark ? "rgba(59,130,246,0.35)" : "rgba(37,99,235,0.35)";
+        const vd = isDark ? "rgba(168,85,247,0.35)" : "rgba(147,51,234,0.35)";
+        vs.setData(uniqueData.map((d) => ({ time: d.time as UTCTimestamp, value: d.volume, color: d.close >= d.open ? vu : vd })));
       }
-    });
+    }
     chart.timeScale().fitContent();
     const handleResize = () => { if (candlestickContainerRef.current) chart.applyOptions({ width: candlestickContainerRef.current.clientWidth }); };
     window.addEventListener("resize", handleResize);
