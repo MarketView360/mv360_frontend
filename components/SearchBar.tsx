@@ -904,7 +904,7 @@ export default function SearchBar() {
     <div ref={wrapperRef} className="relative w-full max-w-2xl mx-auto z-40">
 
       {/* glow */}
-      <div className="absolute -inset-1 bg-brand/20 rounded-full opacity-20 group-hover:opacity-30 blur transition duration-200" />
+      <div className="absolute -inset-1 bg-brand/20 rounded-full opacity-20 group-hover:opacity-30 blur transition duration-200 pointer-events-none" />
 
       {/* input */}
       <form onSubmit={handleSubmit} className="relative group">
@@ -936,13 +936,13 @@ export default function SearchBar() {
             <X className="h-4 w-4 text-slate-400" />
           </Button>
         )}
-        <Button
+        <button
           type="submit"
-          size="sm"
-          className="absolute right-1 top-1 h-10 px-6 rounded-full bg-brand hover:bg-brand/90 text-white font-medium shadow-sm hover:shadow-md transition-all"
+          className="absolute right-1 top-1 h-10 px-6 rounded-full text-white text-sm font-medium shadow-sm hover:shadow-md hover:opacity-90 transition-all"
+          style={{ backgroundColor: '#0087f6' }}
         >
           Search
-        </Button>
+        </button>
       </form>
 
       {/* Data freshness indicator */}
