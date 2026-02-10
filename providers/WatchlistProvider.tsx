@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/providers/AuthProvider";
+import { toast } from "sonner";
 
 export interface Watchlist {
   id: string;
@@ -26,7 +27,24 @@ export interface WatchlistWithItems extends Watchlist {
   items: WatchlistItem[];
 }
 
-export function useWatchlist() {
+interface WatchlistContextType {
+  watchlists: WatchlistWithItems[];
+  loading: boolean;
+  error: string | null;
+  fetchWatchlists: () => Promise<void>;
+  createWatchlist: (name: string, description?: string, color?: string) => Promise<WatchlistWithItems | null>;
+  deleteWatchlist: (watchlistId: string) => Promise<boolean>;
+  updateWatchlist: (watchlistId: string, updates: { name?: string; description?: string; color?: string }) => Promise<boolean>;
+  addToWatchlist: (watchlistId: string, ticker: string, notes?: string) => Promise<boolean>;
+  removeFromWatchlist: (watchlistId: string, ticker: string) => Promise<boolean>;
+  updateItemNotes: (watchlistId: string, ticker: string, notes: string) => Promise<boolean>;
+  isTickerInWatchlist: (watchlistId: string, ticker: string) => boolean;
+  getWatchlistsForTicker: (ticker: string) => WatchlistWithItems[];
+}
+
+const WatchlistContext = createContext<WatchlistContextType | undefined>(undefined);
+
+export function WatchlistProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [watchlists, setWatchlists] = useState<WatchlistWithItems[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,35 +61,27 @@ export function useWatchlist() {
 
     try {
       setLoading(true);
-      const { data: lists, error: listsError } = await supabaseRef.current
+      setError(null);
+
+      // T08: Single relational query instead of N+1
+      const { data, error: fetchError } = await supabaseRef.current
         .from("watchlists")
-        .select("*")
+        .select("*, watchlist_items(*)")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
-      if (listsError) throw listsError;
+      if (fetchError) throw fetchError;
 
-      if (!lists || lists.length === 0) {
-        setWatchlists([]);
-        setLoading(false);
-        return;
-      }
-
-      const { data: items, error: itemsError } = await supabaseRef.current
-        .from("watchlist_items")
-        .select("*")
-        .in(
-          "watchlist_id",
-          lists.map((l) => l.id)
-        )
-        .order("added_at", { ascending: false });
-
-      if (itemsError) throw itemsError;
-
-      const watchlistsWithItems: WatchlistWithItems[] = lists.map((list) => ({
-        ...list,
-        items: (items || []).filter((item) => item.watchlist_id === list.id),
-      }));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const watchlistsWithItems: WatchlistWithItems[] = (data || []).map((list: any) => {
+        const { watchlist_items, ...rest } = list;
+        return {
+          ...rest,
+          items: ((watchlist_items as WatchlistItem[]) || []).sort(
+            (a: WatchlistItem, b: WatchlistItem) => new Date(b.added_at).getTime() - new Date(a.added_at).getTime()
+          ),
+        } as WatchlistWithItems;
+      });
 
       setWatchlists(watchlistsWithItems);
       setError(null);
@@ -108,10 +118,12 @@ export function useWatchlist() {
 
         const newWatchlist: WatchlistWithItems = { ...data, items: [] };
         setWatchlists((prev) => [newWatchlist, ...prev]);
+        toast.success(`Watchlist "${name}" created`);
         return newWatchlist;
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Failed to create watchlist";
         setError(message);
+        toast.error(message);
         return null;
       }
     },
@@ -120,6 +132,7 @@ export function useWatchlist() {
 
   const deleteWatchlist = useCallback(
     async (watchlistId: string) => {
+      const target = watchlists.find((w) => w.id === watchlistId);
       try {
         const { error } = await supabaseRef.current
           .from("watchlists")
@@ -130,14 +143,16 @@ export function useWatchlist() {
         if (error) throw error;
 
         setWatchlists((prev) => prev.filter((w) => w.id !== watchlistId));
+        toast.success(`Watchlist "${target?.name || ""}" deleted`);
         return true;
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Failed to delete watchlist";
         setError(message);
+        toast.error(message);
         return false;
       }
     },
-    [user]
+    [user, watchlists]
   );
 
   const updateWatchlist = useCallback(
@@ -155,10 +170,12 @@ export function useWatchlist() {
         setWatchlists((prev) =>
           prev.map((w) => (w.id === watchlistId ? { ...w, ...data } : w))
         );
+        toast.success("Watchlist updated");
         return true;
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Failed to update watchlist";
         setError(message);
+        toast.error(message);
         return false;
       }
     },
@@ -185,10 +202,12 @@ export function useWatchlist() {
             w.id === watchlistId ? { ...w, items: [data, ...w.items] } : w
           )
         );
+        toast.success(`${ticker.toUpperCase()} added to watchlist`);
         return true;
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Failed to add to watchlist";
         setError(message);
+        toast.error(message);
         return false;
       }
     },
@@ -213,10 +232,47 @@ export function useWatchlist() {
               : w
           )
         );
+        toast.success(`${ticker.toUpperCase()} removed`);
         return true;
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Failed to remove from watchlist";
         setError(message);
+        toast.error(message);
+        return false;
+      }
+    },
+    []
+  );
+
+  const updateItemNotes = useCallback(
+    async (watchlistId: string, ticker: string, notes: string) => {
+      try {
+        const { error } = await supabaseRef.current
+          .from("watchlist_items")
+          .update({ notes: notes || null })
+          .eq("watchlist_id", watchlistId)
+          .eq("ticker", ticker.toUpperCase());
+
+        if (error) throw error;
+
+        setWatchlists((prev) =>
+          prev.map((w) =>
+            w.id === watchlistId
+              ? {
+                  ...w,
+                  items: w.items.map((i) =>
+                    i.ticker === ticker.toUpperCase() ? { ...i, notes: notes || null } : i
+                  ),
+                }
+              : w
+          )
+        );
+        toast.success("Note saved");
+        return true;
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to update note";
+        setError(message);
+        toast.error(message);
         return false;
       }
     },
@@ -240,17 +296,34 @@ export function useWatchlist() {
     [watchlists]
   );
 
-  return {
-    watchlists,
-    loading,
-    error,
-    fetchWatchlists,
-    createWatchlist,
-    deleteWatchlist,
-    updateWatchlist,
-    addToWatchlist,
-    removeFromWatchlist,
-    isTickerInWatchlist,
-    getWatchlistsForTicker,
-  };
+  return (
+    <WatchlistContext.Provider
+      value={{
+        watchlists,
+        loading,
+        error,
+        fetchWatchlists,
+        createWatchlist,
+        deleteWatchlist,
+        updateWatchlist,
+        addToWatchlist,
+        removeFromWatchlist,
+        updateItemNotes,
+        isTickerInWatchlist,
+        getWatchlistsForTicker,
+      }}
+    >
+      {children}
+    </WatchlistContext.Provider>
+  );
 }
+
+export function useWatchlist() {
+  const context = useContext(WatchlistContext);
+  if (context === undefined) {
+    throw new Error("useWatchlist must be used within a WatchlistProvider");
+  }
+  return context;
+}
+
+export type { WatchlistContextType };

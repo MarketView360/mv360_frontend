@@ -20,7 +20,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { useWatchlist } from "@/hooks/useWatchlist";
+import { useWatchlist } from "@/providers/WatchlistProvider";
 import { useAuth } from "@/providers/AuthProvider";
 import Link from "next/link";
 

@@ -209,6 +209,7 @@ function getSmartColumns(queryFields: string[]): string[] {
 import { useAuth } from "@/providers/AuthProvider";
 import Link from "next/link";
 import { Lock } from "lucide-react";
+import { AddToWatchlistButton } from "@/components/company/AddToWatchlistButton";
 import { useMetricsPreferences } from "@/hooks/useMetricsPreferences";
 
 export default function ResultsPage() {
@@ -1855,6 +1856,7 @@ function ResultsPageContent() {
                               </div>
                             </th>
                           )}
+                          <th className="sticky right-0 bg-slate-100 dark:bg-slate-800 px-2 py-3.5 text-xs uppercase tracking-wider font-semibold text-center w-10 border-l border-slate-200 dark:border-slate-700" />
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800 relative">
@@ -2137,6 +2139,15 @@ function ResultsPageContent() {
                                   {r.ema_20 != null ? `$${r.ema_20.toFixed(2)}` : "—"}
                                 </td>
                               )}
+                              {/* Watchlist action */}
+                              <td
+                                className={`sticky right-0 px-2 py-1 text-center border-l border-slate-200 dark:border-slate-700 ${isEven ? "bg-white dark:bg-slate-900" : "bg-slate-50/50 dark:bg-slate-800/30"}`}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {isAccessible && r.code && (
+                                  <AddToWatchlistButton ticker={r.code} />
+                                )}
+                              </td>
                             </tr>
                           );
                         })}

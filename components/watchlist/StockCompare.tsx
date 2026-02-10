@@ -32,21 +32,13 @@ import { Button } from "@/components/ui/button";
 import { CompanyLogo } from "@/components/company/CompanyLogo";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
-
-function cleanTicker(ticker: string): string {
-  return ticker.replace(/\.US$/i, "").toUpperCase();
-}
-
-const LINE_COLORS = [
-  "#f59e0b", "#8b5cf6", "#06b6d4", "#10b981", "#ef4444",
-  "#ec4899", "#3b82f6", "#f97316", "#14b8a6", "#a855f7",
-];
+import { cleanTicker, LINE_COLORS } from "@/lib/watchlist-utils";
+import { useTheme } from "@/app/providers";
 
 type Period = "1D" | "1M" | "6M" | "YTD" | "1Y" | "5Y";
 type ChartMode = "line" | "candlestick";
 
 const PERIODS: { key: Period; label: string }[] = [
-  { key: "1D", label: "1D" },
   { key: "1M", label: "1M" },
   { key: "6M", label: "6M" },
   { key: "YTD", label: "YTD" },
@@ -125,9 +117,10 @@ export function StockCompare({ tickers, onAddTicker, onRemoveTicker, onClear }: 
     searchTimeoutRef.current = setTimeout(async () => {
       setSearchLoading(true);
       try {
+        const sanitized = searchQuery.replace(/[%_\\]/g, "");
         const { data, error } = await supabaseRef.current
           .from("companies").select("code, name")
-          .or(`code.ilike.%${searchQuery}%,name.ilike.%${searchQuery}%`)
+          .or(`code.ilike.%${sanitized}%,name.ilike.%${sanitized}%`)
           .limit(8);
         if (!error && data) {
           setSearchResults(data.filter((r: SearchResult) => !cleanedTickers.includes(r.code.toUpperCase())).slice(0, 6));
@@ -246,7 +239,7 @@ export function StockCompare({ tickers, onAddTicker, onRemoveTicker, onClear }: 
     if (chartMode === "candlestick" && !selectedStock && stockCodes.length > 0) setSelectedStock(stockCodes[0]);
   }, [chartMode, selectedStock, stockCodes]);
 
-  const isDark = typeof window !== "undefined" && document.documentElement.classList.contains("dark");
+  const { isDark } = useTheme();
 
   useEffect(() => {
     if (chartMode !== "candlestick" || loading || stockCodes.length === 0) return;

@@ -15,6 +15,7 @@ export default function NavigationBar() {
 
   const navLinks = [
     { href: "/screens", label: "Screens" },
+    { href: "/watchlist", label: "Watchlist" },
     { href: "/market", label: "Markets" },
     { href: "/news", label: "News" },
     { href: "/ai", label: "AI Assistant" },
