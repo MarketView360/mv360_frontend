@@ -204,6 +204,12 @@ export interface ScreenerRow {
   week_52_low?: number;
   day_50_ma?: number;
   day_200_ma?: number;
+  rsi_14?: number;
+  macd?: number;
+  macd_signal?: number;
+  macd_divergence?: number;
+  ema_20?: number;
+  technical_date?: string;
 
   // Price Change
   change?: number;

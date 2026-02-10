@@ -41,11 +41,11 @@ export default function NavigationBar() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="hidden lg:flex w-full max-w-sm">
+        <div className="flex items-center gap-4 flex-shrink-0">
+          <div className="hidden lg:flex flex-shrink-0">
             <NavSearch />
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 flex-shrink-0">
             <ThemeToggle />
             {loading ? (
               <div className="hidden lg:flex items-center gap-2">

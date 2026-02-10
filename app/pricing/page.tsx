@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
     Check,
     X,
@@ -275,37 +275,40 @@ export default function PricingPage() {
 
     return (
         <div className="min-h-full bg-slate-50 dark:bg-slate-950">
-            {/* Hero Section */}
-            <section className="pt-16 pb-12 md:pt-24 md:pb-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
-                <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-12 text-center">
-                    <h1 className="text-4xl md:text-5xl font-bold font-heading text-slate-900 dark:text-white mb-4">
+            {/* Hero — compact header with billing toggle */}
+            <section className="pt-6 pb-5 md:pt-8 md:pb-6 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+                <div className="mx-auto max-w-5xl px-4 text-center">
+                    <h1 className="text-2xl md:text-3xl font-bold font-heading text-slate-900 dark:text-white mb-1">
                         Choose Your Plan
                     </h1>
-                    <p className="text-lg text-slate-600 dark:text-slate-300 mb-8 max-w-2xl mx-auto">
-                        Start free, upgrade anytime. No credit card required for the free tier.
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                        Start free, upgrade anytime. No credit card required.
                     </p>
 
                     {/* Billing Toggle */}
-                    <div className="inline-flex items-center gap-3 p-1.5 bg-slate-200 dark:bg-slate-800 rounded-full shadow-inner">
+                    <div className="inline-flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-full">
                         <button
                             onClick={() => setBillingPeriod("monthly")}
-                            className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-all ${!isAnnual
-                                ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-md"
-                                : "text-slate-700 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                            className={`px-5 py-1.5 rounded-full text-xs font-semibold transition-all ${!isAnnual
+                                ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white"
                                 }`}
                         >
                             Monthly
                         </button>
                         <button
                             onClick={() => setBillingPeriod("annually")}
-                            className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-all flex items-center gap-2 ${isAnnual
-                                ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-md"
-                                : "text-slate-700 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                            className={`px-5 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 ${isAnnual
+                                ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
+                                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white"
                                 }`}
                         >
                             Annually
-                            <span className="relative px-3 py-1 text-xs font-black rounded-full bg-gradient-to-r from-growth-500 via-growth-600 to-emerald-600 text-white shadow-lg shadow-growth-500/50 animate-pulse">
-                                🎉 SAVE {savingsPercent}%
+                            <span
+                                className="px-1.5 py-0.5 text-[10px] font-bold rounded-full text-white"
+                                style={{ backgroundColor: '#16a34a' }}
+                            >
+                                -{savingsPercent}%
                             </span>
                         </button>
                     </div>
@@ -313,9 +316,9 @@ export default function PricingPage() {
             </section>
 
             {/* Pricing Cards */}
-            <section className="py-12 md:py-16">
-                <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-12">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 max-w-5xl mx-auto">
+            <section className="py-8 md:py-10">
+                <div className="mx-auto max-w-5xl px-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5 items-start">
                         {plans.map((plan) => (
                             <PricingCard
                                 key={plan.tier}
@@ -326,55 +329,38 @@ export default function PricingPage() {
                             />
                         ))}
                     </div>
+
+                    {/* Trust signals inline */}
+                    <div className="flex flex-wrap items-center justify-center gap-6 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+                        <TrustSignal icon={Shield} text="30-Day Money-Back" />
+                        <TrustSignal icon={RefreshCw} text="Cancel Anytime" />
+                        <TrustSignal icon={Lock} text="Secure via Stripe" />
+                    </div>
                 </div>
             </section>
 
             {/* Feature Comparison */}
-            <section className="py-12 md:py-16 bg-white dark:bg-slate-900 border-y border-slate-200 dark:border-slate-800">
-                <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-12">
-                    <div className="text-center mb-8">
-                        <h2 className="text-2xl md:text-3xl font-bold font-heading text-slate-900 dark:text-white mb-4">
-                            Compare Plans in Detail
-                        </h2>
-                        <button
-                            onClick={() => setShowAllFeatures(!showAllFeatures)}
-                            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-brand to-brand/80 hover:from-brand/90 hover:to-brand/70 shadow-lg shadow-brand/25 hover:shadow-xl hover:shadow-brand/30 transition-all hover:scale-[1.02] border-2 border-brand/20"
-                        >
-                            {showAllFeatures ? (
-                                <>
-                                    <ChevronUp className="w-5 h-5" />
-                                    Show Key Features Only
-                                </>
-                            ) : (
-                                <>
-                                    <ChevronDown className="w-5 h-5" />
-                                    Show All Features
-                                </>
-                            )}
-                        </button>
-                    </div>
+            <section className="py-8 md:py-10 bg-white dark:bg-slate-900 border-y border-slate-200 dark:border-slate-800">
+                <div className="mx-auto max-w-5xl px-4">
+                    <h2 className="text-xl md:text-2xl font-bold font-heading text-slate-900 dark:text-white mb-6">
+                        Compare Plans
+                    </h2>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full min-w-[700px]">
+                    <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+                        <table className="w-full min-w-[640px]">
                             <thead>
-                                <tr className="border-b border-slate-200 dark:border-slate-700">
-                                    <th className="text-left py-4 px-4 font-medium text-slate-500 dark:text-slate-400 w-1/3">
+                                <tr className="bg-slate-50 dark:bg-slate-800/80">
+                                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-[40%]">
                                         Feature
                                     </th>
-                                    <th className="text-center py-4 px-4 font-medium text-slate-900 dark:text-white">
+                                    <th className="text-center py-3 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                                         Free
                                     </th>
-                                    <th className="text-center py-4 px-4 font-medium text-warning">
-                                        <span className="inline-flex items-center gap-1">
-                                            <Lock className="w-4 h-4" />
-                                            Premium
-                                        </span>
+                                    <th className="text-center py-3 px-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#f59e0b' }}>
+                                        Premium
                                     </th>
-                                    <th className="text-center py-4 px-4 font-medium text-elite">
-                                        <span className="inline-flex items-center gap-1">
-                                            <Crown className="w-4 h-4" />
-                                            Max
-                                        </span>
+                                    <th className="text-center py-3 px-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#8b5cf6' }}>
+                                        Max
                                     </th>
                                 </tr>
                             </thead>
@@ -382,11 +368,11 @@ export default function PricingPage() {
                                 {comparisonFeatures
                                     .slice(0, showAllFeatures ? undefined : 4)
                                     .map((category) => (
-                                        <>
-                                            <tr key={category.category} className="bg-slate-50 dark:bg-slate-800/50">
+                                        <React.Fragment key={category.category}>
+                                            <tr className="bg-slate-50/50 dark:bg-slate-800/30">
                                                 <td
                                                     colSpan={4}
-                                                    className="py-3 px-4 font-semibold text-slate-900 dark:text-white"
+                                                    className="py-2 px-4 text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider"
                                                 >
                                                     {category.category}
                                                 </td>
@@ -394,68 +380,68 @@ export default function PricingPage() {
                                             {category.features.map((feature) => (
                                                 <tr
                                                     key={feature.name}
-                                                    className="border-b border-slate-100 dark:border-slate-800"
+                                                    className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors"
                                                 >
-                                                    <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-300">
+                                                    <td className="py-2.5 px-4 text-sm text-slate-600 dark:text-slate-300">
                                                         {feature.name}
                                                     </td>
-                                                    <td className="py-3 px-4 text-center">
+                                                    <td className="py-2.5 px-3 text-center">
                                                         <FeatureValue value={feature.free} />
                                                     </td>
-                                                    <td className="py-3 px-4 text-center">
+                                                    <td className="py-2.5 px-3 text-center">
                                                         <FeatureValue value={feature.pro} />
                                                     </td>
-                                                    <td className="py-3 px-4 text-center">
+                                                    <td className="py-2.5 px-3 text-center">
                                                         <FeatureValue value={feature.elite} />
                                                     </td>
                                                 </tr>
                                             ))}
-                                        </>
+                                        </React.Fragment>
                                     ))}
                             </tbody>
                         </table>
                     </div>
-                </div>
-            </section>
-            {/* Trust Signals */}
-            <section className="py-12 md:py-16 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
-                <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-12">
-                    <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12">
-                        <TrustSignal icon={Shield} text="30-Day Money-Back Guarantee" />
-                        <TrustSignal icon={RefreshCw} text="Cancel Anytime" />
-                        <TrustSignal icon={Lock} text="Secure Payment" />
+
+                    {/* Show All / Show Less button below the table */}
+                    <div className="flex justify-center mt-4">
+                        <button
+                            onClick={() => setShowAllFeatures(!showAllFeatures)}
+                            className="inline-flex items-center gap-1.5 px-5 py-2 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-90"
+                            style={{ backgroundColor: '#0087f6' }}
+                        >
+                            {showAllFeatures ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                            {showAllFeatures ? "Show Less" : `Show All ${comparisonFeatures.length} Categories`}
+                        </button>
                     </div>
                 </div>
             </section>
 
             {/* FAQ Section */}
-            <section className="py-12 md:py-16">
-                <div className="mx-auto max-w-3xl px-4 md:px-8 lg:px-12">
-                    <h2 className="text-2xl md:text-3xl font-bold font-heading text-slate-900 dark:text-white text-center mb-8">
-                        Frequently Asked Questions
+            <section className="py-8 md:py-10">
+                <div className="mx-auto max-w-3xl px-4">
+                    <h2 className="text-xl md:text-2xl font-bold font-heading text-slate-900 dark:text-white text-center mb-5">
+                        FAQ
                     </h2>
 
-                    <div className="space-y-4">
+                    <div className="space-y-2">
                         {faqs.map((faq, index) => (
                             <div
                                 key={index}
-                                className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden"
+                                className="bg-white dark:bg-slate-800/80 rounded-lg border border-slate-200 dark:border-slate-700/80 overflow-hidden"
                             >
                                 <button
                                     onClick={() => setOpenFaq(openFaq === index ? null : index)}
-                                    className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                                    className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
                                 >
-                                    <span className="font-medium text-slate-900 dark:text-white pr-4">
+                                    <span className="text-sm font-medium text-slate-900 dark:text-white pr-4">
                                         {faq.question}
                                     </span>
-                                    {openFaq === index ? (
-                                        <ChevronUp className="w-5 h-5 text-slate-400 flex-shrink-0" />
-                                    ) : (
-                                        <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0" />
-                                    )}
+                                    <ChevronDown
+                                        className={`w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-200 ${openFaq === index ? "rotate-180" : ""}`}
+                                    />
                                 </button>
                                 {openFaq === index && (
-                                    <div className="px-6 pb-4 text-slate-600 dark:text-slate-300 animate-in slide-in-from-top-2 duration-200">
+                                    <div className="px-4 pb-3 text-sm text-slate-500 dark:text-slate-400">
                                         {faq.answer}
                                     </div>
                                 )}
@@ -469,6 +455,12 @@ export default function PricingPage() {
 }
 
 // Pricing Card Component
+const TIER_COLORS: Record<string, { accent: string; bg: string; badge: string }> = {
+    free: { accent: '#64748b', bg: 'transparent', badge: '' },
+    premium: { accent: '#f59e0b', bg: 'linear-gradient(135deg, #f59e0b, #d97706)', badge: '#f59e0b' },
+    max: { accent: '#8b5cf6', bg: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', badge: '#8b5cf6' },
+};
+
 function PricingCard({
     plan,
     price,
@@ -484,105 +476,116 @@ function PricingCard({
     const isMax = plan.tier === "max";
     const isFree = plan.tier === "free";
     const isCurrentPlan = userSubscription?.tier === plan.tier;
+    const colors = TIER_COLORS[plan.tier];
 
     return (
         <div
-            className={`relative p-6 md:p-8 rounded-2xl border transition-all ${plan.highlighted
-                ? "border-brand shadow-xl shadow-brand/10 scale-105 bg-white dark:bg-slate-800"
-                : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
-                }`}
+            className={`relative rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden transition-all`}
+            style={plan.highlighted ? { boxShadow: `0 0 0 1px ${colors.accent}50, 0 8px 30px -6px ${colors.accent}60` } : undefined}
         >
-            {/* Badge */}
-            {plan.badge && (
-                <div
-                    className={`absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs font-semibold text-white whitespace-nowrap ${isPremium ? "gradient-pro" : isMax ? "gradient-elite" : "bg-slate-500"
-                        }`}
-                >
-                    {plan.badge}
-                </div>
+            {/* Top accent bar */}
+            {plan.highlighted && (
+                <div className="h-1" style={{ background: colors.bg }} />
             )}
 
-            {/* Current Plan Badge */}
-            {isCurrentPlan && (
-                <div className="absolute -top-3 right-4 px-3 py-1 rounded-full text-xs font-semibold bg-brand text-white shadow-md">
-                    Current Plan
-                </div>
-            )}
-
-            {/* Plan name */}
-            <div className="flex items-center gap-2 mb-2">
-                {isPremium && <Lock className="w-5 h-5 text-warning" />}
-                {isMax && <Crown className="w-5 h-5 text-elite" />}
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                    {plan.name}
-                </h3>
-            </div>
-
-            {/* Price */}
-            <div className="mb-1">
-                {isAnnual && !isFree && (
-                    <div className="mb-2">
-                        <span className="text-2xl font-bold text-slate-400 dark:text-slate-500 line-through">
-                            ${plan.monthlyPrice.toFixed(2)}
+            <div className="p-5">
+                {/* Badge */}
+                {plan.badge && (
+                    <div className="mb-3">
+                        <span
+                            className="px-3 py-1 rounded-full text-[11px] font-bold text-white"
+                            style={{ backgroundColor: colors.badge || '#64748b' }}
+                        >
+                            {plan.badge}
                         </span>
                     </div>
                 )}
-                <div>
-                    <span className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white">
+
+                {/* Current Plan Badge */}
+                {isCurrentPlan && (
+                    <div className="mb-3">
+                        <span
+                            className="px-3 py-1 rounded-full text-[11px] font-bold text-white"
+                            style={{ backgroundColor: '#0087f6' }}
+                        >
+                            Current Plan
+                        </span>
+                    </div>
+                )}
+
+                {/* Plan name */}
+                <div className="flex items-center gap-2 mb-3">
+                    {isPremium && <Lock className="w-4 h-4" style={{ color: colors.accent }} />}
+                    {isMax && <Crown className="w-4 h-4" style={{ color: colors.accent }} />}
+                    <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+                        {plan.name}
+                    </h3>
+                </div>
+
+                {/* Price */}
+                <div className="mb-1">
+                    <span className="text-3xl font-bold text-slate-900 dark:text-white">
                         {price}
                     </span>
-                    <span className="text-slate-500 dark:text-slate-400">/month</span>
+                    <span className="text-sm text-slate-500 dark:text-slate-400">/mo</span>
+                    {isAnnual && !isFree && (
+                        <span className="ml-2 text-sm text-slate-400 dark:text-slate-500 line-through">
+                            ${plan.monthlyPrice.toFixed(2)}
+                        </span>
+                    )}
                 </div>
-            </div>
 
-            {/* Annual note */}
-            {isAnnual && !isFree && (
-                <div className="mb-4 p-3 rounded-lg bg-gradient-to-r from-growth-50 to-emerald-50 dark:from-growth-950/30 dark:to-emerald-950/30 border-2 border-growth-200 dark:border-growth-800">
-                    <p className="text-sm font-bold text-growth-700 dark:text-growth-300 text-center">
-                        💰 Billed ${plan.annualPrice.toFixed(2)}/year
+                {/* Annual savings */}
+                {isAnnual && !isFree && (
+                    <p className="text-xs font-semibold mt-1 mb-3" style={{ color: '#16a34a' }}>
+                        Save ${((plan.monthlyPrice * 12) - plan.annualPrice).toFixed(0)}/yr &middot; Billed ${plan.annualPrice.toFixed(0)}/yr
                     </p>
-                    <p className="text-lg font-black text-growth-600 dark:text-growth-400 text-center mt-1">
-                        Save ${((plan.monthlyPrice * 12) - plan.annualPrice).toFixed(2)} Annually!
-                    </p>
-                </div>
-            )}
+                )}
 
-            {/* Description */}
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-                {plan.description}
-            </p>
-
-            {/* CTA */}
-            <button
-                disabled
-                className={`w-full inline-flex items-center justify-center px-4 py-3 rounded-xl font-semibold transition-all opacity-60 cursor-not-allowed ${isFree
-                    ? "border-2 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-700"
-                    : isPremium
-                        ? "gradient-pro text-white shadow-lg shadow-warning/25"
-                        : "gradient-elite text-white shadow-lg shadow-elite/25"
-                    }`}
-            >
-                {isFree ? "Get Started Free" : "Subscribe Now"}
-            </button>
-
-            {!isFree && (
-                <p className="text-center text-xs text-slate-400 dark:text-slate-500 mt-2">
-                    Coming soon
+                {/* Description */}
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                    {plan.description}
                 </p>
-            )}
 
-            {/* Features */}
-            <ul className="mt-8 space-y-3">
-                {plan.features.map((feature, i) => (
-                    <li
-                        key={i}
-                        className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300"
+                {/* CTA */}
+                {isFree ? (
+                    <button
+                        className="w-full py-2.5 rounded-lg text-sm font-semibold border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                     >
-                        <Check className="w-4 h-4 text-growth-500 mt-0.5 flex-shrink-0" />
-                        <span>{feature}</span>
-                    </li>
-                ))}
-            </ul>
+                        Get Started Free
+                    </button>
+                ) : (
+                    <button
+                        disabled
+                        className="w-full py-2.5 rounded-lg text-sm font-semibold text-white opacity-60 cursor-not-allowed"
+                        style={{ background: colors.bg }}
+                    >
+                        Subscribe Now
+                    </button>
+                )}
+
+                {!isFree && (
+                    <p className="text-center text-[11px] text-slate-400 dark:text-slate-500 mt-1.5">
+                        Coming soon
+                    </p>
+                )}
+
+                {/* Divider */}
+                <div className="border-t border-slate-100 dark:border-slate-700 mt-4 mb-4" />
+
+                {/* Features */}
+                <ul className="space-y-2">
+                    {plan.features.map((feature, i) => (
+                        <li
+                            key={i}
+                            className="flex items-start gap-2 text-[13px] text-slate-600 dark:text-slate-300"
+                        >
+                            <Check className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" style={{ color: '#16a34a' }} />
+                            <span>{feature}</span>
+                        </li>
+                    ))}
+                </ul>
+            </div>
         </div>
     );
 }
@@ -591,22 +594,22 @@ function PricingCard({
 function FeatureValue({ value }: { value: boolean | string }) {
     if (typeof value === "boolean") {
         return value ? (
-            <Check className="w-5 h-5 text-growth-500 mx-auto" />
+            <Check className="w-4 h-4 mx-auto" style={{ color: '#16a34a' }} />
         ) : (
-            <X className="w-5 h-5 text-slate-300 dark:text-slate-600 mx-auto" />
+            <X className="w-4 h-4 text-slate-300 dark:text-slate-600 mx-auto" />
         );
     }
     return (
-        <span className="text-sm text-slate-700 dark:text-slate-300">{value}</span>
+        <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{value}</span>
     );
 }
 
 // Trust Signal Component
 function TrustSignal({ icon: Icon, text }: { icon: LucideIcon; text: string }) {
     return (
-        <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-            <Icon className="w-5 h-5 text-growth-500" />
-            <span className="text-sm font-medium">{text}</span>
+        <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+            <Icon className="w-4 h-4" style={{ color: '#16a34a' }} />
+            <span className="text-xs font-medium">{text}</span>
         </div>
     );
 }

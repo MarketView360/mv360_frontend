@@ -104,6 +104,12 @@ const QUERY_FIELD_MAP: Record<string, string> = {
   'net debt': 'net_debt',
   'shares outstanding': 'shares_outstanding', 'shares': 'shares_outstanding',
   'float': 'shares_float', 'shares float': 'shares_float',
+  // Technical Indicators
+  'rsi': 'rsi_14', 'rsi 14': 'rsi_14', 'rsi14': 'rsi_14', 'relative strength index': 'rsi_14',
+  'macd': 'macd', 'macd line': 'macd',
+  'macd signal': 'macd_signal', 'signal': 'macd_signal', 'signal line': 'macd_signal',
+  'macd divergence': 'macd_divergence', 'divergence': 'macd_divergence',
+  'ema': 'ema_20', 'ema 20': 'ema_20', 'ema20': 'ema_20', 'exponential moving average': 'ema_20',
 };
 
 // Define related column groups for smart suggestions
@@ -134,6 +140,12 @@ const RELATED_COLUMNS: Record<string, string[]> = {
   'market_cap': ['shares_outstanding', 'shares_float', 'enterprise_value'],
   'shares_outstanding': ['shares_float', 'market_cap'],
   'shares_float': ['shares_outstanding', 'market_cap'],
+  // Technical Indicators
+  'rsi_14': ['macd', 'ema_20', 'day_50_ma', 'day_200_ma'],
+  'macd': ['macd_signal', 'macd_divergence', 'rsi_14', 'ema_20'],
+  'macd_signal': ['macd', 'macd_divergence'],
+  'macd_divergence': ['macd', 'macd_signal'],
+  'ema_20': ['day_50_ma', 'day_200_ma', 'rsi_14', 'macd'],
 };
 
 // Parse query string to extract fields used in filters
@@ -158,6 +170,7 @@ function extractQueryFields(query: string): string[] {
     'payout_ratio', 'return_on_equity_ttm', 'return_on_assets_ttm', 'operating_margin_ttm',
     'profit_margin', 'quarterly_revenue_growth_yoy', 'quarterly_earnings_growth_yoy',
     'beta', 'day_50_ma', 'day_200_ma', 'week_52_high', 'week_52_low',
+    'rsi_14', 'macd', 'macd_signal', 'macd_divergence', 'ema_20',
     'analyst_target_price', 'analyst_rating', 'diluted_eps_ttm', 'revenue_ttm',
     'free_cash_flow', 'operating_cash_flow', 'net_debt', 'shares_outstanding', 'shares_float',
   ];
@@ -334,6 +347,12 @@ function ResultsPageContent() {
     "analyst_rating",
     "shares_outstanding",
     "shares_float",
+    // Technical Indicators (from screener_data)
+    "rsi_14",
+    "macd",
+    "macd_signal",
+    "macd_divergence",
+    "ema_20",
   ];
 
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
@@ -804,6 +823,31 @@ function ResultsPageContent() {
             label: "SMA200",
             format: (v) => (v != null ? Number(v).toFixed(2) : ""),
           },
+          {
+            key: "rsi_14",
+            label: "RSI",
+            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+          },
+          {
+            key: "macd",
+            label: "MACD",
+            format: (v) => (v != null ? Number(v).toFixed(4) : ""),
+          },
+          {
+            key: "macd_signal",
+            label: "Signal",
+            format: (v) => (v != null ? Number(v).toFixed(4) : ""),
+          },
+          {
+            key: "macd_divergence",
+            label: "Divergence",
+            format: (v) => (v != null ? Number(v).toFixed(4) : ""),
+          },
+          {
+            key: "ema_20",
+            label: "EMA20",
+            format: (v) => (v != null ? Number(v).toFixed(2) : ""),
+          },
         ];
 
       // Filter to only visible columns
@@ -876,8 +920,8 @@ function ResultsPageContent() {
                 const val = col.format(raw);
                 if (
                   typeof raw === 'number' &&
-                  (col.key.includes('market_cap') ||
-                    col.key.includes('price') ||
+                  (String(col.key).includes('market_cap') ||
+                    String(col.key).includes('price') ||
                     col.key !== 'code')
                 ) {
                   // Use the formatted string for consistency
@@ -1251,6 +1295,12 @@ function ResultsPageContent() {
                     { key: "beta", label: "Beta" },
                     { key: "week_52_high", label: "52W High" },
                     { key: "week_52_low", label: "52W Low" },
+                    // Technical Indicators
+                    { key: "rsi_14", label: "RSI" },
+                    { key: "macd", label: "MACD" },
+                    { key: "macd_signal", label: "MACD Signal" },
+                    { key: "macd_divergence", label: "Divergence" },
+                    { key: "ema_20", label: "EMA 20" },
                   ].map((col) => (
                     <DropdownMenuItem
                       key={col.key}
@@ -1755,6 +1805,56 @@ function ResultsPageContent() {
                               </div>
                             </th>
                           )}
+                          {visibleColumns.has("rsi_14") && (
+                            <th
+                              className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                              onClick={() => toggleSort("rsi_14")}
+                            >
+                              <div className="flex items-center justify-end">
+                                RSI <SortIcon column="rsi_14" />
+                              </div>
+                            </th>
+                          )}
+                          {visibleColumns.has("macd") && (
+                            <th
+                              className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                              onClick={() => toggleSort("macd")}
+                            >
+                              <div className="flex items-center justify-end">
+                                MACD <SortIcon column="macd" />
+                              </div>
+                            </th>
+                          )}
+                          {visibleColumns.has("macd_signal") && (
+                            <th
+                              className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                              onClick={() => toggleSort("macd_signal")}
+                            >
+                              <div className="flex items-center justify-end">
+                                Signal <SortIcon column="macd_signal" />
+                              </div>
+                            </th>
+                          )}
+                          {visibleColumns.has("macd_divergence") && (
+                            <th
+                              className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                              onClick={() => toggleSort("macd_divergence")}
+                            >
+                              <div className="flex items-center justify-end">
+                                Divergence <SortIcon column="macd_divergence" />
+                              </div>
+                            </th>
+                          )}
+                          {visibleColumns.has("ema_20") && (
+                            <th
+                              className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                              onClick={() => toggleSort("ema_20")}
+                            >
+                              <div className="flex items-center justify-end">
+                                EMA20 <SortIcon column="ema_20" />
+                              </div>
+                            </th>
+                          )}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800 relative">
@@ -2005,6 +2105,36 @@ function ResultsPageContent() {
                               {visibleColumns.has("beta") && (
                                 <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
                                   {r.beta != null ? r.beta.toFixed(2) : "—"}
+                                </td>
+                              )}
+                              {/* RSI */}
+                              {visibleColumns.has("rsi_14") && (
+                                <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
+                                  {r.rsi_14 != null ? r.rsi_14.toFixed(2) : "—"}
+                                </td>
+                              )}
+                              {/* MACD */}
+                              {visibleColumns.has("macd") && (
+                                <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                  {r.macd != null ? r.macd.toFixed(4) : "—"}
+                                </td>
+                              )}
+                              {/* MACD Signal */}
+                              {visibleColumns.has("macd_signal") && (
+                                <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                  {r.macd_signal != null ? r.macd_signal.toFixed(4) : "—"}
+                                </td>
+                              )}
+                              {/* MACD Divergence */}
+                              {visibleColumns.has("macd_divergence") && (
+                                <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                  {r.macd_divergence != null ? r.macd_divergence.toFixed(4) : "—"}
+                                </td>
+                              )}
+                              {/* EMA 20 */}
+                              {visibleColumns.has("ema_20") && (
+                                <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums">
+                                  {r.ema_20 != null ? `$${r.ema_20.toFixed(2)}` : "—"}
                                 </td>
                               )}
                             </tr>

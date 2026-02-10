@@ -22,6 +22,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+import { AddToWatchlistButton } from "@/components/company/AddToWatchlistButton";
 import { CompanyChartsSwitcher, type PriceHistoryPoint } from "@/components/company/CompanyChartsSwitcher";
 import { CompanyDescriptionModal } from "@/components/company/CompanyDescriptionModal";
 import { CompanyLogo } from "@/components/company/CompanyLogo";
@@ -589,38 +590,41 @@ function CompanyHero({ data }: { data: CompanyViewModel }) {
           </div>
         </div>
 
-        <div className="flex flex-col md:flex-row md:items-end gap-6">
+        <div className="flex flex-col md:flex-row md:items-center gap-6">
           {/* 52-Week Range Visualization */}
           {data.week52High && data.week52Low && data.price && (
             <FiftyTwoWeekRange
               high={data.week52High}
               low={data.week52Low}
               current={data.price}
-              className="hidden md:block" // Hide on small screens if too cramped
+              className="hidden md:block"
             />
           )}
 
-          <div className="flex flex-col items-end">
-            <div className="flex items-baseline gap-3">
-              <UsdValue
-                amount={data.price}
-                className="text-4xl font-bold text-slate-900 dark:text-white"
-              />
-
-              <Badge
-                variant="outline"
-                className={`text-lg font-semibold ${isPositive
-                  ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-400 dark:border-green-900"
-                  : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900"
-                  }`}
-              >
-                {isPositive ? "+" : ""}
-                {data.changePercent != null
-                  ? `${data.changePercent.toFixed(2)}%`
-                  : "—"}
-              </Badge>
+          <div className="flex items-center gap-4">
+            <div className="flex flex-col items-end">
+              <div className="flex items-baseline gap-3">
+                <UsdValue
+                  amount={data.price}
+                  className="text-4xl font-bold text-slate-900 dark:text-white"
+                />
+                <Badge
+                  variant="outline"
+                  className={`text-lg font-semibold ${isPositive
+                    ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-400 dark:border-green-900"
+                    : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900"
+                    }`}
+                >
+                  {isPositive ? "+" : ""}
+                  {data.changePercent != null
+                    ? `${data.changePercent.toFixed(2)}%`
+                    : "—"}
+                </Badge>
+              </div>
+              <span className="text-xs text-muted-foreground mt-1">Market Close</span>
             </div>
-            <span className="text-xs text-muted-foreground mt-1">Market Close</span>
+
+            <AddToWatchlistButton ticker={data.ticker} />
           </div>
         </div>
       </div>

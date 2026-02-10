@@ -59,6 +59,8 @@ export const AVAILABLE_TABLES = [
   "outstanding_shares_history_annual",
   "outstanding_shares_history_quarterly",
   "company_financials_view",
+  "technical_indicators",
+  "screener_data",
 ] as const;
 
 export type AvailableTable = (typeof AVAILABLE_TABLES)[number];
@@ -185,6 +187,18 @@ export const FIELD_ALIASES: Record<string, FieldMapping> = {
   volume: { table: "price_data", column: "volume" },
   change: { table: "price_data", column: "change" },
   change_percent: { table: "price_data", column: "change_percent" },
+
+  // Technical Indicators (from screener_data materialized view)
+  rsi: { table: "screener_data", column: "rsi_14" },
+  rsi_14: { table: "screener_data", column: "rsi_14" },
+  rsi14: { table: "screener_data", column: "rsi_14" },
+  macd: { table: "screener_data", column: "macd" },
+  macd_signal: { table: "screener_data", column: "macd_signal" },
+  signal: { table: "screener_data", column: "macd_signal" },
+  macd_divergence: { table: "screener_data", column: "macd_divergence" },
+  ema_20: { table: "screener_data", column: "ema_20" },
+  ema20: { table: "screener_data", column: "ema_20" },
+  ema: { table: "screener_data", column: "ema_20" },
 
   // Balance sheet (balance_sheet_annual/quarterly tables)
   total_assets: { table: "balance_sheet_annual", column: "total_assets" },
@@ -346,6 +360,10 @@ export const BACKEND_FIELD_MAP: Record<string, string> = {
   "price/sales": "price_sales_ttm",
   "p/s": "price_sales_ttm",
   ps: "price_sales_ttm",
+  "price to cash flow": "price_to_cash_flow",
+  "price/cash flow": "price_to_cash_flow",
+  "p/cf": "price_to_cash_flow",
+  pcf: "price_to_cash_flow",
   "ev/ebitda": "ev_ebitda",
   "ev to ebitda": "ev_ebitda",
   "ev/revenue": "ev_revenue",
@@ -514,6 +532,29 @@ export const BACKEND_FIELD_MAP: Record<string, string> = {
   "dividends paid": "dividends_paid",
   "net borrowings": "net_borrowings",
   "change in cash": "change_in_cash",
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TECHNICAL INDICATORS (screener_data view)
+  // ═══════════════════════════════════════════════════════════════════════════
+  rsi: "rsi_14",
+  "rsi 14": "rsi_14",
+  rsi_14: "rsi_14",
+  rsi14: "rsi_14",
+  "relative strength index": "rsi_14",
+  macd: "macd",
+  "macd line": "macd",
+  "macd signal": "macd_signal",
+  macd_signal: "macd_signal",
+  signal: "macd_signal",
+  "signal line": "macd_signal",
+  "macd divergence": "macd_divergence",
+  macd_divergence: "macd_divergence",
+  divergence: "macd_divergence",
+  ema: "ema_20",
+  "ema 20": "ema_20",
+  ema_20: "ema_20",
+  ema20: "ema_20",
+  "exponential moving average": "ema_20",
 };
 
 
@@ -672,6 +713,15 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       example: "Price to Sales < 5",
       category: "Valuation",
       backendField: "price_sales_ttm",
+    },
+    {
+      name: "Price to Cash Flow",
+      description: "Market price relative to operating cash flow per share",
+      unit: "x",
+      keywords: ["pcf", "price cash flow", "p/cf"],
+      example: "Price to Cash Flow < 10",
+      category: "Valuation",
+      backendField: "price_to_cash_flow",
     },
   ],
   Profitability: [
@@ -860,6 +910,51 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       example: "Change Percent > 2",
       category: "Technical Analysis",
       backendField: "change_percent",
+    },
+    {
+      name: "RSI",
+      description: "Relative Strength Index (14-period)",
+      unit: "",
+      keywords: ["rsi", "rsi 14", "relative strength index", "momentum"],
+      example: "RSI < 30",
+      category: "Technical Analysis",
+      backendField: "rsi_14",
+    },
+    {
+      name: "MACD",
+      description: "Moving Average Convergence Divergence",
+      unit: "",
+      keywords: ["macd", "macd line", "convergence divergence"],
+      example: "MACD > 0",
+      category: "Technical Analysis",
+      backendField: "macd",
+    },
+    {
+      name: "MACD Signal",
+      description: "MACD Signal Line (9-period EMA of MACD)",
+      unit: "",
+      keywords: ["macd signal", "signal line", "signal"],
+      example: "MACD > MACD Signal",
+      category: "Technical Analysis",
+      backendField: "macd_signal",
+    },
+    {
+      name: "MACD Divergence",
+      description: "Difference between MACD and Signal Line",
+      unit: "",
+      keywords: ["macd divergence", "divergence", "histogram"],
+      example: "MACD Divergence > 0",
+      category: "Technical Analysis",
+      backendField: "macd_divergence",
+    },
+    {
+      name: "EMA 20",
+      description: "Exponential Moving Average (20-period)",
+      unit: "$",
+      keywords: ["ema", "ema 20", "exponential moving average"],
+      example: "Price > EMA 20",
+      category: "Technical Analysis",
+      backendField: "ema_20",
     },
   ],
   "Company Info": [
@@ -1824,33 +1919,33 @@ export const validateQuery = (query: string): QueryValidationError[] => {
       if (conditionTrimmed.startsWith("(") && conditionTrimmed.endsWith(")")) {
         // Extract the content inside the parentheses
         const innerContent = conditionTrimmed.substring(1, conditionTrimmed.length - 1).trim();
-        
+
         // Recursively split and validate the inner expression
         const innerConditions = splitByLogicalOperators(innerContent);
-        
+
         innerConditions.forEach((innerCondition) => {
           if (["AND", "OR"].includes(innerCondition.toUpperCase())) return;
-          
+
           const innerTrimmed = innerCondition.trim();
           if (!innerTrimmed) return;
-          
+
           // Recursively handle nested parentheses
           if (innerTrimmed.startsWith("(") && innerTrimmed.endsWith(")")) {
             // For deeply nested parentheses, we'll just validate them at the current level
             // This prevents infinite recursion while still catching basic issues
             return;
           }
-          
+
           // Validate this inner condition
           const operatorMatch = innerTrimmed.match(
             /(>=|<=|!=|>|<|=|\bIN\b|\bBETWEEN\b|\bLIKE\b|\bIS\s+NOT\s+NULL\b|\bIS\s+NULL\b)/i
           );
-          
+
           if (!operatorMatch) {
             const isKnownField = allValidFields.some(
               (field) => field.toLowerCase() === innerTrimmed.toLowerCase()
             );
-            
+
             if (isKnownField) {
               errors.push({
                 line: lineIndex + 1,
@@ -1868,25 +1963,33 @@ export const validateQuery = (query: string): QueryValidationError[] => {
             }
             return;
           }
-          
+
           const operator = operatorMatch[0];
           const operatorIndex = innerTrimmed.indexOf(operator);
           const fieldPart = innerTrimmed.substring(0, operatorIndex).trim();
           const valuePart = innerTrimmed.substring(operatorIndex + operator.length).trim();
-          
+
           // Validate field in parenthesized expression
           if (fieldPart) {
             const isValidField = allValidFields.some(
               (field) => field.toLowerCase() === fieldPart.toLowerCase()
             );
-            
+
             if (!isValidField) {
               const closeMatch = allValidFields.find((field) => {
                 const fieldLower = field.toLowerCase();
                 const fieldPartLower = fieldPart.toLowerCase();
-                return fieldLower.includes(fieldPartLower) || fieldPartLower.includes(fieldLower);
+                if (fieldLower === fieldPartLower) return true;
+                const lenRatio = Math.min(fieldLower.length, fieldPartLower.length) / Math.max(fieldLower.length, fieldPartLower.length);
+                if (lenRatio > 0.5) {
+                  if (fieldLower.includes(fieldPartLower) || fieldPartLower.includes(fieldLower)) return true;
+                }
+                const fieldWords = fieldLower.split(/\s+/);
+                const inputWords = fieldPartLower.split(/\s+/);
+                if (Math.abs(fieldWords.length - inputWords.length) > 1) return false;
+                return inputWords.every((w: string) => fieldWords.some((fw: string) => fw.includes(w) || w.includes(fw)));
               });
-              
+
               if (closeMatch) {
                 errors.push({
                   line: lineIndex + 1,
@@ -1904,7 +2007,7 @@ export const validateQuery = (query: string): QueryValidationError[] => {
               }
             }
           }
-          
+
           // Validate value for IS NULL/IS NOT NULL - no value needed
           if (!valuePart && !/(IS\s+NULL|IS\s+NOT\s+NULL)$/i.test(operator)) {
             errors.push({
@@ -1915,7 +2018,7 @@ export const validateQuery = (query: string): QueryValidationError[] => {
             });
           }
         });
-        
+
         return; // Skip further processing for parenthesized expressions
       }
 
@@ -2002,16 +2105,24 @@ export const validateQuery = (query: string): QueryValidationError[] => {
             // Exact match
             if (fieldLower === fieldPartLower) return true;
 
-            // Contains match
-            if (
-              fieldLower.includes(fieldPartLower) ||
-              fieldPartLower.includes(fieldLower)
-            )
-              return true;
+            // Contains match - but only when lengths are similar to avoid
+            // short fields like "Price" matching long inputs like "price to Cash Flow"
+            const lenRatio = Math.min(fieldLower.length, fieldPartLower.length) / Math.max(fieldLower.length, fieldPartLower.length);
+            if (lenRatio > 0.5) {
+              if (
+                fieldLower.includes(fieldPartLower) ||
+                fieldPartLower.includes(fieldLower)
+              )
+                return true;
+            }
 
             // Word-based match for multi-word fields
             const fieldWords = fieldLower.split(/\s+/);
             const inputWords = fieldPartLower.split(/\s+/);
+
+            // Require that the word counts are similar (within 1) to avoid
+            // single-word fields matching multi-word inputs
+            if (Math.abs(fieldWords.length - inputWords.length) > 1) return false;
 
             return inputWords.every((inputWord: string) =>
               fieldWords.some(
@@ -2048,7 +2159,7 @@ export const validateQuery = (query: string): QueryValidationError[] => {
 
       // Validate value - IS NULL and IS NOT NULL don't need values
       const isNullOperator = /^IS\s+(NOT\s+)?NULL$/i.test(operator);
-      
+
       if (!valuePart && !isNullOperator) {
         errors.push({
           line: lineIndex + 1,

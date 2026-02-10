@@ -121,7 +121,7 @@ export function PaywallModal({
             />
 
             {/* Modal */}
-            <div className="relative w-full max-w-5xl max-h-[90vh] overflow-auto glass-paywall p-6 md:p-8 animate-in zoom-in-95 fade-in duration-300">
+            <div className="relative w-full max-w-5xl glass-paywall p-5 md:p-6 animate-in zoom-in-95 fade-in duration-300">
                 {/* Close button */}
                 <button
                     onClick={onClose}
@@ -132,14 +132,14 @@ export function PaywallModal({
                 </button>
 
                 {/* Header */}
-                <div className="text-center mb-8">
+                <div className="text-center mb-4">
                     {feature && (
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand/10 text-brand text-sm font-medium mb-4">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand/10 text-brand text-sm font-medium mb-2">
                             <Lock className="w-4 h-4" />
                             Unlock {feature}
                         </div>
                     )}
-                    <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white mb-2">
+                    <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white mb-1">
                         Choose Your Plan
                     </h2>
                     <p className="text-slate-500 dark:text-slate-400">
@@ -149,7 +149,7 @@ export function PaywallModal({
 
                 {/* Benefits List */}
                 {benefits && benefits.length > 0 && (
-                    <div className="max-w-md mx-auto mb-8 bg-slate-50 dark:bg-slate-900/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800 text-left">
+                    <div className="max-w-md mx-auto mb-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 border border-slate-100 dark:border-slate-800 text-left">
                         <h4 className="font-semibold text-sm mb-3 text-slate-900 dark:text-white">What you get:</h4>
                         <ul className="space-y-2">
                             {benefits.map((b, i) => (
@@ -183,7 +183,7 @@ export function PaywallModal({
                 )}
 
                 {/* Trust signals */}
-                <div className="flex flex-wrap items-center justify-center gap-6 mt-8 pt-6 border-t border-slate-200/20">
+                <div className="flex flex-wrap items-center justify-center gap-6 mt-4 pt-4 border-t border-slate-200/20">
                     <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
                         <Sparkles className="w-4 h-4 text-growth-500" />
                         30-Day Money Back
@@ -214,8 +214,8 @@ function PricingCard({ plan, recommended }: PricingCardProps) {
 
     return (
         <div
-            className={`relative p-6 rounded-2xl border transition-all ${recommended
-                ? "border-brand shadow-lg shadow-brand/10 scale-105"
+            className={`relative p-4 rounded-2xl border transition-all ${recommended
+                ? "border-brand shadow-lg shadow-brand/10 scale-[1.02]"
                 : "border-slate-200 dark:border-slate-700"
                 } bg-white dark:bg-slate-800`}
         >
@@ -239,8 +239,8 @@ function PricingCard({ plan, recommended }: PricingCardProps) {
             </div>
 
             {/* Price */}
-            <div className="mb-4">
-                <span className="text-4xl font-bold text-slate-900 dark:text-white">
+            <div className="mb-3">
+                <span className="text-3xl font-bold text-slate-900 dark:text-white">
                     {plan.price}
                 </span>
                 <span className="text-slate-500 dark:text-slate-400">
@@ -249,7 +249,7 @@ function PricingCard({ plan, recommended }: PricingCardProps) {
             </div>
 
             {/* Description */}
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
                 {plan.description}
             </p>
 
@@ -267,7 +267,7 @@ function PricingCard({ plan, recommended }: PricingCardProps) {
             </Link>
 
             {/* Features */}
-            <ul className="mt-6 space-y-3">
+            <ul className="mt-4 space-y-2">
                 {plan.features.map((feature, i) => (
                     <li
                         key={i}
