@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +20,25 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
 import { CompanyLogo } from "@/components/company/CompanyLogo";
+
+function generateNewsSlug(title: string, link: string): string {
+  const titleSlug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 60);
+  const hash = link
+    .split("")
+    .reduce((acc, char) => ((acc << 5) - acc + char.charCodeAt(0)) | 0, 0);
+  const hashStr = Math.abs(hash).toString(36).slice(0, 6);
+  return `${titleSlug}-${hashStr}`;
+}
+
+function cacheNewsArticle(slug: string, item: { title: string; content: string; date: string; link: string; symbols?: string[] }) {
+  if (typeof window !== "undefined") {
+    sessionStorage.setItem(`article_${slug}`, JSON.stringify(item));
+  }
+}
 
 type ScreenerRow = {
   code: string;
@@ -443,12 +463,13 @@ export default function MarketOverview({
                     </p>
                   </div>
                 )}
-                {news.map((item, i) => (
-                  <a
+                {news.map((item, i) => {
+                  const newsSlug = generateNewsSlug(item.title, item.link);
+                  return (
+                  <Link
                     key={i}
-                    href={item.link}
-                    target="_blank"
-                    rel="noreferrer"
+                    href={`/news/${newsSlug}`}
+                    onClick={() => cacheNewsArticle(newsSlug, item)}
                     className="block p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all duration-200 cursor-pointer group border-l-2 border-transparent hover:border-brand/50"
                   >
                     <div className="flex items-center justify-between mb-2">
@@ -487,8 +508,9 @@ export default function MarketOverview({
                       <span>Read more</span>
                       <ArrowUpRight className="h-3 w-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                     </div>
-                  </a>
-                ))}
+                  </Link>
+                  );
+                })}
               </div>
             )}
           </CardContent>

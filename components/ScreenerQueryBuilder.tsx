@@ -82,7 +82,7 @@ export default function ScreenerQueryBuilder({
 }) {
   const { session } = useAuth();
   // Check if user has access to pro features (pro or elite tier)
-  const isPro = session?.tier === "pro" || session?.tier === "elite";
+  const isPro = session?.tier === "premium" || session?.tier === "pro" || session?.tier === "elite";
   const [showPaywall, setShowPaywall] = useState(false);
   const [paywallFeature, setPaywallFeature] = useState("");
 

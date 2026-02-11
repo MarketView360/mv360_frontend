@@ -1,85 +1,15 @@
 "use client";
 
 import { useEffect, useCallback } from "react";
-import { X, Check, Lock, Crown, Sparkles } from "lucide-react";
+import { X, Check, Lock, Crown } from "lucide-react";
 import Link from "next/link";
 import { TierType } from "./PaywallOverlay";
-
-interface PricingPlan {
-    name: string;
-    tier: "free" | "premium" | "elite";
-    price: string;
-    period: string;
-    description: string;
-    features: string[];
-    highlighted?: boolean;
-    badge?: string;
-}
-
-const plans: PricingPlan[] = [
-    {
-        name: "Free Forever",
-        tier: "free",
-        price: "$0",
-        period: "/month",
-        description: "Perfect for getting started",
-        features: [
-            "Basic stock screener (10 filters)",
-            "View up to 100 results",
-            "15-min delayed quotes",
-            "Basic charts (3 timeframes)",
-            "7 days of news",
-            "3 watchlists (25 stocks each)",
-            "5 AI questions per day",
-        ],
-    },
-    {
-        name: "Premium",
-        tier: "premium",
-        price: "$19.99",
-        period: "/month",
-        description: "For serious individual investors",
-        highlighted: true,
-        badge: "Most Popular",
-        features: [
-            "Everything in Free, plus:",
-            "Advanced screener (unlimited filters)",
-            "Unlimited results",
-            "All chart timeframes & indicators",
-            "Full news archive with sentiment",
-            "Unlimited watchlists",
-            "100 AI questions per day",
-            "Export to CSV/Excel",
-            "Email alerts",
-        ],
-    },
-    {
-        name: "Elite Investor",
-        tier: "elite",
-        price: "$49.99",
-        period: "/month",
-        description: "For professional traders",
-        badge: "Best Value",
-        features: [
-            "Everything in Premium, plus:",
-            "Real-time data",
-            "Pre-market & after-hours data",
-            "Unlimited AI questions",
-            "Voice input & document upload",
-            "Unlimited portfolios",
-            "Advanced portfolio analytics",
-            "API access (10,000 calls/mo)",
-            "Premium support",
-        ],
-    },
-];
 
 interface PaywallModalProps {
     isOpen: boolean;
     onClose: () => void;
     tier?: TierType;
     feature?: string;
-    comparisonMode?: boolean;
     benefits?: string[];
 }
 
@@ -88,10 +18,8 @@ export function PaywallModal({
     onClose,
     tier = "premium",
     feature,
-    comparisonMode = true,
     benefits,
 }: PaywallModalProps) {
-    // Handle escape key
     const handleEscape = useCallback(
         (e: KeyboardEvent) => {
             if (e.key === "Escape") onClose();
@@ -112,172 +40,83 @@ export function PaywallModal({
 
     if (!isOpen) return null;
 
+    const isPremium = tier === "premium";
+    const tierName = isPremium ? "Premium" : "Elite";
+
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             {/* Backdrop */}
             <div
-                className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200"
+                className="absolute inset-0 bg-black/40 backdrop-blur-sm"
                 onClick={onClose}
             />
 
             {/* Modal */}
-            <div className="relative w-full max-w-5xl glass-paywall p-5 md:p-6 animate-in zoom-in-95 fade-in duration-300">
+            <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in zoom-in-95 fade-in duration-200">
                 {/* Close button */}
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 p-2 rounded-full hover:bg-slate-200/20 transition-colors z-10"
+                    className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors z-10"
                     aria-label="Close"
                 >
-                    <X className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+                    <X className="w-4 h-4 text-slate-400" />
                 </button>
 
-                {/* Header */}
-                <div className="text-center mb-4">
-                    {feature && (
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand/10 text-brand text-sm font-medium mb-2">
-                            <Lock className="w-4 h-4" />
-                            Unlock {feature}
+                {/* Content */}
+                <div className="p-6 text-center">
+                    {/* Icon */}
+                    <div className={`mx-auto w-14 h-14 rounded-2xl flex items-center justify-center mb-4 ${isPremium ? "bg-brand/10" : "bg-amber-500/10"}`}>
+                        {isPremium ? (
+                            <Lock className="w-7 h-7 text-brand" />
+                        ) : (
+                            <Crown className="w-7 h-7 text-amber-500" />
+                        )}
+                    </div>
+
+                    {/* Title */}
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
+                        {feature ? `Unlock ${feature}` : `Upgrade to ${tierName}`}
+                    </h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-5">
+                        This feature is available on {tierName} and above.
+                    </p>
+
+                    {/* Benefits */}
+                    {benefits && benefits.length > 0 && (
+                        <div className="text-left mb-5 bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-800">
+                            <ul className="space-y-2.5">
+                                {benefits.map((b, i) => (
+                                    <li key={i} className="flex items-start gap-2.5 text-sm text-slate-700 dark:text-slate-300">
+                                        <Check className="w-4 h-4 text-brand mt-0.5 shrink-0" />
+                                        <span>{b}</span>
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
                     )}
-                    <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white mb-1">
-                        Choose Your Plan
-                    </h2>
-                    <p className="text-slate-500 dark:text-slate-400">
-                        Start free, upgrade anytime. No credit card required.
+
+                    {/* Actions */}
+                    <div className="space-y-2">
+                        <Link
+                            href="/pricing"
+                            className="w-full inline-flex items-center justify-center px-5 py-2.5 rounded-xl font-semibold text-white bg-brand hover:bg-brand/90 transition-colors text-sm"
+                        >
+                            View Plans
+                        </Link>
+                        <button
+                            onClick={onClose}
+                            className="w-full px-5 py-2 rounded-xl text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                        >
+                            Maybe Later
+                        </button>
+                    </div>
+
+                    {/* Trust */}
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-4">
+                        No credit card required · Cancel anytime
                     </p>
                 </div>
-
-                {/* Benefits List */}
-                {benefits && benefits.length > 0 && (
-                    <div className="max-w-md mx-auto mb-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 border border-slate-100 dark:border-slate-800 text-left">
-                        <h4 className="font-semibold text-sm mb-3 text-slate-900 dark:text-white">What you get:</h4>
-                        <ul className="space-y-2">
-                            {benefits.map((b, i) => (
-                                <li key={i} className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
-                                    <Check className="w-4 h-4 text-brand mt-0.5 shrink-0" />
-                                    <span>{b}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
-
-                {/* Pricing cards */}
-                {comparisonMode ? (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {plans.map((plan) => (
-                            <PricingCard
-                                key={plan.tier}
-                                plan={plan}
-                                recommended={plan.tier === tier}
-                            />
-                        ))}
-                    </div>
-                ) : (
-                    <div className="max-w-md mx-auto">
-                        <PricingCard
-                            plan={plans.find((p) => p.tier === tier) || plans[1]}
-                            recommended
-                        />
-                    </div>
-                )}
-
-                {/* Trust signals */}
-                <div className="flex flex-wrap items-center justify-center gap-6 mt-4 pt-4 border-t border-slate-200/20">
-                    <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-                        <Sparkles className="w-4 h-4 text-growth-500" />
-                        30-Day Money Back
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-                        <Check className="w-4 h-4 text-growth-500" />
-                        Cancel Anytime
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-                        <Lock className="w-4 h-4 text-growth-500" />
-                        Secure Payment
-                    </div>
-                </div>
             </div>
-        </div>
-    );
-}
-
-interface PricingCardProps {
-    plan: PricingPlan;
-    recommended?: boolean;
-}
-
-function PricingCard({ plan, recommended }: PricingCardProps) {
-    const isPremium = plan.tier === "premium";
-    const isElite = plan.tier === "elite";
-    const isFree = plan.tier === "free";
-
-    return (
-        <div
-            className={`relative p-4 rounded-2xl border transition-all ${recommended
-                ? "border-brand shadow-lg shadow-brand/10 scale-[1.02]"
-                : "border-slate-200 dark:border-slate-700"
-                } bg-white dark:bg-slate-800`}
-        >
-            {/* Badge */}
-            {plan.badge && (
-                <div
-                    className={`absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-semibold text-white ${isPremium ? "gradient-premium" : isElite ? "gradient-elite" : "bg-slate-500"
-                        }`}
-                >
-                    {plan.badge}
-                </div>
-            )}
-
-            {/* Plan name */}
-            <div className="flex items-center gap-2 mb-2">
-                {isPremium && <Lock className="w-4 h-4 text-warning" />}
-                {isElite && <Crown className="w-4 h-4 text-elite" />}
-                <h3 className="font-semibold text-slate-900 dark:text-white">
-                    {plan.name}
-                </h3>
-            </div>
-
-            {/* Price */}
-            <div className="mb-3">
-                <span className="text-3xl font-bold text-slate-900 dark:text-white">
-                    {plan.price}
-                </span>
-                <span className="text-slate-500 dark:text-slate-400">
-                    {plan.period}
-                </span>
-            </div>
-
-            {/* Description */}
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                {plan.description}
-            </p>
-
-            {/* CTA */}
-            <Link
-                href="/pricing"
-                className={`w-full inline-flex items-center justify-center px-4 py-2.5 rounded-lg font-medium transition-all hover:scale-[1.02] ${isFree
-                    ? "border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-                    : isPremium
-                        ? "gradient-premium text-white"
-                        : "gradient-elite text-white"
-                    }`}
-            >
-                {isFree ? "Get Started Free" : "Start Free Trial"}
-            </Link>
-
-            {/* Features */}
-            <ul className="mt-4 space-y-2">
-                {plan.features.map((feature, i) => (
-                    <li
-                        key={i}
-                        className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300"
-                    >
-                        <Check className="w-4 h-4 text-growth-500 mt-0.5 flex-shrink-0" />
-                        <span>{feature}</span>
-                    </li>
-                ))}
-            </ul>
         </div>
     );
 }

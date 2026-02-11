@@ -14,9 +14,26 @@ export interface NewsArticle {
     content?: string;
 }
 
-// Helper functions (placeholder implementations if not available elsewhere)
+// Slug generation must match news/[slug]/page.tsx exactly
 const generateSlugFromArticle = (article: NewsArticle) => {
-    return article.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const titleSlug = article.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')
+        .slice(0, 60);
+
+    const hash = article.link
+        .split('')
+        .reduce((acc, char) => ((acc << 5) - acc + char.charCodeAt(0)) | 0, 0);
+    const hashStr = Math.abs(hash).toString(36).slice(0, 6);
+
+    return `${titleSlug}-${hashStr}`;
+};
+
+const cacheArticleForDetail = (slug: string, article: NewsArticle) => {
+    if (typeof window !== 'undefined') {
+        sessionStorage.setItem(`article_${slug}`, JSON.stringify(article));
+    }
 };
 
 const formatNewsDate = (dateStr: string) => {
@@ -116,6 +133,7 @@ export function NewsFeed({
                                     <Link
                                         key={article.link}
                                         href={href}
+                                        onClick={() => cacheArticleForDetail(validSlug, article)}
                                         className="block rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 hover:border-brand hover:shadow-sm transition-colors"
                                     >
                                         <div className="flex flex-col gap-2">
@@ -141,6 +159,7 @@ export function NewsFeed({
                                 <Link
                                     key={article.link}
                                     href={href}
+                                    onClick={() => cacheArticleForDetail(validSlug, article)}
                                     className="block pb-3 border-b border-slate-200 dark:border-slate-700 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-900/60 rounded-md px-2 -mx-2 transition-colors"
                                 >
                                     <h4 className="text-sm font-medium mb-1 text-slate-900 dark:text-white line-clamp-2">

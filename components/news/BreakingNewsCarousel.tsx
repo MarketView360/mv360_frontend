@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -10,6 +11,21 @@ interface BreakingNewsItem {
     link: string;
     time: string;
     date?: string;
+    content?: string;
+    slug: string;
+}
+
+function generateNewsSlug(title: string, link: string): string {
+    const titleSlug = title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "")
+        .slice(0, 60);
+    const hash = link
+        .split("")
+        .reduce((acc: number, char: string) => ((acc << 5) - acc + char.charCodeAt(0)) | 0, 0);
+    const hashStr = Math.abs(hash).toString(36).slice(0, 6);
+    return `${titleSlug}-${hashStr}`;
 }
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
@@ -49,13 +65,22 @@ export function BreakingNewsCarousel() {
 
                 const newsData = await response.json();
 
-                const formattedNews: BreakingNewsItem[] = newsData.map((item: any, index: number) => ({
-                    id: String(index + 1),
-                    title: item.title,
-                    link: item.link,
-                    time: formatTimeAgo(item.date),
-                    date: item.date,
-                }));
+                const formattedNews: BreakingNewsItem[] = newsData.map((item: any, index: number) => {
+                    const slug = generateNewsSlug(item.title, item.link);
+                    // Cache article data for the detail page
+                    if (typeof window !== "undefined") {
+                        sessionStorage.setItem(`article_${slug}`, JSON.stringify(item));
+                    }
+                    return {
+                        id: String(index + 1),
+                        title: item.title,
+                        link: item.link,
+                        time: formatTimeAgo(item.date),
+                        date: item.date,
+                        content: item.content,
+                        slug,
+                    };
+                });
 
                 setBreakingNews(formattedNews);
             } catch (error) {
@@ -66,6 +91,7 @@ export function BreakingNewsCarousel() {
                     title: "Stay updated with the latest market news",
                     link: "/news",
                     time: "now",
+                    slug: "latest-news",
                 }]);
             } finally {
                 setLoading(false);
@@ -105,9 +131,9 @@ export function BreakingNewsCarousel() {
                         <span className="text-slate-500 dark:text-slate-400 text-xs shrink-0 font-normal">
                             {currentItem.time} •
                         </span>
-                        <a href={currentItem.link} target="_blank" rel="noopener noreferrer" className="hover:underline truncate">
+                        <Link href={`/news/${currentItem.slug}`} className="hover:underline truncate">
                             {currentItem.title}
-                        </a>
+                        </Link>
                     </div>
                 </div>
 

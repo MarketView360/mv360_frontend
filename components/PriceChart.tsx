@@ -72,7 +72,7 @@ export function PriceChart({ data }: PriceChartProps) {
   const { session } = useAuth();
 
   const isEnterprise = session?.tier === "enterprise" || session?.tier === "elite";
-  const isPro = session?.tier === "pro" || session?.tier === "elite" || session?.tier === "enterprise";
+  const isPro = session?.tier === "premium" || session?.tier === "pro" || session?.tier === "elite" || session?.tier === "enterprise";
 
   const [range, setRange] = React.useState("1Y");
   const [view, setView] = React.useState<"price" | "risk" | "candlestick">("price");
