@@ -159,7 +159,7 @@ export interface ScreenerRow {
   // Valuation Metrics
   pe_ratio?: number;
   forward_pe?: number;
-  trailing_pe?: number;
+  trailing_pe?: number; // alias for pe_ratio (backward compat)
   peg_ratio?: number;
   price_book_mrq?: number;
   price_sales_ttm?: number;
