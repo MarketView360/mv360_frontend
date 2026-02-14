@@ -4,9 +4,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/providers/AuthProvider";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import {
   Bell, Mail, Monitor, Megaphone, Newspaper, PartyPopper,
   AlertCircle, Info, Loader2, ShieldCheck,
@@ -316,36 +315,33 @@ function SubscriptionRow({
           {icon}
         </div>
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <Label className="font-medium text-slate-900 dark:text-white cursor-pointer">
-              {title}
-            </Label>
-            <Badge
-              variant={checked ? "default" : "secondary"}
-              className={`text-[10px] px-1.5 py-0 h-4 ${
-                checked
-                  ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800"
-                  : "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400"
-              }`}
-            >
-              {checked ? "Subscribed" : "Not subscribed"}
-            </Badge>
-          </div>
+          <Label className="font-medium text-slate-900 dark:text-white">
+            {title}
+          </Label>
           <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
             {description}
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-2 shrink-0 ml-3">
-        {saving && (
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />
+      <Button
+        variant={checked ? "outline" : "default"}
+        size="sm"
+        disabled={saving}
+        onClick={() => onToggle(!checked)}
+        className={`shrink-0 ml-3 min-w-[110px] text-xs font-medium ${
+          checked
+            ? "border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30"
+            : "bg-brand hover:bg-brand/90 text-white"
+        }`}
+      >
+        {saving ? (
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        ) : checked ? (
+          "Unsubscribe"
+        ) : (
+          "Subscribe"
         )}
-        <Switch
-          checked={checked}
-          disabled={saving}
-          onCheckedChange={onToggle}
-        />
-      </div>
+      </Button>
     </div>
   );
 }
