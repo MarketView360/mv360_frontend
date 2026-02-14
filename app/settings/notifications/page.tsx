@@ -332,7 +332,7 @@ function SubscriptionRow({
         className={`shrink-0 ml-3 min-w-[110px] text-xs font-medium ${
           checked
             ? "border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30"
-            : "bg-brand hover:bg-brand/90 text-white"
+            : "bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-500 dark:hover:bg-blue-600"
         }`}
       >
         {saving ? (
