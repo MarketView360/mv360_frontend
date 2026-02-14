@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/providers/AuthProvider";
 import { 
@@ -14,16 +14,21 @@ import {
   ThumbsUp,
   Sparkles,
   Heart,
-  Star
+  Star,
+  User,
+  Mail
 } from "lucide-react";
 
 type FeedbackType = "general" | "feature" | "bug" | "improvement";
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+const FEEDBACK_COOLDOWN_MS = 60_000;
+
 export default function FeedbackPage() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
+  const token = session?.access_token || null;
+
   const [type, setType] = useState<FeedbackType>("general");
-  const [name, setName] = useState(user?.user_metadata?.full_name || "");
-  const [email, setEmail] = useState(user?.email || "");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,6 +36,32 @@ export default function FeedbackPage() {
   const [error, setError] = useState<string | null>(null);
   const [ratingExpanded, setRatingExpanded] = useState(false);
   const [rating, setRating] = useState<number | null>(null);
+  const [cooldownUntil, setCooldownUntil] = useState<number>(0);
+  const [secondsLeft, setSecondsLeft] = useState(0);
+
+  // User info from auth (read-only display)
+  const userName = user?.user_metadata?.full_name || user?.user_metadata?.display_name || "User";
+  const userEmail = user?.email || "";
+
+  useEffect(() => {
+    if (!cooldownUntil) {
+      setSecondsLeft(0);
+      return;
+    }
+
+    const update = () => {
+      const remainingMs = Math.max(0, cooldownUntil - Date.now());
+      const remainingSeconds = Math.ceil(remainingMs / 1000);
+      setSecondsLeft(remainingSeconds);
+      if (remainingMs <= 0) {
+        setCooldownUntil(0);
+      }
+    };
+
+    update();
+    const timer = setInterval(update, 250);
+    return () => clearInterval(timer);
+  }, [cooldownUntil]);
 
   const feedbackTypes = [
     { id: "general", label: "General Feedback", icon: MessageSquare, color: "blue" },
@@ -42,26 +73,69 @@ export default function FeedbackPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (secondsLeft > 0) {
+      setError(`Please wait ${secondsLeft}s before sending another feedback.`);
+      return;
+    }
+
+    if (!token) {
+      setError("Please log in to submit feedback.");
+      return;
+    }
+
+    if (!subject.trim() || !message.trim()) {
+      setError("Please fill in all required fields.");
+      return;
+    }
+
+    // Client-side validation matching backend
+    if (subject.trim().length < 10) {
+      setError("Subject must be at least 10 characters.");
+      return;
+    }
+
+    if (message.trim().length < 20) {
+      setError("Message must be at least 20 characters.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      // TODO: Connect to Brevo API for email sending
-      // For now, simulate submission
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      console.log({
-        type,
-        name,
-        email,
-        subject,
-        message,
-        rating,
-        timestamp: new Date().toISOString(),
+      const res = await fetch(`${API_BASE}/feedback`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          type,
+          subject: subject.trim(),
+          message: message.trim(),
+          ...(rating && { rating }),
+        }),
       });
 
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 429) {
+          const retryAfter = Number(res.headers.get("retry-after") || "0");
+          const cooldownMs = retryAfter > 0 ? retryAfter * 1000 : FEEDBACK_COOLDOWN_MS;
+          setCooldownUntil(Date.now() + cooldownMs);
+          throw new Error("Thanks for your feedback. Please wait 1 minute before sending another one.");
+        }
+        throw new Error(data.message || "Failed to submit feedback");
+      }
+
+      setCooldownUntil(Date.now() + FEEDBACK_COOLDOWN_MS);
       setSubmitted(true);
     } catch (err) {
-      setError("Failed to send feedback. Please try again or email us directly at feedback@marketview360.io");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to send feedback. Please try again or email us directly at support@marketview360.io"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -97,6 +171,8 @@ export default function FeedbackPage() {
                   setSubject("");
                   setMessage("");
                   setType("general");
+                  setRating(null);
+                  setRatingExpanded(false);
                 }}
                 className="px-6 py-3 rounded-lg border-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
               >
@@ -267,7 +343,7 @@ export default function FeedbackPage() {
                               : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800/50"
                           }`}
                         >
-                          <Icon className={`h-5 w-5 flex-shrink-0 ${isSelected ? `text-${ft.color}-600 dark:text-${ft.color}-400` : ''}`} />
+                          <Icon className={`h-5 w-5 shrink-0 ${isSelected ? "text-blue-600 dark:text-blue-400" : ""}`} />
                           <span className="text-sm">{ft.label}</span>
                         </button>
                       );
@@ -277,40 +353,33 @@ export default function FeedbackPage() {
 
                 {error && (
                   <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                    <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                     <p className="text-sm font-medium text-red-700 dark:text-red-300">{error}</p>
                   </div>
                 )}
 
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="name" className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
-                      Your Name
-                    </label>
-                    <input
-                      id="name"
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      required
-                      placeholder="John Doe"
-                      className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">
-                      Email Address
-                    </label>
-                    <input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      placeholder="you@example.com"
-                      className="w-full px-4 py-3 rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                    />
+                {/* User Info (read-only from account) */}
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-3">Submitting as</p>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                        <User className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Name</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white">{userName}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                        <Mail className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Email</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white">{userEmail || "Not available"}</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -349,13 +418,18 @@ export default function FeedbackPage() {
 
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || secondsLeft > 0 || !token}
                   className="w-full flex items-center justify-center gap-3 py-4 px-6 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold text-lg focus:outline-none focus:ring-4 focus:ring-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-xl shadow-blue-600/25 hover:shadow-2xl hover:shadow-blue-600/30 disabled:shadow-none"
                 >
                   {isSubmitting ? (
                     <>
                       <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                       Sending Your Feedback...
+                    </>
+                  ) : secondsLeft > 0 ? (
+                    <>
+                      <Send className="h-5 w-5" />
+                      Send available in {secondsLeft}s
                     </>
                   ) : (
                     <>
@@ -364,6 +438,12 @@ export default function FeedbackPage() {
                     </>
                   )}
                 </button>
+
+                {secondsLeft > 0 && (
+                  <p className="text-center text-sm text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg py-2 px-3">
+                    You can submit one feedback per minute to keep the system fair for everyone.
+                  </p>
+                )}
               </form>
             </div>
           </div>
