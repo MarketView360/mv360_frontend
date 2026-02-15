@@ -29,6 +29,7 @@ import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { JovanResponse, stripJovanTags } from "../utils/jovanParser";
 import { Icons } from "./Icons";
 import { ReasoningBlock, ReasoningIndicator } from "./ReasoningBlock";
+import { ToolUsageBlock } from "./ToolUsageBlock";
 
 // Try to satisfy the missing type definition without installing new packages if possible
 declare module 'dom-to-image-more';
@@ -42,6 +43,7 @@ export interface Message {
   isReasoning?: boolean;
   isStreaming?: boolean;
   reasoning?: string;
+  toolCalls?: string[];
 }
 
 interface ChatAreaProps {
@@ -312,6 +314,24 @@ export function ChatArea({ messages }: ChatAreaProps) {
                         isStreaming={message.isStreaming && !message.content}
                       />
                     )}
+                    {/* Tool usage indicators - shown when tools were used */}
+                    {(() => {
+                      console.log('[ChatArea] Message toolCalls:', message.toolCalls, 'Length:', message.toolCalls?.length);
+                      return message.toolCalls && message.toolCalls.length > 0 && (
+                        <div className="space-y-2 mb-3">
+                          {message.toolCalls.map((toolName, idx) => {
+                            console.log('[ChatArea] Rendering ToolUsageBlock for:', toolName);
+                            return (
+                              <ToolUsageBlock
+                                key={idx}
+                                toolName={toolName}
+                                isActive={false}
+                              />
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                     <JovanResponse
                       content={message.content}
                       isStreaming={message.isStreaming}

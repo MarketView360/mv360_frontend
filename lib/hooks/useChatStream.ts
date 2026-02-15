@@ -93,6 +93,7 @@ export function useChatStream(token: string | null, sessionId: string | null) {
         timestamp: new Date().toISOString(),
         isStreaming: true,
         reasoning: options.reasoning ? "" : undefined,
+        toolCalls: undefined,
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
@@ -109,6 +110,7 @@ export function useChatStream(token: string | null, sessionId: string | null) {
 
         let fullContent = "";
         let fullReasoning = "";
+        let toolCallsUsed: string[] = [];
         let resolvedSessionId: string | undefined = sessionId || undefined;
         let resolvedTitle: string | undefined;
 
@@ -127,6 +129,12 @@ export function useChatStream(token: string | null, sessionId: string | null) {
             fullReasoning += chunk.reasoning;
           }
           
+          // Track tool calls (local tools like fundamentals)
+          if (chunk.toolCall && !toolCallsUsed.includes(chunk.toolCall)) {
+            toolCallsUsed.push(chunk.toolCall);
+            console.log('[useChatStream] Added tool call:', chunk.toolCall, 'Total:', toolCallsUsed);
+          }
+          
           // Handle new session creation
           if (chunk.sessionId && !resolvedSessionId) {
             resolvedSessionId = chunk.sessionId;
@@ -137,7 +145,7 @@ export function useChatStream(token: string | null, sessionId: string | null) {
             options.onSessionCreated?.(chunk.sessionId, resolvedTitle || "New chat");
           }
 
-          // Update tool indicator
+          // Update tool indicator (Groq compound tools like web_search)
           if (chunk.toolUse) {
             setStreamingState({ isStreaming: true, toolInUse: chunk.toolUse });
             const toolNames: Record<string, string> = {
@@ -148,17 +156,26 @@ export function useChatStream(token: string | null, sessionId: string | null) {
             toast.info(toolNames[chunk.toolUse] || "Using tool...", { id: "tool-use" });
           }
 
-          setMessages((prev) =>
-            prev.map((m) =>
+          setMessages((prev) => {
+            const updated = prev.map((m) =>
               m.id === assistantMessageId
                 ? { 
                     ...m, 
                     content: fullContent,
                     reasoning: fullReasoning || undefined,
+                    toolCalls: toolCallsUsed.length > 0 ? toolCallsUsed : undefined,
                   }
                 : m
-            )
-          );
+            );
+            
+            // Debug: log the updated message
+            const updatedMsg = updated.find(m => m.id === assistantMessageId);
+            if (updatedMsg && toolCallsUsed.length > 0) {
+              console.log('[useChatStream] Updated message with toolCalls:', updatedMsg.toolCalls);
+            }
+            
+            return updated;
+          });
         }
 
         setMessages((prev) =>

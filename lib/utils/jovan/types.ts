@@ -5,6 +5,7 @@ export interface ChatMessage {
   timestamp: string;
   isStreaming?: boolean;
   reasoning?: string;
+  toolCalls?: string[];
 }
 
 export interface SessionSummary {

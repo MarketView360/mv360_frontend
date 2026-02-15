@@ -212,7 +212,7 @@ export const aiApi = {
   async *streamMessage(
     params: SendMessageParams,
     signal?: AbortSignal
-  ): AsyncGenerator<{ text: string; reasoning?: string; sessionId?: string; title?: string; toolUse?: string }, void, unknown> {
+  ): AsyncGenerator<StreamChunk, void, unknown> {
     const token = await getAuthToken();
     
     let response: Response;
@@ -268,7 +268,9 @@ export const aiApi = {
         if (done) break;
         
         const text = decoder.decode(value, { stream: true });
-        if (text) {
+        console.log('[AI API] Raw stream chunk:', text.length, 'chars:', text.substring(0, 100));
+        if (!text) continue;
+        {
           // Check for tool use indicators in the stream
           let toolUse: string | undefined;
           if (text.includes("[TOOL:web_search]")) {
@@ -281,6 +283,7 @@ export const aiApi = {
           
           // Extract reasoning content from the stream
           let reasoning: string | undefined;
+          let toolCall: string | undefined;
           let cleanText = text;
           
           // Parse [REASONING]...[/REASONING] tags
@@ -292,10 +295,21 @@ export const aiApi = {
             cleanText = text.replace(/\[REASONING\][\s\S]*?\[\/REASONING\]/g, "");
           }
           
+          // Parse [TOOL_CALL]...[/TOOL_CALL] tags (local tool usage)
+          const toolCallMatches = text.match(/\[TOOL_CALL\]([\s\S]*?)\[\/TOOL_CALL\]/g);
+          if (toolCallMatches) {
+            toolCall = toolCallMatches
+              .map(match => match.replace(/\[TOOL_CALL\]|\[\/TOOL_CALL\]/g, ""))
+              .join("");
+            cleanText = cleanText.replace(/\[TOOL_CALL\][\s\S]*?\[\/TOOL_CALL\]/g, "");
+            console.log('[AI API] Detected tool call:', toolCall); // Debug log
+          }
+          
           // Clean tool tags
           cleanText = cleanText.replace(/\[TOOL:\w+\]/g, "");
           
-          yield { text: cleanText, reasoning, sessionId, title, toolUse };
+          console.log('[AI API] Stream chunk:', { hasToolCall: !!toolCall, textLength: cleanText.length }); // Debug
+          yield { text: cleanText, reasoning, toolCall, sessionId, title, toolUse };
         }
       }
     } finally {
