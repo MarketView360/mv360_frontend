@@ -315,23 +315,17 @@ export function ChatArea({ messages }: ChatAreaProps) {
                       />
                     )}
                     {/* Tool usage indicators - shown when tools were used */}
-                    {(() => {
-                      console.log('[ChatArea] Message toolCalls:', message.toolCalls, 'Length:', message.toolCalls?.length);
-                      return message.toolCalls && message.toolCalls.length > 0 && (
-                        <div className="space-y-2 mb-3">
-                          {message.toolCalls.map((toolName, idx) => {
-                            console.log('[ChatArea] Rendering ToolUsageBlock for:', toolName);
-                            return (
-                              <ToolUsageBlock
-                                key={idx}
-                                toolName={toolName}
-                                isActive={false}
-                              />
-                            );
-                          })}
-                        </div>
-                      );
-                    })()}
+                    {message.toolCalls && message.toolCalls.length > 0 && (
+                      <div className="space-y-2 mb-3">
+                        {message.toolCalls.map((toolName, idx) => (
+                          <ToolUsageBlock
+                            key={idx}
+                            toolName={toolName}
+                            isActive={message.isStreaming}
+                          />
+                        ))}
+                      </div>
+                    )}
                     <JovanResponse
                       content={message.content}
                       isStreaming={message.isStreaming}
