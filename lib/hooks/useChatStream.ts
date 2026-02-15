@@ -111,6 +111,7 @@ export function useChatStream(token: string | null, sessionId: string | null) {
         let fullContent = "";
         let fullReasoning = "";
         let toolCallsUsed: string[] = [];
+        let currentToolStatus: string | undefined;
         let resolvedSessionId: string | undefined = sessionId || undefined;
         let resolvedTitle: string | undefined;
 
@@ -132,7 +133,11 @@ export function useChatStream(token: string | null, sessionId: string | null) {
           // Track tool calls (local tools like fundamentals)
           if (chunk.toolCall && !toolCallsUsed.includes(chunk.toolCall)) {
             toolCallsUsed.push(chunk.toolCall);
-            console.log('[useChatStream] Added tool call:', chunk.toolCall, 'Total:', toolCallsUsed);
+          }
+          
+          // Track progressive tool status
+          if (chunk.toolStatus) {
+            currentToolStatus = chunk.toolStatus;
           }
           
           // Handle new session creation
@@ -156,26 +161,19 @@ export function useChatStream(token: string | null, sessionId: string | null) {
             toast.info(toolNames[chunk.toolUse] || "Using tool...", { id: "tool-use" });
           }
 
-          setMessages((prev) => {
-            const updated = prev.map((m) =>
+          setMessages((prev) =>
+            prev.map((m) =>
               m.id === assistantMessageId
                 ? { 
                     ...m, 
                     content: fullContent,
                     reasoning: fullReasoning || undefined,
                     toolCalls: toolCallsUsed.length > 0 ? toolCallsUsed : undefined,
+                    toolStatus: currentToolStatus,
                   }
                 : m
-            );
-            
-            // Debug: log the updated message
-            const updatedMsg = updated.find(m => m.id === assistantMessageId);
-            if (updatedMsg && toolCallsUsed.length > 0) {
-              console.log('[useChatStream] Updated message with toolCalls:', updatedMsg.toolCalls);
-            }
-            
-            return updated;
-          });
+            )
+          );
         }
 
         setMessages((prev) =>

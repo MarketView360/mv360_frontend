@@ -1,51 +1,49 @@
 "use client";
 
-import { Database, Loader2 } from "lucide-react";
+import { Database, Loader2, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ToolUsageBlockProps {
   toolName: string;
   isActive?: boolean;
+  statusMessage?: string;
   className?: string;
 }
 
 const TOOL_DISPLAY_NAMES: Record<string, string> = {
   get_fundamentals: "Fetching fundamental data",
-  // Add more tool display names as we add more tools
-};
-
-const TOOL_DESCRIPTIONS: Record<string, string> = {
-  get_fundamentals: "Retrieving company financials and metrics from our database",
 };
 
 export function ToolUsageBlock({ 
   toolName, 
   isActive = false,
+  statusMessage,
   className 
 }: ToolUsageBlockProps) {
   const displayName = TOOL_DISPLAY_NAMES[toolName] || toolName;
-  const description = TOOL_DESCRIPTIONS[toolName] || "Processing request";
 
   return (
     <div className={cn(
-      "flex items-center gap-2 mb-3 px-3 py-2 rounded-lg",
+      "flex items-center gap-2 mb-3 px-3 py-2 rounded-lg transition-all duration-300",
       "bg-emerald-50/80 dark:bg-emerald-900/20",
       "border border-emerald-200 dark:border-emerald-800",
       className
     )}>
       {isActive ? (
         <>
-          <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600 dark:text-emerald-400" />
+          <Loader2 className="w-3.5 h-3.5 flex-shrink-0 animate-spin text-emerald-600 dark:text-emerald-400" />
           <span className="font-medium text-emerald-900 dark:text-emerald-100 text-sm">
-            {displayName}...
+            {displayName}
           </span>
-          <span className="text-emerald-600 dark:text-emerald-400 text-xs animate-pulse">
-            {description}
-          </span>
+          {statusMessage && (
+            <span className="text-emerald-600 dark:text-emerald-400 text-xs animate-pulse truncate">
+              {statusMessage}
+            </span>
+          )}
         </>
       ) : (
         <>
-          <Database className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+          <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
           <span className="font-medium text-emerald-900 dark:text-emerald-100 text-sm">
             {displayName}
           </span>
@@ -84,7 +82,7 @@ export function ToolUsageIndicator({
         </>
       ) : (
         <>
-          <Database className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+          <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
           <span className="font-medium text-emerald-700 dark:text-emerald-300">
             Tools used
           </span>

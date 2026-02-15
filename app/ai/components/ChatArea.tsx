@@ -44,6 +44,7 @@ export interface Message {
   isStreaming?: boolean;
   reasoning?: string;
   toolCalls?: string[];
+  toolStatus?: string;
 }
 
 interface ChatAreaProps {
@@ -322,6 +323,7 @@ export function ChatArea({ messages }: ChatAreaProps) {
                             key={idx}
                             toolName={toolName}
                             isActive={message.isStreaming}
+                            statusMessage={message.isStreaming ? message.toolStatus : undefined}
                           />
                         ))}
                       </div>

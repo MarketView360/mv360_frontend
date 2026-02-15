@@ -143,7 +143,8 @@ export default function AiPageClient() {
     isReasoning: msg.reasoning ? true : false,
     reasoning: msg.reasoning,
     isStreaming: msg.isStreaming,
-    toolCalls: msg.toolCalls, // Pass through tool calls
+    toolCalls: msg.toolCalls,
+    toolStatus: msg.toolStatus,
   }));
 
   useEffect(() => {

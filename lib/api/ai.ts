@@ -94,6 +94,16 @@ export interface ChatResponse {
   sessionId?: string;
 }
 
+export interface StreamChunk {
+  text: string;
+  reasoning?: string;
+  toolCall?: string;
+  toolStatus?: string;
+  sessionId?: string;
+  title?: string;
+  toolUse?: string;
+}
+
 export interface ModelInfo {
   id: string;
   name: string;
@@ -268,49 +278,55 @@ export const aiApi = {
         if (done) break;
         
         const text = decoder.decode(value, { stream: true });
-        console.log('[AI API] Raw stream chunk:', text.length, 'chars:', text.substring(0, 100));
         if (!text) continue;
-        {
-          // Check for tool use indicators in the stream
-          let toolUse: string | undefined;
-          if (text.includes("[TOOL:web_search]")) {
-            toolUse = "web_search";
-          } else if (text.includes("[TOOL:visit_website]")) {
-            toolUse = "visit_website";
-          } else if (text.includes("[TOOL:wolfram_alpha]")) {
-            toolUse = "calculator";
-          }
-          
-          // Extract reasoning content from the stream
-          let reasoning: string | undefined;
-          let toolCall: string | undefined;
-          let cleanText = text;
-          
-          // Parse [REASONING]...[/REASONING] tags
-          const reasoningMatches = text.match(/\[REASONING\]([\s\S]*?)\[\/REASONING\]/g);
-          if (reasoningMatches) {
-            reasoning = reasoningMatches
-              .map(match => match.replace(/\[REASONING\]|\[\/REASONING\]/g, ""))
-              .join("");
-            cleanText = text.replace(/\[REASONING\][\s\S]*?\[\/REASONING\]/g, "");
-          }
-          
-          // Parse [TOOL_CALL]...[/TOOL_CALL] tags (local tool usage)
-          const toolCallMatches = text.match(/\[TOOL_CALL\]([\s\S]*?)\[\/TOOL_CALL\]/g);
-          if (toolCallMatches) {
-            toolCall = toolCallMatches
-              .map(match => match.replace(/\[TOOL_CALL\]|\[\/TOOL_CALL\]/g, ""))
-              .join("");
-            cleanText = cleanText.replace(/\[TOOL_CALL\][\s\S]*?\[\/TOOL_CALL\]/g, "");
-            console.log('[AI API] Detected tool call:', toolCall); // Debug log
-          }
-          
-          // Clean tool tags
-          cleanText = cleanText.replace(/\[TOOL:\w+\]/g, "");
-          
-          console.log('[AI API] Stream chunk:', { hasToolCall: !!toolCall, textLength: cleanText.length }); // Debug
-          yield { text: cleanText, reasoning, toolCall, sessionId, title, toolUse };
+
+        // Check for Groq compound tool use indicators
+        let toolUse: string | undefined;
+        if (text.includes("[TOOL:web_search]")) {
+          toolUse = "web_search";
+        } else if (text.includes("[TOOL:visit_website]")) {
+          toolUse = "visit_website";
+        } else if (text.includes("[TOOL:wolfram_alpha]")) {
+          toolUse = "calculator";
         }
+        
+        let reasoning: string | undefined;
+        let toolCall: string | undefined;
+        let toolStatus: string | undefined;
+        let cleanText = text;
+        
+        // Parse [REASONING]...[/REASONING] tags
+        const reasoningMatches = text.match(/\[REASONING\]([\s\S]*?)\[\/REASONING\]/g);
+        if (reasoningMatches) {
+          reasoning = reasoningMatches
+            .map(match => match.replace(/\[REASONING\]|\[\/REASONING\]/g, ""))
+            .join("");
+          cleanText = text.replace(/\[REASONING\][\s\S]*?\[\/REASONING\]/g, "");
+        }
+        
+        // Parse [TOOL_CALL]...[/TOOL_CALL] tags (local tool usage)
+        const toolCallMatches = cleanText.match(/\[TOOL_CALL\]([\s\S]*?)\[\/TOOL_CALL\]/g);
+        if (toolCallMatches) {
+          toolCall = toolCallMatches
+            .map(match => match.replace(/\[TOOL_CALL\]|\[\/TOOL_CALL\]/g, ""))
+            .join("");
+          cleanText = cleanText.replace(/\[TOOL_CALL\][\s\S]*?\[\/TOOL_CALL\]/g, "");
+        }
+        
+        // Parse [TOOL_STATUS]...[/TOOL_STATUS] tags (progressive status updates)
+        const toolStatusMatches = cleanText.match(/\[TOOL_STATUS\]([\s\S]*?)\[\/TOOL_STATUS\]/g);
+        if (toolStatusMatches) {
+          // Take the last status message (most recent)
+          toolStatus = toolStatusMatches
+            .map(match => match.replace(/\[TOOL_STATUS\]|\[\/TOOL_STATUS\]/g, ""))
+            .pop();
+          cleanText = cleanText.replace(/\[TOOL_STATUS\][\s\S]*?\[\/TOOL_STATUS\]/g, "");
+        }
+        
+        // Clean Groq compound tool tags
+        cleanText = cleanText.replace(/\[TOOL:\w+\]/g, "");
+        
+        yield { text: cleanText, reasoning, toolCall, toolStatus, sessionId, title, toolUse };
       }
     } finally {
       reader.releaseLock();
