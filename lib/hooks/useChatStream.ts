@@ -59,6 +59,7 @@ export function useChatStream(token: string | null, sessionId: string | null) {
       content: string,
       options: { 
         reasoning?: boolean; 
+        enableTools?: boolean;
         onSessionCreated?: (id: string, title: string) => void;
       } = {}
     ): Promise<{ sessionId: string | null; title: string | null }> => {
@@ -120,6 +121,7 @@ export function useChatStream(token: string | null, sessionId: string | null) {
             messages: allMessages,
             sessionId: sessionId || undefined,
             reasoning: options.reasoning,
+            enableTools: options.enableTools,
           },
           abortControllerRef.current.signal
         )) {

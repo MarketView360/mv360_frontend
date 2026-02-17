@@ -26,13 +26,11 @@ import {
   Lock,
   Crown,
   AlertCircle,
-  Search,
   TrendingUp,
-  Briefcase,
-  Newspaper,
   Trash2,
   AlertTriangle,
 } from "lucide-react";
+import { useToolsConfig } from "@/hooks/useToolsConfig";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,6 +58,9 @@ export default function JovanAIPage() {
   const [savingApiKey, setSavingApiKey] = useState<string | null>(null);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
+
+  // Tools config synced with chat UI via localStorage
+  const { config: toolsConfig, setToolsEnabled, setToolEnabled } = useToolsConfig();
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
   const isPremium = profile?.subscription_tier === "premium";
@@ -593,102 +594,71 @@ export default function JovanAIPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Wrench className="h-5 w-5 text-brand" />
-                AI Tool Permissions
+                AI Tools
               </CardTitle>
               <CardDescription>Control which tools Jovan AI can use to assist you</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+              {/* Master toggle */}
+              <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                    <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+                    <Wrench className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div>
-                    <Label className="font-medium text-slate-900 dark:text-white">Run Stock Screener</Label>
+                    <Label className="font-medium text-slate-900 dark:text-white">Enable AI Tools</Label>
                     <p className="text-sm text-slate-500 dark:text-slate-400">
-                      Allow Jovan to search and filter stocks based on criteria
+                      Allow Jovan to use tools to fetch real-time data
                     </p>
                   </div>
                 </div>
                 <Switch
-                  checked={preferences?.toolPermissions?.screener ?? true}
-                  onCheckedChange={async (checked) => {
-                    const success = await updatePreferences({ 
-                      toolPermissions: { ...preferences?.toolPermissions, screener: checked }
-                    });
-                    if (success) toast.success("Permission updated");
+                  checked={toolsConfig.enabled}
+                  onCheckedChange={(checked) => {
+                    setToolsEnabled(checked);
+                    toast.success(checked ? "Tools enabled" : "Tools disabled");
                   }}
                 />
               </div>
 
-              <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                    <Search className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                  </div>
-                  <div>
-                    <Label className="font-medium text-slate-900 dark:text-white">Search Internet</Label>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                      Allow Jovan to search the web for real-time information
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  checked={preferences?.toolPermissions?.webSearch ?? true}
-                  onCheckedChange={async (checked) => {
-                    const success = await updatePreferences({ 
-                      toolPermissions: { ...preferences?.toolPermissions, webSearch: checked }
-                    });
-                    if (success) toast.success("Permission updated");
-                  }}
-                />
-              </div>
+              {/* Individual tools */}
+              {toolsConfig.enabled && (
+                <div className="space-y-3 pl-2">
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Available Tools</p>
+                  {toolsConfig.tools.map((tool) => {
+                    const enabledCount = toolsConfig.tools.filter((t) => t.enabled).length;
+                    const cantDisable = tool.enabled && (toolsConfig.tools.length === 1 || enabledCount <= 1);
 
-              <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                    <Briefcase className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  </div>
-                  <div>
-                    <Label className="font-medium text-slate-900 dark:text-white">Access Portfolio</Label>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                      Allow Jovan to view and analyze your portfolio holdings
-                    </p>
-                  </div>
+                    return (
+                      <div key={tool.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-lg ${tool.enabled ? "bg-emerald-100 dark:bg-emerald-900/30" : "bg-slate-200 dark:bg-slate-700"}`}>
+                            <TrendingUp className={`h-5 w-5 ${tool.enabled ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400"}`} />
+                          </div>
+                          <div>
+                            <Label className="font-medium text-slate-900 dark:text-white">{tool.name}</Label>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                              {tool.description}
+                            </p>
+                          </div>
+                        </div>
+                        <Switch
+                          checked={tool.enabled}
+                          disabled={cantDisable}
+                          onCheckedChange={(checked) => {
+                            const result = setToolEnabled(tool.id, checked);
+                            if (result === false && !checked) {
+                              toast.info("Can't disable the only tool — disable tools entirely instead");
+                            } else {
+                              toast.success(checked ? `${tool.name} enabled` : `${tool.name} disabled`);
+                            }
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
-                <Switch
-                  checked={preferences?.toolPermissions?.portfolio ?? true}
-                  onCheckedChange={async (checked) => {
-                    const success = await updatePreferences({ 
-                      toolPermissions: { ...preferences?.toolPermissions, portfolio: checked }
-                    });
-                    if (success) toast.success("Permission updated");
-                  }}
-                />
-              </div>
-
-              <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-                    <Newspaper className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                  </div>
-                  <div>
-                    <Label className="font-medium text-slate-900 dark:text-white">Fetch News & Reports</Label>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                      Allow Jovan to retrieve market news and earnings reports
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  checked={preferences?.toolPermissions?.news ?? true}
-                  onCheckedChange={async (checked) => {
-                    const success = await updatePreferences({ 
-                      toolPermissions: { ...preferences?.toolPermissions, news: checked }
-                    });
-                    if (success) toast.success("Permission updated");
-                  }}
-                />
-              </div>
+              )}
             </CardContent>
           </Card>
 
@@ -698,10 +668,10 @@ export default function JovanAIPage() {
                 <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
                 <div>
                   <h4 className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-1">
-                    About Tool Permissions
+                    About AI Tools
                   </h4>
                   <p className="text-sm text-blue-700 dark:text-blue-400">
-                    Disabling tools will limit Jovan AI&apos;s ability to provide comprehensive answers. Tools are only used when relevant to your query and always with your data privacy in mind.
+                    Tools allow Jovan to fetch real-time stock data, prices, and financial metrics from the MarketView360 database. Disabling tools means Jovan will answer purely from its training knowledge. These settings sync with the Tools toggle in the chat interface.
                   </p>
                 </div>
               </div>

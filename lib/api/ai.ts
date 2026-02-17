@@ -87,6 +87,7 @@ export interface SendMessageParams {
   messages: Array<{ role: "user" | "assistant"; content: string }>;
   sessionId?: string;
   reasoning?: boolean;
+  enableTools?: boolean;
 }
 
 export interface ChatResponse {
@@ -237,6 +238,7 @@ export const aiApi = {
           messages: params.messages,
           sessionId: params.sessionId,
           reasoning: params.reasoning,
+          enableTools: params.enableTools,
         }),
         signal,
       });

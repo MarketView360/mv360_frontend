@@ -16,6 +16,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useChatSession } from "@/lib/hooks/useChatSession";
 import { useChatStream } from "@/lib/hooks/useChatStream";
 import { useQuota } from "@/hooks/useQuota";
+import { useToolsConfig } from "@/hooks/useToolsConfig";
 import { AIApiError } from "@/lib/api/ai";
 
 // Feature flag: Allow anonymous users to access AI chat.
@@ -41,6 +42,9 @@ export default function AiPageClient() {
   const [isReasoningEnabled, setIsReasoningEnabled] = useState(false);
   const [greeting, setGreeting] = useState("");
   const [anonymousMessageCount, setAnonymousMessageCount] = useState(0);
+
+  // Tools configuration (persisted in localStorage, syncs with settings page)
+  const { config: toolsConfig, setToolsEnabled, setToolEnabled, isToolsActive } = useToolsConfig();
 
   // Disable reasoning if user logs out
   useEffect(() => {
@@ -244,6 +248,7 @@ export default function AiPageClient() {
       try {
         await sendMessage(content, {
           reasoning: isReasoningEnabled,
+          enableTools: isToolsActive,
           onSessionCreated: (id, title) => {
             addSession({
               id,
@@ -372,6 +377,9 @@ export default function AiPageClient() {
               onModelChange={setSelectedModel}
               isReasoningEnabled={isReasoningEnabled}
               onReasoningChange={handleReasoningChange}
+              toolsConfig={toolsConfig}
+              onToolsEnabledChange={setToolsEnabled}
+              onToolToggle={setToolEnabled}
               disabled={isStreaming}
             />
           </div>
