@@ -246,6 +246,7 @@ export default function AiPageClient() {
 
       // Send message
       try {
+        console.log(`[AiPageClient] Sending message with enableTools=${isToolsActive}, reasoning=${isReasoningEnabled}`);
         await sendMessage(content, {
           reasoning: isReasoningEnabled,
           enableTools: isToolsActive,
