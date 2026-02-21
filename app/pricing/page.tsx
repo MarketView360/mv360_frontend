@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { waitlistApi } from "@/lib/api/waitlist";
 import { toast } from "sonner";
+import { WaitlistDialog, WaitlistFormData } from "./components/WaitlistDialog";
 
 type BillingPeriod = "monthly" | "annually";
 
@@ -486,6 +487,8 @@ function PricingCard({
     const [waitlistLoading, setWaitlistLoading] = useState(false);
     const [inWaitlist, setInWaitlist] = useState(false);
     const [waitlistChecked, setWaitlistChecked] = useState(false);
+    const [showWaitlistDialog, setShowWaitlistDialog] = useState(false);
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
 
     // Check waitlist status on mount for premium plan
     useEffect(() => {
@@ -499,13 +502,22 @@ function PricingCard({
             const status = await waitlistApi.checkStatus();
             setInWaitlist(status.inWaitlist);
             setWaitlistChecked(true);
+            setIsLoggedIn(true);
         } catch (error) {
             // User not logged in or error - that's fine
             setWaitlistChecked(true);
+            setIsLoggedIn(false);
         }
     };
 
     const handleJoinWaitlist = async () => {
+        // If not logged in, show dialog
+        if (!isLoggedIn) {
+            setShowWaitlistDialog(true);
+            return;
+        }
+
+        // If logged in, join directly
         setWaitlistLoading(true);
         try {
             const result = await waitlistApi.joinPremium();
@@ -529,6 +541,25 @@ function PricingCard({
             });
         } finally {
             setWaitlistLoading(false);
+        }
+    };
+
+    const handleAnonymousWaitlistSubmit = async (data: WaitlistFormData) => {
+        try {
+            const result = await waitlistApi.joinAnonymous(data);
+            
+            if (result.success) {
+                setInWaitlist(true);
+                toast.success("Joined Waitlist!", {
+                    description: "Check your email for confirmation. We'll notify you when Premium launches!",
+                });
+            }
+        } catch (error) {
+            console.error("Error joining waitlist:", error);
+            toast.error("Failed to Join Waitlist", {
+                description: error instanceof Error ? error.message : "Please try again or contact support.",
+            });
+            throw error; // Re-throw to keep dialog open
         }
     };
 
@@ -602,14 +633,23 @@ function PricingCard({
                 </p>
 
                 {/* CTA */}
-                {isFree ? (
+                {isCurrentPlan ? (
+                    // Current plan badge
+                    <button
+                        disabled
+                        className="w-full py-2.5 rounded-lg text-sm font-semibold border-2 text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 cursor-default"
+                        style={{ borderColor: colors.accent }}
+                    >
+                        Current Plan
+                    </button>
+                ) : isFree ? (
                     <button
                         className="w-full py-2.5 rounded-lg text-sm font-semibold border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                     >
                         Get Started Free
                     </button>
                 ) : isPremium ? (
-                    // Premium plan: Show waitlist button
+                    // Premium plan: Show waitlist button or upgrade
                     <>
                         {inWaitlist ? (
                             <button
@@ -678,6 +718,15 @@ function PricingCard({
                     ))}
                 </ul>
             </div>
+
+            {/* Waitlist Dialog for Anonymous Users */}
+            {isPremium && (
+                <WaitlistDialog
+                    isOpen={showWaitlistDialog}
+                    onClose={() => setShowWaitlistDialog(false)}
+                    onSubmit={handleAnonymousWaitlistSubmit}
+                />
+            )}
         </div>
     );
 }

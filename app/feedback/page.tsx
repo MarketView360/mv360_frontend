@@ -251,7 +251,10 @@ export default function FeedbackPage() {
 
             <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl border border-blue-200 dark:border-blue-800/50 p-5">
               <p className="text-sm font-medium text-blue-900 dark:text-blue-200 leading-relaxed">
-                💡 <strong>Quick Tip:</strong> The more detailed your feedback, the better we can understand and address your needs!
+                💡 <strong>Quick Tip:</strong> Quality feedback helps us improve faster!
+              </p>
+              <p className="text-xs text-blue-700 dark:text-blue-300 mt-2">
+                🎁 <strong>Bonus:</strong> Exceptional feedback may be eligible for rewards and early access to new features.
               </p>
             </div>
           </div>
