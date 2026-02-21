@@ -488,25 +488,30 @@ function PricingCard({
     const [inWaitlist, setInWaitlist] = useState(false);
     const [waitlistChecked, setWaitlistChecked] = useState(false);
     const [showWaitlistDialog, setShowWaitlistDialog] = useState(false);
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
+    
+    // User is logged in if we have subscription data (even if it's free tier)
+    const isLoggedIn = userSubscription !== null;
 
-    // Check waitlist status on mount for premium plan
+    // Check waitlist status on mount for premium plan ONLY if logged in
     useEffect(() => {
-        if (isPremium) {
+        if (isPremium && isLoggedIn) {
             checkWaitlistStatus();
+        } else if (isPremium && !isLoggedIn) {
+            // Not logged in, mark as checked so UI renders
+            setWaitlistChecked(true);
         }
-    }, [isPremium]);
+    }, [isPremium, isLoggedIn]);
 
     const checkWaitlistStatus = async () => {
         try {
             const status = await waitlistApi.checkStatus();
             setInWaitlist(status.inWaitlist);
             setWaitlistChecked(true);
-            setIsLoggedIn(true);
         } catch (error) {
-            // User not logged in or error - that's fine
+            // Error checking status - default to not in waitlist
+            console.error("Error checking waitlist status:", error);
+            setInWaitlist(false);
             setWaitlistChecked(true);
-            setIsLoggedIn(false);
         }
     };
 
