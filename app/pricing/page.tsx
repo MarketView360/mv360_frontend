@@ -11,7 +11,11 @@ import {
     ChevronDown,
     ChevronUp,
     LucideIcon,
+    Loader2,
+    Bell,
 } from "lucide-react";
+import { waitlistApi } from "@/lib/api/waitlist";
+import { toast } from "sonner";
 
 type BillingPeriod = "monthly" | "annually";
 
@@ -478,6 +482,56 @@ function PricingCard({
     const isCurrentPlan = userSubscription?.tier === plan.tier;
     const colors = TIER_COLORS[plan.tier];
 
+    // Waitlist state for premium plan
+    const [waitlistLoading, setWaitlistLoading] = useState(false);
+    const [inWaitlist, setInWaitlist] = useState(false);
+    const [waitlistChecked, setWaitlistChecked] = useState(false);
+
+    // Check waitlist status on mount for premium plan
+    useEffect(() => {
+        if (isPremium) {
+            checkWaitlistStatus();
+        }
+    }, [isPremium]);
+
+    const checkWaitlistStatus = async () => {
+        try {
+            const status = await waitlistApi.checkStatus();
+            setInWaitlist(status.inWaitlist);
+            setWaitlistChecked(true);
+        } catch (error) {
+            // User not logged in or error - that's fine
+            setWaitlistChecked(true);
+        }
+    };
+
+    const handleJoinWaitlist = async () => {
+        setWaitlistLoading(true);
+        try {
+            const result = await waitlistApi.joinPremium();
+            
+            if (result.success) {
+                setInWaitlist(true);
+                if (result.alreadyInList) {
+                    toast.info("Already on Waitlist", {
+                        description: "You're already on the premium waitlist. We'll notify you when it's ready!",
+                    });
+                } else {
+                    toast.success("Joined Waitlist!", {
+                        description: "Check your email for confirmation. We'll notify you when Premium launches!",
+                    });
+                }
+            }
+        } catch (error) {
+            console.error("Error joining waitlist:", error);
+            toast.error("Failed to Join Waitlist", {
+                description: error instanceof Error ? error.message : "Please try again or contact support.",
+            });
+        } finally {
+            setWaitlistLoading(false);
+        }
+    };
+
     return (
         <div
             className={`relative rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden transition-all`}
@@ -554,20 +608,58 @@ function PricingCard({
                     >
                         Get Started Free
                     </button>
+                ) : isPremium ? (
+                    // Premium plan: Show waitlist button
+                    <>
+                        {inWaitlist ? (
+                            <button
+                                disabled
+                                className="w-full py-2.5 rounded-lg text-sm font-semibold text-white flex items-center justify-center gap-2"
+                                style={{ background: colors.bg, opacity: 0.8 }}
+                            >
+                                <Bell className="w-4 h-4" />
+                                On Waitlist
+                            </button>
+                        ) : (
+                            <button
+                                onClick={handleJoinWaitlist}
+                                disabled={waitlistLoading}
+                                className="w-full py-2.5 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                                style={{ background: colors.bg }}
+                            >
+                                {waitlistLoading ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Joining...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Bell className="w-4 h-4" />
+                                        Join Waitlist
+                                    </>
+                                )}
+                            </button>
+                        )}
+                        <p className="text-center text-[11px] text-slate-400 dark:text-slate-500 mt-1.5">
+                            {inWaitlist 
+                                ? "We'll notify you when Premium launches!"
+                                : "Be the first to know when we launch"}
+                        </p>
+                    </>
                 ) : (
-                    <button
-                        disabled
-                        className="w-full py-2.5 rounded-lg text-sm font-semibold text-white opacity-60 cursor-not-allowed"
-                        style={{ background: colors.bg }}
-                    >
-                        Subscribe Now
-                    </button>
-                )}
-
-                {!isFree && (
-                    <p className="text-center text-[11px] text-slate-400 dark:text-slate-500 mt-1.5">
-                        Coming soon
-                    </p>
+                    // Max plan: Coming soon
+                    <>
+                        <button
+                            disabled
+                            className="w-full py-2.5 rounded-lg text-sm font-semibold text-white opacity-60 cursor-not-allowed"
+                            style={{ background: colors.bg }}
+                        >
+                            Subscribe Now
+                        </button>
+                        <p className="text-center text-[11px] text-slate-400 dark:text-slate-500 mt-1.5">
+                            Coming soon
+                        </p>
+                    </>
                 )}
 
                 {/* Divider */}
