@@ -294,8 +294,8 @@ function parseInlineContent(text: string): ReactNode[] {
   // Convert Markdown-style **text** to {{b}}text{{/b}}
   remaining = remaining.replace(/\*\*([^*]+)\*\*/g, '{{b}}$1{{/b}}');
   
-  // Pattern for inline tags
-  const inlinePattern = /\{\{(b|i|u|s|code|mark|link|pagelink|ticker|formula|positive|negative|neutral|currency|percent|number|button|kbd|badge)(?:\s+([^}]*))?\}\}([\s\S]*?)\{\{\/\1\}\}/;
+  // Pattern for inline tags (added date)
+  const inlinePattern = /\{\{(b|i|u|s|code|mark|link|pagelink|ticker|formula|positive|negative|neutral|currency|percent|number|date|button|kbd|badge)(?:\s+([^}]*))?\}\}([\s\S]*?)\{\{\/\1\}\}/;
   
   while (remaining.length > 0) {
     const match = remaining.match(inlinePattern);
@@ -403,6 +403,27 @@ function parseInlineContent(text: string): ReactNode[] {
         nodes.push(
           <span key={key} className="font-medium tabular-nums">
             {formatted}
+          </span>
+        );
+        break;
+      case "date":
+        // Format dates nicely (assumes YYYY-MM-DD or similar ISO format)
+        let dateFormatted = content;
+        try {
+          const dateObj = new Date(content);
+          if (!isNaN(dateObj.getTime())) {
+            dateFormatted = dateObj.toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            });
+          }
+        } catch {
+          // Keep original if parsing fails
+        }
+        nodes.push(
+          <span key={key} className="font-medium text-slate-700 dark:text-slate-300">
+            {dateFormatted}
           </span>
         );
         break;
@@ -747,6 +768,9 @@ export function parseJovanResponse(text: string, isStreaming: boolean = false): 
     const { clean } = hasIncompleteTags(text);
     textToParse = clean;
   }
+
+  // Fix triple braces to double braces (AI sometimes outputs {{{tag}}} instead of {{tag}})
+  textToParse = textToParse.replace(/\{\{\{/g, '{{').replace(/\}\}\}/g, '}}');
 
   // Preprocess to move {{br}} tags before {{query}} to after {{query}}
   textToParse = preprocessBrTags(textToParse);

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { ThemeProvider } from "./providers";
 import RouteChrome from "./RouteChrome";
 import { Toaster } from "@/components/ui/sonner";
+import { MaintenanceWrapper } from "@/components/MaintenanceWrapper";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -53,8 +54,10 @@ export default function RootLayout({
           }}
         />
         <ThemeProvider>
-          <RouteChrome>{children}</RouteChrome>
-          <Toaster position="top-right" richColors closeButton />
+          <MaintenanceWrapper>
+            <RouteChrome>{children}</RouteChrome>
+            <Toaster position="top-right" richColors closeButton />
+          </MaintenanceWrapper>
         </ThemeProvider>
       </body>
     </html>

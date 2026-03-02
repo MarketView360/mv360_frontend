@@ -5,12 +5,15 @@ export interface ChatMessage {
   timestamp: string;
   isStreaming?: boolean;
   reasoning?: string;
+  toolCalls?: string[];
+  toolStatus?: string;
 }
 
 export interface SessionSummary {
   id: string;
   title: string | null;
   created_at: string;
+  titleGenerating?: boolean; // Client-side flag for loading state
 }
 
 export type ToolType =

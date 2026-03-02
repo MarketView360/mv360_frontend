@@ -1,13 +1,15 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { SlidersHorizontal, Lock, Search } from "lucide-react";
+import { SlidersHorizontal, Lock, Search, X, Crown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/providers/AuthProvider";
-import { PaywallModal } from "@/components/paywall/PaywallModal";
+import Link from "next/link";
 
 export function AdvancedSearchModal({
     trigger
@@ -15,91 +17,194 @@ export function AdvancedSearchModal({
     trigger?: React.ReactNode
 }) {
     const { session } = useAuth();
-    const isPro = session?.tier === "pro" || session?.tier === "elite";
+    const isPro = session?.tier === "premium" || session?.tier === "pro" || session?.tier === "elite";
     const [open, setOpen] = useState(false);
-    const [showPaywall, setShowPaywall] = useState(false);
 
-    const handleOpenChange = (newOpen: boolean) => {
-        if (!newOpen) {
-            setOpen(false);
-            return;
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                {trigger || (
+                    <Button variant="outline" size="sm" className="gap-2 h-9 border-dashed text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
+                        <SlidersHorizontal className="w-4 h-4" />
+                        <span>Advanced</span>
+                    </Button>
+                )}
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[480px] p-0 gap-0 overflow-hidden">
+                {isPro ? (
+                    <AdvancedSearchForm onClose={() => setOpen(false)} />
+                ) : (
+                    <UpgradePrompt onClose={() => setOpen(false)} />
+                )}
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+function AdvancedSearchForm({ onClose }: { onClose: () => void }) {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+
+    const [exactPhrase, setExactPhrase] = useState("");
+    const [excludeWords, setExcludeWords] = useState("");
+    const [ticker, setTicker] = useState(searchParams.get("ticker") ?? "");
+    const [fromDate, setFromDate] = useState(searchParams.get("from") ?? "");
+    const [toDate, setToDate] = useState(searchParams.get("to") ?? "");
+
+    const handleSearch = () => {
+        const sp = new URLSearchParams();
+
+        // Build search query from exact phrase and exclusions
+        let q = "";
+        if (exactPhrase.trim()) {
+            q = `"${exactPhrase.trim()}"`;
+        }
+        if (excludeWords.trim()) {
+            const exclusions = excludeWords.split(",").map(w => w.trim()).filter(Boolean);
+            if (q) q += " ";
+            q += exclusions.map(w => `-${w}`).join(" ");
         }
 
-        if (!isPro) {
-            setShowPaywall(true);
-            return;
-        }
+        if (q) sp.set("q", q);
+        if (ticker.trim()) sp.set("ticker", ticker.trim().toUpperCase());
+        if (fromDate) sp.set("from", fromDate);
+        if (toDate) sp.set("to", toDate);
 
-        setOpen(true);
+        router.replace(`/news?${sp.toString()}`);
+        onClose();
+    };
+
+    const handleClear = () => {
+        setExactPhrase("");
+        setExcludeWords("");
+        setTicker("");
+        setFromDate("");
+        setToDate("");
     };
 
     return (
         <>
-            <Dialog open={open} onOpenChange={handleOpenChange}>
-                <DialogTrigger asChild>
-                    {trigger || (
-                        <Button variant="outline" size="sm" className="gap-2 h-9 border-dashed text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
-                            <SlidersHorizontal className="w-4 h-4" />
-                            <span>Advanced</span>
-                        </Button>
-                    )}
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[500px]">
-                    <DialogHeader>
-                        <DialogTitle>Advanced Search</DialogTitle>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="exact">Exact Phrase</Label>
-                            <Input id="exact" placeholder="e.g. 'earnings beat'" />
-                        </div>
-                        <div className="grid gap-2">
-                            <Label htmlFor="exclude">Exclude Words</Label>
-                            <Input id="exclude" placeholder="e.g. 'crypto', 'nft'" />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="grid gap-2">
-                                <Label>Source</Label>
-                                <select className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-950 dark:ring-offset-slate-950 dark:placeholder:text-slate-400 dark:focus-visible:ring-slate-300">
-                                    <option>All Sources</option>
-                                    <option>Bloomberg</option>
-                                    <option>Reuters</option>
-                                    <option>WSJ</option>
-                                    <option>CNBC</option>
-                                </select>
-                            </div>
-                            <div className="grid gap-2">
-                                <Label>Sentiment</Label>
-                                <select className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-950 dark:ring-offset-slate-950 dark:placeholder:text-slate-400 dark:focus-visible:ring-slate-300">
-                                    <option>Any Sentiment</option>
-                                    <option>Positive</option>
-                                    <option>Negative</option>
-                                    <option>Neutral</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                        <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-                        <Button className="bg-brand hover:bg-brand/90 text-white gap-2">
-                            <Search className="w-4 h-4" />
-                            Search
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
+            <div className="p-5 pb-4 border-b border-slate-100 dark:border-slate-800">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-lg">
+                        <Search className="w-5 h-5 text-brand" />
+                        Advanced Search
+                    </DialogTitle>
+                </DialogHeader>
+            </div>
 
-            <PaywallModal
-                isOpen={showPaywall}
-                onClose={() => setShowPaywall(false)}
-                feature="Advanced News Search"
-                benefits={[
-                    "Search by exact phrase",
-                    "Exclude keywords",
-                    "Filter by sentiment (AI)",
-                    "Select specific sources"
-                ]}
-            />
+            <div className="p-5 space-y-4">
+                <div className="space-y-1.5">
+                    <Label htmlFor="exact" className="text-xs font-medium text-slate-600 dark:text-slate-400">Exact Phrase</Label>
+                    <Input
+                        id="exact"
+                        value={exactPhrase}
+                        onChange={(e) => setExactPhrase(e.target.value)}
+                        placeholder='e.g. earnings beat'
+                        className="h-9 text-sm"
+                    />
+                </div>
+
+                <div className="space-y-1.5">
+                    <Label htmlFor="exclude" className="text-xs font-medium text-slate-600 dark:text-slate-400">Exclude Words</Label>
+                    <Input
+                        id="exclude"
+                        value={excludeWords}
+                        onChange={(e) => setExcludeWords(e.target.value)}
+                        placeholder="e.g. crypto, nft"
+                        className="h-9 text-sm"
+                    />
+                    <p className="text-[11px] text-slate-400">Comma-separated words to exclude</p>
+                </div>
+
+                <div className="space-y-1.5">
+                    <Label htmlFor="adv-ticker" className="text-xs font-medium text-slate-600 dark:text-slate-400">Ticker Symbol</Label>
+                    <Input
+                        id="adv-ticker"
+                        value={ticker}
+                        onChange={(e) => setTicker(e.target.value.toUpperCase())}
+                        placeholder="e.g. AAPL, TSLA"
+                        className="h-9 text-sm"
+                    />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                        <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">From Date</Label>
+                        <Input
+                            type="date"
+                            value={fromDate}
+                            onChange={(e) => setFromDate(e.target.value)}
+                            className="h-9 text-sm"
+                        />
+                    </div>
+                    <div className="space-y-1.5">
+                        <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">To Date</Label>
+                        <Input
+                            type="date"
+                            value={toDate}
+                            onChange={(e) => setToDate(e.target.value)}
+                            className="h-9 text-sm"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <Button variant="ghost" size="sm" onClick={handleClear} className="text-xs text-slate-500 hover:text-slate-700">
+                    <X className="w-3 h-3 mr-1" />
+                    Clear
+                </Button>
+                <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={onClose}>
+                        Cancel
+                    </Button>
+                    <Button
+                        size="sm"
+                        onClick={handleSearch}
+                        className="bg-brand hover:bg-brand/90 text-white gap-1.5"
+                    >
+                        <Search className="w-3.5 h-3.5" />
+                        Search
+                    </Button>
+                </div>
+            </div>
         </>
+    );
+}
+
+function UpgradePrompt({ onClose }: { onClose: () => void }) {
+    return (
+        <div className="p-6 text-center space-y-4">
+            <div className="mx-auto w-12 h-12 rounded-full bg-brand/10 flex items-center justify-center">
+                <Crown className="w-6 h-6 text-brand" />
+            </div>
+            <div>
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                    Premium Feature
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                    Advanced search is available on Premium and Elite plans.
+                </p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2">
+                {["Exact phrase search", "Exclude keywords", "Full date range", "Ticker filtering"].map((f) => (
+                    <Badge key={f} variant="secondary" className="text-xs font-normal">
+                        {f}
+                    </Badge>
+                ))}
+            </div>
+            <div className="flex gap-2 justify-center pt-2">
+                <Button variant="outline" size="sm" onClick={onClose}>
+                    Maybe Later
+                </Button>
+                <Link href="/pricing">
+                    <Button size="sm" className="bg-brand hover:bg-brand/90 text-white gap-1.5">
+                        <Lock className="w-3.5 h-3.5" />
+                        View Plans
+                    </Button>
+                </Link>
+            </div>
+        </div>
     );
 }

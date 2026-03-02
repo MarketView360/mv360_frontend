@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User, Settings, LogOut, ChevronDown } from "lucide-react";
+import { User, Settings, LogOut, ChevronDown, List } from "lucide-react";
 
 export function UserDropdown() {
   const { user, signOut } = useAuth();
@@ -55,6 +55,13 @@ export function UserDropdown() {
         >
           <User className="mr-2 h-4 w-4" />
           <span>Profile</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => router.push("/watchlist")}
+          className="cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+        >
+          <List className="mr-2 h-4 w-4" />
+          <span>Watchlist</span>
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => router.push("/settings")}

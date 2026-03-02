@@ -24,7 +24,7 @@ export function NewsGrid({ sort = "latest" }: NewsGridProps) {
   const { preferences, isLoaded: prefsLoaded } = useNewsPreferences();
   const { session } = useAuth();
   // Using a simplified check for Pro, assuming session is loaded or null (default false)
-  const isPro = session?.tier === "pro" || session?.tier === "elite";
+  const isPro = session?.tier === "premium" || session?.tier === "pro" || session?.tier === "elite";
 
   const ticker = searchParams.get("ticker") ?? undefined;
   const q = searchParams.get("q") ?? undefined;

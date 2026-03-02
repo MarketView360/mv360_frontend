@@ -15,6 +15,7 @@ export default function NavigationBar() {
 
   const navLinks = [
     { href: "/screens", label: "Screens" },
+    { href: "/watchlist", label: "Watchlist" },
     { href: "/market", label: "Markets" },
     { href: "/news", label: "News" },
     { href: "/ai", label: "AI Assistant" },
@@ -28,7 +29,7 @@ export default function NavigationBar() {
           <Link className="flex items-center" href="/">
             <Logo />
           </Link>
-          <div className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600 dark:text-slate-400">
+          <div className="hidden lg:flex items-center gap-6 text-sm font-medium text-slate-600 dark:text-slate-400">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
@@ -41,14 +42,14 @@ export default function NavigationBar() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="hidden md:flex w-full max-w-sm">
+        <div className="flex items-center gap-4 flex-shrink-0">
+          <div className="hidden lg:flex flex-shrink-0">
             <NavSearch />
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 flex-shrink-0">
             <ThemeToggle />
             {loading ? (
-              <div className="hidden md:flex items-center gap-2">
+              <div className="hidden lg:flex items-center gap-2">
                 <div className="h-9 w-16 rounded-md bg-slate-200 dark:bg-slate-800 animate-pulse" />
                 <div className="h-9 w-20 rounded-full bg-slate-200 dark:bg-slate-800 animate-pulse" />
               </div>
@@ -58,7 +59,7 @@ export default function NavigationBar() {
               <>
                 <Link
                   href="/auth/login"
-                  className="hidden md:inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-white dark:ring-offset-slate-950 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 dark:focus-visible:ring-slate-300 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white h-9 px-4 py-2"
+                  className="hidden lg:inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-white dark:ring-offset-slate-950 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 dark:focus-visible:ring-slate-300 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white h-9 px-4 py-2"
                 >
                   Log in
                 </Link>
@@ -72,7 +73,7 @@ export default function NavigationBar() {
             )}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden inline-flex items-center justify-center p-2 rounded-md text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              className="lg:hidden inline-flex items-center justify-center p-2 rounded-md text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >
               {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -82,7 +83,7 @@ export default function NavigationBar() {
 
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
-        <div className="md:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 animate-in fade-in slide-in-from-top-4 duration-200">
+        <div className="lg:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 animate-in fade-in slide-in-from-top-4 duration-200">
           <div className="space-y-4 px-4 py-6">
             <div className="mb-6">
               <NavSearch />

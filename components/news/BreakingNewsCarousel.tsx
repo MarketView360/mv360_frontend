@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -9,28 +10,114 @@ interface BreakingNewsItem {
     title: string;
     link: string;
     time: string;
+    date?: string;
+    content?: string;
+    slug: string;
 }
 
-const BREAKING_NEWS: BreakingNewsItem[] = [
-    { id: "1", title: "Fed Holds Rates Steady, Signals Cuts in 2026", link: "#", time: "10m ago" },
-    { id: "2", title: "Tech Sector Rallies as AI Earnings Beat Expectations", link: "#", time: "32m ago" },
-    { id: "3", title: "Oil Prices Surge Amid Middle East Tensions", link: "#", time: "1h ago" },
-];
+function generateNewsSlug(title: string, link: string): string {
+    const titleSlug = title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "")
+        .slice(0, 60);
+    const hash = link
+        .split("")
+        .reduce((acc: number, char: string) => ((acc << 5) - acc + char.charCodeAt(0)) | 0, 0);
+    const hashStr = Math.abs(hash).toString(36).slice(0, 6);
+    return `${titleSlug}-${hashStr}`;
+}
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+
+function formatTimeAgo(dateString: string): string {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMs = now.getTime() - date.getTime();
+    const diffInMinutes = Math.floor(diffInMs / 60000);
+
+    if (diffInMinutes < 1) return "just now";
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays === 1) return "yesterday";
+    if (diffInDays < 7) return `${diffInDays}d ago`;
+
+    return date.toLocaleDateString();
+}
 
 export function BreakingNewsCarousel() {
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [breakingNews, setBreakingNews] = useState<BreakingNewsItem[]>([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            setCurrentIndex((prev) => (prev + 1) % BREAKING_NEWS.length);
-        }, 5000); // Rotate every 5 seconds
-        return () => clearInterval(interval);
+        async function fetchNews() {
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/news?limit=3`);
+
+                if (!response.ok) {
+                    throw new Error("Failed to fetch news");
+                }
+
+                const newsData = await response.json();
+
+                const formattedNews: BreakingNewsItem[] = newsData.map((item: any, index: number) => {
+                    const slug = generateNewsSlug(item.title, item.link);
+                    // Cache article data for the detail page
+                    if (typeof window !== "undefined") {
+                        sessionStorage.setItem(`article_${slug}`, JSON.stringify(item));
+                    }
+                    return {
+                        id: String(index + 1),
+                        title: item.title,
+                        link: item.link,
+                        time: formatTimeAgo(item.date),
+                        date: item.date,
+                        content: item.content,
+                        slug,
+                    };
+                });
+
+                setBreakingNews(formattedNews);
+            } catch (error) {
+                console.error("Error fetching breaking news:", error);
+                // Fallback to default message on error
+                setBreakingNews([{
+                    id: "1",
+                    title: "Stay updated with the latest market news",
+                    link: "/news",
+                    time: "now",
+                    slug: "latest-news",
+                }]);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        fetchNews();
     }, []);
 
-    const next = () => setCurrentIndex((prev) => (prev + 1) % BREAKING_NEWS.length);
-    const prev = () => setCurrentIndex((prev) => (prev - 1 + BREAKING_NEWS.length) % BREAKING_NEWS.length);
+    useEffect(() => {
+        if (breakingNews.length <= 1) return;
 
-    const currentItem = BREAKING_NEWS[currentIndex];
+        const interval = setInterval(() => {
+            setCurrentIndex((prev) => (prev + 1) % breakingNews.length);
+        }, 5000); // Rotate every 5 seconds
+        return () => clearInterval(interval);
+    }, [breakingNews.length]);
+
+    const next = () => setCurrentIndex((prev) => (prev + 1) % breakingNews.length);
+    const prev = () => setCurrentIndex((prev) => (prev - 1 + breakingNews.length) % breakingNews.length);
+
+    if (loading || breakingNews.length === 0) {
+        return null; // Don't show anything while loading or if no news
+    }
+
+    const currentItem = breakingNews[currentIndex];
 
     return (
         <div className="bg-white border-b border-slate-200 dark:bg-slate-900 dark:border-slate-800">
@@ -44,20 +131,22 @@ export function BreakingNewsCarousel() {
                         <span className="text-slate-500 dark:text-slate-400 text-xs shrink-0 font-normal">
                             {currentItem.time} •
                         </span>
-                        <a href={currentItem.link} className="hover:underline truncate">
+                        <Link href={`/news/${currentItem.slug}`} className="hover:underline truncate">
                             {currentItem.title}
-                        </a>
+                        </Link>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-1 shrink-0 ml-4">
-                    <button onClick={prev} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
-                        <ChevronLeft className="w-4 h-4 text-slate-500" />
-                    </button>
-                    <button onClick={next} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
-                        <ChevronRight className="w-4 h-4 text-slate-500" />
-                    </button>
-                </div>
+                {breakingNews.length > 1 && (
+                    <div className="flex items-center gap-1 shrink-0 ml-4">
+                        <button onClick={prev} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors" aria-label="Previous news">
+                            <ChevronLeft className="w-4 h-4 text-slate-500" />
+                        </button>
+                        <button onClick={next} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors" aria-label="Next news">
+                            <ChevronRight className="w-4 h-4 text-slate-500" />
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );

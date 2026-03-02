@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState, useRef, useEffect } from "react";
-import { Plus, MessageSquare, History, PanelLeftClose, Settings, Zap, Trash2, Loader2, Pencil, MoreHorizontal, Check, X, AlertTriangle, Search, Lock } from "lucide-react";
+import { Plus, MessageSquare, History, PanelLeftClose, Settings, Zap, Trash2, Loader2, Pencil, MoreHorizontal, Check, X, AlertTriangle, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -11,6 +11,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,8 +28,7 @@ import {
 } from "@/components/ui/alert-dialog-custom";
 import Link from "next/link";
 import type { SessionSummary } from "@/lib/utils/jovan/types";
-import { UsageIndicator } from "@/components/paywall/UsageIndicator";
-import { PaywallModal } from "@/components/paywall/PaywallModal";
+import { UpgradeDialog } from "./UpgradeDialog";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -274,23 +278,44 @@ export function Sidebar({
                                 </div>
                               ) : (
                                 <>
-                                  <Button
-                                    variant="ghost"
-                                    onClick={() => onSelectSession?.(session.id)}
-                                    className={cn(
-                                      "w-full justify-start text-sm font-normal px-2 h-8 truncate pr-8",
-                                      activeSessionId === session.id
-                                        ? "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white"
-                                        : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        onClick={() => onSelectSession?.(session.id)}
+                                        className={cn(
+                                          "w-full justify-start text-sm font-normal px-2 h-8 truncate pr-8",
+                                          activeSessionId === session.id
+                                            ? "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white"
+                                            : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+                                        )}
+                                      >
+                                        {dateGroup === "Today" ? (
+                                          <MessageSquare className="w-4 h-4 mr-2 shrink-0 opacity-70" />
+                                        ) : (
+                                          <History className="w-4 h-4 mr-2 shrink-0 opacity-70" />
+                                        )}
+                                        {session.titleGenerating ? (
+                                          <span className="truncate flex items-center gap-2">
+                                            <span className="inline-block h-2 w-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-pulse" />
+                                            <span className="text-slate-400 dark:text-slate-500">Generating title...</span>
+                                          </span>
+                                        ) : (
+                                          <span className="truncate">{session.title || "Untitled"}</span>
+                                        )}
+                                      </Button>
+                                    </TooltipTrigger>
+                                    {(session.title?.length || 0) > 30 && !session.titleGenerating && (
+                                      <TooltipContent side="right" className="max-w-xs">
+                                        <p className="text-sm">{session.title}</p>
+                                      </TooltipContent>
                                     )}
-                                  >
-                                    {dateGroup === "Today" ? (
-                                      <MessageSquare className="w-4 h-4 mr-2 shrink-0 opacity-70" />
-                                    ) : (
-                                      <History className="w-4 h-4 mr-2 shrink-0 opacity-70" />
+                                    {session.titleGenerating && (
+                                      <TooltipContent side="right">
+                                        <p className="text-sm">Generating title...</p>
+                                      </TooltipContent>
                                     )}
-                                    <span className="truncate">{session.title || "Untitled"}</span>
-                                  </Button>
+                                  </Tooltip>
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                       <Button
@@ -338,7 +363,7 @@ export function Sidebar({
                           onClick={() => setShowHistoryModal(true)}
                         >
                           <Lock className="w-3 h-3" />
-                          Unlock {hiddenCount} older chats
+                          Unlock {hiddenCount} older chat{hiddenCount > 1 ? 's' : ''}
                         </Button>
                       </div>
                     )}
@@ -350,18 +375,6 @@ export function Sidebar({
 
           {/* Bottom Actions */}
           <div className="mt-auto p-4 border-t border-slate-200 dark:border-slate-800 min-w-[248px] space-y-1">
-            {/* Usage Indicator */}
-            {quota && (
-              <div className="pb-3 border-b border-slate-100 dark:border-slate-800 mb-2">
-                <UsageIndicator
-                  label="Tokens"
-                  current={quota.tokens.used}
-                  limit={quota.tokens.limit}
-                  showUpgrade={isFree}
-                  className="text-xs px-2 py-1.5 border-none bg-slate-50 dark:bg-slate-900"
-                />
-              </div>
-            )}
             <Link href="/pricing" passHref>
               <Button variant="ghost" className="w-full justify-start text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 gap-2">
                 <Zap className="w-4 h-4" />
@@ -413,17 +426,10 @@ export function Sidebar({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Paywall Modal */}
-      <PaywallModal
+      {/* Upgrade Dialog */}
+      <UpgradeDialog
         isOpen={showHistoryModal}
         onClose={() => setShowHistoryModal(false)}
-        feature="Unlimited Chat History"
-        benefits={[
-          "Access all your past conversations",
-          "Search through entire history",
-          "Export chat logs",
-          "Never lose context"
-        ]}
       />
     </>
   );

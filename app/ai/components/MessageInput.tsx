@@ -36,7 +36,7 @@ export function MessageInput({
   const { session } = useAuth();
   // Simplified check, assuming session structure. 
   // Ideally this should be a hook `useIsPro()` but inline is fine.
-  const isPro = session?.tier === "pro" || session?.tier === "elite";
+  const isPro = session?.tier === "premium" || session?.tier === "pro" || session?.tier === "elite";
 
   const [showPaywall, setShowPaywall] = useState(false);
   const [paywallFeature, setPaywallFeature] = useState("Pro Feature");

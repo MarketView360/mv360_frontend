@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { AuthProvider } from "@/providers/AuthProvider";
+import { WatchlistProvider } from "@/providers/WatchlistProvider";
 
 type Theme = "light" | "dark";
 
@@ -64,7 +65,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
     <ThemeContext.Provider value={{ theme, setTheme, isDark }}>
       <AuthProvider>
-        {children}
+        <WatchlistProvider>
+          {children}
+        </WatchlistProvider>
       </AuthProvider>
     </ThemeContext.Provider>
   );

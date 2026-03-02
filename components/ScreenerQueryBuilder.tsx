@@ -3,6 +3,13 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -51,6 +58,7 @@ import {
   FieldDef,
   VALUE_SUGGESTIONS,
 } from "@/lib/queryBuilder";
+import { PRESET_SCREENS, type Strategy } from "@/components/StrategyLibrary";
 
 // Define ScreenerRow type for results
 interface ScreenerRow {
@@ -74,7 +82,7 @@ export default function ScreenerQueryBuilder({
 }) {
   const { session } = useAuth();
   // Check if user has access to pro features (pro or elite tier)
-  const isPro = session?.tier === "pro" || session?.tier === "elite";
+  const isPro = session?.tier === "premium" || session?.tier === "pro" || session?.tier === "elite";
   const [showPaywall, setShowPaywall] = useState(false);
   const [paywallFeature, setPaywallFeature] = useState("");
 
@@ -928,7 +936,10 @@ export default function ScreenerQueryBuilder({
     favoriteFields.includes(f.name)
   );
   const dataSourceWithFavorites: Record<string, FieldDef[]> = {
-    Favorites: favoritesList,
+    Strategies: [], // Placeholder to prevent crashes
+    Favorites: favoriteFields
+      .map((fieldName) => getAllFields().find((f) => f.name === fieldName))
+      .filter((f): f is FieldDef => !!f),
     ...ENHANCED_DATA_SOURCE,
   } as unknown as Record<string, FieldDef[]>;
   const baseList = searchTerm
@@ -984,15 +995,7 @@ export default function ScreenerQueryBuilder({
               >
                 <Keyboard className="w-4 h-4" />
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowExamples(true)}
-                title="Query Examples"
-                className="hover:bg-slate-200 dark:hover:bg-slate-600"
-              >
-                <FileText className="w-4 h-4" />
-              </Button>
+
               <Button
                 variant="outline"
                 size="sm"
@@ -1002,6 +1005,16 @@ export default function ScreenerQueryBuilder({
               >
                 <BookOpen className="w-4 h-4 mr-1" />
                 Guide
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowExamples(true)}
+                title="Query Examples"
+                className=" bg-white border-slate-300 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                <Lightbulb className="w-4 h-4 mr-1" />
+                Examples
               </Button>
               <Button
                 variant="outline"
@@ -1502,11 +1515,23 @@ export default function ScreenerQueryBuilder({
             </div>
 
             <div className="flex-1 overflow-y-auto py-2">
-              {Object.keys({ Favorites: [], ...ENHANCED_DATA_SOURCE }).map(
+              {/* Build categories with Strategies after Most Used */}
+              {(() => {
+                const allCategories = Object.keys({ Favorites: [], ...ENHANCED_DATA_SOURCE });
+                // Insert Strategies after "Most Used"
+                const mostUsedIndex = allCategories.indexOf("Most Used");
+                const orderedCategories = [
+                  ...allCategories.slice(0, mostUsedIndex + 1),
+                  "Strategies",
+                  ...allCategories.slice(mostUsedIndex + 1)
+                ];
+                return orderedCategories;
+              })().map(
                 (category) => (
                   <button
                     key={category}
                     onClick={() => {
+                      console.log("Selected category:", category);
                       setSelectedCategory(category);
                       setSearchTerm("");
                     }}
@@ -1518,7 +1543,9 @@ export default function ScreenerQueryBuilder({
                     <span>{category}</span>
                     <div className="flex items-center gap-2">
                       <span className="text-xs bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 px-2 py-1 rounded-full">
-                        {((dataSourceWithFavorites as Record<string, FieldDef[]>)[category]?.length) ?? 0}
+                        {category === "Strategies"
+                          ? (typeof PRESET_SCREENS !== 'undefined' ? PRESET_SCREENS.filter((s: Strategy) => s.feasibility === 'full').length : 0)
+                          : ((dataSourceWithFavorites as Record<string, FieldDef[]>)[category]?.length) ?? 0}
                       </span>
                       {selectedCategory === category && !searchTerm && (
                         <ChevronRight className="w-4 h-4 opacity-50" />
@@ -1611,184 +1638,239 @@ export default function ScreenerQueryBuilder({
                 </div>
               )}
 
-              {!showTableView && (
+              {selectedCategory === "Strategies" ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                  {filteredRatios.map((field) => (
+                  {PRESET_SCREENS.filter((s: Strategy) => s.feasibility === 'full').map((strategy: Strategy) => (
                     <div
-                      key={field.name}
-                      className="group p-4 text-left rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all"
+                      key={strategy.id}
+                      className="group p-4 text-left rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all flex flex-col h-full"
                     >
                       <div className="flex items-start justify-between mb-2">
-                        <button
-                          className="font-medium text-slate-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors text-left"
-                          onClick={() => handleSmartInsert(field.name)}
-                        >
-                          {field.name}
-                        </button>
-                        <div className="flex items-center gap-2">
-                          <div className="text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-1 rounded-full">
-                            {field.unit === "₹" ? "$" : field.unit}
-                          </div>
-                          <button
-                            className="p-1 hover:text-yellow-600 text-slate-400 dark:text-slate-500"
-                            title={
-                              favoriteFields.includes(field.name)
-                                ? "Unpin"
-                                : "Pin"
-                            }
-                            onClick={() => toggleFavorite(field.name)}
-                          >
-                            {favoriteFields.includes(field.name) ? (
-                              <Star className="w-4 h-4 fill-yellow-400 text-yellow-500" />
-                            ) : (
-                              <StarOff className="w-4 h-4" />
-                            )}
-                          </button>
-                        </div>
+                        <h3 className="font-medium text-slate-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">
+                          {strategy.name}
+                        </h3>
                       </div>
-                      <div className="text-sm text-slate-500 dark:text-slate-400 mb-2">
-                        {field.description}
+                      <div className="mb-3">
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                          {strategy.category}
+                        </Badge>
                       </div>
-                      {field.example && (
-                        <div className="text-xs font-mono bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-1 rounded mb-2">
-                          {field.example}
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2 mt-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 px-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600"
-                          onClick={() => handleSmartInsert(field.name)}
-                          title="Insert field"
-                        >
-                          Insert
-                        </Button>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 line-clamp-3 flex-grow">
+                        {strategy.description}
+                      </p>
 
-                        {/* Insert op button with inline popup */}
-                        <div className="relative">
+                      {/* Logic Snippet */}
+                      <div className="mb-3 p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-100 dark:border-green-900/30 text-[10px] font-mono text-green-700 dark:text-green-400 overflow-hidden text-ellipsis whitespace-nowrap">
+                        {strategy.logic}
+                      </div>
+
+                      <div className="mt-auto grid grid-cols-2 gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onChange(strategy.logic);
+                          }}
+                        >
+                          Replace
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onChange(value ? `${value} AND\n${strategy.logic}` : strategy.logic);
+                          }}
+                        >
+                          + Append
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                !showTableView && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                    {filteredRatios.map((field) => (
+                      <div
+                        key={field.name}
+                        className="group p-4 text-left rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all"
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <button
+                            className="font-medium text-slate-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors text-left"
+                            onClick={() => handleSmartInsert(field.name)}
+                          >
+                            {field.name}
+                          </button>
+                          <div className="flex items-center gap-2">
+                            <div className="text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-2 py-1 rounded-full">
+                              {field.unit === "₹" ? "$" : field.unit}
+                            </div>
+                            <button
+                              className="p-1 hover:text-yellow-600 text-slate-400 dark:text-slate-500"
+                              title={
+                                favoriteFields.includes(field.name)
+                                  ? "Unpin"
+                                  : "Pin"
+                              }
+                              onClick={() => toggleFavorite(field.name)}
+                            >
+                              {favoriteFields.includes(field.name) ? (
+                                <Star className="w-4 h-4 fill-yellow-400 text-yellow-500" />
+                              ) : (
+                                <StarOff className="w-4 h-4" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="text-sm text-slate-500 dark:text-slate-400 mb-2">
+                          {field.description}
+                        </div>
+                        {field.example && (
+                          <div className="text-xs font-mono bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-1 rounded mb-2">
+                            {field.example}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 mt-2">
                           <Button
                             size="sm"
                             variant="outline"
                             className="h-8 px-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600"
-                            onClick={() =>
-                              setShowOperatorPopupFor(
-                                showOperatorPopupFor === field.name
-                                  ? null
-                                  : field.name
-                              )
-                            }
-                            title="Insert comparison template"
+                            onClick={() => handleSmartInsert(field.name)}
+                            title="Insert field"
                           >
-                            Insert op
+                            Insert
                           </Button>
 
-                          {/* Operator Selection Popup */}
-                          {showOperatorPopupFor === field.name && (
-                            <>
-                              {/* Backdrop to close on click outside */}
-                              <div
-                                className="fixed inset-0 z-40"
-                                onClick={() => setShowOperatorPopupFor(null)}
-                              />
-                              <div className="absolute top-full left-0 mt-2 z-50 animate-in fade-in-0 zoom-in-95 duration-200">
-                                <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xl p-4 min-w-[240px]">
-                                  <div className="flex items-center justify-between mb-2">
-                                    <p className="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wide">
-                                      Select operator for {field.name}
-                                    </p>
-                                    <button
-                                      onClick={() =>
-                                        setShowOperatorPopupFor(null)
-                                      }
-                                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                                    >
-                                      <X className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                  <div className="grid grid-cols-4 gap-2 mb-3">
-                                    {[">", "<", ">=", "<="].map((op) => (
-                                      <button
-                                        key={op}
-                                        onClick={() =>
-                                          handleOperatorSelect(field.name, op)
-                                        }
-                                        className="h-10 px-3 font-mono text-sm font-medium rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 transition-colors"
-                                      >
-                                        {op}
-                                      </button>
-                                    ))}
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-2 mb-3">
-                                    {["=", "!="].map((op) => (
-                                      <button
-                                        key={op}
-                                        onClick={() =>
-                                          handleOperatorSelect(field.name, op)
-                                        }
-                                        className="h-10 px-3 font-mono text-sm font-medium rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 transition-colors"
-                                      >
-                                        {op}
-                                      </button>
-                                    ))}
-                                  </div>
-                                  <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
-                                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
-                                      Logical Operators
-                                    </p>
-                                    <div className="flex gap-2">
+                          {/* Insert op button with inline popup */}
+                          <div className="relative">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 px-2 bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600"
+                              onClick={() =>
+                                setShowOperatorPopupFor(
+                                  showOperatorPopupFor === field.name
+                                    ? null
+                                    : field.name
+                                )
+                              }
+                              title="Insert comparison template"
+                            >
+                              Insert op
+                            </Button>
+
+                            {/* Operator Selection Popup */}
+                            {showOperatorPopupFor === field.name && (
+                              <>
+                                {/* Backdrop to close on click outside */}
+                                <div
+                                  className="fixed inset-0 z-40"
+                                  onClick={() => setShowOperatorPopupFor(null)}
+                                />
+                                <div className="absolute top-full left-0 mt-2 z-50 animate-in fade-in-0 zoom-in-95 duration-200">
+                                  <div className="bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-xl p-4 min-w-[240px]">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <p className="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wide">
+                                        Select operator for {field.name}
+                                      </p>
                                       <button
                                         onClick={() =>
-                                          handleOperatorSelect(
-                                            field.name,
-                                            "AND"
-                                          )
+                                          setShowOperatorPopupFor(null)
                                         }
-                                        className="flex-1 h-10 px-3 text-sm font-semibold rounded-lg bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/70 border border-blue-200 dark:border-blue-800 transition-colors"
+                                        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                                       >
-                                        AND
+                                        <X className="w-4 h-4" />
                                       </button>
-                                      <button
-                                        onClick={() =>
-                                          handleOperatorSelect(field.name, "OR")
-                                        }
-                                        className="flex-1 h-10 px-3 text-sm font-semibold rounded-lg bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/70 border border-purple-200 dark:border-purple-800 transition-colors"
-                                      >
-                                        OR
-                                      </button>
+                                    </div>
+                                    <div className="grid grid-cols-4 gap-2 mb-3">
+                                      {[">", "<", ">=", "<="].map((op) => (
+                                        <button
+                                          key={op}
+                                          onClick={() =>
+                                            handleOperatorSelect(field.name, op)
+                                          }
+                                          className="h-10 px-3 font-mono text-sm font-medium rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 transition-colors"
+                                        >
+                                          {op}
+                                        </button>
+                                      ))}
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2 mb-3">
+                                      {["=", "!="].map((op) => (
+                                        <button
+                                          key={op}
+                                          onClick={() =>
+                                            handleOperatorSelect(field.name, op)
+                                          }
+                                          className="h-10 px-3 font-mono text-sm font-medium rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 transition-colors"
+                                        >
+                                          {op}
+                                        </button>
+                                      ))}
+                                    </div>
+                                    <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                                        Logical Operators
+                                      </p>
+                                      <div className="flex gap-2">
+                                        <button
+                                          onClick={() =>
+                                            handleOperatorSelect(
+                                              field.name,
+                                              "AND"
+                                            )
+                                          }
+                                          className="flex-1 h-10 px-3 text-sm font-semibold rounded-lg bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/70 border border-blue-200 dark:border-blue-800 transition-colors"
+                                        >
+                                          AND
+                                        </button>
+                                        <button
+                                          onClick={() =>
+                                            handleOperatorSelect(field.name, "OR")
+                                          }
+                                          className="flex-1 h-10 px-3 text-sm font-semibold rounded-lg bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/70 border border-purple-200 dark:border-purple-800 transition-colors"
+                                        >
+                                          OR
+                                        </button>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
-                              </div>
-                            </>
-                          )}
+                              </>
+                            )}
+                          </div>
                         </div>
+                        {field.keywords.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {field.keywords.slice(0, 3).map((keyword: string) => (
+                              <span
+                                key={keyword}
+                                className="text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded"
+                              >
+                                {keyword}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      {field.keywords.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {field.keywords.slice(0, 3).map((keyword: string) => (
-                            <span
-                              key={keyword}
-                              className="text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded"
-                            >
-                              {keyword}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    ))}
 
-                  {filteredRatios.length === 0 && (
-                    <div className="col-span-full py-12 text-center text-slate-500 dark:text-slate-400">
-                      <Search className="w-8 h-8 mx-auto mb-3 opacity-50" />
-                      <div>No fields found matching your search.</div>
-                      <div className="text-sm mt-1">
-                        Try different keywords or browse categories.
+                    {filteredRatios.length === 0 && (
+                      <div className="col-span-full py-12 text-center text-slate-500 dark:text-slate-400">
+                        <Search className="w-8 h-8 mx-auto mb-3 opacity-50" />
+                        <div>No fields found matching your search.</div>
+                        <div className="text-sm mt-1">
+                          Try different keywords or browse categories.
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
+                )
               )}
 
               {showTableView && (
@@ -1975,264 +2057,150 @@ export default function ScreenerQueryBuilder({
         </div>
       </Card>
 
-      {/* Enhanced Help Guide Modal */}
-      {showGuide && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowGuide(false);
-          }}
-        >
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
-            <div className="sticky top-0 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700 p-6 flex justify-between items-center">
-              <div>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                  Complete Query Builder Guide
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-                  Everything you need to know about building powerful stock
-                  screening queries
-                </p>
-              </div>
-              <button
-                onClick={() => setShowGuide(false)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                title="Close"
-              >
-                <svg
-                  className="w-5 h-5 text-gray-500 dark:text-slate-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
 
-            <div className="p-6 space-y-8 overflow-y-auto max-h-[calc(90vh-100px)]">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div>
-                  <h4 className="font-semibold mb-3 text-blue-600 dark:text-blue-400">
-                    Available Fields
-                  </h4>
-                  <div className="text-sm space-y-2 max-h-60 overflow-y-auto">
-                    {getAllFields()
-                      .slice(0, 30)
-                      .map((field) => (
-                        <div
-                          key={field.name}
-                          className="p-2 border border-slate-200 dark:border-slate-700 rounded bg-white dark:bg-slate-800"
-                        >
-                          <div className="font-mono text-blue-600 dark:text-blue-400 text-xs">
-                            {field.name}
-                          </div>
-                          <div className="text-gray-500 dark:text-slate-400 text-xs">
-                            {field.description}
-                          </div>
-                          {field.example && (
-                            <div className="font-mono text-xs bg-gray-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 p-1 rounded mt-1">
-                              {field.example}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    <div className="text-gray-400 dark:text-slate-500 text-xs">
-                      ...and {getAllFields().length - 30} more fields
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold mb-3 text-purple-600 dark:text-purple-400">
-                    Operators
-                  </h4>
-                  <div className="text-sm space-y-2">
-                    {OPERATORS.map((op) => (
-                      <div
-                        key={op.symbol}
-                        className="p-2 border border-slate-200 dark:border-slate-700 rounded bg-white dark:bg-slate-800"
-                      >
-                        <div className="font-mono text-purple-600 dark:text-purple-400">
-                          {op.symbol}
-                        </div>
-                        <div className="text-gray-500 dark:text-slate-400 text-xs">
-                          {op.description}
-                        </div>
-                        <div className="font-mono text-xs bg-gray-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 p-1 rounded mt-1">
-                          {op.example}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="font-semibold mb-3 text-green-600 dark:text-green-400">
-                    Functions
-                  </h4>
-                  <div className="text-sm space-y-2">
-                    {FUNCTIONS.map((func) => (
-                      <div
-                        key={func.name}
-                        className="p-2 border border-slate-200 dark:border-slate-700 rounded bg-white dark:bg-slate-800"
-                      >
-                        <div className="font-mono text-green-600 dark:text-green-400">
-                          {func.name}
-                        </div>
-                        <div className="text-gray-500 dark:text-slate-400 text-xs">
-                          {func.description}
-                        </div>
-                        <div className="font-mono text-xs bg-gray-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 p-1 rounded mt-1">
-                          {func.example}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-semibold mb-3 text-orange-600 dark:text-orange-400">
-                  Common Error Solutions
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {Object.entries(ERROR_SOLUTIONS).map(([error, solution]) => (
-                    <div
-                      key={error}
-                      className="p-3 border border-orange-200 dark:border-orange-800 rounded bg-orange-50 dark:bg-orange-900/30"
-                    >
-                      <div className="font-medium text-orange-800 dark:text-orange-300">
-                        {error}
-                      </div>
-                      <div className="text-sm text-orange-700 dark:text-orange-400 mt-1">
-                        {solution}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Enhanced Keyboard Shortcuts Modal */}
-      {showKeyboardShortcuts && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowKeyboardShortcuts(false);
-          }}
-        >
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-            <div className="sticky top-0 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700 p-6 flex justify-between items-center">
-              <div>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                  Keyboard Shortcuts
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-                  Master these shortcuts to boost your productivity
-                </p>
-              </div>
-              <button
-                onClick={() => setShowKeyboardShortcuts(false)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                title="Close"
-              >
-                <svg
-                  className="w-5 h-5 text-gray-500 dark:text-slate-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
+      {/* Keyboard Shortcuts Modal */}
+      <Dialog open={showKeyboardShortcuts} onOpenChange={setShowKeyboardShortcuts}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Keyboard Shortcuts</DialogTitle>
+            <DialogDescription>
+              Master these shortcuts to boost your productivity
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {Object.entries(KEYBOARD_SHORTCUTS).map(
+                ([shortcut, description]) => (
+                  <div
+                    key={shortcut}
+                    className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <kbd className="inline-flex items-center px-3 py-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md font-mono text-sm text-slate-800 dark:text-slate-300 shadow-sm">
+                      {shortcut}
+                    </kbd>
+                    <span className="text-sm text-slate-600 dark:text-slate-400 ml-4 flex-1 text-right">
+                      {description}
+                    </span>
+                  </div>
+                )
+              )}
             </div>
 
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {Object.entries(KEYBOARD_SHORTCUTS).map(
-                  ([shortcut, description]) => (
-                    <div
-                      key={shortcut}
-                      className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
-                    >
-                      <kbd className="inline-flex items-center px-3 py-1.5 bg-gray-100 dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-md font-mono text-sm text-gray-800 dark:text-slate-300 shadow-sm">
-                        {shortcut}
-                      </kbd>
-                      <span className="text-sm text-gray-600 dark:text-slate-400 ml-4 flex-1 text-right">
-                        {description}
-                      </span>
-                    </div>
-                  )
-                )}
-              </div>
-
-              <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">
-                <div className="flex items-start">
-                  <div className="shrink-0">
-                    <svg
-                      className="w-5 h-5 text-blue-400 mt-0.5"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300">
-                      Pro Tip
-                    </h4>
-                    <p className="text-sm text-blue-700 dark:text-blue-400 mt-1">
-                      Use{" "}
-                      <kbd className="px-1 py-0.5 bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 rounded text-xs">
-                        Ctrl+Space
-                      </kbd>{" "}
-                      to trigger auto-complete at any time, and{" "}
-                      <kbd className="px-1 py-0.5 bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 rounded text-xs">
-                        Tab
-                      </kbd>{" "}
-                      to quickly accept suggestions.
-                    </p>
-                  </div>
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex items-start">
+                <div className="shrink-0">
+                  <Lightbulb className="w-5 h-5 text-blue-400 mt-0.5" />
+                </div>
+                <div className="ml-3">
+                  <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300">
+                    Pro Tip
+                  </h4>
+                  <p className="text-sm text-blue-700 dark:text-blue-400 mt-1">
+                    Use{" "}
+                    <kbd className="px-1 py-0.5 bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 rounded text-xs">
+                      Ctrl+Space
+                    </kbd>{" "}
+                    to trigger auto-complete at any time, and{" "}
+                    <kbd className="px-1 py-0.5 bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200 rounded text-xs">
+                      Tab
+                    </kbd>{" "}
+                    to quickly accept suggestions.
+                  </p>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
-      {/* Enhanced Query Examples Modal */}
-      {showExamples && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowExamples(false);
-          }}
-        >
-          {/* ... existing modal code ... */}
-          {/* I will omit internal modal code as I'm just appending after it if I can match the context correctly. 
-              Actually replace_file_content requires TargetContent. 
-              I will replace the last few lines to append the modal. 
-          */}
-        </div>
-      )}
+      {/* Help Guide Modal */}
+      <Dialog open={showGuide} onOpenChange={setShowGuide}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Screener Query Guide</DialogTitle>
+            <DialogDescription>
+              Learn how to build powerful queries to screen for stocks.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6">
+            <section>
+              <h3 className="text-lg font-semibold mb-2">Basic Syntax</h3>
+              <p className="text-slate-600 dark:text-slate-300 mb-2">
+                Queries are built using <code>Field Operator Value</code> pairs, combined with logical operators.
+              </p>
+              <div className="bg-slate-100 dark:bg-slate-800 p-3 rounded-md font-mono text-sm">
+                Sales {">"} 100 AND PE {"<"} 25
+              </div>
+            </section>
+
+            <section>
+              <h3 className="text-lg font-semibold mb-2">Comparison Operators</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {OPERATORS.filter(op => op.category === "Comparison").map(op => (
+                  <div key={op.symbol} className="border border-slate-200 dark:border-slate-700 rounded p-3">
+                    <div className="font-mono font-bold text-blue-600 dark:text-blue-400 mb-1">{op.symbol}</div>
+                    <div className="text-sm font-medium mb-1">{op.description}</div>
+                    <div className="text-xs text-slate-500 font-mono bg-slate-50 dark:bg-slate-900 p-1 rounded">
+                      {op.example}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section>
+              <h3 className="text-lg font-semibold mb-2">Logical Operators</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {OPERATORS.filter(op => op.category === "Logical").map(op => (
+                  <div key={op.symbol} className="border border-slate-200 dark:border-slate-700 rounded p-3">
+                    <div className="font-mono font-bold text-purple-600 dark:text-purple-400 mb-1">{op.symbol}</div>
+                    <div className="text-sm font-medium mb-1">{op.description}</div>
+                    <div className="text-xs text-slate-500 font-mono bg-slate-50 dark:bg-slate-900 p-1 rounded">
+                      {op.example}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Query Examples Modal */}
+      <Dialog open={showExamples} onOpenChange={setShowExamples}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Query Examples</DialogTitle>
+            <DialogDescription>
+              Select an example to load it into the query builder.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {QUERY_EXAMPLES.map((example, index) => (
+              <div
+                key={index}
+                className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500 cursor-pointer bg-white dark:bg-slate-800 transition-colors group"
+                onClick={() => {
+                  onChange(example.query);
+                  setShowExamples(false);
+                }}
+              >
+                <h3 className="font-semibold text-slate-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                  {example.name}
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
+                  {example.description}
+                </p>
+                <div className="text-xs font-mono bg-slate-50 dark:bg-slate-900 p-2 rounded text-slate-700 dark:text-slate-300 break-words group-hover:bg-blue-50 dark:group-hover:bg-blue-900/20">
+                  {example.query}
+                </div>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <PaywallModal
         isOpen={showPaywall}

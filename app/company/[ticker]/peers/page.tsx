@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { CompanyNavigation } from "@/components/company/CompanyNavigation";
+
 import { CompanyLogo } from "@/components/company/CompanyLogo";
 import { UsdValue } from "@/components/company/UsdValue";
 import { PeerComparison } from "@/components/company/PeerComparison";
@@ -58,7 +58,7 @@ export default async function PeersPage({ params }: { params: { ticker: string }
             </div>
 
             {/* Navigation Tabs */}
-            <CompanyNavigation ticker={ticker} currentTab="peers" />
+
 
             <div className="mx-auto max-w-[1600px] py-8 px-4 md:px-8 lg:px-12">
                 <div className="max-w-4xl mx-auto">

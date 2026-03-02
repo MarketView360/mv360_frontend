@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { SupportWidget } from "@/components/support/SupportWidget";
 import {
   ArrowLeft,
   Search,
@@ -206,6 +207,7 @@ export default function HelpCenterPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-12 px-4">
+      <SupportWidget />
       <div className="max-w-5xl mx-auto">
         <Link
           href="/"
@@ -332,7 +334,7 @@ export default function HelpCenterPage() {
               Contact Support
             </Link>
             <Link
-              href="/jovan-chat"
+              href="/ai"
               className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-500 text-white font-medium rounded-lg hover:bg-blue-400 transition-colors"
             >
               <Zap className="h-4 w-4" />

@@ -11,16 +11,23 @@ import { LoginRequired } from "./components/LoginRequired";
 import { SuggestionSidebar, SuggestionSidebarToggle } from "./components/SuggestionSidebar";
 import { PanelLeftOpen, StopCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/providers/AuthProvider";
 import { useChatSession } from "@/lib/hooks/useChatSession";
 import { useChatStream } from "@/lib/hooks/useChatStream";
 import { useQuota } from "@/hooks/useQuota";
+import { useToolsConfig } from "@/hooks/useToolsConfig";
 import { AIApiError } from "@/lib/api/ai";
 
 // Feature flag: Allow anonymous users to access AI chat.
 // Default: true (if unset). Set NEXT_PUBLIC_ALLOW_ANONYMOUS_AI_CHAT=false to require login.
 const ALLOW_ANONYMOUS_CHAT =
   process.env.NEXT_PUBLIC_ALLOW_ANONYMOUS_AI_CHAT !== "false";
+
+// Feature flag: Enable AI suggestions sidebar.
+// Default: true (if unset). Set NEXT_PUBLIC_ENABLE_AI_SUGGESTIONS=false to disable.
+const ENABLE_SUGGESTIONS =
+  process.env.NEXT_PUBLIC_ENABLE_AI_SUGGESTIONS !== "false";
 
 export default function AiPageClient() {
   const searchParams = useSearchParams();
@@ -30,11 +37,14 @@ export default function AiPageClient() {
   const token = session?.access_token ?? null;
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isSuggestionOpen, setIsSuggestionOpen] = useState(true);
+  const [isSuggestionOpen, setIsSuggestionOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState("gpt-oss");
   const [isReasoningEnabled, setIsReasoningEnabled] = useState(false);
   const [greeting, setGreeting] = useState("");
   const [anonymousMessageCount, setAnonymousMessageCount] = useState(0);
+
+  // Tools configuration (persisted in localStorage, syncs with settings page)
+  const { config: toolsConfig, setToolsEnabled, setToolEnabled, isToolsActive } = useToolsConfig();
 
   // Disable reasoning if user logs out
   useEffect(() => {
@@ -137,6 +147,8 @@ export default function AiPageClient() {
     isReasoning: msg.reasoning ? true : false,
     reasoning: msg.reasoning,
     isStreaming: msg.isStreaming,
+    toolCalls: msg.toolCalls,
+    toolStatus: msg.toolStatus,
   }));
 
   useEffect(() => {
@@ -234,8 +246,10 @@ export default function AiPageClient() {
 
       // Send message
       try {
+        console.log(`[AiPageClient] Sending message with enableTools=${isToolsActive}, reasoning=${isReasoningEnabled}`);
         await sendMessage(content, {
           reasoning: isReasoningEnabled,
+          enableTools: isToolsActive,
           onSessionCreated: (id, title) => {
             addSession({
               id,
@@ -294,9 +308,10 @@ export default function AiPageClient() {
   }
 
   return (
-    <div className="flex h-full w-full bg-white dark:bg-slate-950 overflow-hidden">
-      {/* Sidebar */}
-      <Sidebar
+    <TooltipProvider delayDuration={200} skipDelayDuration={300}>
+      <div className="flex h-full w-full bg-white dark:bg-slate-950 overflow-hidden">
+        {/* Sidebar */}
+        <Sidebar
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
         sessions={sessions}
@@ -327,9 +342,22 @@ export default function AiPageClient() {
               </Button>
             )}
             <h1 className="text-lg font-semibold text-slate-900 dark:text-slate-100 hidden md:block">
-              {activeSessionId
-                ? sessions.find((s) => s.id === activeSessionId)?.title || "AI Chat"
-                : "AI Chat"}
+              {activeSessionId ? (
+                (() => {
+                  const activeSession = sessions.find((s) => s.id === activeSessionId);
+                  if (activeSession?.titleGenerating) {
+                    return (
+                      <span className="flex items-center gap-2">
+                        <span className="inline-block h-2 w-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-pulse" />
+                        <span className="text-slate-400 dark:text-slate-500">Generating title...</span>
+                      </span>
+                    );
+                  }
+                  return activeSession?.title || "AI Chat";
+                })()
+              ) : (
+                "AI Chat"
+              )}
             </h1>
           </div>
 
@@ -350,6 +378,9 @@ export default function AiPageClient() {
               onModelChange={setSelectedModel}
               isReasoningEnabled={isReasoningEnabled}
               onReasoningChange={handleReasoningChange}
+              toolsConfig={toolsConfig}
+              onToolsEnabledChange={setToolsEnabled}
+              onToolToggle={setToolEnabled}
               disabled={isStreaming}
             />
           </div>
@@ -386,18 +417,7 @@ export default function AiPageClient() {
         </div>
 
         {/* Suggestion Toggle */}
-        {!isSuggestionOpen && (
-          <div className="hidden lg:block relative h-0">
-            {/* Position toggle absolute relative to this container or relative main content? 
-                     The Toggle component uses absolute positioning.
-                     If I render it here, it will be at bottom of flex col?
-                     The Toggle component styles: absolute top-1/2 right-0
-                     The main content div is relative h-full. 
-                     So putting it anywhere inside main content div is fine.
-                 */}
-          </div>
-        )}
-        {!isSuggestionOpen && (
+        {ENABLE_SUGGESTIONS && !isSuggestionOpen && (
           <SuggestionSidebarToggle onClick={() => setIsSuggestionOpen(true)} />
         )}
       </div>
@@ -409,6 +429,7 @@ export default function AiPageClient() {
         onSuggestionClick={handleSendMessage}
         className="hidden lg:flex"
       />
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }

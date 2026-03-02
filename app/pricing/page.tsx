@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import React, { useState, useEffect } from "react";
 import {
     Check,
     X,
@@ -9,18 +8,21 @@ import {
     Crown,
     Shield,
     RefreshCw,
-    Users,
     ChevronDown,
     ChevronUp,
-    Zap,
     LucideIcon,
+    Loader2,
+    Bell,
 } from "lucide-react";
+import { waitlistApi } from "@/lib/api/waitlist";
+import { toast } from "sonner";
+import { WaitlistDialog, WaitlistFormData } from "./components/WaitlistDialog";
 
 type BillingPeriod = "monthly" | "annually";
 
 interface PricingPlan {
     name: string;
-    tier: "free" | "pro" | "elite";
+    tier: "free" | "premium" | "max";
     monthlyPrice: number;
     annualPrice: number;
     description: string;
@@ -52,8 +54,8 @@ const plans: PricingPlan[] = [
         ],
     },
     {
-        name: "Professional",
-        tier: "pro",
+        name: "Premium",
+        tier: "premium",
         monthlyPrice: 19.99,
         annualPrice: 199.99,
         description: "For serious individual investors",
@@ -81,8 +83,8 @@ const plans: PricingPlan[] = [
         ],
     },
     {
-        name: "Elite Investor",
-        tier: "elite",
+        name: "Max",
+        tier: "max",
         monthlyPrice: 49.99,
         annualPrice: 499.99,
         description: "For professional traders & analysts",
@@ -240,9 +242,32 @@ export default function PricingPage() {
     const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
     const [showAllFeatures, setShowAllFeatures] = useState(false);
     const [openFaq, setOpenFaq] = useState<number | null>(null);
+    const [userSubscription, setUserSubscription] = useState<{ tier: string } | null>(null);
 
     const isAnnual = billingPeriod === "annually";
     const savingsPercent = 17;
+
+    // Fetch user subscription on mount
+    useEffect(() => {
+        async function fetchSubscription() {
+            try {
+                const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+                const response = await fetch(`${BACKEND_URL}/api/profile/subscription`, {
+                    credentials: "include",
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    setUserSubscription(data);
+                }
+            } catch (error) {
+                // User not logged in or error fetching subscription - that's fine
+                console.debug("Could not fetch subscription:", error);
+            }
+        }
+
+        fetchSubscription();
+    }, []);
 
     const getPrice = (plan: PricingPlan) => {
         if (plan.tier === "free") return "$0";
@@ -255,37 +280,40 @@ export default function PricingPage() {
 
     return (
         <div className="min-h-full bg-slate-50 dark:bg-slate-950">
-            {/* Hero Section */}
-            <section className="pt-16 pb-12 md:pt-24 md:pb-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
-                <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-12 text-center">
-                    <h1 className="text-4xl md:text-5xl font-bold font-heading text-slate-900 dark:text-white mb-4">
+            {/* Hero — compact header with billing toggle */}
+            <section className="pt-6 pb-5 md:pt-8 md:pb-6 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+                <div className="mx-auto max-w-5xl px-4 text-center">
+                    <h1 className="text-2xl md:text-3xl font-bold font-heading text-slate-900 dark:text-white mb-1">
                         Choose Your Plan
                     </h1>
-                    <p className="text-lg text-slate-600 dark:text-slate-300 mb-8 max-w-2xl mx-auto">
-                        Start free, upgrade anytime. No credit card required for the free tier.
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                        Start free, upgrade anytime. No credit card required.
                     </p>
 
                     {/* Billing Toggle */}
-                    <div className="inline-flex items-center gap-4 p-1.5 bg-slate-100 dark:bg-slate-800 rounded-full">
+                    <div className="inline-flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-full">
                         <button
                             onClick={() => setBillingPeriod("monthly")}
-                            className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${!isAnnual
+                            className={`px-5 py-1.5 rounded-full text-xs font-semibold transition-all ${!isAnnual
                                 ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
-                                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white"
                                 }`}
                         >
                             Monthly
                         </button>
                         <button
                             onClick={() => setBillingPeriod("annually")}
-                            className={`px-6 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${isAnnual
+                            className={`px-5 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 ${isAnnual
                                 ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
-                                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white"
                                 }`}
                         >
                             Annually
-                            <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-growth-500 text-white">
-                                Save {savingsPercent}%
+                            <span
+                                className="px-1.5 py-0.5 text-[10px] font-bold rounded-full text-white"
+                                style={{ backgroundColor: '#16a34a' }}
+                            >
+                                -{savingsPercent}%
                             </span>
                         </button>
                     </div>
@@ -293,58 +321,51 @@ export default function PricingPage() {
             </section>
 
             {/* Pricing Cards */}
-            <section className="py-12 md:py-16">
-                <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-12">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 max-w-5xl mx-auto">
+            <section className="py-8 md:py-10">
+                <div className="mx-auto max-w-5xl px-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5 items-start">
                         {plans.map((plan) => (
                             <PricingCard
                                 key={plan.tier}
                                 plan={plan}
                                 price={getPrice(plan)}
                                 isAnnual={isAnnual}
+                                userSubscription={userSubscription}
                             />
                         ))}
+                    </div>
+
+                    {/* Trust signals inline */}
+                    <div className="flex flex-wrap items-center justify-center gap-6 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
+                        <TrustSignal icon={Shield} text="30-Day Money-Back" />
+                        <TrustSignal icon={RefreshCw} text="Cancel Anytime" />
+                        <TrustSignal icon={Lock} text="Secure via Stripe" />
                     </div>
                 </div>
             </section>
 
             {/* Feature Comparison */}
-            <section className="py-12 md:py-16 bg-white dark:bg-slate-900 border-y border-slate-200 dark:border-slate-800">
-                <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-12">
-                    <div className="text-center mb-8">
-                        <h2 className="text-2xl md:text-3xl font-bold font-heading text-slate-900 dark:text-white mb-2">
-                            Compare Plans in Detail
-                        </h2>
-                        <button
-                            onClick={() => setShowAllFeatures(!showAllFeatures)}
-                            className="inline-flex items-center gap-1 text-brand hover:text-brand-600 text-sm font-medium"
-                        >
-                            {showAllFeatures ? "Show Key Features" : "Show All Features"}
-                            {showAllFeatures ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                        </button>
-                    </div>
+            <section className="py-8 md:py-10 bg-white dark:bg-slate-900 border-y border-slate-200 dark:border-slate-800">
+                <div className="mx-auto max-w-5xl px-4">
+                    <h2 className="text-xl md:text-2xl font-bold font-heading text-slate-900 dark:text-white mb-6">
+                        Compare Plans
+                    </h2>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full min-w-[700px]">
+                    <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+                        <table className="w-full min-w-[640px]">
                             <thead>
-                                <tr className="border-b border-slate-200 dark:border-slate-700">
-                                    <th className="text-left py-4 px-4 font-medium text-slate-500 dark:text-slate-400 w-1/3">
+                                <tr className="bg-slate-50 dark:bg-slate-800/80">
+                                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-[40%]">
                                         Feature
                                     </th>
-                                    <th className="text-center py-4 px-4 font-medium text-slate-900 dark:text-white">
+                                    <th className="text-center py-3 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                                         Free
                                     </th>
-                                    <th className="text-center py-4 px-4 font-medium text-warning">
-                                        <span className="inline-flex items-center gap-1">
-                                            <Lock className="w-4 h-4" />
-                                            Pro
-                                        </span>
+                                    <th className="text-center py-3 px-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#f59e0b' }}>
+                                        Premium
                                     </th>
-                                    <th className="text-center py-4 px-4 font-medium text-elite">
-                                        <span className="inline-flex items-center gap-1">
-                                            <Crown className="w-4 h-4" />
-                                            Elite
-                                        </span>
+                                    <th className="text-center py-3 px-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#8b5cf6' }}>
+                                        Max
                                     </th>
                                 </tr>
                             </thead>
@@ -352,11 +373,11 @@ export default function PricingPage() {
                                 {comparisonFeatures
                                     .slice(0, showAllFeatures ? undefined : 4)
                                     .map((category) => (
-                                        <>
-                                            <tr key={category.category} className="bg-slate-50 dark:bg-slate-800/50">
+                                        <React.Fragment key={category.category}>
+                                            <tr className="bg-slate-50/50 dark:bg-slate-800/30">
                                                 <td
                                                     colSpan={4}
-                                                    className="py-3 px-4 font-semibold text-slate-900 dark:text-white"
+                                                    className="py-2 px-4 text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider"
                                                 >
                                                     {category.category}
                                                 </td>
@@ -364,58 +385,68 @@ export default function PricingPage() {
                                             {category.features.map((feature) => (
                                                 <tr
                                                     key={feature.name}
-                                                    className="border-b border-slate-100 dark:border-slate-800"
+                                                    className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors"
                                                 >
-                                                    <td className="py-3 px-4 text-sm text-slate-600 dark:text-slate-300">
+                                                    <td className="py-2.5 px-4 text-sm text-slate-600 dark:text-slate-300">
                                                         {feature.name}
                                                     </td>
-                                                    <td className="py-3 px-4 text-center">
+                                                    <td className="py-2.5 px-3 text-center">
                                                         <FeatureValue value={feature.free} />
                                                     </td>
-                                                    <td className="py-3 px-4 text-center">
+                                                    <td className="py-2.5 px-3 text-center">
                                                         <FeatureValue value={feature.pro} />
                                                     </td>
-                                                    <td className="py-3 px-4 text-center">
+                                                    <td className="py-2.5 px-3 text-center">
                                                         <FeatureValue value={feature.elite} />
                                                     </td>
                                                 </tr>
                                             ))}
-                                        </>
+                                        </React.Fragment>
                                     ))}
                             </tbody>
                         </table>
+                    </div>
+
+                    {/* Show All / Show Less button below the table */}
+                    <div className="flex justify-center mt-4">
+                        <button
+                            onClick={() => setShowAllFeatures(!showAllFeatures)}
+                            className="inline-flex items-center gap-1.5 px-5 py-2 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-90"
+                            style={{ backgroundColor: '#0087f6' }}
+                        >
+                            {showAllFeatures ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                            {showAllFeatures ? "Show Less" : `Show All ${comparisonFeatures.length} Categories`}
+                        </button>
                     </div>
                 </div>
             </section>
 
             {/* FAQ Section */}
-            <section className="py-12 md:py-16">
-                <div className="mx-auto max-w-3xl px-4 md:px-8 lg:px-12">
-                    <h2 className="text-2xl md:text-3xl font-bold font-heading text-slate-900 dark:text-white text-center mb-8">
-                        Frequently Asked Questions
+            <section className="py-8 md:py-10">
+                <div className="mx-auto max-w-3xl px-4">
+                    <h2 className="text-xl md:text-2xl font-bold font-heading text-slate-900 dark:text-white text-center mb-5">
+                        FAQ
                     </h2>
 
-                    <div className="space-y-4">
+                    <div className="space-y-2">
                         {faqs.map((faq, index) => (
                             <div
                                 key={index}
-                                className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden"
+                                className="bg-white dark:bg-slate-800/80 rounded-lg border border-slate-200 dark:border-slate-700/80 overflow-hidden"
                             >
                                 <button
                                     onClick={() => setOpenFaq(openFaq === index ? null : index)}
-                                    className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+                                    className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors"
                                 >
-                                    <span className="font-medium text-slate-900 dark:text-white pr-4">
+                                    <span className="text-sm font-medium text-slate-900 dark:text-white pr-4">
                                         {faq.question}
                                     </span>
-                                    {openFaq === index ? (
-                                        <ChevronUp className="w-5 h-5 text-slate-400 flex-shrink-0" />
-                                    ) : (
-                                        <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0" />
-                                    )}
+                                    <ChevronDown
+                                        className={`w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-200 ${openFaq === index ? "rotate-180" : ""}`}
+                                    />
                                 </button>
                                 {openFaq === index && (
-                                    <div className="px-6 pb-4 text-slate-600 dark:text-slate-300 animate-in slide-in-from-top-2 duration-200">
+                                    <div className="px-4 pb-3 text-sm text-slate-500 dark:text-slate-400">
                                         {faq.answer}
                                     </div>
                                 )}
@@ -424,135 +455,283 @@ export default function PricingPage() {
                     </div>
                 </div>
             </section>
-
-            {/* Trust Signals */}
-            <section className="py-12 md:py-16 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800">
-                <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-12">
-                    <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12">
-                        <TrustSignal icon={Shield} text="30-Day Money-Back Guarantee" />
-                        <TrustSignal icon={RefreshCw} text="Cancel Anytime" />
-                        <TrustSignal icon={Lock} text="Secure Payment" />
-                        <TrustSignal icon={Users} text="10,000+ Happy Investors" />
-                    </div>
-                </div>
-            </section>
-
-            {/* Final CTA */}
-            <section className="py-16 md:py-24 gradient-brand">
-                <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-12 text-center">
-                    <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                        Ready to start investing smarter?
-                    </h2>
-                    <p className="text-lg text-white/80 mb-8">
-                        Join thousands of investors using MarketView360
-                    </p>
-                    <Link
-                        href="/auth/signup"
-                        className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-brand font-semibold rounded-xl hover:bg-slate-50 transition-all hover:scale-[1.02] shadow-lg"
-                    >
-                        <Zap className="w-5 h-5" />
-                        Start Free Trial
-                    </Link>
-                    <p className="mt-4 text-sm text-white/60">
-                        No credit card required
-                    </p>
-                </div>
-            </section>
         </div>
     );
 }
 
 // Pricing Card Component
+const TIER_COLORS: Record<string, { accent: string; bg: string; badge: string }> = {
+    free: { accent: '#64748b', bg: 'transparent', badge: '' },
+    premium: { accent: '#f59e0b', bg: 'linear-gradient(135deg, #f59e0b, #d97706)', badge: '#f59e0b' },
+    max: { accent: '#8b5cf6', bg: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', badge: '#8b5cf6' },
+};
+
 function PricingCard({
     plan,
     price,
     isAnnual,
+    userSubscription,
 }: {
     plan: PricingPlan;
     price: string;
     isAnnual: boolean;
+    userSubscription: { tier: string } | null;
 }) {
-    const isPro = plan.tier === "pro";
-    const isElite = plan.tier === "elite";
+    const isPremium = plan.tier === "premium";
+    const isMax = plan.tier === "max";
     const isFree = plan.tier === "free";
+    const isCurrentPlan = userSubscription?.tier === plan.tier;
+    const colors = TIER_COLORS[plan.tier];
+
+    // Waitlist state for premium plan
+    const [waitlistLoading, setWaitlistLoading] = useState(false);
+    const [inWaitlist, setInWaitlist] = useState(false);
+    const [waitlistChecked, setWaitlistChecked] = useState(false);
+    const [showWaitlistDialog, setShowWaitlistDialog] = useState(false);
+    
+    // User is logged in if we have subscription data (even if it's free tier)
+    const isLoggedIn = userSubscription !== null;
+
+    // Check waitlist status on mount for premium plan ONLY if logged in
+    useEffect(() => {
+        if (isPremium && isLoggedIn) {
+            checkWaitlistStatus();
+        } else if (isPremium && !isLoggedIn) {
+            // Not logged in, mark as checked so UI renders
+            setWaitlistChecked(true);
+        }
+    }, [isPremium, isLoggedIn]);
+
+    const checkWaitlistStatus = async () => {
+        try {
+            const status = await waitlistApi.checkStatus();
+            setInWaitlist(status.inWaitlist);
+            setWaitlistChecked(true);
+        } catch (error) {
+            // Error checking status - default to not in waitlist
+            console.error("Error checking waitlist status:", error);
+            setInWaitlist(false);
+            setWaitlistChecked(true);
+        }
+    };
+
+    const handleJoinWaitlist = async () => {
+        // If not logged in, show dialog
+        if (!isLoggedIn) {
+            setShowWaitlistDialog(true);
+            return;
+        }
+
+        // If logged in, join directly
+        setWaitlistLoading(true);
+        try {
+            const result = await waitlistApi.joinPremium();
+            
+            if (result.success) {
+                setInWaitlist(true);
+                if (result.alreadyInList) {
+                    toast.info("Already on Waitlist", {
+                        description: "You're already on the premium waitlist. We'll notify you when it's ready!",
+                    });
+                } else {
+                    toast.success("Joined Waitlist!", {
+                        description: "Check your email for confirmation. We'll notify you when Premium launches!",
+                    });
+                }
+            }
+        } catch (error) {
+            console.error("Error joining waitlist:", error);
+            toast.error("Failed to Join Waitlist", {
+                description: error instanceof Error ? error.message : "Please try again or contact support.",
+            });
+        } finally {
+            setWaitlistLoading(false);
+        }
+    };
+
+    const handleAnonymousWaitlistSubmit = async (data: WaitlistFormData) => {
+        try {
+            const result = await waitlistApi.joinAnonymous(data);
+            
+            if (result.success) {
+                setInWaitlist(true);
+                toast.success("Joined Waitlist!", {
+                    description: "Check your email for confirmation. We'll notify you when Premium launches!",
+                });
+            }
+        } catch (error) {
+            console.error("Error joining waitlist:", error);
+            toast.error("Failed to Join Waitlist", {
+                description: error instanceof Error ? error.message : "Please try again or contact support.",
+            });
+            throw error; // Re-throw to keep dialog open
+        }
+    };
 
     return (
         <div
-            className={`relative p-6 md:p-8 rounded-2xl border transition-all ${plan.highlighted
-                ? "border-brand shadow-xl shadow-brand/10 scale-105 bg-white dark:bg-slate-800"
-                : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
-                }`}
+            className={`relative rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden transition-all`}
+            style={plan.highlighted ? { boxShadow: `0 0 0 1px ${colors.accent}50, 0 8px 30px -6px ${colors.accent}60` } : undefined}
         >
-            {/* Badge */}
-            {plan.badge && (
-                <div
-                    className={`absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full text-xs font-semibold text-white whitespace-nowrap ${isPro ? "gradient-pro" : isElite ? "gradient-elite" : "bg-slate-500"
-                        }`}
-                >
-                    {plan.badge}
+            {/* Top accent bar */}
+            {plan.highlighted && (
+                <div className="h-1" style={{ background: colors.bg }} />
+            )}
+
+            <div className="p-5">
+                {/* Badge */}
+                {plan.badge && (
+                    <div className="mb-3">
+                        <span
+                            className="px-3 py-1 rounded-full text-[11px] font-bold text-white"
+                            style={{ backgroundColor: colors.badge || '#64748b' }}
+                        >
+                            {plan.badge}
+                        </span>
+                    </div>
+                )}
+
+                {/* Current Plan Badge */}
+                {isCurrentPlan && (
+                    <div className="mb-3">
+                        <span
+                            className="px-3 py-1 rounded-full text-[11px] font-bold text-white"
+                            style={{ backgroundColor: '#0087f6' }}
+                        >
+                            Current Plan
+                        </span>
+                    </div>
+                )}
+
+                {/* Plan name */}
+                <div className="flex items-center gap-2 mb-3">
+                    {isPremium && <Lock className="w-4 h-4" style={{ color: colors.accent }} />}
+                    {isMax && <Crown className="w-4 h-4" style={{ color: colors.accent }} />}
+                    <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+                        {plan.name}
+                    </h3>
                 </div>
-            )}
 
-            {/* Plan name */}
-            <div className="flex items-center gap-2 mb-2">
-                {isPro && <Lock className="w-5 h-5 text-warning" />}
-                {isElite && <Crown className="w-5 h-5 text-elite" />}
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                    {plan.name}
-                </h3>
-            </div>
+                {/* Price */}
+                <div className="mb-1">
+                    <span className="text-3xl font-bold text-slate-900 dark:text-white">
+                        {price}
+                    </span>
+                    <span className="text-sm text-slate-500 dark:text-slate-400">/mo</span>
+                    {isAnnual && !isFree && (
+                        <span className="ml-2 text-sm text-slate-400 dark:text-slate-500 line-through">
+                            ${plan.monthlyPrice.toFixed(2)}
+                        </span>
+                    )}
+                </div>
 
-            {/* Price */}
-            <div className="mb-1">
-                <span className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white">
-                    {price}
-                </span>
-                <span className="text-slate-500 dark:text-slate-400">/month</span>
-            </div>
+                {/* Annual savings */}
+                {isAnnual && !isFree && (
+                    <p className="text-xs font-semibold mt-1 mb-3" style={{ color: '#16a34a' }}>
+                        Save ${((plan.monthlyPrice * 12) - plan.annualPrice).toFixed(0)}/yr &middot; Billed ${plan.annualPrice.toFixed(0)}/yr
+                    </p>
+                )}
 
-            {/* Annual note */}
-            {isAnnual && !isFree && (
-                <p className="text-sm text-growth-600 dark:text-growth-400 mb-4">
-                    Billed ${plan.annualPrice}/year
+                {/* Description */}
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                    {plan.description}
                 </p>
-            )}
 
-            {/* Description */}
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-                {plan.description}
-            </p>
-
-            {/* CTA */}
-            <Link
-                href={isFree ? "/auth/signup" : "/auth/signup?plan=" + plan.tier}
-                className={`w-full inline-flex items-center justify-center px-4 py-3 rounded-xl font-semibold transition-all hover:scale-[1.02] ${isFree
-                    ? "border-2 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-                    : isPro
-                        ? "gradient-pro text-white shadow-lg shadow-warning/25"
-                        : "gradient-elite text-white shadow-lg shadow-elite/25"
-                    }`}
-            >
-                {isFree ? "Get Started Free" : "Start 14-Day Free Trial"}
-            </Link>
-
-            {!isFree && (
-                <p className="text-center text-xs text-slate-400 dark:text-slate-500 mt-2">
-                    No credit card required
-                </p>
-            )}
-
-            {/* Features */}
-            <ul className="mt-8 space-y-3">
-                {plan.features.map((feature, i) => (
-                    <li
-                        key={i}
-                        className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300"
+                {/* CTA */}
+                {isCurrentPlan ? (
+                    // Current plan badge
+                    <button
+                        disabled
+                        className="w-full py-2.5 rounded-lg text-sm font-semibold border-2 text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 cursor-default"
+                        style={{ borderColor: colors.accent }}
                     >
-                        <Check className="w-4 h-4 text-growth-500 mt-0.5 flex-shrink-0" />
-                        <span>{feature}</span>
-                    </li>
-                ))}
-            </ul>
+                        Current Plan
+                    </button>
+                ) : isFree ? (
+                    <button
+                        className="w-full py-2.5 rounded-lg text-sm font-semibold border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                    >
+                        Get Started Free
+                    </button>
+                ) : isPremium ? (
+                    // Premium plan: Show waitlist button or upgrade
+                    <>
+                        {inWaitlist ? (
+                            <button
+                                disabled
+                                className="w-full py-2.5 rounded-lg text-sm font-semibold text-white flex items-center justify-center gap-2"
+                                style={{ background: colors.bg, opacity: 0.8 }}
+                            >
+                                <Bell className="w-4 h-4" />
+                                On Waitlist
+                            </button>
+                        ) : (
+                            <button
+                                onClick={handleJoinWaitlist}
+                                disabled={waitlistLoading}
+                                className="w-full py-2.5 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                                style={{ background: colors.bg }}
+                            >
+                                {waitlistLoading ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Joining...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Bell className="w-4 h-4" />
+                                        Join Waitlist
+                                    </>
+                                )}
+                            </button>
+                        )}
+                        <p className="text-center text-[11px] text-slate-400 dark:text-slate-500 mt-1.5">
+                            {inWaitlist 
+                                ? "We'll notify you when Premium launches!"
+                                : "Be the first to know when we launch"}
+                        </p>
+                    </>
+                ) : (
+                    // Max plan: Coming soon
+                    <>
+                        <button
+                            disabled
+                            className="w-full py-2.5 rounded-lg text-sm font-semibold text-white opacity-60 cursor-not-allowed"
+                            style={{ background: colors.bg }}
+                        >
+                            Subscribe Now
+                        </button>
+                        <p className="text-center text-[11px] text-slate-400 dark:text-slate-500 mt-1.5">
+                            Coming soon
+                        </p>
+                    </>
+                )}
+
+                {/* Divider */}
+                <div className="border-t border-slate-100 dark:border-slate-700 mt-4 mb-4" />
+
+                {/* Features */}
+                <ul className="space-y-2">
+                    {plan.features.map((feature, i) => (
+                        <li
+                            key={i}
+                            className="flex items-start gap-2 text-[13px] text-slate-600 dark:text-slate-300"
+                        >
+                            <Check className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" style={{ color: '#16a34a' }} />
+                            <span>{feature}</span>
+                        </li>
+                    ))}
+                </ul>
+            </div>
+
+            {/* Waitlist Dialog for Anonymous Users */}
+            {isPremium && (
+                <WaitlistDialog
+                    isOpen={showWaitlistDialog}
+                    onClose={() => setShowWaitlistDialog(false)}
+                    onSubmit={handleAnonymousWaitlistSubmit}
+                />
+            )}
         </div>
     );
 }
@@ -561,22 +740,22 @@ function PricingCard({
 function FeatureValue({ value }: { value: boolean | string }) {
     if (typeof value === "boolean") {
         return value ? (
-            <Check className="w-5 h-5 text-growth-500 mx-auto" />
+            <Check className="w-4 h-4 mx-auto" style={{ color: '#16a34a' }} />
         ) : (
-            <X className="w-5 h-5 text-slate-300 dark:text-slate-600 mx-auto" />
+            <X className="w-4 h-4 text-slate-300 dark:text-slate-600 mx-auto" />
         );
     }
     return (
-        <span className="text-sm text-slate-700 dark:text-slate-300">{value}</span>
+        <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{value}</span>
     );
 }
 
 // Trust Signal Component
 function TrustSignal({ icon: Icon, text }: { icon: LucideIcon; text: string }) {
     return (
-        <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
-            <Icon className="w-5 h-5 text-growth-500" />
-            <span className="text-sm font-medium">{text}</span>
+        <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+            <Icon className="w-4 h-4" style={{ color: '#16a34a' }} />
+            <span className="text-xs font-medium">{text}</span>
         </div>
     );
 }

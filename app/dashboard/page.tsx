@@ -17,14 +17,14 @@ import { UsageIndicator, FeatureBadge, PaywallOverlay } from "@/components/paywa
 export default function DashboardPage() {
     const { user } = useAuth();
     const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "User";
-    const userTier = (user?.user_metadata?.tier as "free" | "pro" | "elite") || "free";
-    const isPro = userTier === "pro" || userTier === "elite";
+    const userTier = (user?.user_metadata?.tier as "free" | "premium" | "elite") || "free";
+    const isPremium = userTier === "premium" || userTier === "elite";
 
     // Sample data - in production this would come from API
     const quickStats = [
         { label: "Active Watchlists", value: 3, max: userTier === "free" ? 3 : null, icon: Star },
         { label: "Saved Screeners", value: 2, max: userTier === "free" ? 3 : null, icon: Filter },
-        { label: "Active Alerts", value: isPro ? 5 : null, locked: !isPro, icon: Bell },
+        { label: "Active Alerts", value: isPremium ? 5 : null, locked: !isPremium, icon: Bell },
         { label: "AI Questions Today", value: 2, max: 5, icon: MessageSquare },
     ];
 
@@ -94,7 +94,7 @@ export default function DashboardPage() {
                             My Watchlists
                         </h2>
                         <Link
-                            href="/dashboard/watchlists"
+                            href="/watchlist"
                             className="text-sm text-brand hover:text-brand-600 font-medium flex items-center gap-1"
                         >
                             View All <ArrowRight className="w-4 h-4" />
@@ -197,16 +197,16 @@ export default function DashboardPage() {
                 </div>
             </div>
 
-            {/* Portfolio Widget - Pro Paywall */}
+            {/* Portfolio Widget - Premium Paywall */}
             <div className="relative">
-                {!isPro ? (
+                {!isPremium ? (
                     <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-8">
                         <div className="flex items-center gap-2 mb-4">
                             <Briefcase className="w-5 h-5 text-slate-400" />
                             <h2 className="font-semibold text-slate-900 dark:text-white">
                                 Portfolio Tracking
                             </h2>
-                            <FeatureBadge tier="pro" />
+                            <FeatureBadge tier="premium" />
                         </div>
 
                         {/* Blurred preview */}
@@ -230,7 +230,7 @@ export default function DashboardPage() {
                         {/* Paywall overlay */}
                         <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-slate-800/50 rounded-xl">
                             <PaywallOverlay
-                                tier="pro"
+                                tier="premium"
                                 feature="Portfolio Tracking"
                                 benefits={[
                                     "Track your investment portfolio",
@@ -283,15 +283,15 @@ export default function DashboardPage() {
                         <div>
                             <p className="font-medium text-slate-900 dark:text-white">AI Assistant Usage</p>
                             <p className="text-sm text-slate-500 dark:text-slate-400">
-                                {isPro ? "100 questions per day" : "5 questions per day (Free tier)"}
+                                {isPremium ? "100 questions per day" : "5 questions per day (Free tier)"}
                             </p>
                         </div>
                     </div>
                     <UsageIndicator
                         current={2}
-                        limit={isPro ? 100 : 5}
+                        limit={isPremium ? 100 : 5}
                         label="questions"
-                        showUpgrade={!isPro}
+                        showUpgrade={!isPremium}
                     />
                 </div>
             </div>

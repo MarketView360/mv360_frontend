@@ -59,6 +59,7 @@ export function useChatStream(token: string | null, sessionId: string | null) {
       content: string,
       options: { 
         reasoning?: boolean; 
+        enableTools?: boolean;
         onSessionCreated?: (id: string, title: string) => void;
       } = {}
     ): Promise<{ sessionId: string | null; title: string | null }> => {
@@ -93,6 +94,7 @@ export function useChatStream(token: string | null, sessionId: string | null) {
         timestamp: new Date().toISOString(),
         isStreaming: true,
         reasoning: options.reasoning ? "" : undefined,
+        toolCalls: undefined,
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
@@ -109,6 +111,8 @@ export function useChatStream(token: string | null, sessionId: string | null) {
 
         let fullContent = "";
         let fullReasoning = "";
+        let toolCallsUsed: string[] = [];
+        let currentToolStatus: string | undefined;
         let resolvedSessionId: string | undefined = sessionId || undefined;
         let resolvedTitle: string | undefined;
 
@@ -117,6 +121,7 @@ export function useChatStream(token: string | null, sessionId: string | null) {
             messages: allMessages,
             sessionId: sessionId || undefined,
             reasoning: options.reasoning,
+            enableTools: options.enableTools,
           },
           abortControllerRef.current.signal
         )) {
@@ -127,16 +132,27 @@ export function useChatStream(token: string | null, sessionId: string | null) {
             fullReasoning += chunk.reasoning;
           }
           
+          // Track tool calls (local tools like fundamentals)
+          if (chunk.toolCall && !toolCallsUsed.includes(chunk.toolCall)) {
+            toolCallsUsed.push(chunk.toolCall);
+          }
+          
+          // Track progressive tool status
+          if (chunk.toolStatus) {
+            currentToolStatus = chunk.toolStatus;
+          }
+          
           // Handle new session creation
           if (chunk.sessionId && !resolvedSessionId) {
             resolvedSessionId = chunk.sessionId;
-            resolvedTitle = chunk.title ? decodeURIComponent(chunk.title) : undefined;
+            // Title is already decoded in ai.ts from the header, don't decode again
+            resolvedTitle = chunk.title;
             // Mark that we just created a session to prevent refetching during streaming
             sessionJustCreatedRef.current = true;
             options.onSessionCreated?.(chunk.sessionId, resolvedTitle || "New chat");
           }
 
-          // Update tool indicator
+          // Update tool indicator (Groq compound tools like web_search)
           if (chunk.toolUse) {
             setStreamingState({ isStreaming: true, toolInUse: chunk.toolUse });
             const toolNames: Record<string, string> = {
@@ -154,6 +170,8 @@ export function useChatStream(token: string | null, sessionId: string | null) {
                     ...m, 
                     content: fullContent,
                     reasoning: fullReasoning || undefined,
+                    toolCalls: toolCallsUsed.length > 0 ? toolCallsUsed : undefined,
+                    toolStatus: currentToolStatus,
                   }
                 : m
             )
@@ -207,7 +225,7 @@ export function useChatStream(token: string | null, sessionId: string | null) {
         abortControllerRef.current = null;
       }
     },
-    [token, sessionId, messages]
+    [token, sessionId]
   );
 
   const cancelStream = useCallback(() => {

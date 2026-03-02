@@ -59,7 +59,7 @@ export function CompanyChartsSwitcher({
   valuationHistory,
 }: CompanyChartsSwitcherProps) {
   const { session } = useAuth();
-  const isPro = session?.tier === "pro" || session?.tier === "elite";
+  const isPro = session?.tier === "premium" || session?.tier === "pro" || session?.tier === "elite";
   const [showPaywall, setShowPaywall] = useState(false);
   const [paywallFeature, setPaywallFeature] = useState("");
 

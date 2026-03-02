@@ -17,7 +17,7 @@ interface BlurredContentProps {
 export function BlurredContent({
     children,
     blurAmount = 8,
-    tier = "pro",
+    tier = "premium",
     feature = "Premium Features",
     benefits = [],
     showPaywall = true,
@@ -59,7 +59,7 @@ export function BlurredTableRows({
     children,
     visibleRows = 100,
     totalRows = 234,
-    tier = "pro",
+    tier = "premium",
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     feature = "All Results",
 }: BlurredTableRowsProps) {
@@ -77,10 +77,10 @@ export function BlurredTableRows({
                 </p>
                 <a
                     href="/pricing"
-                    className={`inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium text-white text-sm transition-all hover:scale-[1.02] ${tier === "pro" ? "gradient-pro" : "gradient-elite"
+                    className={`inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium text-white text-sm transition-all hover:scale-[1.02] ${tier === "premium" ? "gradient-premium" : "gradient-elite"
                         }`}
                 >
-                    Upgrade to {tier === "pro" ? "Pro" : "Elite"} to view all
+                    Upgrade to {tier === "premium" ? "Premium" : "Elite"} to view all
                 </a>
             </div>
         </div>

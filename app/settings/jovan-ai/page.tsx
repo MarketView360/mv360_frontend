@@ -26,11 +26,22 @@ import {
   Lock,
   Crown,
   AlertCircle,
-  Search,
   TrendingUp,
-  Briefcase,
-  Newspaper,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
+import { useToolsConfig } from "@/hooks/useToolsConfig";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog-custom";
+import { aiApi } from "@/lib/api/ai";
 import { toast } from "sonner";
 
 export default function JovanAIPage() {
@@ -45,6 +56,11 @@ export default function JovanAIPage() {
   const [bytezKey, setBytezKey] = useState("");
   const [showBytezKey, setShowBytezKey] = useState(false);
   const [savingApiKey, setSavingApiKey] = useState<string | null>(null);
+  const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
+
+  // Tools config synced with chat UI via localStorage
+  const { config: toolsConfig, setToolsEnabled, setToolEnabled } = useToolsConfig();
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
   const isPremium = profile?.subscription_tier === "premium";
@@ -97,6 +113,39 @@ export default function JovanAIPage() {
       toast.success("API key removed");
     } catch {
       toast.error("Failed to delete API key");
+    }
+  };
+
+  const handleDeleteAllChats = async () => {
+    if (!session?.access_token) return;
+
+    setIsDeletingAll(true);
+    try {
+      const result = await aiApi.deleteAllSessions();
+      
+      // Clear any cached session data from localStorage
+      if (typeof window !== "undefined") {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.includes("jovan") || key.includes("ai-chat") || key.includes("session"))) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach((key) => localStorage.removeItem(key));
+      }
+
+      toast.success(`Successfully deleted all conversations`, {
+        description: `${result.deletedCount || 0} conversation(s) removed`,
+      });
+      setShowDeleteAllDialog(false);
+    } catch (error) {
+      console.error("Failed to delete all chats:", error);
+      toast.error("Failed to delete conversations", {
+        description: error instanceof Error ? error.message : "Please try again later",
+      });
+    } finally {
+      setIsDeletingAll(false);
     }
   };
 
@@ -248,6 +297,43 @@ export default function JovanAIPage() {
                   </p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Delete All Chats */}
+          <Card className="border-red-200 dark:border-red-900/50 bg-white dark:bg-slate-900 shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg text-red-600 dark:text-red-400">
+                <Trash2 className="h-5 w-5" />
+                Delete All Conversations
+              </CardTitle>
+              <CardDescription>Permanently remove all your AI chat history</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-red-900 dark:text-red-300">
+                      This action is permanent
+                    </h4>
+                    <ul className="text-sm text-red-700 dark:text-red-400 space-y-1">
+                      <li>• All your conversation history will be deleted</li>
+                      <li>• This cannot be undone</li>
+                      <li>• Your preferences and API keys will be preserved</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                variant="destructive"
+                onClick={() => setShowDeleteAllDialog(true)}
+                className="w-full sm:w-auto"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete All Conversations
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -508,102 +594,71 @@ export default function JovanAIPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Wrench className="h-5 w-5 text-brand" />
-                AI Tool Permissions
+                AI Tools
               </CardTitle>
               <CardDescription>Control which tools Jovan AI can use to assist you</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+              {/* Master toggle */}
+              <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                    <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+                    <Wrench className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                   </div>
                   <div>
-                    <Label className="font-medium text-slate-900 dark:text-white">Run Stock Screener</Label>
+                    <Label className="font-medium text-slate-900 dark:text-white">Enable AI Tools</Label>
                     <p className="text-sm text-slate-500 dark:text-slate-400">
-                      Allow Jovan to search and filter stocks based on criteria
+                      Allow Jovan to use tools to fetch real-time data
                     </p>
                   </div>
                 </div>
                 <Switch
-                  checked={preferences?.toolPermissions?.screener ?? true}
-                  onCheckedChange={async (checked) => {
-                    const success = await updatePreferences({ 
-                      toolPermissions: { ...preferences?.toolPermissions, screener: checked }
-                    });
-                    if (success) toast.success("Permission updated");
+                  checked={toolsConfig.enabled}
+                  onCheckedChange={(checked) => {
+                    setToolsEnabled(checked);
+                    toast.success(checked ? "Tools enabled" : "Tools disabled");
                   }}
                 />
               </div>
 
-              <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                    <Search className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                  </div>
-                  <div>
-                    <Label className="font-medium text-slate-900 dark:text-white">Search Internet</Label>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                      Allow Jovan to search the web for real-time information
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  checked={preferences?.toolPermissions?.webSearch ?? true}
-                  onCheckedChange={async (checked) => {
-                    const success = await updatePreferences({ 
-                      toolPermissions: { ...preferences?.toolPermissions, webSearch: checked }
-                    });
-                    if (success) toast.success("Permission updated");
-                  }}
-                />
-              </div>
+              {/* Individual tools */}
+              {toolsConfig.enabled && (
+                <div className="space-y-3 pl-2">
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Available Tools</p>
+                  {toolsConfig.tools.map((tool) => {
+                    const enabledCount = toolsConfig.tools.filter((t) => t.enabled).length;
+                    const cantDisable = tool.enabled && (toolsConfig.tools.length === 1 || enabledCount <= 1);
 
-              <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                    <Briefcase className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  </div>
-                  <div>
-                    <Label className="font-medium text-slate-900 dark:text-white">Access Portfolio</Label>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                      Allow Jovan to view and analyze your portfolio holdings
-                    </p>
-                  </div>
+                    return (
+                      <div key={tool.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-lg ${tool.enabled ? "bg-emerald-100 dark:bg-emerald-900/30" : "bg-slate-200 dark:bg-slate-700"}`}>
+                            <TrendingUp className={`h-5 w-5 ${tool.enabled ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400"}`} />
+                          </div>
+                          <div>
+                            <Label className="font-medium text-slate-900 dark:text-white">{tool.name}</Label>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                              {tool.description}
+                            </p>
+                          </div>
+                        </div>
+                        <Switch
+                          checked={tool.enabled}
+                          disabled={cantDisable}
+                          onCheckedChange={(checked) => {
+                            const result = setToolEnabled(tool.id, checked);
+                            if (result === false && !checked) {
+                              toast.info("Can't disable the only tool — disable tools entirely instead");
+                            } else {
+                              toast.success(checked ? `${tool.name} enabled` : `${tool.name} disabled`);
+                            }
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
-                <Switch
-                  checked={preferences?.toolPermissions?.portfolio ?? true}
-                  onCheckedChange={async (checked) => {
-                    const success = await updatePreferences({ 
-                      toolPermissions: { ...preferences?.toolPermissions, portfolio: checked }
-                    });
-                    if (success) toast.success("Permission updated");
-                  }}
-                />
-              </div>
-
-              <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
-                    <Newspaper className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                  </div>
-                  <div>
-                    <Label className="font-medium text-slate-900 dark:text-white">Fetch News & Reports</Label>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                      Allow Jovan to retrieve market news and earnings reports
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  checked={preferences?.toolPermissions?.news ?? true}
-                  onCheckedChange={async (checked) => {
-                    const success = await updatePreferences({ 
-                      toolPermissions: { ...preferences?.toolPermissions, news: checked }
-                    });
-                    if (success) toast.success("Permission updated");
-                  }}
-                />
-              </div>
+              )}
             </CardContent>
           </Card>
 
@@ -613,10 +668,10 @@ export default function JovanAIPage() {
                 <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
                 <div>
                   <h4 className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-1">
-                    About Tool Permissions
+                    About AI Tools
                   </h4>
                   <p className="text-sm text-blue-700 dark:text-blue-400">
-                    Disabling tools will limit Jovan AI&apos;s ability to provide comprehensive answers. Tools are only used when relevant to your query and always with your data privacy in mind.
+                    Tools allow Jovan to fetch real-time stock data, prices, and financial metrics from the MarketView360 database. Disabling tools means Jovan will answer purely from its training knowledge. These settings sync with the Tools toggle in the chat interface.
                   </p>
                 </div>
               </div>
@@ -624,6 +679,52 @@ export default function JovanAIPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Delete All Conversations Confirmation Dialog */}
+      <AlertDialog open={showDeleteAllDialog} onOpenChange={setShowDeleteAllDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+              <AlertTriangle className="h-5 w-5" />
+              Delete All Conversations
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                Are you sure you want to delete <strong>all</strong> your AI conversations? 
+                This action is <strong>permanent</strong> and cannot be undone.
+              </p>
+              <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300">
+                <strong>What will be deleted:</strong>
+                <ul className="mt-1 ml-4 list-disc">
+                  <li>All conversation history</li>
+                  <li>All messages and responses</li>
+                  <li>Cached session data</li>
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingAll}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAllChats}
+              disabled={isDeletingAll}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {isDeletingAll ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete All
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

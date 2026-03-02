@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +19,26 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
+import { CompanyLogo } from "@/components/company/CompanyLogo";
+
+function generateNewsSlug(title: string, link: string): string {
+  const titleSlug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 60);
+  const hash = link
+    .split("")
+    .reduce((acc, char) => ((acc << 5) - acc + char.charCodeAt(0)) | 0, 0);
+  const hashStr = Math.abs(hash).toString(36).slice(0, 6);
+  return `${titleSlug}-${hashStr}`;
+}
+
+function cacheNewsArticle(slug: string, item: { title: string; content: string; date: string; link: string; symbols?: string[] }) {
+  if (typeof window !== "undefined") {
+    sessionStorage.setItem(`article_${slug}`, JSON.stringify(item));
+  }
+}
 
 type ScreenerRow = {
   code: string;
@@ -217,22 +238,16 @@ export default function MarketOverview({
   return (
     <div className="space-y-6">
       {/* Market snapshot / status */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          {loading && (
-            <span className="text-sm text-slate-500 dark:text-slate-400">
-              Refreshing…
-            </span>
-          )}
-          {error && <span className="text-sm text-rose-500">{error}</span>}
-          {!loading && !error && (
-            <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              Updated {lastUpdated.toLocaleTimeString()}
-            </span>
-          )}
-        </div>
-        {!hideRefresh && (
+      {!hideRefresh && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {loading && (
+              <span className="text-sm text-slate-500 dark:text-slate-400">
+                Refreshing…
+              </span>
+            )}
+            {error && <span className="text-sm text-rose-500">{error}</span>}
+          </div>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -252,53 +267,8 @@ export default function MarketOverview({
               </KbdGroup>
             </Button>
           </div>
-        )}
-      </div>
-
-      {/* Market Indices */}
-      <Card className="border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-bold flex items-center gap-2 text-slate-900 dark:text-white">
-            <Activity className="w-5 h-5 text-brand" />
-            Market Indices
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-4">
-            {indices.map((index) => (
-              <div
-                key={index.symbol}
-                className="flex flex-col p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer group"
-                onClick={() => router.push(`/market?symbol=${index.symbol}`)}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                    {index.name}
-                  </span>
-                  {index.isPositive ? (
-                    <ArrowUpRight className="h-3 w-3 text-emerald-500" />
-                  ) : (
-                    <ArrowDownRight className="h-3 w-3 text-rose-500" />
-                  )}
-                </div>
-                <div className="text-lg font-bold text-slate-900 dark:text-white mb-1">
-                  {index.value}
-                </div>
-                <div
-                  className={cn(
-                    "text-xs font-medium",
-                    index.isPositive
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-rose-600 dark:text-rose-400"
-                  )}
-                >
-                  {index.change}
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Movers */}
@@ -377,8 +347,9 @@ export default function MarketOverview({
                         key={stock.code}
                         type="button"
                         onClick={() => router.push(`/company/${stock.code}`)}
-                        className="w-full flex items-center justify-between gap-3 rounded-md px-2 py-2 text-left text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                        className="w-full flex items-center gap-2.5 rounded-md px-2 py-2 text-left text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                       >
+                        <CompanyLogo ticker={stock.code} name={stock.name} size="sm" />
                         <div className="flex-1 min-w-0">
                           <div className="font-semibold text-slate-900 dark:text-white truncate">
                             {stock.code}
@@ -387,7 +358,7 @@ export default function MarketOverview({
                             {stock.name}
                           </div>
                         </div>
-                        <div className="text-right w-20 flex-shrink-0">
+                        <div className="text-right w-20 shrink-0">
                           <div className="font-semibold text-emerald-600 dark:text-emerald-400">
                             {formatChange(stock.refund_1d_p ?? stock.price_change_1d)}
                           </div>
@@ -425,8 +396,9 @@ export default function MarketOverview({
                         key={stock.code}
                         type="button"
                         onClick={() => router.push(`/company/${stock.code}`)}
-                        className="w-full flex items-center justify-between gap-3 rounded-md px-2 py-2 text-left text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                        className="w-full flex items-center gap-2.5 rounded-md px-2 py-2 text-left text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                       >
+                        <CompanyLogo ticker={stock.code} name={stock.name} size="sm" />
                         <div className="flex-1 min-w-0">
                           <div className="font-semibold text-slate-900 dark:text-white truncate">
                             {stock.code}
@@ -435,7 +407,7 @@ export default function MarketOverview({
                             {stock.name}
                           </div>
                         </div>
-                        <div className="text-right w-20 flex-shrink-0">
+                        <div className="text-right w-20 shrink-0">
                           <div className="font-semibold text-rose-600 dark:text-rose-400">
                             {formatChange(stock.refund_1d_p ?? stock.price_change_1d)}
                           </div>
@@ -491,12 +463,13 @@ export default function MarketOverview({
                     </p>
                   </div>
                 )}
-                {news.map((item, i) => (
-                  <a
+                {news.map((item, i) => {
+                  const newsSlug = generateNewsSlug(item.title, item.link);
+                  return (
+                  <Link
                     key={i}
-                    href={item.link}
-                    target="_blank"
-                    rel="noreferrer"
+                    href={`/news/${newsSlug}`}
+                    onClick={() => cacheNewsArticle(newsSlug, item)}
                     className="block p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all duration-200 cursor-pointer group border-l-2 border-transparent hover:border-brand/50"
                   >
                     <div className="flex items-center justify-between mb-2">
@@ -535,8 +508,9 @@ export default function MarketOverview({
                       <span>Read more</span>
                       <ArrowUpRight className="h-3 w-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                     </div>
-                  </a>
-                ))}
+                  </Link>
+                  );
+                })}
               </div>
             )}
           </CardContent>

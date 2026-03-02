@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { CompanyLogo } from "@/components/company/CompanyLogo";
 import { UsdValue } from "@/components/company/UsdValue";
 import { FinancialsPageContent } from "@/components/company/FinancialsPageContent";
-import { CompanyNavigation } from "@/components/company/CompanyNavigation";
+
 
 // Schemas
 const CompanySchema = z.object({
@@ -141,7 +141,7 @@ async function FinancialsPageWrapper({ ticker }: { ticker: string }) {
         </div>
 
         {/* Navigation Tabs */}
-        <CompanyNavigation ticker={ticker} currentTab="financials" />
+
 
         {/* Main Financials Content */}
         <FinancialsPageContent ticker={ticker} metrics={metrics} />

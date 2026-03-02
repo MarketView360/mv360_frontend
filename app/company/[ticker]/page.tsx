@@ -2,7 +2,9 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
-import { Activity, Info } from "lucide-react";
+import { Info } from "lucide-react";
+
+export const dynamic = 'force-dynamic';
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,11 +22,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+import { AddToWatchlistButton } from "@/components/company/AddToWatchlistButton";
 import { CompanyChartsSwitcher, type PriceHistoryPoint } from "@/components/company/CompanyChartsSwitcher";
 import { CompanyDescriptionModal } from "@/components/company/CompanyDescriptionModal";
 import { CompanyLogo } from "@/components/company/CompanyLogo";
-import { CompanyNavigation } from "@/components/company/CompanyNavigation";
+
 import { FiftyTwoWeekRange } from "@/components/company/FiftyTwoWeekRange";
+import { KeyMetrics } from "@/components/company/KeyMetrics";
 import { NewsFeed, type NewsArticle } from "@/components/company/NewsFeed";
 import { PeerComparison } from "@/components/company/PeerComparison";
 import { UsdValue } from "@/components/company/UsdValue";
@@ -66,6 +70,8 @@ interface CompanyViewModel {
   week52Low: number | null;
   priceHistory: PriceHistoryPoint[];
   ratios: RatioItem[];
+  rawMetrics: Record<string, unknown>;
+  snapshotDate: string | null;
   valuationMetrics: ValuationMetric[];
   valuationHistory: ValuationHistoryPoint[];
   revenueTtm: number | null;
@@ -75,6 +81,7 @@ interface CompanyViewModel {
   analystData: {
     rating: number | null;
     targetPrice: number | null;
+    currentPrice: number | null;
     strongBuy: number;
     buy: number;
     hold: number;
@@ -93,6 +100,7 @@ interface DetailItemProps {
 interface AnalystData {
   rating: number | null;
   targetPrice: number | null;
+  currentPrice: number | null;
   strongBuy: number;
   buy: number;
   hold: number;
@@ -191,9 +199,9 @@ const PriceSchema = z.object({
 
 const ValuationHistoryPointSchema = z.object({
   date: z.string(),
-  price: z.number().nullable(),
-  pe_ratio: z.number().nullable(),
-  forward_pe: z.number().nullable(),
+  price: z.number().optional().nullable().transform(val => val ?? null),
+  pe_ratio: z.number().optional().nullable().transform(val => val ?? null),
+  forward_pe: z.number().optional().nullable().transform(val => val ?? null),
 });
 
 const ValuationHistoryResponseSchema = z.array(ValuationHistoryPointSchema);
@@ -354,7 +362,7 @@ function buildValuationMetrics(metrics: Metrics): ValuationMetric[] {
   ];
 }
 
-function buildAnalystData(metrics: Metrics) {
+function buildAnalystData(metrics: Metrics, currentPrice: number | null) {
   if (!metrics) return null;
 
   const m = metrics as Record<string, unknown>;
@@ -378,6 +386,7 @@ function buildAnalystData(metrics: Metrics) {
   return {
     rating,
     targetPrice,
+    currentPrice,
     strongBuy,
     buy,
     hold,
@@ -425,13 +434,15 @@ function transformData(
     week52Low: metrics?.week_52_low ?? null,
     priceHistory,
     ratios: buildRatios(metrics),
+    rawMetrics: (metrics as Record<string, unknown>) ?? {},
+    snapshotDate: metrics?.snapshot_date ?? null,
     valuationMetrics: buildValuationMetrics(metrics),
     valuationHistory,
     revenueTtm: metrics?.revenue_ttm ?? null,
     earningsTtm: metrics?.earnings_ttm ?? null,
     netMargin: metrics?.net_margin ?? metrics?.profit_margin ?? null,
     opm: metrics?.opm ?? metrics?.operating_margin ?? metrics?.operating_margin_ttm ?? null,
-    analystData: buildAnalystData(metrics),
+    analystData: buildAnalystData(metrics, latestPrice ?? metrics?.price ?? null),
   } as CompanyViewModel;
 }
 
@@ -497,7 +508,7 @@ async function CompanyContent({ ticker }: { ticker: string }) {
           <CompanyHero data={data} />
 
           {/* Navigation Tabs */}
-          <CompanyNavigation ticker={ticker} currentTab="overview" />
+
 
           {/* Main Grid */}
           <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
@@ -513,7 +524,11 @@ async function CompanyContent({ ticker }: { ticker: string }) {
               </div>
 
               {/* Key Metrics Grid */}
-              <KeyMetricsCard metrics={data.ratios} />
+              <KeyMetrics
+                metrics={data.rawMetrics}
+                snapshotDate={data.snapshotDate ?? undefined}
+                sector={data.sector}
+              />
 
               <div id="peers" className="scroll-mt-32">
                 {/* Peer Comparison */}
@@ -575,38 +590,41 @@ function CompanyHero({ data }: { data: CompanyViewModel }) {
           </div>
         </div>
 
-        <div className="flex flex-col md:flex-row md:items-end gap-6">
+        <div className="flex flex-col md:flex-row md:items-center gap-6">
           {/* 52-Week Range Visualization */}
           {data.week52High && data.week52Low && data.price && (
             <FiftyTwoWeekRange
               high={data.week52High}
               low={data.week52Low}
               current={data.price}
-              className="hidden md:block" // Hide on small screens if too cramped
+              className="hidden md:block"
             />
           )}
 
-          <div className="flex flex-col items-end">
-            <div className="flex items-baseline gap-3">
-              <UsdValue
-                amount={data.price}
-                className="text-4xl font-bold text-slate-900 dark:text-white"
-              />
-
-              <Badge
-                variant="outline"
-                className={`text-lg font-semibold ${isPositive
-                  ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-400 dark:border-green-900"
-                  : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900"
-                  }`}
-              >
-                {isPositive ? "+" : ""}
-                {data.changePercent != null
-                  ? `${data.changePercent.toFixed(2)}%`
-                  : "—"}
-              </Badge>
+          <div className="flex items-center gap-4">
+            <div className="flex flex-col items-end">
+              <div className="flex items-baseline gap-3">
+                <UsdValue
+                  amount={data.price}
+                  className="text-4xl font-bold text-slate-900 dark:text-white"
+                />
+                <Badge
+                  variant="outline"
+                  className={`text-lg font-semibold ${isPositive
+                    ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-950/40 dark:text-green-400 dark:border-green-900"
+                    : "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900"
+                    }`}
+                >
+                  {isPositive ? "+" : ""}
+                  {data.changePercent != null
+                    ? `${data.changePercent.toFixed(2)}%`
+                    : "—"}
+                </Badge>
+              </div>
+              <span className="text-xs text-muted-foreground mt-1">Market Close</span>
             </div>
-            <span className="text-xs text-muted-foreground mt-1">Market Close</span>
+
+            <AddToWatchlistButton ticker={data.ticker} />
           </div>
         </div>
       </div>
@@ -659,36 +677,6 @@ function Breadcrumb({ ticker }: { ticker: string }) {
 
 function PageActions() {
   return <div />;
-}
-
-function KeyMetricsCard({ metrics }: { metrics: RatioItem[] }) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Activity className="w-5 h-5 text-brand" />
-          Key Metrics
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {metrics.map((metric, i) => (
-            <MetricItem key={i} {...metric} />
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function MetricItem({ label, value }: RatioItem) {
-  return (
-    <div className="group relative p-4 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-brand transition-colors bg-white dark:bg-slate-900">
-      <div className="absolute inset-y-0 left-0 w-1 bg-brand rounded-l-lg opacity-0 group-hover:opacity-100 transition-opacity" />
-      <div className="text-xs text-muted-foreground mb-1">{label}</div>
-      <div className="text-lg font-semibold text-slate-900 dark:text-white">{value}</div>
-    </div>
-  );
 }
 
 function CompanyProfile({ data }: { data: CompanyViewModel }) {
@@ -747,19 +735,50 @@ function AnalystRatings({ metrics }: { metrics: AnalystData | null }) {
   const total = metrics.strongBuy + metrics.buy + metrics.hold + metrics.sell + metrics.strongSell;
   const buyShare = total > 0 ? (metrics.strongBuy + metrics.buy) / total : 0;
 
-  const barPercent =
-    metrics.rating != null
-      ? Math.min(Math.max((metrics.rating / 5) * 100, 0), 100)
-      : buyShare * 100;
-
-  const getConsensus = (rating: number | null) => {
-    if (rating == null) return "N/A";
-    if (rating >= 4) return "Strong Buy";
-    if (rating >= 3) return "Buy";
-    if (rating >= 2) return "Hold";
-    if (rating >= 1) return "Sell";
-    return "Strong Sell";
+  // Calculate weighted consensus from actual analyst counts
+  const getConsensus = () => {
+    // If we have individual counts, calculate weighted average
+    if (total > 0) {
+      // Weights: Strong Sell=1, Sell=2, Hold=3, Buy=4, Strong Buy=5
+      const weightedSum =
+        metrics.strongSell * 1 +
+        metrics.sell * 2 +
+        metrics.hold * 3 +
+        metrics.buy * 4 +
+        metrics.strongBuy * 5;
+      
+      const avgRating = weightedSum / total;
+      
+      // Determine consensus based on weighted average
+      // Use stricter thresholds to avoid premature Buy/Sell ratings
+      if (avgRating >= 4.5) return "Strong Buy";
+      if (avgRating >= 4.0) return "Buy";
+      if (avgRating >= 2.5) return "Hold";
+      if (avgRating >= 2.0) return "Sell";
+      return "Strong Sell";
+    }
+    
+    // Fallback to rating field if no counts available
+    if (metrics.rating != null) {
+      if (metrics.rating >= 4.5) return "Strong Buy";
+      if (metrics.rating >= 4.0) return "Buy";
+      if (metrics.rating >= 2.5) return "Hold";
+      if (metrics.rating >= 2.0) return "Sell";
+      return "Strong Sell";
+    }
+    
+    return "N/A";
   };
+
+  const barPercent = getConsensus() === "N/A" ? 0 : buyShare * 100;
+
+  // Calculate upside/downside percentage
+  const upsidePercent =
+    metrics.targetPrice != null && metrics.currentPrice != null && metrics.currentPrice > 0
+      ? ((metrics.targetPrice - metrics.currentPrice) / metrics.currentPrice) * 100
+      : null;
+
+  const isUpside = upsidePercent != null && upsidePercent >= 0;
 
   return (
     <Card>
@@ -784,11 +803,28 @@ function AnalystRatings({ metrics }: { metrics: AnalystData | null }) {
         <div className="space-y-4">
           <div className="text-center">
             <div className="text-2xl font-bold text-brand mb-1">
-              {getConsensus(metrics.rating)}
+              {getConsensus()}
             </div>
             {metrics.targetPrice && (
-              <div className="text-sm text-muted-foreground">
-                Target: <span className="font-semibold text-slate-500 dark:text-white">${metrics.targetPrice.toFixed(2)}</span>
+              <div className="text-sm space-y-0.5">
+                <div className="text-muted-foreground">
+                  Target: <span className="font-semibold text-slate-900 dark:text-white">${metrics.targetPrice.toFixed(2)}</span>
+                  {upsidePercent != null && (
+                    <span
+                      className={`ml-1.5 font-semibold ${isUpside
+                        ? "text-green-600 dark:text-green-400"
+                        : "text-red-600 dark:text-red-400"
+                        }`}
+                    >
+                      ({isUpside ? "+" : ""}{upsidePercent.toFixed(1)}%)
+                    </span>
+                  )}
+                </div>
+                {total > 0 && (
+                  <div className="text-xs text-muted-foreground">
+                    Based on {total} analyst{total !== 1 ? "s" : ""}
+                  </div>
+                )}
               </div>
             )}
           </div>

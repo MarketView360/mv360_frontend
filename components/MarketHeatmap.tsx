@@ -1,57 +1,78 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { getBulkRealTimePrices } from "@/lib/eodhd";
-import { Treemap, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
+import { TrendingUp, TrendingDown, Minus, Info } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
-// --- Mock Data Structure (to keep sectors) ---
-const SECTORS = [
-  {
-    sector: "Technology",
-    tickers: [
-      "AAPL.US",
-      "MSFT.US",
-      "NVDA.US",
-      "GOOGL.US",
-      "META.US",
-      "AVGO.US",
-      "ADBE.US",
-      "CRM.US",
-    ],
-  },
-  {
-    sector: "Finance",
-    tickers: ["JPM.US", "V.US", "MA.US", "BAC.US", "WFC.US"],
-  },
-  {
-    sector: "Healthcare",
-    tickers: ["LLY.US", "UNH.US", "JNJ.US", "MRK.US", "ABBV.US"],
-  },
-  {
-    sector: "Consumer",
-    tickers: ["AMZN.US", "TSLA.US", "WMT.US", "PG.US", "COST.US"],
-  },
-  {
-    sector: "Energy",
-    tickers: ["XOM.US", "CVX.US", "COP.US"],
-  },
+// Logo.dev configuration
+const LOGO_DEV_BASE = "https://img.logo.dev/ticker";
+const LOGO_DEV_TOKEN = process.env.NEXT_PUBLIC_LOGO_DEV_PUBLISHABLE_KEY;
+
+const BACKEND_URL =
+  (process.env.NEXT_PUBLIC_BACKEND_URL as string | undefined) ??
+  "http://localhost:4000";
+
+// Index options (primary toggle)
+type IndexType = "sp500" | "russell2000" | "nasdaq";
+const INDEX_OPTIONS: { value: IndexType; label: string; description: string }[] = [
+  { value: "sp500", label: "S&P 500", description: "500 large-cap US stocks" },
+  { value: "russell2000", label: "Russell 2000", description: "2000 small-cap US stocks" },
+  { value: "nasdaq", label: "NASDAQ", description: "NASDAQ Composite stocks" },
 ];
 
-interface MarketItem {
-  name: string;
+// Cap filter options (secondary toggle)
+type CapFilter = "all" | "large" | "mid" | "small";
+const CAP_OPTIONS: { value: CapFilter; label: string }[] = [
+  { value: "all", label: "All Caps" },
+  { value: "large", label: "Large" },
+  { value: "mid", label: "Mid" },
+  { value: "small", label: "Small" },
+];
+
+// Backend response types
+interface HeatmapStock {
   ticker: string;
-  change: number;
-  size: number;
+  name: string;
   sector: string;
+  market_cap: number;
+  price: number | null;
+  change_1d: number | null;
+  change_1w: number | null;
+  weight: number | null;
+  volume: number | null;
+  avg_volume: number | null;
 }
 
-interface TreemapNode {
-  name: string;
-  children?: TreemapNode[] | MarketItem[];
-  sector?: string;
+interface HeatmapSector {
+  sector: string;
+  stocks: HeatmapStock[];
+  totalMarketCap: number;
+  avgChange: number;
+  advancers: number;
+  decliners: number;
+}
+
+interface HeatmapResponse {
+  sectors: HeatmapSector[];
+  summary: {
+    totalStocks: number;
+    advancers: number;
+    decliners: number;
+    unchanged: number;
+    avgChange: number;
+    topSector: { name: string; change: number } | null;
+    weakestSector: { name: string; change: number } | null;
+  };
+  index: string;
+  lastUpdated: string;
 }
 
 type MarketHeatmapProps = {
@@ -59,444 +80,535 @@ type MarketHeatmapProps = {
   refreshToken?: number;
 };
 
-// Map external sector filter values (from dropdown) to internal labels
-const SECTOR_FILTER_MAP: Record<string, string> = {
-  technology: "Technology",
-  healthcare: "Healthcare",
-  financials: "Financials",
-  consumer: "Consumer",
-  energy: "Energy",
-  industrials: "Industrials",
-  utilities: "Utilities",
-  materials: "Materials",
-  "real-estate": "Real Estate",
-  communication: "Communication Services",
+// Improved color scale with more granularity
+const getColor = (change: number | null): string => {
+  if (change === null) return "#3f3f46"; // zinc-700 for missing data
+  
+  // Gray zone for noise (-0.2% to +0.2%)
+  if (change > -0.2 && change < 0.2) return "#52525b"; // zinc-600
+  
+  // Positive colors (light to strong)
+  if (change >= 5.0) return "#047857"; // emerald-700 (extreme)
+  if (change >= 3.0) return "#059669"; // emerald-600 (very strong)
+  if (change >= 2.0) return "#10b981"; // emerald-500 (strong)
+  if (change >= 1.0) return "#34d399"; // emerald-400 (moderate)
+  if (change >= 0.2) return "#6ee7b7"; // emerald-300 (light)
+  
+  // Negative colors (light to strong)
+  if (change <= -5.0) return "#b91c1c"; // red-700 (extreme)
+  if (change <= -3.0) return "#dc2626"; // red-600 (very strong)
+  if (change <= -2.0) return "#ef4444"; // red-500 (strong)
+  if (change <= -1.0) return "#f87171"; // red-400 (moderate)
+  if (change <= -0.2) return "#fca5a5"; // red-300 (light)
+  
+  return "#52525b"; // fallback
 };
 
-type ScreenerRow = {
-  code: string;
-  sector: string | null;
-  refund_1d_p: number | null;
-  price_change_1d?: number | null;
-  market_capitalization: number | null;
-  market_cap?: number | null;
+// Get text color based on background
+const getTextColor = (change: number | null): string => {
+  if (change === null) return "#a1a1aa";
+  if (Math.abs(change) < 0.2) return "#d4d4d8";
+  return "#ffffff";
 };
 
-type Universe = "popular" | "small" | "micro" | "all";
-
-const UNIVERSE_OPTIONS: { value: Universe; label: string; maxRows: number }[] = [
-  { value: "popular", label: "Popular", maxRows: 80 },
-  { value: "small", label: "Small", maxRows: 200 },
-  { value: "micro", label: "Micro", maxRows: 400 },
-  { value: "all", label: "All tickers", maxRows: 1200 },
-];
-
-const BACKEND_URL =
-  (process.env.NEXT_PUBLIC_BACKEND_URL as string | undefined) ??
-  "http://localhost:4000";
-
-const getColor = (change: number) => {
-  // Exact TradingView Heatmap Colors
-  if (change >= 3.0) return "#00a96eff"; // Bright Green (Strong buy/gain)
-  if (change >= 0.1) return "#00897bff"; // Standard Green
-  if (change > -0.1 && change < 0.1) return "#434651ff"; // Neutral Dark Grey
-  if (change <= -3.0) return "#d50000ff"; // Bright Red (Strong sell/loss)
-  if (change <= -0.1) return "#f44336ff"; // Standard Red
-  return "#434651ff"; // Fallback Neutral
+// Helper to get logo URL
+const getLogoUrl = (ticker: string): string | null => {
+  if (!LOGO_DEV_TOKEN) return null;
+  const cleanTicker = ticker?.replace(/\.US$/i, "") ?? "";
+  const symbol = cleanTicker.toLowerCase();
+  return `${LOGO_DEV_BASE}/${encodeURIComponent(symbol)}?token=${LOGO_DEV_TOKEN}`;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const CustomTooltip = ({ active, payload }: any) => {
-  if (active && payload && payload.length) {
-    const data = payload[0].payload;
-    const isPositive = data.change >= 0;
-    const isNeutral = Math.abs(data.change) < 0.1;
-
-    let colorClass = isPositive ? "text-[#00a96e]" : "text-[#f44336]";
-    if (isNeutral) colorClass = "text-slate-400";
-
-    return (
-      <div className="bg-[#131722] border border-[#2a2e39] p-3 rounded-none shadow-2xl text-white min-w-[180px] z-50">
-        <div className="flex justify-between items-start mb-2">
-          <div>
-            <span className="font-bold text-lg block">{data.ticker}</span>
-            <span className="text-xs text-slate-400 capitalize">{data.name?.toLowerCase()}</span>
-          </div>
-          <span className={cn("text-base font-bold font-mono", colorClass)}>
-            {isPositive ? "+" : ""}{data.change.toFixed(2)}%
-          </span>
-        </div>
-        <div className="text-[11px] bg-[#2a2e39] text-[#b2b5be] px-2 py-0.5 rounded-sm w-fit mb-2">{data.sector}</div>
-        <div className="pt-2 border-t border-[#2a2e39]">
-          <div className="flex justify-between text-xs text-[#b2b5be]">
-            <span>Market Cap</span>
-            <span className="font-mono">
-              {data.size >= 1e12
-                ? `$${(data.size / 1e12).toFixed(2)}T`
-                : data.size >= 1e9
-                  ? `$${(data.size / 1e9).toFixed(2)}B`
-                  : `$${(data.size / 1e6).toFixed(2)}M`}
-            </span>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  return null;
+// Format market cap for display
+const formatMarketCap = (mcap: number): string => {
+  if (mcap >= 1e12) return `$${(mcap / 1e12).toFixed(2)}T`;
+  if (mcap >= 1e9) return `$${(mcap / 1e9).toFixed(2)}B`;
+  if (mcap >= 1e6) return `$${(mcap / 1e6).toFixed(2)}M`;
+  return `$${mcap.toFixed(0)}`;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const CustomTreemapCell = (props: any) => {
-  const { x, y, width, height, ticker, change, name } = props;
+// Format volume
+const formatVolume = (vol: number | null): string => {
+  if (vol === null) return "—";
+  if (vol >= 1e9) return `${(vol / 1e9).toFixed(1)}B`;
+  if (vol >= 1e6) return `${(vol / 1e6).toFixed(1)}M`;
+  if (vol >= 1e3) return `${(vol / 1e3).toFixed(1)}K`;
+  return vol.toFixed(0);
+};
 
-  // TradingView Style Constants
-  const GAP = 1; // Gap between cells
+// Stock Tile Component with hover tooltip
+function StockTile({
+  stock,
+  size,
+  onClick,
+}: {
+  stock: HeatmapStock;
+  size: "xs" | "sm" | "md" | "lg" | "xl";
+  onClick: (ticker: string) => void;
+}) {
+  const logoUrl = getLogoUrl(stock.ticker);
+  const bgColor = getColor(stock.change_1d);
+  const textColor = getTextColor(stock.change_1d);
+  
+  const sizeClasses = {
+    xs: "w-8 h-8",
+    sm: "w-12 h-12",
+    md: "w-16 h-16",
+    lg: "w-24 h-24",
+    xl: "w-32 h-32",
+  };
 
-  // Adjusted coordinates for gap
-  const padX = x + GAP;
-  const padY = y + GAP;
-  const padWidth = width - GAP * 2;
-  const padHeight = height - GAP * 2;
-
-  const isSectorLabel = childrenCount(props) > 0;
-
-  if (isSectorLabel) {
-    // Parent/Sector Node
-    return (
-      <g>
-        <rect
-          x={padX}
-          y={padY}
-          width={padWidth}
-          height={padHeight}
-          style={{
-            fill: 'transparent',
-            stroke: '#000000', // Deep black visual separation for sectors
-            strokeWidth: 4, // Thicker separation between groups
-          }}
-        />
-        {/* TradingView displays sector labels as headers or floating text. 
-            We'll use a floating label style in the top-left if space permits */}
-        {padWidth > 80 && padHeight > 30 && (
-          <foreignObject x={padX} y={padY} width={padWidth} height={padHeight} className="pointer-events-none overflow-visible">
-            <div className="p-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500/50 block truncate ml-1 mt-1">
-                {name}
-              </span>
-            </div>
-          </foreignObject>
-        )}
-      </g>
-    );
-  }
-
-  // Leaf/Stock Node
-  if (width < 10 || height < 10) return null;
-
-  // Font sizing - TradingView scales text dynamically but keeps it legible
-  const fontSizeTicker = Math.min(Math.max(width / 5, 10), Math.max(height / 4, 10), 24);
-  const fontSizeChange = Math.max(fontSizeTicker * 0.7, 10);
-
-  const showTicker = width > 30 && height > 20;
-  const showChange = width > 40 && height > 35;
+  const showTicker = size !== "xs";
+  const showChange = size === "lg" || size === "xl";
+  const showLogo = size === "xl";
 
   return (
-    <g
-      className="cursor-pointer hover:opacity-90 transition-opacity group"
-      onClick={() => {
-        if (props.onClick) props.onClick(ticker);
-      }}
-    >
-      <rect
-        x={padX}
-        y={padY}
-        width={padWidth}
-        height={padHeight}
-        fill={getColor(change)}
-      />
-
-      {showTicker && (
-        <>
-          <text
-            x={padX + padWidth / 2}
-            y={padY + padHeight / 2 - (showChange ? fontSizeChange * 0.6 : 0)}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fill="#ffffff"
-            fontWeight="700"
-            fontSize={fontSizeTicker}
-            className="pointer-events-none drop-shadow-md select-none font-sans"
+    <TooltipProvider delayDuration={100}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => onClick(stock.ticker)}
+            className={cn(
+              "relative flex flex-col items-center justify-center gap-0.5 rounded transition-all hover:brightness-110 hover:scale-105 cursor-pointer border border-black/10",
+              sizeClasses[size]
+            )}
+            style={{ backgroundColor: bgColor }}
           >
-            {ticker}
-          </text>
-          {showChange && (
-            <text
-              x={padX + padWidth / 2}
-              y={padY + padHeight / 2 + fontSizeTicker * 0.7}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fill="#ffffff"
-              fontWeight="500"
-              fontSize={fontSizeChange}
-              className="pointer-events-none drop-shadow-md select-none font-sans"
-            >
-              {change > 0 ? "+" : ""}{change.toFixed(2)}%
-            </text>
-          )}
-        </>
-      )}
-    </g>
+            {showLogo && logoUrl && (
+              <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={logoUrl}
+                  alt=""
+                  className="w-5 h-5 object-contain"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
+              </div>
+            )}
+            {showTicker && (
+              <span
+                className="font-bold text-[10px] leading-none"
+                style={{ color: textColor }}
+              >
+                {stock.ticker}
+              </span>
+            )}
+            {showChange && stock.change_1d !== null && (
+              <span
+                className="text-[9px] font-medium leading-none"
+                style={{ color: textColor }}
+              >
+                {stock.change_1d > 0 ? "+" : ""}
+                {stock.change_1d.toFixed(2)}%
+              </span>
+            )}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent
+          side="top"
+          className="bg-slate-900 border-slate-700 text-white p-3 min-w-[220px]"
+        >
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              {logoUrl && (
+                <div className="w-8 h-8 rounded bg-white/10 flex items-center justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={logoUrl}
+                    alt=""
+                    className="w-6 h-6 object-contain"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = "none";
+                    }}
+                  />
+                </div>
+              )}
+              <div className="flex-1">
+                <div className="font-bold">{stock.ticker}</div>
+                <div className="text-xs text-slate-400 truncate max-w-[150px]">
+                  {stock.name}
+                </div>
+              </div>
+              <div
+                className={cn(
+                  "text-lg font-bold font-mono",
+                  stock.change_1d !== null && stock.change_1d >= 0
+                    ? "text-emerald-400"
+                    : "text-red-400"
+                )}
+              >
+                {stock.change_1d !== null
+                  ? `${stock.change_1d > 0 ? "+" : ""}${stock.change_1d.toFixed(2)}%`
+                  : "—"}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs border-t border-slate-700 pt-2">
+              <div>
+                <span className="text-slate-400">Market Cap</span>
+                <div className="font-mono">{formatMarketCap(stock.market_cap)}</div>
+              </div>
+              <div>
+                <span className="text-slate-400">1W Change</span>
+                <div
+                  className={cn(
+                    "font-mono",
+                    stock.change_1w !== null && stock.change_1w >= 0
+                      ? "text-emerald-400"
+                      : "text-red-400"
+                  )}
+                >
+                  {stock.change_1w !== null
+                    ? `${stock.change_1w > 0 ? "+" : ""}${stock.change_1w.toFixed(2)}%`
+                    : "—"}
+                </div>
+              </div>
+              <div className="col-span-2">
+                <span className="text-slate-400">Volume</span>
+                <div className="font-mono">{formatVolume(stock.volume)}</div>
+              </div>
+            </div>
+            <div className="text-[10px] text-slate-500 border-t border-slate-700 pt-1">
+              {stock.sector}
+            </div>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
-};
+}
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const childrenCount = (props: any) => {
-  return props.children ? props.children.length : 0;
-};
+// Sector Group Component
+function SectorGroup({
+  sector,
+  onStockClick,
+}: {
+  sector: HeatmapSector;
+  onStockClick: (ticker: string) => void;
+}) {
+  // Determine tile sizes based on market cap ranking within sector
+  const getTileSize = (index: number, total: number): "xs" | "sm" | "md" | "lg" | "xl" => {
+    if (total <= 3) return index === 0 ? "xl" : "lg";
+    if (index === 0) return "xl";
+    if (index <= 2) return "lg";
+    if (index <= 6) return "md";
+    if (index <= 15) return "sm";
+    return "xs";
+  };
+
+  return (
+    <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-800/50">
+      {/* Sector Header */}
+      <div className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+          {sector.sector}
+        </span>
+        <div className="flex items-center gap-2 text-[10px]">
+          <span
+            className={cn(
+              "font-mono font-medium",
+              sector.avgChange >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+            )}
+          >
+            {sector.avgChange >= 0 ? "+" : ""}
+            {sector.avgChange.toFixed(2)}%
+          </span>
+          <span className="text-slate-400">
+            <span className="text-emerald-500">{sector.advancers}</span>
+            /
+            <span className="text-red-500">{sector.decliners}</span>
+          </span>
+        </div>
+      </div>
+      {/* Stocks Grid */}
+      <div className="p-2 flex flex-wrap gap-1 justify-start items-start">
+        {sector.stocks.slice(0, 25).map((stock, idx) => (
+          <StockTile
+            key={stock.ticker}
+            stock={stock}
+            size={getTileSize(idx, sector.stocks.length)}
+            onClick={onStockClick}
+          />
+        ))}
+        {sector.stocks.length > 25 && (
+          <div className="w-8 h-8 rounded bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px] text-slate-500">
+            +{sector.stocks.length - 25}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Summary Bar Component
+function SummaryBar({ summary }: { summary: HeatmapResponse["summary"] }) {
+  const advanceRatio = summary.totalStocks > 0
+    ? ((summary.advancers / summary.totalStocks) * 100).toFixed(0)
+    : "0";
+  const declineRatio = summary.totalStocks > 0
+    ? ((summary.decliners / summary.totalStocks) * 100).toFixed(0)
+    : "0";
+
+  return (
+    <div className="flex flex-wrap items-center gap-4 px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-lg text-sm">
+      {/* Advance/Decline */}
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          <TrendingUp className="w-4 h-4 text-emerald-500" />
+          <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+            {summary.advancers}
+          </span>
+          <span className="text-slate-400 text-xs">({advanceRatio}%)</span>
+        </div>
+        <span className="text-slate-300 dark:text-slate-600">|</span>
+        <div className="flex items-center gap-1">
+          <TrendingDown className="w-4 h-4 text-red-500" />
+          <span className="font-semibold text-red-600 dark:text-red-400">
+            {summary.decliners}
+          </span>
+          <span className="text-slate-400 text-xs">({declineRatio}%)</span>
+        </div>
+        <span className="text-slate-300 dark:text-slate-600">|</span>
+        <div className="flex items-center gap-1">
+          <Minus className="w-4 h-4 text-slate-400" />
+          <span className="text-slate-500">{summary.unchanged}</span>
+        </div>
+      </div>
+
+      {/* Average Change */}
+      <div className="flex items-center gap-1">
+        <span className="text-slate-500 text-xs">Avg:</span>
+        <span
+          className={cn(
+            "font-mono font-semibold",
+            summary.avgChange >= 0
+              ? "text-emerald-600 dark:text-emerald-400"
+              : "text-red-600 dark:text-red-400"
+          )}
+        >
+          {summary.avgChange >= 0 ? "+" : ""}
+          {summary.avgChange.toFixed(2)}%
+        </span>
+      </div>
+
+      {/* Top Sector */}
+      {summary.topSector && (
+        <div className="flex items-center gap-1">
+          <span className="text-slate-500 text-xs">Top:</span>
+          <span className="font-medium text-emerald-600 dark:text-emerald-400">
+            {summary.topSector.name}
+          </span>
+          <span className="text-emerald-500 text-xs font-mono">
+            +{summary.topSector.change.toFixed(2)}%
+          </span>
+        </div>
+      )}
+
+      {/* Weakest Sector */}
+      {summary.weakestSector && (
+        <div className="flex items-center gap-1">
+          <span className="text-slate-500 text-xs">Weak:</span>
+          <span className="font-medium text-red-600 dark:text-red-400">
+            {summary.weakestSector.name}
+          </span>
+          <span className="text-red-500 text-xs font-mono">
+            {summary.weakestSector.change.toFixed(2)}%
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function MarketHeatmap({ sector, refreshToken }: MarketHeatmapProps) {
-  const [marketData, setMarketData] = useState<TreemapNode>({ name: "root", children: [] });
+  const [data, setData] = useState<HeatmapResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [universe, setUniverse] = useState<Universe>("popular");
+  const [selectedIndex, setSelectedIndex] = useState<IndexType>("sp500");
+  const [capFilter, setCapFilter] = useState<CapFilter>("all");
   const router = useRouter();
 
-  const handleTickerClick = (ticker: string) => {
-    router.push(`/company/${ticker}`);
-  };
+  const handleStockClick = useCallback(
+    (ticker: string) => {
+      router.push(`/company/${ticker}`);
+    },
+    [router]
+  );
 
-  // Helper: group screener rows into TreemapNode structure
-  const buildSectorsFromRows = (rows: ScreenerRow[]): TreemapNode => {
-    const bySector = new Map<string, MarketItem[]>();
-
-    for (const row of rows) {
-      const sec = row.sector || "Other";
-      const change = row.refund_1d_p ?? row.price_change_1d ?? 0;
-      const mcap = row.market_capitalization ?? row.market_cap ?? 0;
-
-      const item: MarketItem = {
-        name: row.code,
-        ticker: row.code,
-        change,
-        size: mcap || 1,
-        sector: sec,
-      };
-
-      const bucket = bySector.get(sec) ?? [];
-      bucket.push(item);
-      bySector.set(sec, bucket);
-    }
-
-    const children = Array.from(bySector.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([sectorName, stocks]) => ({
-        name: sectorName,
-        children: stocks.sort((a, b) => b.size - a.size)
-      }));
-
-    return { name: "market", children };
-  };
-
+  // Fetch data from new backend endpoint
   useEffect(() => {
-    const fetchBackendData = async (): Promise<TreemapNode | null> => {
-      try {
-        const config = UNIVERSE_OPTIONS.find((u) => u.value === universe) ??
-          UNIVERSE_OPTIONS[0];
-
-        let query: string | undefined;
-        let usedEquality = false;
-        if (sector) {
-          const mappedSector = SECTOR_FILTER_MAP[sector];
-          if (mappedSector) {
-            query = `sector = "${mappedSector}"`;
-            usedEquality = true;
-          }
-        }
-
-        const res = await fetch(`${BACKEND_URL}/api/run-query`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sort: "market_capitalization.desc",
-            limit: config.maxRows,
-            exchange: "us",
-            ...(query ? { query } : {}),
-          }),
-        });
-
-        if (!res.ok) return null;
-
-        const json = (await res.json()) as { data?: ScreenerRow[] };
-        let rows = json.data ?? [];
-
-        if (!rows.length && usedEquality && sector) {
-          const raw = String(sector).toLowerCase();
-          const MATCH_TOKEN_MAP: Record<string, string> = {
-            technology: "technology",
-            healthcare: "healthcare",
-            financials: "financial",
-            consumer: "consumer",
-            industrials: "industrial",
-            energy: "energy",
-            utilities: "utility",
-            materials: "material",
-            "real-estate": "real estate",
-            communication: "communication",
-          };
-          const token = MATCH_TOKEN_MAP[raw] ?? raw.replace(/-/g, " ");
-          if (token && token.length >= 3) {
-            const res2 = await fetch(`${BACKEND_URL}/api/run-query`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                sort: "market_capitalization.desc",
-                limit: config.maxRows,
-                exchange: "us",
-                query: `sector match "${token}"`,
-              }),
-            });
-            if (res2.ok) {
-              const json2 = (await res2.json()) as { data?: ScreenerRow[] };
-              rows = json2.data ?? [];
-            }
-          }
-        }
-
-        if (!rows.length) return null;
-
-        let filtered = rows;
-        if (universe === "small" || universe === "micro") {
-          filtered = rows.filter((r) => {
-            const mcap = r.market_capitalization ?? r.market_cap ?? 0;
-            if (universe === "small") return mcap > 0 && mcap <= 20_000_000_000;
-            return mcap > 0 && mcap <= 2_000_000_000;
-          });
-        }
-        if (!filtered.length) filtered = rows;
-
-        return buildSectorsFromRows(filtered);
-      } catch {
-        return null;
-      }
-    };
-
-    const fetchFallbackData = async (): Promise<TreemapNode> => {
-      const allTickers = SECTORS.flatMap((s) => s.tickers);
-      const data = await getBulkRealTimePrices(allTickers);
-
-      const children = SECTORS.map((sectorDef) => {
-        const stocks = sectorDef.tickers.map((ticker) => {
-          const stock = data.find(
-            (d) => d.code === ticker.replace(".US", "") || d.code === ticker
-          );
-          const change = stock?.change_p || 0;
-          return {
-            name: ticker.replace(".US", ""),
-            ticker: ticker.replace(".US", ""),
-            change,
-            size: (100 + Math.random() * 900) * 1e9,
-            sector: sectorDef.sector,
-          } as MarketItem;
-        });
-        return { name: sectorDef.sector, children: stocks.sort((a, b) => b.size - a.size) };
-      });
-
-      return { name: "market", children };
-    };
-
-    const run = async () => {
+    const fetchData = async () => {
       setLoading(true);
       setError(null);
+
       try {
-        const backend = await fetchBackendData();
-        if (backend && backend.children?.length) {
-          setMarketData(backend);
-        } else {
-          const fallback = await fetchFallbackData();
-          setMarketData(fallback);
-          setError("Showing a curated set of large caps while full market data is unavailable.");
+        const params = new URLSearchParams({
+          index: selectedIndex,
+          ...(capFilter !== "all" && { cap: capFilter }),
+          ...(sector && { sector }),
+        });
+
+        const res = await fetch(`${BACKEND_URL}/api/market/heatmap?${params}`);
+
+        if (!res.ok) {
+          throw new Error(`Failed to fetch: ${res.status}`);
         }
-      } catch {
-        const fallback = await fetchFallbackData();
-        setMarketData(fallback);
-        setError("Unable to load full market universe. Showing a curated fallback heatmap instead.");
+
+        const json = await res.json();
+        setData(json);
+      } catch (err) {
+        console.error("[Heatmap] Error:", err);
+        setError("Unable to load market data. Please try again.");
       } finally {
         setLoading(false);
       }
     };
 
-    void run();
-  }, [universe, sector, refreshToken]);
+    void fetchData();
+  }, [selectedIndex, capFilter, sector, refreshToken]);
+
+  // Filter sectors if external sector filter is applied
+  const filteredSectors = useMemo(() => {
+    if (!data?.sectors) return [];
+    if (!sector) return data.sectors;
+    return data.sectors.filter(
+      (s) => s.sector.toLowerCase().includes(sector.toLowerCase())
+    );
+  }, [data?.sectors, sector]);
 
   return (
     <Card className="h-full border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900">
-      <CardHeader className="pb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <CardTitle className="text-xl font-bold font-heading text-slate-900 dark:text-white">
-            Market Heatmap
-          </CardTitle>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Visualize breadth and rotation across the market. Click a tile to open the company page.
-          </p>
-        </div>
-        <div className="flex flex-col items-start md:items-end gap-2 text-[11px] text-slate-500 dark:text-slate-400">
-          <div className="inline-flex rounded-full border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900 px-2 py-1 gap-1">
-            {UNIVERSE_OPTIONS.map((u) => (
-              <button
-                key={u.value}
-                type="button"
-                onClick={() => setUniverse(u.value)}
-                className={cn(
-                  "px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
-                  universe === u.value
-                    ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900 border border-slate-900 dark:border-white"
-                    : "bg-transparent border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-                )}
-                aria-pressed={universe === u.value}
-              >
-                {u.label}
-              </button>
-            ))}
+      <CardHeader className="pb-3 space-y-3">
+        {/* Title Row */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <CardTitle className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              Market Heatmap
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Info className="w-4 h-4 text-slate-400" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p className="text-xs">
+                      Tile size represents market capitalization. Colors show daily price change intensity.
+                      Click any stock to view details.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </CardTitle>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Grouped by sector • Size = Market Cap
+            </p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-sm bg-emerald-500" />
-              <span>Strong gainers</span>
+
+          {/* Toggles */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+            {/* Primary: Index Toggle */}
+            <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-0.5">
+              {INDEX_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setSelectedIndex(opt.value)}
+                  className={cn(
+                    "px-3 py-1 text-xs font-medium rounded-md transition-colors",
+                    selectedIndex === opt.value
+                      ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
-            <div className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-sm bg-slate-400" />
-              <span>Flat</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="h-2 w-2 rounded-sm bg-rose-500" />
-              <span>Decliners</span>
+
+            {/* Secondary: Cap Filter */}
+            <div className="inline-flex rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-0.5">
+              {CAP_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setCapFilter(opt.value)}
+                  className={cn(
+                    "px-2 py-1 text-[11px] font-medium rounded transition-colors",
+                    capFilter === opt.value
+                      ? "bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white"
+                      : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
           </div>
         </div>
+
+        {/* Color Legend */}
+        <div className="flex items-center gap-4 text-[10px] text-slate-500 dark:text-slate-400">
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded" style={{ backgroundColor: "#047857" }} />
+            <span>+5%+</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded" style={{ backgroundColor: "#10b981" }} />
+            <span>+2-5%</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded" style={{ backgroundColor: "#6ee7b7" }} />
+            <span>+0.2-2%</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded" style={{ backgroundColor: "#52525b" }} />
+            <span>Flat</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded" style={{ backgroundColor: "#fca5a5" }} />
+            <span>-0.2-2%</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded" style={{ backgroundColor: "#ef4444" }} />
+            <span>-2-5%</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded" style={{ backgroundColor: "#b91c1c" }} />
+            <span>-5%+</span>
+          </div>
+        </div>
+
+        {/* Summary Bar */}
+        {data?.summary && <SummaryBar summary={data.summary} />}
       </CardHeader>
-      <CardContent className="h-[600px] p-4 pt-0">
+
+      <CardContent className="p-4 pt-0">
         {loading ? (
-          <div className="flex flex-col items-center justify-center h-full gap-2 text-slate-500 dark:text-slate-400 text-sm">
+          <div className="flex flex-col items-center justify-center h-[600px] gap-3">
             <div className="h-10 w-10 rounded-full border-2 border-slate-200 dark:border-slate-700 border-t-brand animate-spin" />
-            <span>Loading market data…</span>
+            <span className="text-sm text-slate-500">Loading market data…</span>
           </div>
-        ) : error && !marketData.children?.length ? (
-          <div className="flex flex-col items-center justify-center h-full gap-2 text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs">{error}</p>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center h-[600px] gap-2">
+            <p className="text-sm text-slate-500 dark:text-slate-400">{error}</p>
+            <button
+              type="button"
+              onClick={() => setSelectedIndex(selectedIndex)}
+              className="text-xs text-brand hover:underline"
+            >
+              Try again
+            </button>
           </div>
         ) : (
-          <div className="w-full h-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <Treemap
-                data={marketData.children as any} // eslint-disable-line @typescript-eslint/no-explicit-any
-                dataKey="size"
-                aspectRatio={4 / 3}
-                stroke="#1e293b"
-                content={<CustomTreemapCell onClick={handleTickerClick} />}
-              >
-                <RechartsTooltip content={<CustomTooltip />} />
-              </Treemap>
-            </ResponsiveContainer>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 max-h-[650px] overflow-y-auto pr-1">
+            {filteredSectors.map((sector) => (
+              <SectorGroup
+                key={sector.sector}
+                sector={sector}
+                onStockClick={handleStockClick}
+              />
+            ))}
           </div>
         )}
       </CardContent>

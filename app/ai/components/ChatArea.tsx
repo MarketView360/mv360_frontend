@@ -29,6 +29,7 @@ import { useTextToSpeech } from "@/hooks/useTextToSpeech";
 import { JovanResponse, stripJovanTags } from "../utils/jovanParser";
 import { Icons } from "./Icons";
 import { ReasoningBlock, ReasoningIndicator } from "./ReasoningBlock";
+import { ToolUsageBlock } from "./ToolUsageBlock";
 
 // Try to satisfy the missing type definition without installing new packages if possible
 declare module 'dom-to-image-more';
@@ -42,6 +43,8 @@ export interface Message {
   isReasoning?: boolean;
   isStreaming?: boolean;
   reasoning?: string;
+  toolCalls?: string[];
+  toolStatus?: string;
 }
 
 interface ChatAreaProps {
@@ -312,6 +315,19 @@ export function ChatArea({ messages }: ChatAreaProps) {
                         isStreaming={message.isStreaming && !message.content}
                       />
                     )}
+                    {/* Tool usage indicators - shown when tools were used */}
+                    {message.toolCalls && message.toolCalls.length > 0 && (
+                      <div className="space-y-2 mb-3">
+                        {message.toolCalls.map((toolName, idx) => (
+                          <ToolUsageBlock
+                            key={idx}
+                            toolName={toolName}
+                            isActive={message.isStreaming}
+                            statusMessage={message.isStreaming ? message.toolStatus : undefined}
+                          />
+                        ))}
+                      </div>
+                    )}
                     <JovanResponse
                       content={message.content}
                       isStreaming={message.isStreaming}
@@ -337,9 +353,6 @@ export function ChatArea({ messages }: ChatAreaProps) {
                   </Button>
                   <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                     <ThumbsUp className="w-3 h-3" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                    <ThumbsDown className="w-3 h-3" />
                   </Button>
                   <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                     <ThumbsDown className="w-3 h-3" />

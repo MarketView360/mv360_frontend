@@ -3,7 +3,7 @@
 import { Lock, Crown, Sparkles, X } from "lucide-react";
 import Link from "next/link";
 
-export type TierType = "pro" | "elite";
+export type TierType = "premium" | "elite";
 
 interface PaywallOverlayProps {
     tier: TierType;
@@ -13,6 +13,7 @@ interface PaywallOverlayProps {
     showFreeTrial?: boolean;
     onClose?: () => void;
     className?: string;
+    compact?: boolean;
 }
 
 export function PaywallOverlay({
@@ -23,12 +24,44 @@ export function PaywallOverlay({
     showFreeTrial = true,
     onClose,
     className = "",
+    compact = false,
 }: PaywallOverlayProps) {
-    const isPro = tier === "pro";
-    const tierName = isPro ? "Pro" : "Elite";
+    const isPremium = tier === "premium";
+    const tierName = isPremium ? "Premium" : "Elite";
     const defaultCta = showFreeTrial
         ? "Start 14-Day Free Trial"
         : `Upgrade to ${tierName}`;
+
+    // Compact version for smaller spaces
+    if (compact) {
+        return (
+            <div className={`glass-paywall px-6 py-4 max-w-sm mx-auto text-center relative z-50 animate-in fade-in zoom-in-95 duration-300 ${className}`}>
+                <div className="flex items-center justify-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isPremium ? "gradient-premium" : "gradient-elite"}`}>
+                        {isPremium ? (
+                            <Lock className="w-5 h-5 text-white" />
+                        ) : (
+                            <Crown className="w-5 h-5 text-white" />
+                        )}
+                    </div>
+                    <div className="text-left">
+                        <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                            Unlock {feature}
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Available in {tierName} plan
+                        </p>
+                    </div>
+                    <Link
+                        href="/pricing"
+                        className={`ml-auto px-4 py-2 rounded-lg font-semibold text-white text-sm transition-all hover:scale-[1.02] hover:shadow-lg flex-shrink-0 ${isPremium ? "gradient-premium" : "gradient-elite"}`}
+                    >
+                        Upgrade
+                    </Link>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div
@@ -47,10 +80,10 @@ export function PaywallOverlay({
 
             {/* Lock icon with tier-based gradient */}
             <div
-                className={`w-16 h-16 mx-auto mb-6 rounded-2xl flex items-center justify-center animate-float ${isPro ? "gradient-pro" : "gradient-elite"
+                className={`w-16 h-16 mx-auto mb-6 rounded-2xl flex items-center justify-center animate-float ${isPremium ? "gradient-premium" : "gradient-elite"
                     }`}
             >
-                {isPro ? (
+                {isPremium ? (
                     <Lock className="w-8 h-8 text-white" />
                 ) : (
                     <Crown className="w-8 h-8 text-white" />
@@ -85,7 +118,7 @@ export function PaywallOverlay({
             {/* CTA Button */}
             <Link
                 href="/pricing"
-                className={`w-full inline-flex items-center justify-center px-6 py-3 rounded-xl font-semibold text-white transition-all hover:scale-[1.02] hover:shadow-lg ${isPro ? "gradient-pro" : "gradient-elite"
+                className={`w-full inline-flex items-center justify-center px-6 py-3 rounded-xl font-semibold text-white transition-all hover:scale-[1.02] hover:shadow-lg ${isPremium ? "gradient-premium" : "gradient-elite"
                     }`}
             >
                 {ctaText || defaultCta}

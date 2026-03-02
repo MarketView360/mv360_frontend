@@ -59,6 +59,8 @@ export const AVAILABLE_TABLES = [
   "outstanding_shares_history_annual",
   "outstanding_shares_history_quarterly",
   "company_financials_view",
+  "technical_indicators",
+  "screener_data",
 ] as const;
 
 export type AvailableTable = (typeof AVAILABLE_TABLES)[number];
@@ -90,7 +92,7 @@ export const FIELD_ALIASES: Record<string, FieldMapping> = {
   pe_ratio: { table: "company_metrics_ttm", column: "pe_ratio" },
   pe: { table: "company_metrics_ttm", column: "pe_ratio" },
   forward_pe: { table: "company_metrics_ttm", column: "forward_pe" },
-  trailing_pe: { table: "company_metrics_ttm", column: "trailing_pe" },
+  trailing_pe: { table: "company_metrics_ttm", column: "pe_ratio" },
   peg_ratio: { table: "company_metrics_ttm", column: "peg_ratio" },
   peg: { table: "company_metrics_ttm", column: "peg_ratio" },
   pb_ratio: { table: "company_metrics_ttm", column: "price_book_mrq" },
@@ -128,6 +130,14 @@ export const FIELD_ALIASES: Record<string, FieldMapping> = {
   dividend_per_share: {
     table: "company_metrics_ttm",
     column: "dividend_per_share",
+  },
+  forward_dividend_yield: {
+    table: "company_metrics_ttm",
+    column: "forward_annual_dividend_yield",
+  },
+  forward_annual_dividend_yield: {
+    table: "company_metrics_ttm",
+    column: "forward_annual_dividend_yield",
   },
   payout_ratio: { table: "company_metrics_ttm", column: "payout_ratio" },
 
@@ -177,6 +187,18 @@ export const FIELD_ALIASES: Record<string, FieldMapping> = {
   volume: { table: "price_data", column: "volume" },
   change: { table: "price_data", column: "change" },
   change_percent: { table: "price_data", column: "change_percent" },
+
+  // Technical Indicators (from screener_data materialized view)
+  rsi: { table: "screener_data", column: "rsi_14" },
+  rsi_14: { table: "screener_data", column: "rsi_14" },
+  rsi14: { table: "screener_data", column: "rsi_14" },
+  macd: { table: "screener_data", column: "macd" },
+  macd_signal: { table: "screener_data", column: "macd_signal" },
+  signal: { table: "screener_data", column: "macd_signal" },
+  macd_divergence: { table: "screener_data", column: "macd_divergence" },
+  ema_20: { table: "screener_data", column: "ema_20" },
+  ema20: { table: "screener_data", column: "ema_20" },
+  ema: { table: "screener_data", column: "ema_20" },
 
   // Balance sheet (balance_sheet_annual/quarterly tables)
   total_assets: { table: "balance_sheet_annual", column: "total_assets" },
@@ -323,7 +345,7 @@ export const BACKEND_FIELD_MAP: Record<string, string> = {
   "price/earning": "pe_ratio",
   "price/earnings": "pe_ratio",
   "p/e": "pe_ratio",
-  "trailing pe": "trailing_pe",
+  "trailing pe": "pe_ratio",
   "forward pe": "forward_pe",
   "forward p/e": "forward_pe",
   peg: "peg_ratio",
@@ -338,6 +360,10 @@ export const BACKEND_FIELD_MAP: Record<string, string> = {
   "price/sales": "price_sales_ttm",
   "p/s": "price_sales_ttm",
   ps: "price_sales_ttm",
+  "price to cash flow": "price_to_cash_flow",
+  "price/cash flow": "price_to_cash_flow",
+  "p/cf": "price_to_cash_flow",
+  pcf: "price_to_cash_flow",
   "ev/ebitda": "ev_ebitda",
   "ev to ebitda": "ev_ebitda",
   "ev/revenue": "ev_revenue",
@@ -375,6 +401,10 @@ export const BACKEND_FIELD_MAP: Record<string, string> = {
   "dividend per share": "dividend_per_share",
   dividend_per_share: "dividend_per_share",
   "dividend share": "dividend_per_share",
+  "forward dividend yield": "forward_annual_dividend_yield",
+  forward_dividend_yield: "forward_annual_dividend_yield",
+  forward_annual_dividend_yield: "forward_annual_dividend_yield",
+  "forward div yield": "forward_annual_dividend_yield",
   "payout ratio": "payout_ratio",
   payout_ratio: "payout_ratio",
   "dividend payout ratio": "payout_ratio",
@@ -502,6 +532,29 @@ export const BACKEND_FIELD_MAP: Record<string, string> = {
   "dividends paid": "dividends_paid",
   "net borrowings": "net_borrowings",
   "change in cash": "change_in_cash",
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TECHNICAL INDICATORS (screener_data view)
+  // ═══════════════════════════════════════════════════════════════════════════
+  rsi: "rsi_14",
+  "rsi 14": "rsi_14",
+  rsi_14: "rsi_14",
+  rsi14: "rsi_14",
+  "relative strength index": "rsi_14",
+  macd: "macd",
+  "macd line": "macd",
+  "macd signal": "macd_signal",
+  macd_signal: "macd_signal",
+  signal: "macd_signal",
+  "signal line": "macd_signal",
+  "macd divergence": "macd_divergence",
+  macd_divergence: "macd_divergence",
+  divergence: "macd_divergence",
+  ema: "ema_20",
+  "ema 20": "ema_20",
+  ema_20: "ema_20",
+  ema20: "ema_20",
+  "exponential moving average": "ema_20",
 };
 
 
@@ -660,6 +713,15 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       example: "Price to Sales < 5",
       category: "Valuation",
       backendField: "price_sales_ttm",
+    },
+    {
+      name: "Price to Cash Flow",
+      description: "Market price relative to operating cash flow per share",
+      unit: "x",
+      keywords: ["pcf", "price cash flow", "p/cf"],
+      example: "Price to Cash Flow < 10",
+      category: "Valuation",
+      backendField: "price_to_cash_flow",
     },
   ],
   Profitability: [
@@ -848,6 +910,51 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       example: "Change Percent > 2",
       category: "Technical Analysis",
       backendField: "change_percent",
+    },
+    {
+      name: "RSI",
+      description: "Relative Strength Index (14-period)",
+      unit: "",
+      keywords: ["rsi", "rsi 14", "relative strength index", "momentum"],
+      example: "RSI < 30",
+      category: "Technical Analysis",
+      backendField: "rsi_14",
+    },
+    {
+      name: "MACD",
+      description: "Moving Average Convergence Divergence",
+      unit: "",
+      keywords: ["macd", "macd line", "convergence divergence"],
+      example: "MACD > 0",
+      category: "Technical Analysis",
+      backendField: "macd",
+    },
+    {
+      name: "MACD Signal",
+      description: "MACD Signal Line (9-period EMA of MACD)",
+      unit: "",
+      keywords: ["macd signal", "signal line", "signal"],
+      example: "MACD > MACD Signal",
+      category: "Technical Analysis",
+      backendField: "macd_signal",
+    },
+    {
+      name: "MACD Divergence",
+      description: "Difference between MACD and Signal Line",
+      unit: "",
+      keywords: ["macd divergence", "divergence", "histogram"],
+      example: "MACD Divergence > 0",
+      category: "Technical Analysis",
+      backendField: "macd_divergence",
+    },
+    {
+      name: "EMA 20",
+      description: "Exponential Moving Average (20-period)",
+      unit: "$",
+      keywords: ["ema", "ema 20", "exponential moving average"],
+      example: "Price > EMA 20",
+      category: "Technical Analysis",
+      backendField: "ema_20",
     },
   ],
   "Company Info": [
@@ -1193,6 +1300,15 @@ export const ENHANCED_DATA_SOURCE: Record<string, FieldDef[]> = {
       category: "Dividends",
     },
     {
+      name: "Forward Dividend Yield",
+      description: "Expected annual dividend yield based on forward rate",
+      unit: "%",
+      keywords: ["forward dividend yield", "forward dividend", "forward div yield"],
+      example: "Forward Dividend Yield > 3",
+      backendField: "forward_annual_dividend_yield",
+      category: "Dividends",
+    },
+    {
       name: "Payout Ratio",
       description: "Dividend payout ratio",
       unit: "%",
@@ -1456,43 +1572,49 @@ export const KEYBOARD_SHORTCUTS = {
 };
 
 // Common query examples and templates
-export const QUERY_EXAMPLES = {
-  "Value Stocks": {
-    query: "PE < 15 AND PB < 2 AND ROE > 15 AND Debt to equity < 0.5",
-    description: "Find undervalued stocks with good fundamentals",
+// Example queries for the query builder
+export const QUERY_EXAMPLES = [
+  {
+    name: "High Market Cap",
+    query: "Market Cap > 100000000000",
+    description: "Stocks with a market capitalization greater than $100 billion.",
   },
-  "Growth Stocks": {
-    query: "Sales growth 3Years > 20 AND EPS growth 3Years > 25 AND ROE > 20",
-    description: "High growth companies with strong earnings",
+  {
+    name: "Undervalued Growth",
+    query: "PE < 20 AND ROE > 15 AND Revenue > 1000000000",
+    description: "Companies with reasonable valuation, high return on equity, and significant revenue.",
   },
-  "Dividend Stocks": {
-    query:
-      "Dividend yield > 3 AND Dividend growth 5Years > 8 AND Payout Ratio < 60",
-    description: "Reliable dividend paying stocks",
+  {
+    name: "Dividend Aristocrats",
+    query: "Dividend Yield > 3 AND Payout Ratio < 60",
+    description: "Sustainable dividend payers with yield over 3% and healthy payout ratio.",
   },
-  "Quality Stocks": {
-    query:
-      "ROE > 18 AND ROCE > 20 AND Current Ratio > 1.5 AND Interest Coverage > 5",
-    description: "High quality companies with strong financials",
+  {
+    name: "Tech Growth",
+    query: "Sector = 'Technology' AND Revenue > 500000000 AND PE < 50",
+    description: "Technology companies with significant revenue and growth potential.",
   },
-  "Small Cap Growth": {
-    query:
-      "Market Capitalization BETWEEN 500 AND 5000 AND Sales growth 3Years > 25",
-    description: "Small cap companies with high growth",
+  {
+    name: "Deep Value",
+    query: "Price to Book Value < 1 AND PE < 15 AND Net Debt < 0",
+    description: "Stocks trading below book value with low earnings multiples and strong balance sheets.",
   },
-  "Large Cap Stable": {
-    query: "Market Capitalization > 50000 AND Beta < 1.2 AND ROE > 12",
-    description: "Large stable companies with consistent returns",
+  {
+    name: "Momentum",
+    query: "Price > SMA200 AND Price > SMA50 AND RSI > 50",
+    description: "Stocks in an uptrend trading above their moving averages.",
   },
-  "Turnaround Stories": {
-    query: "Return over 1year > 50 AND Profit Growth 1Year > 100 AND PE < 25",
-    description: "Companies showing strong recovery",
+  {
+    name: "High Quality Defensives",
+    query: "Sector = 'Healthcare' OR Sector = 'Consumer Defensive' AND ROE > 20",
+    description: "High quality companies in defensive sectors.",
   },
-  "Cash Rich Companies": {
-    query: "Cash and Equivalents > Total Debt AND Free Cash Flow > 200",
-    description: "Companies with strong cash positions",
+  {
+    name: "Debt Free Cash Cows",
+    query: "Long Term Debt = 0 AND Free Cash Flow > 100000000",
+    description: "Companies with zero long term debt and strong free cash flow.",
   },
-};
+];
 
 // Common error patterns and solutions
 export const ERROR_SOLUTIONS = {
@@ -1793,7 +1915,113 @@ export const validateQuery = (query: string): QueryValidationError[] => {
       const conditionTrimmed = condition.trim();
       if (!conditionTrimmed) return;
 
-      // Find operator in this condition
+      // If this condition is a parenthesized expression, recursively validate its contents
+      if (conditionTrimmed.startsWith("(") && conditionTrimmed.endsWith(")")) {
+        // Extract the content inside the parentheses
+        const innerContent = conditionTrimmed.substring(1, conditionTrimmed.length - 1).trim();
+
+        // Recursively split and validate the inner expression
+        const innerConditions = splitByLogicalOperators(innerContent);
+
+        innerConditions.forEach((innerCondition) => {
+          if (["AND", "OR"].includes(innerCondition.toUpperCase())) return;
+
+          const innerTrimmed = innerCondition.trim();
+          if (!innerTrimmed) return;
+
+          // Recursively handle nested parentheses
+          if (innerTrimmed.startsWith("(") && innerTrimmed.endsWith(")")) {
+            // For deeply nested parentheses, we'll just validate them at the current level
+            // This prevents infinite recursion while still catching basic issues
+            return;
+          }
+
+          // Validate this inner condition
+          const operatorMatch = innerTrimmed.match(
+            /(>=|<=|!=|>|<|=|\bIN\b|\bBETWEEN\b|\bLIKE\b|\bIS\s+NOT\s+NULL\b|\bIS\s+NULL\b)/i
+          );
+
+          if (!operatorMatch) {
+            const isKnownField = allValidFields.some(
+              (field) => field.toLowerCase() === innerTrimmed.toLowerCase()
+            );
+
+            if (isKnownField) {
+              errors.push({
+                line: lineIndex + 1,
+                column: trimmedLine.indexOf(innerTrimmed) + 1,
+                message: `Field "${innerTrimmed}" needs an operator and value`,
+                severity: "error",
+              });
+            } else if (innerTrimmed.length > 0) {
+              errors.push({
+                line: lineIndex + 1,
+                column: Math.max(1, trimmedLine.indexOf(innerTrimmed) + 1),
+                message: `Unknown field "${innerTrimmed}"`,
+                severity: "error",
+              });
+            }
+            return;
+          }
+
+          const operator = operatorMatch[0];
+          const operatorIndex = innerTrimmed.indexOf(operator);
+          const fieldPart = innerTrimmed.substring(0, operatorIndex).trim();
+          const valuePart = innerTrimmed.substring(operatorIndex + operator.length).trim();
+
+          // Validate field in parenthesized expression
+          if (fieldPart) {
+            const isValidField = allValidFields.some(
+              (field) => field.toLowerCase() === fieldPart.toLowerCase()
+            );
+
+            if (!isValidField) {
+              const closeMatch = allValidFields.find((field) => {
+                const fieldLower = field.toLowerCase();
+                const fieldPartLower = fieldPart.toLowerCase();
+                if (fieldLower === fieldPartLower) return true;
+                const lenRatio = Math.min(fieldLower.length, fieldPartLower.length) / Math.max(fieldLower.length, fieldPartLower.length);
+                if (lenRatio > 0.5) {
+                  if (fieldLower.includes(fieldPartLower) || fieldPartLower.includes(fieldLower)) return true;
+                }
+                const fieldWords = fieldLower.split(/\s+/);
+                const inputWords = fieldPartLower.split(/\s+/);
+                if (Math.abs(fieldWords.length - inputWords.length) > 1) return false;
+                return inputWords.every((w: string) => fieldWords.some((fw: string) => fw.includes(w) || w.includes(fw)));
+              });
+
+              if (closeMatch) {
+                errors.push({
+                  line: lineIndex + 1,
+                  column: trimmedLine.indexOf(fieldPart) + 1,
+                  message: `Did you mean "${closeMatch}"?`,
+                  severity: "warning",
+                });
+              } else {
+                errors.push({
+                  line: lineIndex + 1,
+                  column: trimmedLine.indexOf(fieldPart) + 1,
+                  message: `Unknown field "${fieldPart}"`,
+                  severity: "error",
+                });
+              }
+            }
+          }
+
+          // Validate value for IS NULL/IS NOT NULL - no value needed
+          if (!valuePart && !/(IS\s+NULL|IS\s+NOT\s+NULL)$/i.test(operator)) {
+            errors.push({
+              line: lineIndex + 1,
+              column: trimmedLine.indexOf(operator) + operator.length + 1,
+              message: `Operator "${operator}" needs a value after it`,
+              severity: "error",
+            });
+          }
+        });
+
+        return; // Skip further processing for parenthesized expressions
+      }
+
       // Find operator in this condition - now supports more operators
       const operatorMatch = conditionTrimmed.match(
         /(>=|<=|!=|>|<|=|\bIN\b|\bBETWEEN\b|\bLIKE\b|\bIS\s+NOT\s+NULL\b|\bIS\s+NULL\b)/i
@@ -1877,16 +2105,24 @@ export const validateQuery = (query: string): QueryValidationError[] => {
             // Exact match
             if (fieldLower === fieldPartLower) return true;
 
-            // Contains match
-            if (
-              fieldLower.includes(fieldPartLower) ||
-              fieldPartLower.includes(fieldLower)
-            )
-              return true;
+            // Contains match - but only when lengths are similar to avoid
+            // short fields like "Price" matching long inputs like "price to Cash Flow"
+            const lenRatio = Math.min(fieldLower.length, fieldPartLower.length) / Math.max(fieldLower.length, fieldPartLower.length);
+            if (lenRatio > 0.5) {
+              if (
+                fieldLower.includes(fieldPartLower) ||
+                fieldPartLower.includes(fieldLower)
+              )
+                return true;
+            }
 
             // Word-based match for multi-word fields
             const fieldWords = fieldLower.split(/\s+/);
             const inputWords = fieldPartLower.split(/\s+/);
+
+            // Require that the word counts are similar (within 1) to avoid
+            // single-word fields matching multi-word inputs
+            if (Math.abs(fieldWords.length - inputWords.length) > 1) return false;
 
             return inputWords.every((inputWord: string) =>
               fieldWords.some(
@@ -1921,15 +2157,17 @@ export const validateQuery = (query: string): QueryValidationError[] => {
         });
       }
 
-      // Validate value
-      if (!valuePart) {
+      // Validate value - IS NULL and IS NOT NULL don't need values
+      const isNullOperator = /^IS\s+(NOT\s+)?NULL$/i.test(operator);
+
+      if (!valuePart && !isNullOperator) {
         errors.push({
           line: lineIndex + 1,
           column: trimmedLine.indexOf(operator) + operator.length + 1,
           message: `Operator "${operator}" needs a value after it`,
           severity: "error",
         });
-      } else {
+      } else if (valuePart) {
         // Detect missing logical operator between adjacent conditions
         // Strategy: search for any known field name inside valuePart (case-insensitive),
         // and if immediately followed (after optional spaces) by an operator OR any token (number/word), report error.

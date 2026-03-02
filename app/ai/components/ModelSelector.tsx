@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
-import { Loader2, Lock, KeyRound } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import { Loader2, Lock, KeyRound, Wrench, TrendingUp } from "lucide-react";
+import type { ToolsConfig } from "@/hooks/useToolsConfig";
 import {
   Select,
   SelectContent,
@@ -52,11 +53,18 @@ const MODELS: ModelOption[] = [
   },
 ];
 
+const TOOL_ICONS: Record<string, React.ElementType> = {
+  TrendingUp,
+};
+
 interface ModelSelectorProps {
   selectedModelId: string;
   onModelChange: (modelId: string) => void;
   isReasoningEnabled: boolean;
   onReasoningChange: (enabled: boolean) => void;
+  toolsConfig?: ToolsConfig;
+  onToolsEnabledChange?: (enabled: boolean) => void;
+  onToolToggle?: (toolId: string, enabled: boolean) => boolean;
   className?: string;
   reasoningLabel?: string;
   disabled?: boolean;
@@ -67,6 +75,9 @@ export function ModelSelector({
   onModelChange,
   isReasoningEnabled,
   onReasoningChange,
+  toolsConfig,
+  onToolsEnabledChange,
+  onToolToggle,
   className,
   reasoningLabel = "Reasoning",
   disabled = false,
@@ -74,9 +85,23 @@ export function ModelSelector({
   const selectedModel = MODELS.find((m) => m.id === selectedModelId) || MODELS[0];
   const { session } = useAuth();
   const { quota, loading, timeUntilReset } = useQuota(session?.access_token ?? null);
+  const [toolsPopupOpen, setToolsPopupOpen] = useState(false);
+  const toolsPopupRef = useRef<HTMLDivElement>(null);
   
   // Hide quota UI for non-logged-in users
   const isAuthenticated = !!session;
+
+  // Close tools popup on outside click
+  useEffect(() => {
+    if (!toolsPopupOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (toolsPopupRef.current && !toolsPopupRef.current.contains(e.target as Node)) {
+        setToolsPopupOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [toolsPopupOpen]);
 
   const getQuotaDisplay = () => {
     if (!quota) return "Loading...";
@@ -240,6 +265,109 @@ export function ModelSelector({
                 </TooltipProvider>
               ) : null
             )}
+        </div>
+      )}
+
+      {/* Tools tile with popup */}
+      {isAuthenticated && toolsConfig && (
+        <div className="relative pl-4 border-l border-slate-200 dark:border-slate-800" ref={toolsPopupRef}>
+          <button
+            type="button"
+            onClick={() => setToolsPopupOpen((prev) => !prev)}
+            disabled={disabled}
+            className={cn(
+              "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors select-none",
+              toolsConfig.enabled
+                ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
+                : "bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700/50",
+              disabled && "opacity-50 cursor-not-allowed"
+            )}
+          >
+            <Wrench className="h-3 w-3" />
+            Tools
+            {toolsConfig.enabled && (
+              <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+            )}
+          </button>
+
+          {/* Popup */}
+          {toolsPopupOpen && (
+            <div className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-xl z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+              <div className="p-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Wrench className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                    <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">AI Tools</span>
+                  </div>
+                  <Switch
+                    checked={toolsConfig.enabled}
+                    onCheckedChange={(checked) => onToolsEnabledChange?.(checked)}
+                    className="scale-75 data-[state=checked]:bg-emerald-600"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                  {toolsConfig.enabled ? "Tools can fetch real-time data for your queries" : "Tools disabled — AI answers from knowledge only"}
+                </p>
+              </div>
+
+              {toolsConfig.enabled && (
+                <div className="p-2 space-y-1">
+                  {toolsConfig.tools.map((tool) => {
+                    const IconComp = TOOL_ICONS[tool.icon] || Wrench;
+                    const isOnlyTool = toolsConfig.tools.length === 1;
+                    const enabledCount = toolsConfig.tools.filter((t) => t.enabled).length;
+                    const cantDisable = tool.enabled && (isOnlyTool || enabledCount <= 1);
+
+                    return (
+                      <div
+                        key={tool.id}
+                        className="flex items-center justify-between p-2 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className={cn(
+                            "p-1.5 rounded-md",
+                            tool.enabled
+                              ? "bg-emerald-100 dark:bg-emerald-900/30"
+                              : "bg-slate-100 dark:bg-slate-800"
+                          )}>
+                            <IconComp className={cn(
+                              "h-3.5 w-3.5",
+                              tool.enabled
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : "text-slate-400"
+                            )} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium text-slate-900 dark:text-slate-100 truncate">{tool.name}</p>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{tool.description}</p>
+                          </div>
+                        </div>
+                        <TooltipProvider>
+                          <Tooltip delayDuration={200}>
+                            <TooltipTrigger asChild>
+                              <div>
+                                <Switch
+                                  checked={tool.enabled}
+                                  onCheckedChange={(checked) => onToolToggle?.(tool.id, checked)}
+                                  disabled={cantDisable}
+                                  className="scale-[0.6] data-[state=checked]:bg-emerald-600"
+                                />
+                              </div>
+                            </TooltipTrigger>
+                            {cantDisable && (
+                              <TooltipContent side="left" className="text-xs">
+                                Disable tools entirely to turn this off
+                              </TooltipContent>
+                            )}
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

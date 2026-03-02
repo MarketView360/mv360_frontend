@@ -12,6 +12,7 @@ import {
   CreditCard,
   Sparkles,
   HelpCircle,
+  BarChart3,
 } from "lucide-react";
 
 interface SettingsLayoutProps {
@@ -32,6 +33,7 @@ const settingsNav = [
     items: [
       { name: "Appearance", href: "/settings/appearance", icon: Palette },
       { name: "Notifications", href: "/settings/notifications", icon: Bell },
+      { name: "Key Metrics", href: "/settings/metrics", icon: BarChart3 },
     ],
   },
   {

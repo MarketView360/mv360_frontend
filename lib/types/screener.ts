@@ -159,7 +159,7 @@ export interface ScreenerRow {
   // Valuation Metrics
   pe_ratio?: number;
   forward_pe?: number;
-  trailing_pe?: number;
+  trailing_pe?: number; // alias for pe_ratio (backward compat)
   peg_ratio?: number;
   price_book_mrq?: number;
   price_sales_ttm?: number;
@@ -204,6 +204,12 @@ export interface ScreenerRow {
   week_52_low?: number;
   day_50_ma?: number;
   day_200_ma?: number;
+  rsi_14?: number;
+  macd?: number;
+  macd_signal?: number;
+  macd_divergence?: number;
+  ema_20?: number;
+  technical_date?: string;
 
   // Price Change
   change?: number;

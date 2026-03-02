@@ -47,8 +47,10 @@ export function useChatSession(token: string | null, urlSession: string | null) 
 
   const handleSelectSession = useCallback((id: string) => {
     setActiveSessionId(id);
-    // Update URL without full navigation
-    window.history.pushState({}, "", `/ai?session=${id}`);
+    // Update URL without full navigation. Encode the ID to avoid malformed
+    // URI errors if it contains characters like "%".
+    const encodedId = encodeURIComponent(id);
+    window.history.pushState({}, "", `/ai?session=${encodedId}`);
   }, []);
 
   const handleNewChat = useCallback(() => {
@@ -101,20 +103,28 @@ export function useChatSession(token: string | null, urlSession: string | null) 
     setSessions((prev) => {
       const exists = prev.some((s) => s.id === session.id);
       if (exists) return prev;
-      return [session, ...prev];
+      // Mark new session as titleGenerating since AI will generate title in background
+      return [{ ...session, titleGenerating: true }, ...prev];
     });
     
     // Only update URL and active session if not already set
     // This prevents unnecessary re-renders during streaming
     setActiveSessionId((currentId) => {
       if (currentId !== session.id) {
-        // Update URL to include session
-        window.history.pushState({}, "", `/ai?session=${session.id}`);
+        // Update URL to include session. Encode ID to ensure it's a valid URI
+        // component and won't break decodeURIComponent inside Next/router.
+        const encodedId = encodeURIComponent(session.id);
+        window.history.pushState({}, "", `/ai?session=${encodedId}`);
         return session.id;
       }
       return currentId;
     });
-  }, []);
+
+    // Poll for title update after 3 seconds (AI title generation time)
+    setTimeout(() => {
+      void fetchSessions();
+    }, 3000);
+  }, [fetchSessions]);
 
   return {
     sessions,
