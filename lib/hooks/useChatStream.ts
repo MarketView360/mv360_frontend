@@ -61,6 +61,8 @@ export function useChatStream(token: string | null, sessionId: string | null) {
         reasoning?: boolean; 
         enableTools?: boolean;
         onSessionCreated?: (id: string, title: string) => void;
+        displayContent?: string; // What to show in chat (if different from content sent to AI)
+        isWatchlistAnalysis?: boolean; // Badge indicator
       } = {}
     ): Promise<{ sessionId: string | null; title: string | null }> => {
       if (!token) {
@@ -78,8 +80,9 @@ export function useChatStream(token: string | null, sessionId: string | null) {
       const userMessage: ChatMessage = {
         id: `temp-${Date.now()}`,
         role: "user",
-        content,
+        content: options.displayContent || content, // Show display content in chat
         timestamp: new Date().toISOString(),
+        isWatchlistAnalysis: options.isWatchlistAnalysis,
       };
 
       setMessages((prev) => [...prev, userMessage]);

@@ -32,6 +32,7 @@ const ENABLE_SUGGESTIONS =
 export default function AiPageClient() {
   const searchParams = useSearchParams();
   const urlSessionId = searchParams.get("session");
+  const watchlistParam = searchParams.get("watchlist");
 
   const { session, loading: isAuthLoading } = useAuth();
   const token = session?.access_token ?? null;
@@ -42,6 +43,7 @@ export default function AiPageClient() {
   const [isReasoningEnabled, setIsReasoningEnabled] = useState(false);
   const [greeting, setGreeting] = useState("");
   const [anonymousMessageCount, setAnonymousMessageCount] = useState(0);
+  const [watchlistContextProcessed, setWatchlistContextProcessed] = useState(false);
 
   // Tools configuration (persisted in localStorage, syncs with settings page)
   const { config: toolsConfig, setToolsEnabled, setToolEnabled, isToolsActive } = useToolsConfig();
@@ -149,6 +151,7 @@ export default function AiPageClient() {
     isStreaming: msg.isStreaming,
     toolCalls: msg.toolCalls,
     toolStatus: msg.toolStatus,
+    isWatchlistAnalysis: msg.isWatchlistAnalysis,
   }));
 
   useEffect(() => {
@@ -187,12 +190,17 @@ export default function AiPageClient() {
   }, []);
 
   const handleSendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, contextData?: { watchlistName: string; context: string; isWatchlistAnalysis?: boolean }) => {
       // Prevent sending while streaming
       if (isStreaming) {
         toast.warning("Please wait for the current response to complete");
         return;
       }
+
+      // For watchlist analysis: send system context + user message to AI, but display only user message
+      // The system context is prepended but hidden from the chat display
+      const messageContent = contextData?.context ? `${contextData.context}\n\n${content}` : content;
+      const displayContent = content; // This is what gets shown in chat
 
       // Anonymous user: strict 2 message limit, no reasoning, no tools
       if (!token) {
@@ -247,13 +255,15 @@ export default function AiPageClient() {
       // Send message
       try {
         console.log(`[AiPageClient] Sending message with enableTools=${isToolsActive}, reasoning=${isReasoningEnabled}`);
-        await sendMessage(content, {
+        await sendMessage(messageContent, {
           reasoning: isReasoningEnabled,
           enableTools: isToolsActive,
+          displayContent: contextData ? content : undefined, // Show only user's question, not system context
+          isWatchlistAnalysis: contextData?.isWatchlistAnalysis,
           onSessionCreated: (id, title) => {
             addSession({
               id,
-              title: title || content.slice(0, 50) + (content.length > 50 ? "..." : ""),
+              title: title || (contextData ? `${contextData.watchlistName} Analysis` : content.slice(0, 50) + (content.length > 50 ? "..." : "")),
               created_at: new Date().toISOString(),
             });
           },
@@ -292,6 +302,40 @@ export default function AiPageClient() {
     handleNewChat();
     clearMessages();
   }, [handleNewChat, clearMessages]);
+
+  // Handle watchlist context from sessionStorage (sent from watchlist page)
+  useEffect(() => {
+    if (watchlistParam && !watchlistContextProcessed && token && !isStreaming) {
+      const contextData = sessionStorage.getItem('ai_watchlist_context');
+      if (contextData) {
+        try {
+          const parsed = JSON.parse(contextData);
+          const now = Date.now();
+          
+          // Only use context if it's recent (within 30 seconds)
+          if (parsed.timestamp && (now - parsed.timestamp) < 30000) {
+            // Clear the context from sessionStorage
+            sessionStorage.removeItem('ai_watchlist_context');
+            
+            // Auto-send the message with hidden system context
+            setWatchlistContextProcessed(true);
+            
+            // New format: systemContext is hidden, userMessage is displayed
+            const systemContext = parsed.systemContext || parsed.context;
+            const userMessage = parsed.userMessage || parsed.message;
+            
+            void handleSendMessage(userMessage, {
+              watchlistName: parsed.watchlistName,
+              context: systemContext,
+              isWatchlistAnalysis: parsed.isWatchlistAnalysis,
+            });
+          }
+        } catch (err) {
+          console.error('Failed to parse watchlist context:', err);
+        }
+      }
+    }
+  }, [watchlistParam, watchlistContextProcessed, token, isStreaming, handleSendMessage]);
 
   // Show login required page if anonymous chat is disabled and user is not logged in
   // Also show loading spinner while checking auth
@@ -412,6 +456,7 @@ export default function AiPageClient() {
         <div className="border-t border-slate-200 dark:border-slate-800 p-4 bg-white dark:bg-slate-950 shrink-0">
           <MessageInput
             onSendMessage={handleSendMessage}
+            onContextSelect={() => {}}
             disabled={isStreaming}
           />
         </div>

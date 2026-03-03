@@ -8,6 +8,7 @@ import { ScrollToTopFab } from "./ScrollToTopFab";
 import { SortOption } from "./NewsFilters";
 import { BreakingNewsCarousel } from "@/components/news/BreakingNewsCarousel";
 import { NewsSidebar } from "@/components/news/NewsSidebar";
+import { MyWatchlistsNews } from "@/components/news/MyWatchlistsNews";
 
 export default function NewsPage() {
   const [sort, setSort] = useState<SortOption>("latest");
@@ -20,7 +21,11 @@ export default function NewsPage() {
       </Suspense>
       <section className="mx-auto max-w-[1400px] px-4 md:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-3 space-y-8">
+            {/* Watchlist News Section */}
+            <MyWatchlistsNews />
+            
+            {/* Main News Grid */}
             <Suspense fallback={<NewsSkeleton />}>
               <NewsGrid sort={sort} />
             </Suspense>

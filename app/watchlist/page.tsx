@@ -16,6 +16,7 @@ import {
   Eye,
   GitCompareArrows,
   ChevronDown,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,10 +37,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useWatchlist, type WatchlistWithItems } from "@/providers/WatchlistProvider";
 import { useAuth } from "@/providers/AuthProvider";
-import { WatchlistStockTable } from "@/components/watchlist/WatchlistStockTable";
-import { StockCompare } from "@/components/watchlist/StockCompare";
+import { EnhancedWatchlistTable, type StockRowData } from "@/components/watchlist/EnhancedWatchlistTable";
+import { EnhancedStockCompare } from "@/components/watchlist/EnhancedStockCompare";
 import { WatchlistFormDialog } from "@/components/watchlist/WatchlistFormDialog";
 import { AddStockSearch } from "@/components/watchlist/AddStockSearch";
+import { SimilarStocks } from "@/components/watchlist/SimilarStocks";
+import { WatchlistNews } from "@/components/watchlist/WatchlistNews";
+import { AnalyzeWithAI } from "@/components/watchlist/AnalyzeWithAI";
 import { cleanTicker } from "@/lib/watchlist-utils";
 
 export default function WatchlistPage() {
@@ -88,9 +92,12 @@ function WatchlistPageContent() {
   const [dialogTarget, setDialogTarget] = useState<WatchlistWithItems | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [compareTickers, setCompareTickers] = useState<string[]>([]);
+  const [selectedTickers, setSelectedTickers] = useState<string[]>([]);
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [stockMetrics, setStockMetrics] = useState<Map<string, StockRowData>>(new Map());
 
   // Auto-select first watchlist
   useEffect(() => {
@@ -139,20 +146,55 @@ function WatchlistPageContent() {
     await removeFromWatchlist(watchlistId, ticker);
   };
 
+  const handleBulkRemove = async () => {
+    if (!activeId || selectedTickers.length === 0) return;
+    setActionLoading(true);
+    for (const ticker of selectedTickers) {
+      await removeFromWatchlist(activeId, ticker);
+    }
+    setSelectedTickers([]);
+    setShowRemoveConfirm(false);
+    setActionLoading(false);
+  };
+
+  const handleCompareSelected = () => {
+    setCompareTickers(selectedTickers);
+    setShowCompare(true);
+    setSelectedTickers([]);
+  };
+
+  const handleAddPeersToComparison = (tickers: string[]) => {
+    setCompareTickers(prev => {
+      const newTickers = [...new Set([...prev, ...tickers])];
+      return newTickers;
+    });
+    setShowCompare(true);
+  };
+
+  // Clear selection and comparison when switching watchlists
+  useEffect(() => {
+    setSelectedTickers([]);
+    setCompareTickers([]);
+    setShowCompare(false);
+  }, [activeId]);
+
   const exportWatchlistCsv = (watchlist: WatchlistWithItems) => {
-    const header = "ticker,notes,added_at";
+    const header = "Ticker,Name,Sector,Price,Change_1D,Change_5D,Change_1M,Change_3M,Change_1Y,Notes,Added_Date";
     const rows = watchlist.items.map((item) => {
       const ticker = item.ticker.replace(/\.US$/i, "").toUpperCase();
       const notes = (item.notes || "").replace(/"/g, '""');
-      return `${ticker},"${notes}",${item.added_at || ""}`;
+      const date = item.added_at ? new Date(item.added_at).toISOString().split('T')[0] : "";
+      return `${ticker},"","","","","","","","","${notes}",${date}`;
     });
     const csv = [header, ...rows].join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${watchlist.name.replace(/\s+/g, "_")}_watchlist.csv`;
+    a.download = `${watchlist.name.replace(/\s+/g, "_")}_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
@@ -163,26 +205,73 @@ function WatchlistPageContent() {
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
-      const text = await file.text();
-      const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-      const startIdx = lines[0]?.toLowerCase().includes("ticker") ? 1 : 0;
-      let added = 0;
-      for (let i = startIdx; i < lines.length; i++) {
-        const parts = lines[i].split(",");
-        const ticker = parts[0]?.trim().replace(/"/g, "");
-        if (ticker) {
+      
+      try {
+        const text = await file.text();
+        const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+        
+        // Detect if first line is a header
+        const startIdx = lines[0]?.toLowerCase().includes("ticker") ? 1 : 0;
+        
+        let added = 0;
+        let skipped = 0;
+        let errors = 0;
+        
+        setActionLoading(true);
+        
+        for (let i = startIdx; i < lines.length; i++) {
+          // Handle CSV with quoted fields
+          const parts = lines[i].match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g) || [];
+          const ticker = parts[0]?.trim().replace(/^"(.*)"$/, '$1').replace(/"/g, '').toUpperCase();
+          
+          if (!ticker || ticker.length === 0) {
+            continue;
+          }
+          
+          // Check if already exists
           const existing = watchlist.items.some(
-            (it) => it.ticker.replace(/\.US$/i, "").toUpperCase() === ticker.toUpperCase()
+            (it) => cleanTicker(it.ticker) === cleanTicker(ticker)
           );
-          if (!existing) {
+          
+          if (existing) {
+            skipped++;
+            continue;
+          }
+          
+          try {
+            // Add small delay to avoid rate limiting
+            if (added > 0 && added % 5 === 0) {
+              await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
             const ok = await addToWatchlist(watchlist.id, ticker);
-            if (ok) added++;
+            if (ok) {
+              added++;
+            } else {
+              errors++;
+            }
+          } catch (err) {
+            console.error(`Failed to add ${ticker}:`, err);
+            errors++;
           }
         }
-      }
-      if (added > 0) {
+        
+        setActionLoading(false);
+        
+        // Show summary
         const { toast } = await import("sonner");
-        toast.success(`Imported ${added} stock${added !== 1 ? "s" : ""}`);
+        if (added > 0) {
+          toast.success(`Imported ${added} stock${added !== 1 ? 's' : ''}${skipped > 0 ? ` (${skipped} skipped - already in watchlist)` : ''}${errors > 0 ? ` (${errors} failed)` : ''}`);
+        } else if (skipped > 0) {
+          toast.info(`All ${skipped} stocks are already in the watchlist`);
+        } else {
+          toast.error(`Failed to import stocks${errors > 0 ? ` (${errors} errors)` : ''}`);
+        }
+      } catch (err) {
+        setActionLoading(false);
+        const { toast } = await import("sonner");
+        toast.error('Failed to parse CSV file');
+        console.error('CSV import error:', err);
       }
     };
     input.click();
@@ -412,21 +501,60 @@ function WatchlistPageContent() {
                     )}
                   </div>
 
-                  {/* Compare toggle */}
-                  <Button
-                    variant={showCompare ? "default" : "outline"}
-                    size="sm"
-                    className="gap-1.5 h-8 hidden sm:flex"
-                    onClick={() => setShowCompare(!showCompare)}
-                  >
-                    <GitCompareArrows className="w-3.5 h-3.5" />
-                    Compare
-                    {compareTickers.length > 0 && (
-                      <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 ml-0.5">
-                        {compareTickers.length}
+                  {/* Selection Actions */}
+                  {selectedTickers.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs px-2 py-1">
+                        {selectedTickers.length} selected
                       </Badge>
-                    )}
-                  </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 h-8 text-xs"
+                        onClick={() => setSelectedTickers([])}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        Clear
+                      </Button>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="gap-1.5 h-8"
+                        onClick={handleCompareSelected}
+                        disabled={selectedTickers.length < 2}
+                      >
+                        <GitCompareArrows className="w-3.5 h-3.5" />
+                        Compare
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="gap-1.5 h-8"
+                        onClick={() => setShowRemoveConfirm(true)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Remove
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Compare toggle (when no selection) */}
+                  {selectedTickers.length === 0 && (
+                    <Button
+                      variant={showCompare ? "default" : "outline"}
+                      size="sm"
+                      className="gap-1.5 h-8 hidden sm:flex"
+                      onClick={() => setShowCompare(!showCompare)}
+                    >
+                      <GitCompareArrows className="w-3.5 h-3.5" />
+                      Compare
+                      {compareTickers.length > 0 && (
+                        <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4 ml-0.5">
+                          {compareTickers.length}
+                        </Badge>
+                      )}
+                    </Button>
+                  )}
 
                   {/* Actions dropdown */}
                   <DropdownMenu>
@@ -457,15 +585,18 @@ function WatchlistPageContent() {
                   </DropdownMenu>
                 </div>
 
-                {/* Inline Add Stock Search */}
-                <div className="px-4 sm:px-6 pb-3">
-                  <AddStockSearch
-                    existingTickers={activeWatchlist.items.map((i) => i.ticker)}
-                    onAdd={async (ticker) => {
-                      return await addToWatchlist(activeWatchlist.id, ticker);
-                    }}
-                    placeholder="Add stock — search by ticker or name..."
-                  />
+                {/* Inline Add Stock Search + AI Button */}
+                <div className="px-4 sm:px-6 pb-3 flex items-center gap-2">
+                  <div className="flex-1">
+                    <AddStockSearch
+                      existingTickers={activeWatchlist.items.map((i) => i.ticker)}
+                      onAdd={async (ticker) => {
+                        return await addToWatchlist(activeWatchlist.id, ticker);
+                      }}
+                      placeholder="Add stock — search by ticker or name..."
+                    />
+                  </div>
+                  <AnalyzeWithAI watchlist={activeWatchlist} stockMetrics={stockMetrics} />
                 </div>
               </div>
 
@@ -485,27 +616,23 @@ function WatchlistPageContent() {
                   </div>
                 ) : (
                   <>
-                    <WatchlistStockTable
+                    <EnhancedWatchlistTable
                       items={activeWatchlist.items}
                       watchlistId={activeWatchlist.id}
                       onRemoveStock={handleRemoveStock}
-                      onCompareStock={handleAddCompare}
                       onUpdateNotes={(wId, ticker, notes) => updateItemNotes(wId, ticker, notes)}
-                      compareTickers={compareTickers}
+                      selectedTickers={selectedTickers}
+                      onSelectionChange={setSelectedTickers}
+                      onStockDataChange={setStockMetrics}
                     />
 
-                    {/* Integrated Compare Section */}
-                    {showCompare && (
-                      <div className="border-t border-slate-200 dark:border-slate-700 mx-4 sm:mx-6 mt-2">
-                        <div className="py-4">
-                          <StockCompare
-                            tickers={compareTickers}
-                            onAddTicker={handleAddCompare}
-                            onRemoveTicker={handleRemoveCompare}
-                            onClear={() => setCompareTickers([])}
-                          />
-                        </div>
-                      </div>
+                    {/* Comparison Charts Section */}
+                    {showCompare && compareTickers.length > 0 && (
+                      <EnhancedStockCompare
+                        tickers={compareTickers}
+                        onRemoveTicker={(ticker) => setCompareTickers(prev => prev.filter(t => t !== ticker))}
+                        onClear={() => setCompareTickers([])}
+                      />
                     )}
 
                     {/* Quick compare prompt (when compare is hidden and no tickers selected) */}
@@ -540,6 +667,19 @@ function WatchlistPageContent() {
                         </button>
                       </div>
                     )}
+
+                    {/* Similar Stocks Section */}
+                    <div className="px-4 sm:px-6 py-4">
+                      <SimilarStocks 
+                        watchlist={activeWatchlist} 
+                        onAddToComparison={handleAddPeersToComparison}
+                      />
+                    </div>
+
+                    {/* Watchlist News Section */}
+                    <div className="px-4 sm:px-6 py-4">
+                      <WatchlistNews watchlist={activeWatchlist} />
+                    </div>
                   </>
                 )}
               </div>
@@ -595,16 +735,23 @@ function WatchlistPageContent() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Delete Watchlist</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete &quot;{dialogTarget?.name}&quot;? This will
-              remove all {dialogTarget?.items.length || 0} stocks from this watchlist.
-              This action cannot be undone.
+            <DialogTitle className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                <Trash2 className="w-5 h-5 text-red-600 dark:text-red-400" />
+              </div>
+              <span>Delete Watchlist</span>
+            </DialogTitle>
+            <DialogDescription className="pt-2">
+              Are you sure you want to delete <strong>&quot;{dialogTarget?.name}&quot;</strong>?
+              <br />
+              This will remove all <strong>{dialogTarget?.items.length || 0}</strong> stocks from this watchlist.
+              <br />
+              <span className="text-red-600 dark:text-red-400 font-medium">This action cannot be undone.</span>
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button
               variant="outline"
               onClick={() => setShowDeleteDialog(false)}
@@ -619,7 +766,44 @@ function WatchlistPageContent() {
               className="gap-2"
             >
               {actionLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-              Delete
+              Delete Watchlist
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Remove Confirmation Dialog */}
+      <Dialog open={showRemoveConfirm} onOpenChange={setShowRemoveConfirm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                <Trash2 className="w-5 h-5 text-red-600 dark:text-red-400" />
+              </div>
+              <span>Remove Selected Stocks</span>
+            </DialogTitle>
+            <DialogDescription className="pt-2">
+              Are you sure you want to remove <strong>{selectedTickers.length}</strong> selected {selectedTickers.length === 1 ? 'stock' : 'stocks'} from this watchlist?
+              <br />
+              <span className="text-red-600 dark:text-red-400 font-medium">This action cannot be undone.</span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setShowRemoveConfirm(false)}
+              disabled={actionLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleBulkRemove}
+              disabled={actionLoading}
+              className="gap-2"
+            >
+              {actionLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+              Remove {selectedTickers.length} {selectedTickers.length === 1 ? 'Stock' : 'Stocks'}
             </Button>
           </DialogFooter>
         </DialogContent>

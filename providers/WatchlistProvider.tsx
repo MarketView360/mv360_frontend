@@ -49,6 +49,11 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
   const [watchlists, setWatchlists] = useState<WatchlistWithItems[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const hasFetchedRef = useRef(false);
+  const watchlistsRef = useRef<WatchlistWithItems[]>([]);
+
+  // Keep ref in sync with state
+  watchlistsRef.current = watchlists;
 
   const supabaseRef = useRef(createClient());
 
@@ -56,6 +61,12 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
     if (!user) {
       setWatchlists([]);
       setLoading(false);
+      hasFetchedRef.current = false;
+      return;
+    }
+
+    // Prevent redundant fetches if already loaded
+    if (hasFetchedRef.current && watchlists.length > 0) {
       return;
     }
 
@@ -85,6 +96,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
 
       setWatchlists(watchlistsWithItems);
       setError(null);
+      hasFetchedRef.current = true;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to fetch watchlists";
       setError(message);
@@ -92,7 +104,7 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, watchlists.length]);
 
   useEffect(() => {
     fetchWatchlists();
@@ -184,28 +196,49 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
 
   const addToWatchlist = useCallback(
     async (watchlistId: string, ticker: string, notes?: string) => {
+      // Normalize ticker - remove .US suffix if present
+      const normalizedTicker = ticker.replace(/\.US$/i, '').toUpperCase();
+      
       try {
+        // Check if ticker already exists in watchlist
+        const watchlist = watchlistsRef.current.find(w => w.id === watchlistId);
+        if (watchlist) {
+          const existingTickers = watchlist.items.map(i => i.ticker.replace(/\.US$/i, '').toUpperCase());
+          if (existingTickers.includes(normalizedTicker)) {
+            toast.info(`${normalizedTicker} is already in this watchlist`);
+            return false;
+          }
+        }
+
         const { data, error } = await supabaseRef.current
           .from("watchlist_items")
           .insert({
             watchlist_id: watchlistId,
-            ticker: ticker.toUpperCase(),
+            ticker: normalizedTicker,
             notes: notes || null,
           })
           .select()
           .single();
 
-        if (error) throw error;
+        if (error) {
+          // Handle duplicate key error specifically
+          if (error.code === '23505') {
+            toast.info(`${normalizedTicker} is already in this watchlist`);
+            return false;
+          }
+          throw error;
+        }
 
         setWatchlists((prev) =>
           prev.map((w) =>
             w.id === watchlistId ? { ...w, items: [data, ...w.items] } : w
           )
         );
-        toast.success(`${ticker.toUpperCase()} added to watchlist`);
+        toast.success(`${normalizedTicker} added to watchlist`);
         return true;
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Failed to add to watchlist";
+        console.error('[WatchlistProvider] addToWatchlist error:', err);
         setError(message);
         toast.error(message);
         return false;
