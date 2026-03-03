@@ -157,7 +157,7 @@ ${stockDetails}
 
 [END SYSTEM CONTEXT]
 
-Respond naturally to the user's question below. Do not mention or repeat the system context. Start by mentioning the watchlist name. For example: "Based on your watchlist 'My Watchlist',"`;
+Respond naturally to the user's question below. Do not mention or repeat the system context. Start by mentioning the watchlist name. For example: Based on your watchlist My Watchlist,`;
   };
 
   const handleSubmit = async (message: string, suggestionId?: string) => {
