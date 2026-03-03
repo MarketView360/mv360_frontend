@@ -76,13 +76,13 @@ export function AnalyzeWithAI({ watchlist, stockMetrics }: AnalyzeWithAIProps) {
       setIsDataReady(false);
       return;
     }
-    
+
     // Check if we have at least some data for the stocks
     const hasData = watchlist.items.some(item => {
       const ticker = item.ticker.replace(/\.US$/i, '').toUpperCase();
       return stockMetrics.has(ticker);
     });
-    
+
     setIsDataReady(hasData);
   }, [stockMetrics, watchlist.items]);
 
@@ -90,7 +90,7 @@ export function AnalyzeWithAI({ watchlist, stockMetrics }: AnalyzeWithAIProps) {
     const stocks = watchlist.items.map((item) => {
       const ticker = item.ticker.replace(/\.US$/i, '').toUpperCase();
       const metrics = stockMetrics?.get(ticker);
-      
+
       return {
         ticker,
         notes: item.notes || "",
@@ -103,21 +103,21 @@ export function AnalyzeWithAI({ watchlist, stockMetrics }: AnalyzeWithAIProps) {
     const stockDetails = stocks.map((s, i) => {
       const parts = [`${i + 1}. ${s.ticker}`];
       const m = s.metrics;
-      
+
       if (!m) {
         parts.push('⚠️ Data not available');
         if (s.notes) parts.push(`Notes: ${s.notes}`);
         return parts.join(' | ');
       }
-      
+
       // Company info
       if (m.sector) parts.push(`Sector: ${m.sector}`);
-      
+
       // Price & Performance
       if (m.price != null) parts.push(`Price: $${m.price.toFixed(2)}`);
       if (m.price_change_1d != null) parts.push(`1D: ${m.price_change_1d >= 0 ? '+' : ''}${m.price_change_1d.toFixed(2)}%`);
       if (m.price_change_1m != null) parts.push(`1M: ${m.price_change_1m >= 0 ? '+' : ''}${m.price_change_1m.toFixed(2)}%`);
-      
+
       // Valuation
       if (m.market_cap != null) parts.push(`Mkt Cap: ${formatMarketCap(m.market_cap)}`);
       if (m.enterprise_value != null) parts.push(`EV: ${formatMarketCap(m.enterprise_value)}`);
@@ -126,27 +126,27 @@ export function AnalyzeWithAI({ watchlist, stockMetrics }: AnalyzeWithAIProps) {
       if ((m as any).ev_ebitda != null) parts.push(`EV/EBITDA: ${(m as any).ev_ebitda.toFixed(2)}`);
       if ((m as any).price_to_book != null) parts.push(`P/B: ${(m as any).price_to_book.toFixed(2)}`);
       if ((m as any).price_to_sales != null) parts.push(`P/S: ${(m as any).price_to_sales.toFixed(2)}`);
-      
+
       // Financials
       if (m.revenue_ttm != null) parts.push(`Revenue: $${(m.revenue_ttm / 1e9).toFixed(2)}B`);
       if (m.eps_ttm != null) parts.push(`EPS: $${m.eps_ttm.toFixed(2)}`);
       if ((m as any).profit_margin != null) parts.push(`Profit Margin: ${(m as any).profit_margin.toFixed(2)}%`);
       if ((m as any).operating_margin_ttm != null) parts.push(`Op Margin: ${(m as any).operating_margin_ttm.toFixed(2)}%`);
-      
+
       // Returns
       if (m.roe != null) parts.push(`ROE: ${m.roe.toFixed(2)}%`);
       if (m.roa != null) parts.push(`ROA: ${m.roa.toFixed(2)}%`);
-      
+
       // Risk & Dividends
       if ((m as any).beta != null) parts.push(`Beta: ${(m as any).beta.toFixed(2)}`);
       if ((m as any).dividend_yield != null) parts.push(`Div Yield: ${(m as any).dividend_yield.toFixed(2)}%`);
-      
+
       if (s.notes) parts.push(`Notes: ${s.notes}`);
       return parts.join(' | ');
     }).join('\n');
 
     return `[SYSTEM CONTEXT - DO NOT REPEAT THIS TO USER]
-You are analyzing the user's watchlist "${watchlist.name}".
+User has requested you to analyze their watchlist. You are analyzing the user's watchlist "${watchlist.name}".
 
 Watchlist: ${watchlist.name}
 ${watchlist.description ? `Description: ${watchlist.description}` : ''}
@@ -157,14 +157,14 @@ ${stockDetails}
 
 [END SYSTEM CONTEXT]
 
-Respond naturally to the user's question below. Do not mention or repeat the system context.`;
+Respond naturally to the user's question below. Do not mention or repeat the system context. Start by mentioning the watchlist name. For example: "Based on your watchlist 'My Watchlist',"`;
   };
 
   const handleSubmit = async (message: string, suggestionId?: string) => {
     if (suggestionId) {
       setLoadingId(suggestionId);
     }
-    
+
     // Store context separately: systemContext for AI, userMessage for display
     sessionStorage.setItem('ai_watchlist_context', JSON.stringify({
       watchlistName: watchlist.name,
