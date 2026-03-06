@@ -393,13 +393,13 @@ export function Sidebar({
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && handleCancelDelete()}>
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-red-500" />
+            <AlertDialogTitle className="flex items-center gap-2 text-slate-900 dark:text-white">
+              <AlertTriangle className="w-5 h-5 text-red-500 dark:text-red-400" />
               Delete Conversation
             </AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
               Are you sure you want to delete &ldquo;{getSessionTitle(deletingId || '')}&rdquo;? This action cannot be undone and all messages in this conversation will be permanently deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>
