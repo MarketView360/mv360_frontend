@@ -103,6 +103,11 @@ export function Footer() {
                   Blog
                 </Link>
               </li>
+              <li>
+                <Link href="/status" className="hover:text-brand transition-colors">
+                  System Status
+                </Link>
+              </li>
             </ul>
           </div>
         </div>
