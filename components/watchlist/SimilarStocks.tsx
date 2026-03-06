@@ -61,31 +61,47 @@ export function SimilarStocks({ watchlist, onAddToComparison }: SimilarStocksPro
         setLoading(true);
         const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
         
-        // Get first stock's sector/industry to find similar stocks
-        const firstTicker = watchlistTickers[0];
-        const res = await fetch(`${baseUrl}/api/company/${firstTicker}/peers`);
+        // Fetch peers for ALL stocks in watchlist to get diverse results across sectors
+        const allPeersPromises = watchlistTickers.slice(0, 10).map(ticker => 
+          fetch(`${baseUrl}/api/company/${ticker}/peers`)
+            .then(res => res.ok ? res.json() : [])
+            .catch(() => [])
+        );
+        
+        const allPeersResults = await Promise.all(allPeersPromises);
         
         if (cancelled) return;
         
-        if (res.ok) {
-          const data = await res.json();
-          console.log('[SimilarStocks] Received peers:', data);
-          console.log('[SimilarStocks] Watchlist tickers:', watchlistTickers);
-          // Filter out stocks already in watchlist
-          const filtered = (Array.isArray(data) ? data : []).filter(
-            (p: PeerMetrics) => {
-              // Clean peer ticker by removing .US suffix for comparison
-              const peerCode = (p.ticker || '').replace(/\.US$/i, '').toUpperCase();
-              const isInWatchlist = watchlistTickers.includes(peerCode);
-              console.log(`[SimilarStocks] Checking ${p.ticker} -> cleaned: ${peerCode}, in watchlist: ${isInWatchlist}`);
-              return !isInWatchlist && peerCode.length > 0;
+        // Merge and deduplicate all peers
+        const allPeers: PeerMetrics[] = [];
+        const seenTickers = new Set<string>();
+        
+        for (const peerList of allPeersResults) {
+          const peers = Array.isArray(peerList) ? peerList : [];
+          for (const peer of peers) {
+            const peerCode = (peer.ticker || '').replace(/\.US$/i, '').toUpperCase();
+            
+            // Skip if already in watchlist or already added
+            if (!peerCode || watchlistTickers.includes(peerCode) || seenTickers.has(peerCode)) {
+              continue;
             }
-          ).slice(0, 10); // Limit to 10 peers
-          console.log('[SimilarStocks] Filtered peers:', filtered);
-          setPeers(filtered);
-        } else {
-          console.error('[SimilarStocks] API error:', res.status, res.statusText);
+            
+            seenTickers.add(peerCode);
+            allPeers.push(peer);
+          }
         }
+        
+        // Sort by market cap (descending) and take top 10
+        const sorted = allPeers
+          .filter(p => p.market_capitalization != null)
+          .sort((a, b) => (b.market_capitalization || 0) - (a.market_capitalization || 0))
+          .slice(0, 10);
+        
+        console.log('[SimilarStocks] Fetched peers from', watchlistTickers.length, 'stocks');
+        console.log('[SimilarStocks] Found', allPeers.length, 'unique peers, showing top 10');
+        console.log('[SimilarStocks] Peer sectors:', sorted.map(p => `${p.ticker}:${p.sector}`));
+        
+        setPeers(sorted);
       } catch (err) {
         if (!cancelled) console.error("Error loading similar stocks:", err);
       } finally {

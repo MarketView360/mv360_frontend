@@ -173,7 +173,7 @@ export function EnhancedStockCompare({ tickers, onRemoveTicker, onClear }: Enhan
             price: metrics?.price != null ? Number(metrics.price) : null,
             price_change_1d: metrics?.refund_1d_p != null ? Number(metrics.refund_1d_p) : null,
             price_change_1m: metrics?.refund_1m_p != null ? Number(metrics.refund_1m_p) : null,
-            market_cap: metrics?.market_capitalization != null ? Number(metrics.market_capitalization) : null,
+            market_cap: metrics?.market_cap != null ? Number(metrics.market_cap) : null,
             revenue_ttm: metrics?.revenue_ttm != null ? Number(metrics.revenue_ttm) : null,
             eps_ttm: metrics?.eps_ttm != null ? Number(metrics.eps_ttm) : null,
             pe_ratio: metrics?.pe_ratio != null ? Number(metrics.pe_ratio) : null,

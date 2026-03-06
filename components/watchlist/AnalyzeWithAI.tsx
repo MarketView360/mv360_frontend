@@ -13,17 +13,33 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import type { WatchlistWithItems } from "@/providers/WatchlistProvider";
 
+interface StockMetricsForAI {
+  code?: string;
+  name?: string;
+  sector?: string | null;
+  price?: number | null;
+  price_change_1d?: number | null;
+  price_change_1m?: number | null;
+  market_cap?: number | null;
+  revenue_ttm?: number | null;
+  eps_ttm?: number | null;
+  pe_ratio?: number | null;
+  forward_pe?: number | null;
+  enterprise_value?: number | null;
+  ev_ebitda?: number | null;
+  price_to_book?: number | null;
+  price_to_sales?: number | null;
+  roe?: number | null;
+  roa?: number | null;
+  profit_margin?: number | null;
+  operating_margin_ttm?: number | null;
+  beta?: number | null;
+  dividend_yield?: number | null;
+}
+
 interface AnalyzeWithAIProps {
   watchlist: WatchlistWithItems;
-  stockMetrics?: Map<string, {
-    price?: number | null;
-    price_change_1d?: number | null;
-    price_change_1m?: number | null;
-    market_cap?: number | null;
-    pe_ratio?: number | null;
-    eps_ttm?: number | null;
-    sector?: string | null;
-  }>;
+  stockMetrics?: Map<string, StockMetricsForAI>;
 }
 
 const AI_SUGGESTIONS = [
@@ -122,24 +138,24 @@ export function AnalyzeWithAI({ watchlist, stockMetrics }: AnalyzeWithAIProps) {
       if (m.market_cap != null) parts.push(`Mkt Cap: ${formatMarketCap(m.market_cap)}`);
       if (m.enterprise_value != null) parts.push(`EV: ${formatMarketCap(m.enterprise_value)}`);
       if (m.pe_ratio != null) parts.push(`P/E: ${m.pe_ratio.toFixed(2)}`);
-      if ((m as any).forward_pe != null) parts.push(`Fwd P/E: ${(m as any).forward_pe.toFixed(2)}`);
-      if ((m as any).ev_ebitda != null) parts.push(`EV/EBITDA: ${(m as any).ev_ebitda.toFixed(2)}`);
-      if ((m as any).price_to_book != null) parts.push(`P/B: ${(m as any).price_to_book.toFixed(2)}`);
-      if ((m as any).price_to_sales != null) parts.push(`P/S: ${(m as any).price_to_sales.toFixed(2)}`);
+      if (m.forward_pe != null) parts.push(`Fwd P/E: ${m.forward_pe.toFixed(2)}`);
+      if (m.ev_ebitda != null) parts.push(`EV/EBITDA: ${m.ev_ebitda.toFixed(2)}`);
+      if (m.price_to_book != null) parts.push(`P/B: ${m.price_to_book.toFixed(2)}`);
+      if (m.price_to_sales != null) parts.push(`P/S: ${m.price_to_sales.toFixed(2)}`);
 
       // Financials
       if (m.revenue_ttm != null) parts.push(`Revenue: $${(m.revenue_ttm / 1e9).toFixed(2)}B`);
       if (m.eps_ttm != null) parts.push(`EPS: $${m.eps_ttm.toFixed(2)}`);
-      if ((m as any).profit_margin != null) parts.push(`Profit Margin: ${(m as any).profit_margin.toFixed(2)}%`);
-      if ((m as any).operating_margin_ttm != null) parts.push(`Op Margin: ${(m as any).operating_margin_ttm.toFixed(2)}%`);
+      if (m.profit_margin != null) parts.push(`Profit Margin: ${m.profit_margin.toFixed(2)}%`);
+      if (m.operating_margin_ttm != null) parts.push(`Op Margin: ${m.operating_margin_ttm.toFixed(2)}%`);
 
       // Returns
       if (m.roe != null) parts.push(`ROE: ${m.roe.toFixed(2)}%`);
       if (m.roa != null) parts.push(`ROA: ${m.roa.toFixed(2)}%`);
 
       // Risk & Dividends
-      if ((m as any).beta != null) parts.push(`Beta: ${(m as any).beta.toFixed(2)}`);
-      if ((m as any).dividend_yield != null) parts.push(`Div Yield: ${(m as any).dividend_yield.toFixed(2)}%`);
+      if (m.beta != null) parts.push(`Beta: ${m.beta.toFixed(2)}`);
+      if (m.dividend_yield != null) parts.push(`Div Yield: ${m.dividend_yield.toFixed(2)}%`);
 
       if (s.notes) parts.push(`Notes: ${s.notes}`);
       return parts.join(' | ');

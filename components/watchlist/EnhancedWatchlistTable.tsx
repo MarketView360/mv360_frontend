@@ -3,9 +3,9 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import Link from "next/link";
 import {
-  X, Loader2, StickyNote, Check, Settings2,
+  Loader2, StickyNote, Check, Settings2, RefreshCw,
   ArrowUpRight, ArrowDownRight, ChevronUp, ChevronDown,
-  Square, CheckSquare,
+  Square, CheckSquare, Palette,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CompanyLogo } from "@/components/company/CompanyLogo";
@@ -78,8 +78,8 @@ const ALL_COLUMNS: ColumnConfig[] = [
   { key: "roa", label: "ROA", format: (v) => v != null ? `${v.toFixed(2)}%` : "—", align: "right", sortable: true },
 ];
 
-// Default visible columns: sector, price, 1D, 1M (always shown)
-const DEFAULT_VISIBLE_COLUMNS: SortField[] = ["sector", "price", "price_change_1d", "price_change_1m"];
+// Default visible columns: sector, price, 1D, 1M, market_cap (always shown)
+const DEFAULT_VISIBLE_COLUMNS: SortField[] = ["sector", "price", "price_change_1d", "price_change_1m", "market_cap"];
 const ALWAYS_VISIBLE_COLUMNS: SortField[] = ["sector", "price", "price_change_1d", "price_change_1m"];
 
 interface EnhancedWatchlistTableProps {
@@ -90,6 +90,7 @@ interface EnhancedWatchlistTableProps {
   selectedTickers?: string[];
   onSelectionChange?: (tickers: string[]) => void;
   onStockDataChange?: (data: Map<string, StockRowData>) => void;
+  onRefresh?: () => void;
 }
 
 // Export StockRowData type for use in other components
@@ -128,7 +129,8 @@ export function EnhancedWatchlistTable({
   onUpdateNotes,
   selectedTickers = [], 
   onSelectionChange,
-  onStockDataChange
+  onStockDataChange,
+  onRefresh
 }: EnhancedWatchlistTableProps) {
   const [stockData, setStockData] = useState<Map<string, StockRowData>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -137,6 +139,13 @@ export function EnhancedWatchlistTable({
   const [editingNotes, setEditingNotes] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
   const [showCustomize, setShowCustomize] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [highlightRows, setHighlightRows] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('watchlist_highlight_rows') === 'true';
+    }
+    return false;
+  });
   const [visibleColumns, setVisibleColumns] = useState<SortField[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('watchlist_table_columns');
@@ -188,6 +197,19 @@ export function EnhancedWatchlistTable({
     if (typeof window !== 'undefined') {
       localStorage.setItem('watchlist_table_columns', JSON.stringify(newVisible));
     }
+  };
+
+  const handleToggleHighlight = () => {
+    const newValue = !highlightRows;
+    setHighlightRows(newValue);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('watchlist_highlight_rows', String(newValue));
+    }
+  };
+
+  const handleRefresh = () => {
+    setRefreshKey(k => k + 1);
+    onRefresh?.();
   };
 
   const isAllSelected = items.length > 0 && selectedTickers.length === items.length;
@@ -275,7 +297,7 @@ export function EnhancedWatchlistTable({
     })();
 
     return () => { cancelled = true; };
-  }, [tickerKey, onStockDataChange]);
+  }, [tickerKey, onStockDataChange, refreshKey]);
 
   const sortedItems = useMemo(() => {
     return [...items].sort((a, b) => {
@@ -320,6 +342,14 @@ export function EnhancedWatchlistTable({
     );
   }
 
+  // Get row highlight class based on 1D price change
+  const getRowHighlightClass = (change1d: number | null) => {
+    if (!highlightRows || change1d == null) return '';
+    if (change1d > 0) return 'bg-emerald-100/60 dark:bg-emerald-900/40';
+    if (change1d < 0) return 'bg-red-100/60 dark:bg-red-900/40';
+    return '';
+  };
+
   return (
     <>
       <div className="px-4 sm:px-6">
@@ -327,15 +357,27 @@ export function EnhancedWatchlistTable({
           <div className="text-xs text-slate-500 dark:text-slate-400">
             {items.length} {items.length === 1 ? 'stock' : 'stocks'}
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 gap-1.5 text-xs mt-4"
-            onClick={() => setShowCustomize(true)}
-          >
-            <Settings2 className="w-3.5 h-3.5" />
-            Customize Table
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1.5 text-xs"
+              onClick={handleRefresh}
+              disabled={loading}
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1.5 text-xs"
+              onClick={() => setShowCustomize(true)}
+            >
+              <Settings2 className="w-3.5 h-3.5" />
+              Customize
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -375,7 +417,6 @@ export function EnhancedWatchlistTable({
               <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                 Notes
               </th>
-              <th className="w-12"></th>
             </tr>
           </thead>
           <tbody>
@@ -383,11 +424,12 @@ export function EnhancedWatchlistTable({
               const ticker = cleanTicker(item.ticker);
               const data = stockData.get(ticker);
               const isSelected = selectedTickers.includes(ticker);
+              const highlightClass = getRowHighlightClass(data?.price_change_1d ?? null);
 
               return (
                 <tr
                   key={item.ticker}
-                  className={`${idx % 2 === 0 ? '' : 'bg-slate-50/30 dark:bg-slate-800/10'} hover:bg-slate-100/50 dark:hover:bg-slate-800/30 transition-colors ${isSelected ? 'ring-2 ring-brand/30 bg-brand/5' : ''}`}
+                  className={`${highlightClass || (idx % 2 === 0 ? '' : 'bg-slate-50/30 dark:bg-slate-800/10')} hover:bg-slate-100/50 dark:hover:bg-slate-800/30 transition-colors ${isSelected ? 'ring-2 ring-brand/30 bg-brand/5' : ''}`}
                 >
                   <td className="px-3 py-3">
                     <button
@@ -484,16 +526,6 @@ export function EnhancedWatchlistTable({
                       </button>
                     )}
                   </td>
-                  <td className="px-3 py-3">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0 text-slate-400 hover:text-red-500"
-                      onClick={() => onRemoveStock(watchlistId, ticker)}
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </Button>
-                  </td>
                 </tr>
               );
             })}
@@ -501,52 +533,87 @@ export function EnhancedWatchlistTable({
         </table>
       </div>
 
-      {/* Customize Columns Dialog */}
+      {/* Customize Table Dialog */}
       <Dialog open={showCustomize} onOpenChange={setShowCustomize}>
-        <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Customize Table Columns</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings2 className="w-5 h-5 text-brand" />
+              Customize Table
+            </DialogTitle>
             <DialogDescription>
-              Select which columns to display in the watchlist table.
+              Configure columns and display preferences.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-2 py-4">
-            {ALL_COLUMNS.map(col => {
-              const isDefault = ALWAYS_VISIBLE_COLUMNS.includes(col.key);
-              const isChecked = visibleColumns.includes(col.key) || isDefault;
-              
-              return (
-                <button
-                  key={col.key}
-                  type="button"
-                  onClick={() => handleToggleColumn(col.key)}
-                  disabled={isDefault}
-                  className={`w-full flex items-center gap-2 p-2 rounded text-left ${
-                    isDefault 
-                      ? 'opacity-60 cursor-not-allowed' 
-                      : 'hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer'
-                  }`}
-                >
-                  <MetricCheckbox
-                    checked={isChecked}
-                    disabled={isDefault}
-                  />
-                  <div className="flex-1">
-                    <span className="text-sm text-slate-700 dark:text-slate-300">
-                      {col.label}
-                    </span>
-                    {isDefault && (
-                      <span className="ml-2 text-xs text-slate-400">(Always shown)</span>
-                    )}
+          {/* Display Settings */}
+          <div className="space-y-4 py-4">
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                <Palette className="w-4 h-4" />
+                Display Settings
+              </h4>
+              <button
+                type="button"
+                onClick={handleToggleHighlight}
+                className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              >
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Highlight rows by performance
                   </div>
-                </button>
-              );
-            })}
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Green for gains, red for losses based on 1D change
+                  </div>
+                </div>
+                <div className={`w-11 h-6 rounded-full transition-all relative shadow-inner ${highlightRows ? 'bg-emerald-500 dark:bg-emerald-600' : 'bg-slate-300 dark:bg-slate-600'}`}>
+                  <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-transform ${highlightRows ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                </div>
+              </button>
+            </div>
+
+            {/* Columns */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-slate-900 dark:text-white">
+                Visible Columns
+              </h4>
+              <div className="grid grid-cols-2 gap-2">
+                {ALL_COLUMNS.map(col => {
+                  const isDefault = ALWAYS_VISIBLE_COLUMNS.includes(col.key);
+                  const isChecked = visibleColumns.includes(col.key) || isDefault;
+                  
+                  return (
+                    <button
+                      key={col.key}
+                      type="button"
+                      onClick={() => handleToggleColumn(col.key)}
+                      disabled={isDefault}
+                      className={`flex items-center gap-2 p-2.5 rounded-lg border text-left transition-all ${
+                        isChecked
+                          ? 'border-brand/50 bg-brand/5'
+                          : 'border-slate-200 dark:border-slate-700'
+                      } ${
+                        isDefault 
+                          ? 'opacity-70 cursor-not-allowed' 
+                          : 'hover:border-brand/30 cursor-pointer'
+                      }`}
+                    >
+                      <MetricCheckbox checked={isChecked} disabled={isDefault} />
+                      <span className="text-sm text-slate-700 dark:text-slate-300 truncate">
+                        {col.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-slate-400">
+                Sector, Price, 1D, and 1M are always visible.
+              </p>
+            </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-2 border-t">
-            <Button variant="outline" onClick={() => setShowCustomize(false)}>
+          <div className="flex justify-end pt-3 border-t border-slate-200 dark:border-slate-700">
+            <Button onClick={() => setShowCustomize(false)}>
               Done
             </Button>
           </div>
