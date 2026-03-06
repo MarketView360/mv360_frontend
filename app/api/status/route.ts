@@ -126,7 +126,7 @@ export async function GET() {
       console.error('Error fetching recent incidents:', recentError);
     }
 
-    // Merge UptimeRobot data with services
+    // Merge UptimeRobot data with services and update status based on incidents
     const enrichedServices = (services || []).map(service => {
       let uptimeInfo = null;
       
@@ -153,8 +153,32 @@ export async function GET() {
         }
       }
       
+      // Check if this service is affected by any active incidents
+      let derivedStatus = service.status;
+      if (incidents && incidents.length > 0) {
+        const affectingIncidents = incidents.filter(incident => 
+          incident.affected_services?.includes(service.name)
+        );
+        
+        if (affectingIncidents.length > 0) {
+          // Use the highest severity incident to determine service status
+          const criticalIncident = affectingIncidents.find(i => i.severity === 'critical');
+          const majorIncident = affectingIncidents.find(i => i.severity === 'major');
+          const minorIncident = affectingIncidents.find(i => i.severity === 'minor');
+          
+          if (criticalIncident) {
+            derivedStatus = 'major_outage';
+          } else if (majorIncident) {
+            derivedStatus = 'partial_outage';
+          } else if (minorIncident) {
+            derivedStatus = 'degraded';
+          }
+        }
+      }
+      
       return {
         ...service,
+        status: derivedStatus,
         uptime: uptimeInfo,
       };
     });
