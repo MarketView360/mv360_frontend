@@ -111,23 +111,13 @@ export default function AiPageClient() {
   const wasStreamingRef = useRef(false);
 
   const refreshQuotaSoon = useCallback(async () => {
-    // 1) immediate
+    // Short delay to let backend finish recording usage, then fetch fresh quota
+    await new Promise(r => setTimeout(r, 300));
     await refetchQuota();
-    // 2) small delayed retry (DB write may lag end-of-stream by a moment)
+    // One more retry after 2s in case DB write was slow
     setTimeout(() => {
       void refetchQuota();
-    }, 700);
-    // 3) another retry for slower DB commits / network
-    setTimeout(() => {
-      void refetchQuota();
-    }, 1500);
-    // 4) additional retries for slow DB commit paths
-    setTimeout(() => {
-      void refetchQuota();
-    }, 3000);
-    setTimeout(() => {
-      void refetchQuota();
-    }, 6000);
+    }, 2000);
   }, [refetchQuota]);
 
   // When a stream finishes, refresh quota so the quota bar updates without needing a page refresh.

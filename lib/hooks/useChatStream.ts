@@ -103,9 +103,12 @@ export function useChatStream(token: string | null, sessionId: string | null) {
       setMessages((prev) => [...prev, assistantMessage]);
 
       try {
+        // Only send recent messages — backend trims to 8 anyway, no need to send full history
+        const MAX_HISTORY_TO_SEND = 10;
         const history = messagesRef.current
           .filter((m) => m.role !== "assistant" || m.content.trim() !== "")
-          .filter((m) => !m.isStreaming);
+          .filter((m) => !m.isStreaming)
+          .slice(-MAX_HISTORY_TO_SEND);
 
         const allMessages = [
           ...history.map((m) => ({ role: m.role, content: m.content })),
