@@ -28,6 +28,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [supabase, setSupabase] = useState<ReturnType<typeof createClient> | null>(null);
 
   useEffect(() => {
+    // Migration: Clear old Supabase project sessions (one-time per user)
+    const MIGRATION_VERSION = 'v2_production_project';
+    const currentVersion = localStorage.getItem('supabase_migration_version');
+    
+    if (currentVersion !== MIGRATION_VERSION) {
+      // Clear all localStorage items related to old Supabase project
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('sb-') || key.includes('supabase') || key.includes('auth-token'))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      
+      // Clear sessionStorage
+      sessionStorage.clear();
+      
+      // Set new migration version
+      localStorage.setItem('supabase_migration_version', MIGRATION_VERSION);
+    }
+
     // Create the Supabase client
     const client = createClient();
     setSupabase(client);
