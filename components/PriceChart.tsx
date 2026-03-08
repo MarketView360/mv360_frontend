@@ -31,7 +31,8 @@ import {
   DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { TradingViewChart, ChartDataPoint, RiskZone } from "./TradingViewChart";
+import type { UTCTimestamp } from "lightweight-charts";
+import { TradingViewChart, ChartDataPoint, RiskZone, ChartOverlay } from "./TradingViewChart";
 import { Camera, Settings2, BarChart3, TrendingUp, CandlestickChart, ChevronDown, Lock, Building2, MousePointerClick, ShieldAlert } from "lucide-react";
 import { useChartPreferences } from "@/hooks/useChartPreferences";
 import { useAuth } from "@/providers/AuthProvider";
@@ -48,14 +49,36 @@ interface PriceData {
   drawdown?: number;
 }
 
+// ─── Technical overlay configuration ─────────────────────────────────────────
+const OVERLAY_CONFIGS: Record<
+  string,
+  { label: string; color: string; lineWidth?: 1 | 2 | 3 | 4; lineStyle?: 0 | 1 | 2 | 3 | 4; isOscillator?: boolean }
+> = {
+  ema_9:            { label: 'EMA 9',    color: '#f59e0b', lineWidth: 1 },
+  ema_21:           { label: 'EMA 21',   color: '#f97316', lineWidth: 1 },
+  ema_50:           { label: 'EMA 50',   color: '#3b82f6', lineWidth: 2 },
+  ema_200:          { label: 'EMA 200',  color: '#8b5cf6', lineWidth: 2 },
+  sma_20:           { label: 'SMA 20',   color: '#06b6d4', lineWidth: 1 },
+  sma_50:           { label: 'SMA 50',   color: '#0ea5e9', lineWidth: 2 },
+  sma_200:          { label: 'SMA 200',  color: '#6366f1', lineWidth: 2 },
+  bollinger_upper:  { label: 'BB Upper', color: '#64748b', lineStyle: 2, lineWidth: 1 },
+  bollinger_middle: { label: 'BB Mid',   color: '#94a3b8', lineWidth: 1 },
+  bollinger_lower:  { label: 'BB Lower', color: '#64748b', lineStyle: 2, lineWidth: 1 },
+  rsi_14:           { label: 'RSI (14)', color: '#e879f9', lineWidth: 1, isOscillator: true },
+};
+
+const BB_COLS = ['bollinger_upper', 'bollinger_middle', 'bollinger_lower'] as const;
+
 interface PriceChartProps {
   data: PriceData[];
+  /** Stock ticker symbol – required to fetch indicator data on demand */
+  ticker?: string;
 }
 
 // Enterprise-only ranges
 const ENTERPRISE_RANGES = ["Max"];
 
-export function PriceChart({ data }: PriceChartProps) {
+export function PriceChart({ data, ticker }: PriceChartProps) {
   const chartContainerRef = React.useRef<HTMLDivElement>(null);
   const {
     preferences,
@@ -80,6 +103,80 @@ export function PriceChart({ data }: PriceChartProps) {
   const [isDark, setIsDark] = React.useState(false);
   const [showEnterpriseGate, setShowEnterpriseGate] = React.useState(false);
   const [whatIfIndex, setWhatIfIndex] = React.useState<number | null>(null);
+
+  // ── Technical indicators ────────────────────────────────────────────────────
+  const [activeIndicators, setActiveIndicators] = React.useState<string[]>([]);
+  const [indicatorCache, setIndicatorCache] = React.useState<
+    Record<string, Array<{ date: string; value: number | null }>>
+  >({});
+  const [indicatorLoading, setIndicatorLoading] = React.useState(false);
+
+  const toggleIndicator = React.useCallback((col: string) => {
+    setActiveIndicators((prev) =>
+      prev.includes(col) ? prev.filter((c) => c !== col) : [...prev, col]
+    );
+  }, []);
+
+  const isBBActive = BB_COLS.every((k) => activeIndicators.includes(k));
+  const toggleBB = React.useCallback(() => {
+    setActiveIndicators((prev) =>
+      BB_COLS.every((k) => prev.includes(k))
+        ? prev.filter((k2) => !(BB_COLS as readonly string[]).includes(k2))
+        : [...new Set([...prev.filter((k2) => !(BB_COLS as readonly string[]).includes(k2)), ...BB_COLS])]
+    );
+  }, []);
+
+  // Stable string dep so the effect doesn't re-run on every render
+  const indicatorKey = [...activeIndicators].sort().join(',');
+
+  React.useEffect(() => {
+    if (!ticker || !activeIndicators.length) return;
+    const missing = activeIndicators.filter((k) => !indicatorCache[k]);
+    if (missing.length === 0) return;
+
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+    setIndicatorLoading(true);
+    fetch(`${backendUrl}/api/prices/${encodeURIComponent(ticker)}/technicals?cols=${missing.join(',')}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (!json?.data) return;
+        setIndicatorCache((prev) => {
+          const next = { ...prev };
+          for (const col of missing) {
+            next[col] = (json.data as Array<Record<string, unknown>>).map((row) => ({
+              date: row.date as string,
+              value: row[col] != null ? Number(row[col]) : null,
+            }));
+          }
+          return next;
+        });
+      })
+      .catch(() => { /* silent fail – indicators are non-critical */ })
+      .finally(() => setIndicatorLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [indicatorKey, ticker]);
+
+  const overlays: ChartOverlay[] = React.useMemo(() => {
+    return activeIndicators
+      .filter((k) => !OVERLAY_CONFIGS[k]?.isOscillator && indicatorCache[k])
+      .map((k) => ({
+        id: k,
+        label: OVERLAY_CONFIGS[k].label,
+        color: OVERLAY_CONFIGS[k].color,
+        lineWidth: OVERLAY_CONFIGS[k].lineWidth,
+        lineStyle: OVERLAY_CONFIGS[k].lineStyle,
+        data: (indicatorCache[k] ?? [])
+          .filter((d) => d.value != null && !Number.isNaN(d.value))
+          .map((d) => ({ time: (new Date(d.date).getTime() / 1000) as UTCTimestamp, value: d.value as number })),
+      }));
+  }, [activeIndicators, indicatorCache]);
+
+  const rsiOverlayData = React.useMemo(() => {
+    if (!activeIndicators.includes('rsi_14') || !indicatorCache['rsi_14']) return undefined;
+    return (indicatorCache['rsi_14'] ?? [])
+      .filter((d) => d.value != null && !Number.isNaN(d.value))
+      .map((d) => ({ time: (new Date(d.date).getTime() / 1000) as UTCTimestamp, value: d.value as number }));
+  }, [activeIndicators, indicatorCache]);
 
   // Sync with preferences and detect dark mode
   React.useEffect(() => {
@@ -589,6 +686,48 @@ export function PriceChart({ data }: PriceChartProps) {
                 Show Volume
               </DropdownMenuCheckboxItem>
               <DropdownMenuSeparator />
+              {/* Technical Indicators */}
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  Indicators{indicatorLoading && <span className="ml-1 text-[10px] text-slate-400">...</span>}
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="w-52">
+                  <DropdownMenuLabel className="text-xs">Moving Averages</DropdownMenuLabel>
+                  {(['ema_9','ema_21','ema_50','ema_200','sma_20','sma_50','sma_200'] as const).map((k) => (
+                    <DropdownMenuCheckboxItem
+                      key={k}
+                      checked={activeIndicators.includes(k)}
+                      onCheckedChange={() => toggleIndicator(k)}
+                      disabled={!ticker}
+                    >
+                      <span className="mr-2 font-bold" style={{ color: OVERLAY_CONFIGS[k].color }}>&#x2500;</span>
+                      {OVERLAY_CONFIGS[k].label}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-xs">Bollinger Bands</DropdownMenuLabel>
+                  <DropdownMenuCheckboxItem
+                    checked={isBBActive}
+                    onCheckedChange={toggleBB}
+                    disabled={!ticker}
+                  >
+                    <span className="mr-2 font-bold" style={{ color: OVERLAY_CONFIGS['bollinger_upper'].color }}>&#x2500;</span>
+                    Bollinger Bands
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-xs">Oscillators</DropdownMenuLabel>
+                  <DropdownMenuCheckboxItem
+                    checked={activeIndicators.includes('rsi_14')}
+                    onCheckedChange={() => toggleIndicator('rsi_14')}
+                    disabled={!ticker}
+                  >
+                    <span className="mr-2 font-bold" style={{ color: OVERLAY_CONFIGS['rsi_14'].color }}>&#x2500;</span>
+                    RSI (14)
+                  </DropdownMenuCheckboxItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-xs font-normal text-slate-500 dark:text-slate-400">
                 Price Display
               </DropdownMenuLabel>
@@ -911,6 +1050,8 @@ export function PriceChart({ data }: PriceChartProps) {
               showRiskZones={showRiskZones}
               showBaselineMarker={priceDisplayMode === "rangeChange"}
               baselinePrice={rangeStats?.startPrice ?? undefined}
+              overlays={overlays}
+              rsiData={rsiOverlayData}
               colors={{
                 lineColor: isDark ? "#3b82f6" : "#2563eb",
                 areaTopColor: isDark ? "rgba(59, 130, 246, 0.4)" : "rgba(37, 99, 235, 0.3)",

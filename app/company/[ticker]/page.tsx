@@ -520,6 +520,7 @@ async function CompanyContent({ ticker }: { ticker: string }) {
                   priceHistory={data.priceHistory}
                   valuationMetrics={data.valuationMetrics}
                   valuationHistory={data.valuationHistory}
+                  ticker={ticker}
                 />
               </div>
 

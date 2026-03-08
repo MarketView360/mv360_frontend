@@ -51,12 +51,14 @@ interface CompanyChartsSwitcherProps {
   priceHistory: PriceHistoryPoint[];
   valuationMetrics: ValuationMetric[];
   valuationHistory: ValuationHistoryPoint[];
+  ticker?: string;
 }
 
 export function CompanyChartsSwitcher({
   priceHistory,
   valuationMetrics,
   valuationHistory,
+  ticker,
 }: CompanyChartsSwitcherProps) {
   const { session } = useAuth();
   const isPro = session?.tier === "premium" || session?.tier === "pro" || session?.tier === "elite";
@@ -153,7 +155,7 @@ export function CompanyChartsSwitcher({
       {mode === "price" && (
         <div className={cn(heightClass, "w-full")}>
           <Suspense fallback={<div className="h-full w-full bg-slate-100 dark:bg-slate-800 animate-pulse rounded-lg" />}>
-            <PriceChart data={priceHistory} />
+            <PriceChart data={priceHistory} ticker={ticker} />
           </Suspense>
         </div>
       )}
