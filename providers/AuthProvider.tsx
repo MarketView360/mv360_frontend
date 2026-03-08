@@ -21,6 +21,15 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function buildRedirectUrl(path: string): string {
+  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  const base = configured && /^https?:\/\//.test(configured)
+    ? configured
+    : window.location.origin;
+
+  return `${base.replace(/\/$/, '')}${path}`;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -100,7 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: buildRedirectUrl('/auth/callback'),
         data: {
           full_name: fullName,
         },
@@ -115,7 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: buildRedirectUrl('/auth/callback'),
       },
     });
     return { error: error as Error | null };
@@ -126,7 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: buildRedirectUrl('/auth/callback'),
       },
     });
     return { error: error as Error | null };
@@ -141,7 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const resetPassword = useCallback(async (email: string) => {
     if (!supabase) return { error: new Error('Auth not available') };
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset-password`,
+      redirectTo: buildRedirectUrl('/auth/reset-password'),
     });
     return { error: error as Error | null };
   }, [supabase]);
@@ -170,7 +179,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       type: 'signup',
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: buildRedirectUrl('/auth/callback'),
       },
     });
     return { error: error as Error | null };
