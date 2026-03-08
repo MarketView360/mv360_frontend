@@ -964,14 +964,14 @@ export function PriceChart({ data, ticker }: PriceChartProps) {
           </div>
         )}
 
-        <div ref={chartContainerRef} className="h-80 w-full pb-6">
+        <div ref={chartContainerRef} className={cn("w-full pb-6", view === "risk" ? "h-80" : undefined)}>
           {view === "risk" ? (
             riskMode === "volatility" && (!filteredData || filteredData.length < 25) ? (
               <div className="flex h-full items-center justify-center text-xs text-slate-500 dark:text-slate-400">
                 Volatility analysis is not available for very short periods. Try a longer range like 3M or 1Y.
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={296}>
                 <ComposedChart
                   data={riskData}
                   margin={{ top: 8, right: 8, bottom: 28, left: 0 }}

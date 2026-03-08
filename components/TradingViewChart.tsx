@@ -87,6 +87,8 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
     const chartRef = useRef<IChartApi | null>(null);
     const rsiContainerRef = useRef<HTMLDivElement>(null);
     const rsiChartRef = useRef<IChartApi | null>(null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const overlaySeriesRef = useRef<any[]>([]);
     const [hoverInfo, setHoverInfo] = React.useState<{
         time: UTCTimestamp;
         open: number;
@@ -209,91 +211,7 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
             );
         }
 
-        // --- Technical indicator overlays (MAs, Bollinger Bands, etc.) ---
-        for (const overlay of overlays) {
-            if (!overlay.data || overlay.data.length === 0) continue;
-            const lineSeries = chart.addSeries(LineSeries, {
-                color: overlay.color,
-                lineWidth: overlay.lineWidth ?? 1,
-                lineStyle: overlay.lineStyle ?? 0,
-                crosshairMarkerVisible: false,
-                priceLineVisible: false,
-                lastValueVisible: false,
-            });
-            lineSeries.setData(
-                overlay.data.filter((d) => d.value != null && !Number.isNaN(d.value))
-            );
-        }
-
         chart.timeScale().fitContent();
-
-        // --- RSI mini-pane (secondary synchronized chart) ---
-        if (rsiData && rsiData.length > 0 && rsiContainerRef.current) {
-            if (rsiChartRef.current) {
-                rsiChartRef.current.remove();
-                rsiChartRef.current = null;
-            }
-            const rsiChart = createChart(rsiContainerRef.current, {
-                layout: {
-                    background: { type: ColorType.Solid, color: "transparent" },
-                    textColor: isDark ? "#94a3b8" : "#64748b",
-                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                },
-                width: rsiContainerRef.current.clientWidth,
-                height: 100,
-                grid: {
-                    vertLines: { color: isDark ? "#334155" : "#e2e8f0" },
-                    horzLines: { color: isDark ? "#334155" : "#e2e8f0" },
-                },
-                crosshair: { mode: CrosshairMode.Normal },
-                rightPriceScale: {
-                    borderColor: isDark ? "#475569" : "#cbd5e1",
-                    scaleMargins: { top: 0.1, bottom: 0.1 },
-                },
-                timeScale: {
-                    borderColor: isDark ? "#475569" : "#cbd5e1",
-                    visible: true,
-                    timeVisible: true,
-                },
-                handleScale: false,
-                handleScroll: false,
-            });
-            rsiChartRef.current = rsiChart;
-
-            const rsiLine = rsiChart.addSeries(LineSeries, {
-                color: "#e879f9",
-                lineWidth: 1,
-                crosshairMarkerVisible: true,
-                priceLineVisible: false,
-                lastValueVisible: true,
-            });
-            rsiLine.setData(rsiData.filter((d) => d.value != null && !Number.isNaN(d.value)));
-
-            // Overbought / oversold reference lines
-            try {
-                rsiLine.createPriceLine({ price: 70, color: "rgba(239,68,68,0.5)", lineWidth: 1, lineStyle: 2, axisLabelVisible: false, title: "OB" });
-                rsiLine.createPriceLine({ price: 30, color: "rgba(34,197,94,0.5)", lineWidth: 1, lineStyle: 2, axisLabelVisible: false, title: "OS" });
-                rsiLine.createPriceLine({ price: 50, color: isDark ? "rgba(100,116,139,0.3)" : "rgba(148,163,184,0.4)", lineWidth: 1, lineStyle: 1, axisLabelVisible: false, title: "" });
-            } catch { /* createPriceLine may not be available */ }
-
-            // Synchronize visible range with the main chart
-            let syncing = false;
-            chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-                if (syncing || !range) return;
-                syncing = true;
-                rsiChart.timeScale().setVisibleLogicalRange(range);
-                syncing = false;
-            });
-            rsiChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-                if (syncing || !range) return;
-                syncing = true;
-                chart.timeScale().setVisibleLogicalRange(range);
-                syncing = false;
-            });
-        } else if (rsiChartRef.current) {
-            rsiChartRef.current.remove();
-            rsiChartRef.current = null;
-        }
 
         // Risk zone markers (feature-detected for safety)
         if (showRiskZones && riskZones.length > 0 && mainSeries && (mainSeries as any).setMarkers) {
@@ -399,6 +317,7 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
 
         return () => {
             window.removeEventListener("resize", handleResize);
+            overlaySeriesRef.current = []; // cleared before overlay-effect cleanup runs
             if (rsiChartRef.current) {
                 rsiChartRef.current.remove();
                 rsiChartRef.current = null;
@@ -427,9 +346,111 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
         showRiskZones,
         showBaselineMarker,
         baselinePrice,
-        overlays,
-        rsiData,
     ]);
+
+    // --- Overlay series (add/remove without recreating the whole chart) ---
+    useEffect(() => {
+        const chart = chartRef.current;
+        if (!chart) return;
+        for (const s of overlaySeriesRef.current) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            try { chart.removeSeries(s as any); } catch { /* chart may have been recreated */ }
+        }
+        overlaySeriesRef.current = [];
+        for (const overlay of overlays) {
+            if (!overlay.data?.length) continue;
+            const s = chart.addSeries(LineSeries, {
+                color: overlay.color,
+                lineWidth: overlay.lineWidth ?? 1,
+                lineStyle: overlay.lineStyle ?? 0,
+                crosshairMarkerVisible: false,
+                priceLineVisible: false,
+                lastValueVisible: false,
+            });
+            s.setData(overlay.data.filter((d) => d.value != null && !Number.isNaN(d.value)));
+            overlaySeriesRef.current.push(s);
+        }
+        return () => {
+            const c = chartRef.current;
+            if (!c) return;
+            for (const s of overlaySeriesRef.current) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                try { c.removeSeries(s as any); } catch {}
+            }
+            overlaySeriesRef.current = [];
+        };
+    }, [overlays]);
+
+    // --- RSI pane (separate chart instance below the main chart) ---
+    useEffect(() => {
+        if (rsiData && rsiData.length > 0 && rsiContainerRef.current) {
+            if (rsiChartRef.current) {
+                rsiChartRef.current.remove();
+                rsiChartRef.current = null;
+            }
+            const rsiChart = createChart(rsiContainerRef.current, {
+                layout: {
+                    background: { type: ColorType.Solid, color: "transparent" },
+                    textColor: isDark ? "#94a3b8" : "#64748b",
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                },
+                width: rsiContainerRef.current.clientWidth,
+                height: 100,
+                grid: {
+                    vertLines: { color: isDark ? "#334155" : "#e2e8f0" },
+                    horzLines: { color: isDark ? "#334155" : "#e2e8f0" },
+                },
+                crosshair: { mode: CrosshairMode.Normal },
+                rightPriceScale: {
+                    borderColor: isDark ? "#475569" : "#cbd5e1",
+                    scaleMargins: { top: 0.1, bottom: 0.1 },
+                },
+                timeScale: {
+                    borderColor: isDark ? "#475569" : "#cbd5e1",
+                    visible: true,
+                    timeVisible: true,
+                },
+                handleScale: false,
+                handleScroll: false,
+            });
+            rsiChartRef.current = rsiChart;
+            const rsiLine = rsiChart.addSeries(LineSeries, {
+                color: "#e879f9",
+                lineWidth: 1,
+                crosshairMarkerVisible: true,
+                priceLineVisible: false,
+                lastValueVisible: true,
+            });
+            rsiLine.setData(rsiData.filter((d) => d.value != null && !Number.isNaN(d.value)));
+            try {
+                rsiLine.createPriceLine({ price: 70, color: "rgba(239,68,68,0.5)", lineWidth: 1, lineStyle: 2, axisLabelVisible: false, title: "OB" });
+                rsiLine.createPriceLine({ price: 30, color: "rgba(34,197,94,0.5)", lineWidth: 1, lineStyle: 2, axisLabelVisible: false, title: "OS" });
+                rsiLine.createPriceLine({ price: 50, color: isDark ? "rgba(100,116,139,0.3)" : "rgba(148,163,184,0.4)", lineWidth: 1, lineStyle: 1, axisLabelVisible: false, title: "" });
+            } catch { /* createPriceLine may not be available in v4 compat mode */ }
+            let syncing = false;
+            const mainChart = chartRef.current;
+            if (mainChart) {
+                mainChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+                    if (syncing || !range) return;
+                    syncing = true;
+                    rsiChart.timeScale().setVisibleLogicalRange(range);
+                    syncing = false;
+                });
+                rsiChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+                    if (syncing || !range) return;
+                    syncing = true;
+                    mainChart.timeScale().setVisibleLogicalRange(range);
+                    syncing = false;
+                });
+            }
+        }
+        return () => {
+            if (rsiChartRef.current) {
+                rsiChartRef.current.remove();
+                rsiChartRef.current = null;
+            }
+        };
+    }, [rsiData, isDark]);
 
     // Handle theme changes
     useEffect(() => {
@@ -473,8 +494,8 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
     };
 
     return (
-        <div className="w-full h-full flex flex-col">
-        <div ref={chartContainerRef} className="w-full flex-1 relative min-h-0">
+        <>
+        <div ref={chartContainerRef} className="w-full h-full relative">
             {showDetailedTooltip && hoverInfo && (
                 <div className="pointer-events-none absolute top-3 left-3 z-10 rounded-lg border border-slate-200/80 dark:border-slate-700/80 bg-white/75 dark:bg-slate-900/75 backdrop-blur-sm shadow-lg px-3 py-2 text-[11px] space-y-1 min-w-[180px]">
                     <div className="font-semibold text-slate-800 dark:text-slate-100 border-b border-slate-100 dark:border-slate-800 pb-1 mb-1">
@@ -527,6 +548,6 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
                 <div ref={rsiContainerRef} className="w-full" style={{ height: 100 }} />
             </div>
         )}
-        </div>
+        </>
     );
 };
