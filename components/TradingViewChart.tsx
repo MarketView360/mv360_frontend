@@ -220,11 +220,11 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
                     bottom: 0,
                 },
             });
-            
+
             // Use blue/purple colors for volume to differentiate from green/red candlesticks
             const volumeUpColor = isDark ? "rgba(59, 130, 246, 0.5)" : "rgba(37, 99, 235, 0.5)"; // blue
             const volumeDownColor = isDark ? "rgba(168, 85, 247, 0.5)" : "rgba(147, 51, 234, 0.5)"; // purple
-            
+
             volumeSeries.setData(
                 uniqueData.map((d) => ({
                     time: d.time as UTCTimestamp,
@@ -261,14 +261,14 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
                 const color = zone.type === "overbought"
                     ? "rgba(239, 68, 68, 0.7)"  // red
                     : zone.type === "oversold"
-                    ? "rgba(34, 197, 94, 0.7)"   // green
-                    : "rgba(251, 191, 36, 0.7)"; // amber for high-volatility
+                        ? "rgba(34, 197, 94, 0.7)"   // green
+                        : "rgba(251, 191, 36, 0.7)"; // amber for high-volatility
                 const shape = zone.type === "high-volatility" ? "circle" : "arrowDown";
                 const text = zone.type === "overbought"
                     ? "OB"
                     : zone.type === "oversold"
-                    ? "OS"
-                    : "HV";
+                        ? "OS"
+                        : "HV";
 
                 return [{
                     time: zone.startTime as UTCTimestamp,
@@ -410,7 +410,10 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
                 priceLineVisible: false,
                 lastValueVisible: false,
             });
-            s.setData(overlay.data.filter((d) => d.value != null && !Number.isNaN(d.value)));
+            const uniqueSortedOverlayData = Array.from(
+                new Map(overlay.data.filter((d) => d.value != null && !Number.isNaN(d.value)).map(d => [d.time, d])).values()
+            ).sort((a, b) => (a.time as number) - (b.time as number));
+            s.setData(uniqueSortedOverlayData);
             overlaySeriesRef.current.push(s);
         }
 
@@ -426,7 +429,7 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
             if (!c) return;
             for (const s of overlaySeriesRef.current) {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                try { c.removeSeries(s as any); } catch {}
+                try { c.removeSeries(s as any); } catch { }
             }
             overlaySeriesRef.current = [];
         };
@@ -478,7 +481,10 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
                     priceLineVisible: false,
                     lastValueVisible: true,
                 });
-                s.setData(line.data.filter((d) => d.value != null && !Number.isNaN(d.value)));
+                const uniqueSortedLineData = Array.from(
+                    new Map(line.data.filter((d) => d.value != null && !Number.isNaN(d.value)).map(d => [d.time, d])).values()
+                ).sort((a, b) => (a.time as number) - (b.time as number));
+                s.setData(uniqueSortedLineData);
                 if (!firstSeries) firstSeries = s;
             }
 
@@ -489,7 +495,10 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
                     priceLineVisible: false,
                     lastValueVisible: false,
                 });
-                histSeries.setData(oscillatorPane!.histogram);
+                const uniqueSortedHistData = Array.from(
+                    new Map(oscillatorPane!.histogram.filter((d) => d.value != null && !Number.isNaN(d.value)).map(d => [d.time, d])).values()
+                ).sort((a, b) => (a.time as number) - (b.time as number));
+                histSeries.setData(uniqueSortedHistData);
             }
 
             // Add reference lines on the first line series
@@ -581,59 +590,59 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
 
     return (
         <>
-        <div ref={chartContainerRef} className="w-full h-full relative">
-            {showDetailedTooltip && hoverInfo && (
-                <div className="pointer-events-none absolute top-3 left-3 z-10 rounded-lg border border-slate-200/80 dark:border-slate-700/80 bg-white/75 dark:bg-slate-900/75 backdrop-blur-sm shadow-lg px-3 py-2 text-[11px] space-y-1 min-w-[180px]">
-                    <div className="font-semibold text-slate-800 dark:text-slate-100 border-b border-slate-100 dark:border-slate-800 pb-1 mb-1">
-                        {formatDate(hoverInfo.time)}
-                    </div>
-                    <div className="flex justify-between gap-4">
-                        <span className="text-slate-500 dark:text-slate-400">Open</span>
-                        <span className="font-mono text-slate-900 dark:text-slate-50">{formatNumber(hoverInfo.open)}</span>
-                    </div>
-                    <div className="flex justify-between gap-4">
-                        <span className="text-slate-500 dark:text-slate-400">High</span>
-                        <span className="font-mono text-slate-900 dark:text-slate-50">{formatNumber(hoverInfo.high)}</span>
-                    </div>
-                    <div className="flex justify-between gap-4">
-                        <span className="text-slate-500 dark:text-slate-400">Low</span>
-                        <span className="font-mono text-slate-900 dark:text-slate-50">{formatNumber(hoverInfo.low)}</span>
-                    </div>
-                    <div className="flex justify-between gap-4">
-                        <span className="text-slate-500 dark:text-slate-400">Close</span>
-                        <span className="font-mono text-slate-900 dark:text-slate-50">{formatNumber(hoverInfo.close)}</span>
-                    </div>
-                    <div className="flex justify-between gap-4">
-                        <span className="text-slate-500 dark:text-slate-400">Volume</span>
-                        <span className="font-mono text-slate-900 dark:text-slate-50">
-                            {hoverInfo.volume != null ? hoverInfo.volume.toLocaleString() : "—"}
-                        </span>
-                    </div>
-                    {formatPercent(hoverInfo.changeFromPrevPct) && (
-                        <div className="flex justify-between gap-4 pt-1 border-t border-slate-100 dark:border-slate-800 mt-1">
-                            <span className="text-slate-500 dark:text-slate-400">Change vs prev</span>
-                            <span
-                                className={
-                                    (hoverInfo.changeFromPrevPct ?? 0) > 0
-                                        ? "font-mono text-emerald-600 dark:text-emerald-400"
-                                        : (hoverInfo.changeFromPrevPct ?? 0) < 0
-                                        ? "font-mono text-red-600 dark:text-red-400"
-                                        : "font-mono text-slate-600 dark:text-slate-300"
-                                }
-                            >
-                                {formatPercent(hoverInfo.changeFromPrevPct)}
+            <div ref={chartContainerRef} className="w-full h-full relative">
+                {showDetailedTooltip && hoverInfo && (
+                    <div className="pointer-events-none absolute top-3 left-3 z-10 rounded-lg border border-slate-200/80 dark:border-slate-700/80 bg-white/75 dark:bg-slate-900/75 backdrop-blur-sm shadow-lg px-3 py-2 text-[11px] space-y-1 min-w-[180px]">
+                        <div className="font-semibold text-slate-800 dark:text-slate-100 border-b border-slate-100 dark:border-slate-800 pb-1 mb-1">
+                            {formatDate(hoverInfo.time)}
+                        </div>
+                        <div className="flex justify-between gap-4">
+                            <span className="text-slate-500 dark:text-slate-400">Open</span>
+                            <span className="font-mono text-slate-900 dark:text-slate-50">{formatNumber(hoverInfo.open)}</span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                            <span className="text-slate-500 dark:text-slate-400">High</span>
+                            <span className="font-mono text-slate-900 dark:text-slate-50">{formatNumber(hoverInfo.high)}</span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                            <span className="text-slate-500 dark:text-slate-400">Low</span>
+                            <span className="font-mono text-slate-900 dark:text-slate-50">{formatNumber(hoverInfo.low)}</span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                            <span className="text-slate-500 dark:text-slate-400">Close</span>
+                            <span className="font-mono text-slate-900 dark:text-slate-50">{formatNumber(hoverInfo.close)}</span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                            <span className="text-slate-500 dark:text-slate-400">Volume</span>
+                            <span className="font-mono text-slate-900 dark:text-slate-50">
+                                {hoverInfo.volume != null ? hoverInfo.volume.toLocaleString() : "—"}
                             </span>
                         </div>
-                    )}
+                        {formatPercent(hoverInfo.changeFromPrevPct) && (
+                            <div className="flex justify-between gap-4 pt-1 border-t border-slate-100 dark:border-slate-800 mt-1">
+                                <span className="text-slate-500 dark:text-slate-400">Change vs prev</span>
+                                <span
+                                    className={
+                                        (hoverInfo.changeFromPrevPct ?? 0) > 0
+                                            ? "font-mono text-emerald-600 dark:text-emerald-400"
+                                            : (hoverInfo.changeFromPrevPct ?? 0) < 0
+                                                ? "font-mono text-red-600 dark:text-red-400"
+                                                : "font-mono text-slate-600 dark:text-slate-300"
+                                    }
+                                >
+                                    {formatPercent(hoverInfo.changeFromPrevPct)}
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+            {oscillatorPane && oscillatorPane.lines.some((l) => l.data.length > 0) && (
+                <div className="border-t border-slate-200 dark:border-slate-700">
+                    <div className="text-[10px] text-slate-400 dark:text-slate-500 px-2 pt-1 font-medium tracking-wide">{oscillatorPane.label}</div>
+                    <div ref={rsiContainerRef} className="w-full" style={{ height: 110 }} />
                 </div>
             )}
-        </div>
-        {oscillatorPane && oscillatorPane.lines.some((l) => l.data.length > 0) && (
-            <div className="border-t border-slate-200 dark:border-slate-700">
-                <div className="text-[10px] text-slate-400 dark:text-slate-500 px-2 pt-1 font-medium tracking-wide">{oscillatorPane.label}</div>
-                <div ref={rsiContainerRef} className="w-full" style={{ height: 110 }} />
-            </div>
-        )}
         </>
     );
 };
