@@ -156,28 +156,6 @@ export function PriceChart({ data, ticker }: PriceChartProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [indicatorKey, ticker]);
 
-  const overlays: ChartOverlay[] = React.useMemo(() => {
-    return activeIndicators
-      .filter((k) => !OVERLAY_CONFIGS[k]?.isOscillator && indicatorCache[k])
-      .map((k) => ({
-        id: k,
-        label: OVERLAY_CONFIGS[k].label,
-        color: OVERLAY_CONFIGS[k].color,
-        lineWidth: OVERLAY_CONFIGS[k].lineWidth,
-        lineStyle: OVERLAY_CONFIGS[k].lineStyle,
-        data: (indicatorCache[k] ?? [])
-          .filter((d) => d.value != null && !Number.isNaN(d.value))
-          .map((d) => ({ time: (new Date(d.date).getTime() / 1000) as UTCTimestamp, value: d.value as number })),
-      }));
-  }, [activeIndicators, indicatorCache]);
-
-  const rsiOverlayData = React.useMemo(() => {
-    if (!activeIndicators.includes('rsi_14') || !indicatorCache['rsi_14']) return undefined;
-    return (indicatorCache['rsi_14'] ?? [])
-      .filter((d) => d.value != null && !Number.isNaN(d.value))
-      .map((d) => ({ time: (new Date(d.date).getTime() / 1000) as UTCTimestamp, value: d.value as number }));
-  }, [activeIndicators, indicatorCache]);
-
   // Sync with preferences and detect dark mode
   React.useEffect(() => {
     if (isLoaded) {
@@ -331,6 +309,42 @@ export function PriceChart({ data, ticker }: PriceChartProps) {
 
     return enriched.filter(p => new Date(p.date).getTime() >= cutoffTime);
   }, [enriched, range]);
+
+  const overlays: ChartOverlay[] = React.useMemo(() => {
+    // Clamp indicator data to the currently visible date range so the chart
+    // never auto-zooms out to show the full historical dataset.
+    const startTime = filteredData?.length ? new Date(filteredData[0].date).getTime() / 1000 : 0;
+    const endTime = filteredData?.length ? new Date(filteredData[filteredData.length - 1].date).getTime() / 1000 : Infinity;
+    return activeIndicators
+      .filter((k) => !OVERLAY_CONFIGS[k]?.isOscillator && indicatorCache[k])
+      .map((k) => ({
+        id: k,
+        label: OVERLAY_CONFIGS[k].label,
+        color: OVERLAY_CONFIGS[k].color,
+        lineWidth: OVERLAY_CONFIGS[k].lineWidth,
+        lineStyle: OVERLAY_CONFIGS[k].lineStyle,
+        data: (indicatorCache[k] ?? [])
+          .filter((d) => {
+            if (d.value == null || Number.isNaN(d.value)) return false;
+            const t = new Date(d.date).getTime() / 1000;
+            return t >= startTime && t <= endTime;
+          })
+          .map((d) => ({ time: (new Date(d.date).getTime() / 1000) as UTCTimestamp, value: d.value as number })),
+      }));
+  }, [activeIndicators, indicatorCache, filteredData]);
+
+  const rsiOverlayData = React.useMemo(() => {
+    if (!activeIndicators.includes('rsi_14') || !indicatorCache['rsi_14']) return undefined;
+    const startTime = filteredData?.length ? new Date(filteredData[0].date).getTime() / 1000 : 0;
+    const endTime = filteredData?.length ? new Date(filteredData[filteredData.length - 1].date).getTime() / 1000 : Infinity;
+    return (indicatorCache['rsi_14'] ?? [])
+      .filter((d) => {
+        if (d.value == null || Number.isNaN(d.value)) return false;
+        const t = new Date(d.date).getTime() / 1000;
+        return t >= startTime && t <= endTime;
+      })
+      .map((d) => ({ time: (new Date(d.date).getTime() / 1000) as UTCTimestamp, value: d.value as number }));
+  }, [activeIndicators, indicatorCache, filteredData]);
 
   const rangeStats = React.useMemo(() => {
     if (!filteredData || filteredData.length === 0) return null;

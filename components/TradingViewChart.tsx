@@ -353,6 +353,11 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
     useEffect(() => {
         const chart = chartRef.current;
         if (!chart) return;
+
+        // Snapshot the current viewport so adding/removing series never
+        // auto-zooms the time scale (e.g. back to year 2000).
+        const savedRange = chart.timeScale().getVisibleRange();
+
         for (const s of overlaySeriesRef.current) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             try { chart.removeSeries(s as any); } catch { /* chart may have been recreated */ }
@@ -371,6 +376,13 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
             s.setData(overlay.data.filter((d) => d.value != null && !Number.isNaN(d.value)));
             overlaySeriesRef.current.push(s);
         }
+
+        // Restore viewport after series mutations to keep the selected range
+        // stable (prevents jumping when toggling indicators).
+        if (savedRange) {
+            chart.timeScale().setVisibleRange(savedRange);
+        }
+
         return () => {
             const c = chartRef.current;
             if (!c) return;
