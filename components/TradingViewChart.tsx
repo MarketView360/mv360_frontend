@@ -450,7 +450,7 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
                     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                     attributionLogo: false,
                 },
-                width: rsiContainerRef.current.clientWidth,
+                width: rsiContainerRef.current.clientWidth || chartContainerRef.current?.clientWidth || 800,
                 height: 110,
                 grid: {
                     vertLines: { color: isDark ? "#334155" : "#e2e8f0" },
@@ -473,6 +473,8 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
 
             // Add line series for each defined line
             let firstSeries: ReturnType<typeof oscChart.addSeries> | null = null;
+            const allTimes = Array.from(new Set(data.map(d => d.time))).sort((a, b) => a - b);
+
             for (const line of oscillatorPane!.lines) {
                 const s = oscChart.addSeries(LineSeries, {
                     color: line.color,
@@ -481,10 +483,22 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
                     priceLineVisible: false,
                     lastValueVisible: true,
                 });
-                const uniqueSortedLineData = Array.from(
-                    new Map(line.data.filter((d) => d.value != null && !Number.isNaN(d.value)).map(d => [d.time, d])).values()
-                ).sort((a, b) => (a.time as number) - (b.time as number));
-                s.setData(uniqueSortedLineData);
+
+                const lineMap = new Map();
+                for (const d of line.data) {
+                    if (d.value != null && !Number.isNaN(d.value)) {
+                        lineMap.set(d.time, d.value);
+                    }
+                }
+
+                const paddedLineData = allTimes.map(time => {
+                    if (lineMap.has(time)) {
+                        return { time: time as UTCTimestamp, value: lineMap.get(time) as number };
+                    }
+                    return { time: time as UTCTimestamp };
+                });
+
+                s.setData(paddedLineData);
                 if (!firstSeries) firstSeries = s;
             }
 
@@ -495,10 +509,23 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
                     priceLineVisible: false,
                     lastValueVisible: false,
                 });
-                const uniqueSortedHistData = Array.from(
-                    new Map(oscillatorPane!.histogram.filter((d) => d.value != null && !Number.isNaN(d.value)).map(d => [d.time, d])).values()
-                ).sort((a, b) => (a.time as number) - (b.time as number));
-                histSeries.setData(uniqueSortedHistData);
+
+                const histMap = new Map();
+                for (const d of oscillatorPane!.histogram) {
+                    if (d.value != null && !Number.isNaN(d.value)) {
+                        histMap.set(d.time, { value: d.value, color: d.color });
+                    }
+                }
+
+                const paddedHistData = allTimes.map(time => {
+                    if (histMap.has(time)) {
+                        const hd = histMap.get(time);
+                        return { time: time as UTCTimestamp, value: hd.value as number, color: hd.color as string };
+                    }
+                    return { time: time as UTCTimestamp };
+                });
+
+                histSeries.setData(paddedHistData as any);
             }
 
             // Add reference lines on the first line series
