@@ -18,19 +18,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { ChartSettingsPopover } from "./ChartSettingsPopover";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuCheckboxItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
   DropdownMenuItem,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { UTCTimestamp } from "lightweight-charts";
@@ -850,286 +845,73 @@ export function PriceChart({ data, ticker }: PriceChartProps) {
             })}
           </div>
 
-          {/* Settings & Snapshot */}
+          {/* Settings */}
+          <ChartSettingsPopover
+            showVolume={showVolume}
+            onToggleVolume={() => handleVolumeToggle(!showVolume)}
+            priceDisplayMode={priceDisplayMode}
+            onSetPriceDisplayMode={setPriceDisplayMode}
+            showDetailedTooltip={showDetailedTooltip}
+            onSetShowDetailedTooltip={setShowDetailedTooltip}
+            view={view}
+            onViewChange={setView}
+            areaStyle={areaStyle}
+            onSetAreaStyle={setAreaStyle}
+            candlestickStyle={candlestickStyle}
+            onSetCandlestickStyle={setCandlestickStyle}
+            isPro={isPro}
+            showRiskZones={showRiskZones}
+            onSetShowRiskZones={setShowRiskZones}
+            showWhatIfSimulation={showWhatIfSimulation}
+            onSetShowWhatIfSimulation={setShowWhatIfSimulation}
+            activeIndicators={activeIndicators}
+            onToggleIndicator={toggleIndicator}
+            indicatorLoading={indicatorLoading}
+            isBBActive={isBBActive}
+            onToggleBB={toggleBB}
+            isKeltnerActive={isKeltnerActive}
+            onToggleKeltner={toggleKeltner}
+            isDonchianActive={isDonchianActive}
+            onToggleDonchian={toggleDonchian}
+            isIchiActive={isIchiActive}
+            onToggleIchi={toggleIchi}
+            isPivotActive={isPivotActive}
+            onTogglePivot={togglePivot}
+            isFibActive={isFibActive}
+            onToggleFib={toggleFib}
+            activeOscillatorKey={activeOscillatorKey}
+            onSetActiveOscillatorKey={setActiveOscillatorKey}
+            oscillatorGroups={OSCILLATOR_GROUPS}
+            overlayConfigs={OVERLAY_CONFIGS}
+            ticker={ticker}
+          />
+
+          {/* Snapshot */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8">
-                <Settings2 className="h-4 w-4" />
+                <Camera className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>Chart Options</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuCheckboxItem
-                checked={showVolume}
-                onCheckedChange={handleVolumeToggle}
-              >
-                <BarChart3 className="h-4 w-4 mr-2" />
-                Show Volume
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuSeparator />
-              {/* Technical Indicators */}
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
-                  <TrendingUp className="h-4 w-4 mr-2" />
-                  Indicators{indicatorLoading && <span className="ml-1 text-[10px] text-slate-400">...</span>}
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="w-64 max-h-[90vh] overflow-y-auto">
-                  {/* Moving Averages */}
-                  <DropdownMenuLabel className="text-xs">Moving Averages</DropdownMenuLabel>
-                  {(['ema_9','ema_21','ema_50','ema_200','sma_20','sma_50','sma_200','wma_20','hma_20','dema_20','tema_20'] as const).map((k) => (
-                    <DropdownMenuCheckboxItem
-                      key={k}
-                      checked={activeIndicators.includes(k)}
-                      onCheckedChange={() => toggleIndicator(k)}
-                      disabled={!ticker}
-                    >
-                      <span className="mr-2 font-bold" style={{ color: OVERLAY_CONFIGS[k].color }}>&#x2500;</span>
-                      {OVERLAY_CONFIGS[k].label}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                  <DropdownMenuSeparator />
-                  {/* Channels & Bands */}
-                  <DropdownMenuLabel className="text-xs">Channels &amp; Bands</DropdownMenuLabel>
-                  <DropdownMenuCheckboxItem checked={isBBActive} onCheckedChange={toggleBB} disabled={!ticker}>
-                    <span className="mr-2 font-bold" style={{ color: OVERLAY_CONFIGS['bollinger_upper'].color }}>&#x2500;</span>
-                    Bollinger Bands
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem checked={isKeltnerActive} onCheckedChange={toggleKeltner} disabled={!ticker}>
-                    <span className="mr-2 font-bold" style={{ color: OVERLAY_CONFIGS['keltner_upper'].color }}>&#x2500;</span>
-                    Keltner Channel
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem checked={isDonchianActive} onCheckedChange={toggleDonchian} disabled={!ticker}>
-                    <span className="mr-2 font-bold" style={{ color: OVERLAY_CONFIGS['donchian_upper'].color }}>&#x2500;</span>
-                    Donchian Channel
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuSeparator />
-                  {/* Ichimoku Cloud */}
-                  <DropdownMenuLabel className="text-xs">Ichimoku Cloud</DropdownMenuLabel>
-                  <DropdownMenuCheckboxItem checked={isIchiActive} onCheckedChange={toggleIchi} disabled={!ticker}>
-                    <span className="mr-2 font-bold" style={{ color: '#ef4444' }}>&#x2500;</span>
-                    Ichimoku Cloud
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuSeparator />
-                  {/* Trend Overlays */}
-                  <DropdownMenuLabel className="text-xs">Trend Overlays</DropdownMenuLabel>
-                  {(['psar','supertrend','vwap'] as const).map((k) => (
-                    <DropdownMenuCheckboxItem
-                      key={k}
-                      checked={activeIndicators.includes(k)}
-                      onCheckedChange={() => toggleIndicator(k)}
-                      disabled={!ticker}
-                    >
-                      <span className="mr-2 font-bold" style={{ color: OVERLAY_CONFIGS[k].color }}>&#x2500;</span>
-                      {OVERLAY_CONFIGS[k].label}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                  <DropdownMenuSeparator />
-                  {/* Support & Resistance */}
-                  <DropdownMenuLabel className="text-xs">Support &amp; Resistance</DropdownMenuLabel>
-                  <DropdownMenuCheckboxItem checked={isPivotActive} onCheckedChange={togglePivot} disabled={!ticker}>
-                    <span className="mr-2 font-bold" style={{ color: OVERLAY_CONFIGS['pivot'].color }}>&#x2500;</span>
-                    Pivot Points
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem checked={isFibActive} onCheckedChange={toggleFib} disabled={!ticker}>
-                    <span className="mr-2 font-bold" style={{ color: OVERLAY_CONFIGS['fib_61_8'].color }}>&#x2500;</span>
-                    Fibonacci Levels
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuSeparator />
-                  {/* Oscillator Sub-Pane */}
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      <BarChart3 className="h-3 w-3 mr-2" />
-                      Oscillator Sub-Pane{activeOscillatorKey && <span className="ml-1 text-[10px] text-slate-400">(active)</span>}
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent className="w-52 max-h-[80vh] overflow-y-auto">
-                      <DropdownMenuLabel className="text-xs">Select Oscillator</DropdownMenuLabel>
-                      <DropdownMenuRadioGroup
-                        value={activeOscillatorKey ?? ''}
-                        onValueChange={(v) => setActiveOscillatorKey(v || null)}
-                      >
-                        <DropdownMenuRadioItem value="">None</DropdownMenuRadioItem>
-                        {OSCILLATOR_GROUPS.map((g) => (
-                          <DropdownMenuRadioItem key={g.key} value={g.key} disabled={!ticker}>
-                            {g.label}
-                          </DropdownMenuRadioItem>
-                        ))}
-                      </DropdownMenuRadioGroup>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuSub>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel className="text-xs font-normal text-slate-500 dark:text-slate-400">
-                Price Display
-              </DropdownMenuLabel>
-              <DropdownMenuCheckboxItem
-                checked={priceDisplayMode === "rangeChange"}
-                onCheckedChange={() => setPriceDisplayMode("rangeChange")}
-              >
-                % change since range start (default)
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem
-                checked={priceDisplayMode === "absolute"}
-                onCheckedChange={() => setPriceDisplayMode("absolute")}
-              >
-                Absolute price only
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuCheckboxItem
-                checked={showDetailedTooltip}
-                onCheckedChange={(checked) => setShowDetailedTooltip(!!checked)}
-              >
-                Show detailed hover tooltip
-              </DropdownMenuCheckboxItem>
-              {/* Area chart specific options */}
-              {view === "price" && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-xs font-normal text-slate-500 dark:text-slate-400">
-                    Area Chart Style
-                  </DropdownMenuLabel>
-                  <DropdownMenuCheckboxItem
-                    checked={areaStyle === "area"}
-                    onCheckedChange={() => setAreaStyle("area")}
-                  >
-                    Filled Area (default)
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={areaStyle === "line"}
-                    onCheckedChange={() => setAreaStyle("line")}
-                  >
-                    Line Only
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-xs font-normal text-slate-500 dark:text-slate-400">
-                    Interactive Features
-                  </DropdownMenuLabel>
-                  <DropdownMenuCheckboxItem
-                    checked={showRiskZones}
-                    onCheckedChange={(checked) => setShowRiskZones(!!checked)}
-                  >
-                    Show Risk Zones
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={showWhatIfSimulation}
-                    onCheckedChange={(checked) => setShowWhatIfSimulation(!!checked)}
-                  >
-                    &quot;What If I Bought Here?&quot; Mode
-                  </DropdownMenuCheckboxItem>
-                </>
-              )}
-
-              {/* Candlestick chart specific options */}
-              {view === "candlestick" && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-xs font-normal text-slate-500 dark:text-slate-400">
-                    Candlestick Style
-                  </DropdownMenuLabel>
-                  <DropdownMenuCheckboxItem
-                    checked={candlestickStyle === "candlestick"}
-                    onCheckedChange={() => setCandlestickStyle("candlestick")}
-                  >
-                    Standard Candlestick
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={candlestickStyle === "heikin-ashi"}
-                    onCheckedChange={() => {
-                      if (isPro) setCandlestickStyle("heikin-ashi");
-                    }}
-                    disabled={!isPro}
-                  >
-                    Heikin Ashi {!isPro && <Lock className="h-3 w-3 ml-1 opacity-50" />}
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-xs font-normal text-slate-500 dark:text-slate-400">
-                    Interactive Features
-                  </DropdownMenuLabel>
-                  <DropdownMenuCheckboxItem
-                    checked={showRiskZones}
-                    onCheckedChange={(checked) => setShowRiskZones(!!checked)}
-                  >
-                    Show Risk Zones
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={showWhatIfSimulation}
-                    onCheckedChange={(checked) => setShowWhatIfSimulation(!!checked)}
-                  >
-                    &quot;What If I Bought Here?&quot; Mode
-                  </DropdownMenuCheckboxItem>
-                </>
-              )}
-
-              {/* Risk chart specific options */}
-              {view === "risk" && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-xs font-normal text-slate-500 dark:text-slate-400">
-                    Risk Chart Mode
-                  </DropdownMenuLabel>
-                  <DropdownMenuCheckboxItem
-                    checked={riskMode === "drawdown"}
-                    onCheckedChange={() => setRiskMode("drawdown")}
-                  >
-                    Drawdown (default)
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuCheckboxItem
-                    checked={riskMode === "volatility"}
-                    onCheckedChange={() => setRiskMode("volatility")}
-                  >
-                    Volatility (20-day)
-                  </DropdownMenuCheckboxItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-xs font-normal text-slate-500 dark:text-slate-400">
-                    Interactive Features
-                  </DropdownMenuLabel>
-                  <DropdownMenuCheckboxItem
-                    checked={showRiskZones}
-                    onCheckedChange={(checked) => setShowRiskZones(!!checked)}
-                  >
-                    Show Risk Zones
-                  </DropdownMenuCheckboxItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 group relative">
-                <Camera className="h-4 w-4" />
-                <ChevronDown className="h-3 w-3 absolute -bottom-0.5 -right-0.5 opacity-60 group-hover:opacity-100 transition-opacity" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Save Chart Snapshot</DropdownMenuLabel>
+              <DropdownMenuLabel>Snapshot Options</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => handleSnapshot("default")}>
-                <Camera className="h-4 w-4 mr-2" />
-                Default (Current Theme)
+                Save Chart (Default)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleSnapshot("light")}>
+                Save Chart (Light BG)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleSnapshot("dark")}>
+                Save Chart (Dark BG)
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
-                  <Settings2 className="h-4 w-4 mr-2" />
-                  Color Schemes
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                  <DropdownMenuItem onClick={() => handleSnapshot("light")}>
-                    ☀️ Light Mode
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleSnapshot("dark")}>
-                    🌙 Dark Mode
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleSnapshot("vibrant")}>
-                    🎨 Vibrant Colors
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleSnapshot("mono")}>
-                    ⚫ Monochrome
-                  </DropdownMenuItem>
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
+              <DropdownMenuItem onClick={() => handleSnapshot("vibrant")}>
+                Save Chart (Vibrant)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleSnapshot("mono")}>
+                Save Chart (Grayscale)
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
