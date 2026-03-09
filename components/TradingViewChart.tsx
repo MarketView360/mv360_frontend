@@ -120,6 +120,7 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
             layout: {
                 background: { type: ColorType.Solid, color: backgroundColor },
                 textColor,
+                attributionLogo: false,
             },
             width: chartContainerRef.current.clientWidth,
             height: height,
@@ -393,6 +394,7 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
                     background: { type: ColorType.Solid, color: "transparent" },
                     textColor: isDark ? "#94a3b8" : "#64748b",
                     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                    attributionLogo: false,
                 },
                 width: rsiContainerRef.current.clientWidth,
                 height: 100,

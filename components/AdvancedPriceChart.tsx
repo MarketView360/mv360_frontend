@@ -164,6 +164,7 @@ export function AdvancedPriceChart({ data, ticker }: AdvancedPriceChartProps) {
         background: { type: ColorType.Solid, color: colors.background },
         textColor: colors.text,
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+        attributionLogo: false,
       },
       width: chartContainerRef.current.clientWidth,
       height: isFullscreen ? window.innerHeight - 120 : 380,
