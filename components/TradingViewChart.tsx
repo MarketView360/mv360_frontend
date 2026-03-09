@@ -89,6 +89,9 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
     const rsiChartRef = useRef<IChartApi | null>(null);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const overlaySeriesRef = useRef<any[]>([]);
+    // Tracks the user-selected visible time range so overlay mutations never
+    // reset the viewport. Initialised from the data range; updated on user pan/zoom.
+    const visibleRangeRef = useRef<{ from: UTCTimestamp; to: UTCTimestamp } | null>(null);
     const [hoverInfo, setHoverInfo] = React.useState<{
         time: UTCTimestamp;
         open: number;
@@ -213,6 +216,25 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
         }
 
         chart.timeScale().fitContent();
+
+        // Store the data-driven visible range so the overlay effect can restore
+        // it reliably (fitContent may be async, so we derive from the data).
+        if (uniqueData.length >= 2) {
+            visibleRangeRef.current = {
+                from: uniqueData[0].time as UTCTimestamp,
+                to: uniqueData[uniqueData.length - 1].time as UTCTimestamp,
+            };
+        }
+
+        // Keep the ref updated when the user pans/zooms manually.
+        chart.timeScale().subscribeVisibleTimeRangeChange((range) => {
+            if (range) {
+                visibleRangeRef.current = {
+                    from: range.from as UTCTimestamp,
+                    to: range.to as UTCTimestamp,
+                };
+            }
+        });
 
         // Risk zone markers (feature-detected for safety)
         if (showRiskZones && riskZones.length > 0 && mainSeries && (mainSeries as any).setMarkers) {
@@ -354,10 +376,6 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
         const chart = chartRef.current;
         if (!chart) return;
 
-        // Snapshot the current viewport so adding/removing series never
-        // auto-zooms the time scale (e.g. back to year 2000).
-        const savedRange = chart.timeScale().getVisibleRange();
-
         for (const s of overlaySeriesRef.current) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             try { chart.removeSeries(s as any); } catch { /* chart may have been recreated */ }
@@ -377,10 +395,11 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
             overlaySeriesRef.current.push(s);
         }
 
-        // Restore viewport after series mutations to keep the selected range
-        // stable (prevents jumping when toggling indicators).
-        if (savedRange) {
-            chart.timeScale().setVisibleRange(savedRange);
+        // Always restore the tracked range after series mutations.
+        // Using the ref (not getVisibleRange) avoids the race where fitContent
+        // is still pending and getVisibleRange returns null / stale data.
+        if (visibleRangeRef.current) {
+            chart.timeScale().setVisibleRange(visibleRangeRef.current);
         }
 
         return () => {
