@@ -175,7 +175,7 @@ export function ChartSettingsPopover({
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        className="w-80 max-h-[80vh] p-0"
+        className="w-80 p-0"
         sideOffset={8}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
@@ -186,8 +186,8 @@ export function ChartSettingsPopover({
           </div>
         </div>
 
-        <ScrollArea className="max-h-[calc(80vh-80px)]">
-          <div className="space-y-4 p-4">
+        <ScrollArea className="h-[80vh]">
+          <div className="space-y-4 p-4 pb-6">
             {/* General Section */}
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
