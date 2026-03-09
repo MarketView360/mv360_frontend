@@ -38,6 +38,25 @@ export interface ChartOverlay {
     data: Array<{ time: UTCTimestamp; value: number }>;
 }
 
+export interface OscillatorLine {
+    data: Array<{ time: UTCTimestamp; value: number }>;
+    color: string;
+    lineWidth?: 1 | 2;
+}
+
+export interface OscillatorHistogramBar {
+    time: UTCTimestamp;
+    value: number;
+    color: string;
+}
+
+export interface OscillatorPaneConfig {
+    label: string;
+    lines: OscillatorLine[];
+    histogram?: OscillatorHistogramBar[];
+    refLines?: Array<{ price: number; color: string; label?: string }>;
+}
+
 interface TradingViewChartProps {
     data: ChartDataPoint[];
     colors?: {
@@ -63,8 +82,8 @@ interface TradingViewChartProps {
     baselinePrice?: number;
     /** Price-level overlay lines (MAs, Bollinger Bands, etc.) */
     overlays?: ChartOverlay[];
-    /** RSI data – when provided, a synced mini oscillator pane is shown below the chart */
-    rsiData?: Array<{ time: UTCTimestamp; value: number }>;
+    /** Generic oscillator pane shown below the main chart (replaces rsiData) */
+    oscillatorPane?: OscillatorPaneConfig;
 }
 
 export const TradingViewChart: React.FC<TradingViewChartProps> = ({
@@ -81,7 +100,7 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
     showBaselineMarker = false,
     baselinePrice,
     overlays = [],
-    rsiData,
+    oscillatorPane,
 }) => {
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartRef = useRef<IChartApi | null>(null);
@@ -413,14 +432,15 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
         };
     }, [overlays]);
 
-    // --- RSI pane (separate chart instance below the main chart) ---
+    // --- Generic oscillator pane (synced sub-chart below the main chart) ---
     useEffect(() => {
-        if (rsiData && rsiData.length > 0 && rsiContainerRef.current) {
+        const hasData = oscillatorPane && oscillatorPane.lines.some((l) => l.data.length > 0);
+        if (hasData && rsiContainerRef.current) {
             if (rsiChartRef.current) {
                 rsiChartRef.current.remove();
                 rsiChartRef.current = null;
             }
-            const rsiChart = createChart(rsiContainerRef.current, {
+            const oscChart = createChart(rsiContainerRef.current, {
                 layout: {
                     background: { type: ColorType.Solid, color: "transparent" },
                     textColor: isDark ? "#94a3b8" : "#64748b",
@@ -428,7 +448,7 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
                     attributionLogo: false,
                 },
                 width: rsiContainerRef.current.clientWidth,
-                height: 100,
+                height: 110,
                 grid: {
                     vertLines: { color: isDark ? "#334155" : "#e2e8f0" },
                     horzLines: { color: isDark ? "#334155" : "#e2e8f0" },
@@ -446,36 +466,69 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
                 handleScale: false,
                 handleScroll: false,
             });
-            rsiChartRef.current = rsiChart;
-            const rsiLine = rsiChart.addSeries(LineSeries, {
-                color: "#e879f9",
-                lineWidth: 1,
-                crosshairMarkerVisible: true,
-                priceLineVisible: false,
-                lastValueVisible: true,
-            });
-            rsiLine.setData(rsiData.filter((d) => d.value != null && !Number.isNaN(d.value)));
-            try {
-                rsiLine.createPriceLine({ price: 70, color: "rgba(239,68,68,0.5)", lineWidth: 1, lineStyle: 2, axisLabelVisible: false, title: "OB" });
-                rsiLine.createPriceLine({ price: 30, color: "rgba(34,197,94,0.5)", lineWidth: 1, lineStyle: 2, axisLabelVisible: false, title: "OS" });
-                rsiLine.createPriceLine({ price: 50, color: isDark ? "rgba(100,116,139,0.3)" : "rgba(148,163,184,0.4)", lineWidth: 1, lineStyle: 1, axisLabelVisible: false, title: "" });
-            } catch { /* createPriceLine may not be available in v4 compat mode */ }
+            rsiChartRef.current = oscChart;
+
+            // Add line series for each defined line
+            let firstSeries: ReturnType<typeof oscChart.addSeries> | null = null;
+            for (const line of oscillatorPane!.lines) {
+                const s = oscChart.addSeries(LineSeries, {
+                    color: line.color,
+                    lineWidth: line.lineWidth ?? 1,
+                    crosshairMarkerVisible: true,
+                    priceLineVisible: false,
+                    lastValueVisible: true,
+                });
+                s.setData(line.data.filter((d) => d.value != null && !Number.isNaN(d.value)));
+                if (!firstSeries) firstSeries = s;
+            }
+
+            // Add histogram (e.g. MACD histogram bars)
+            if (oscillatorPane!.histogram && oscillatorPane!.histogram.length > 0) {
+                const histSeries = oscChart.addSeries(HistogramSeries, {
+                    priceScaleId: 'right',
+                    priceLineVisible: false,
+                    lastValueVisible: false,
+                });
+                histSeries.setData(oscillatorPane!.histogram);
+            }
+
+            // Add reference lines on the first line series
+            if (firstSeries && oscillatorPane!.refLines) {
+                for (const ref of oscillatorPane!.refLines) {
+                    try {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (firstSeries as any).createPriceLine({
+                            price: ref.price,
+                            color: ref.color,
+                            lineWidth: 1,
+                            lineStyle: 2,
+                            axisLabelVisible: false,
+                            title: ref.label ?? '',
+                        });
+                    } catch { /* price lines may not be available */ }
+                }
+            }
+
+            // Sync time scale with main chart
             let syncing = false;
             const mainChart = chartRef.current;
             if (mainChart) {
                 mainChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
                     if (syncing || !range) return;
                     syncing = true;
-                    rsiChart.timeScale().setVisibleLogicalRange(range);
+                    oscChart.timeScale().setVisibleLogicalRange(range);
                     syncing = false;
                 });
-                rsiChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+                oscChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
                     if (syncing || !range) return;
                     syncing = true;
                     mainChart.timeScale().setVisibleLogicalRange(range);
                     syncing = false;
                 });
             }
+        } else if (!hasData && rsiChartRef.current) {
+            rsiChartRef.current.remove();
+            rsiChartRef.current = null;
         }
         return () => {
             if (rsiChartRef.current) {
@@ -483,7 +536,7 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
                 rsiChartRef.current = null;
             }
         };
-    }, [rsiData, isDark]);
+    }, [oscillatorPane, isDark]);
 
     // Handle theme changes
     useEffect(() => {
@@ -575,10 +628,10 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
                 </div>
             )}
         </div>
-        {rsiData && rsiData.length > 0 && (
+        {oscillatorPane && oscillatorPane.lines.some((l) => l.data.length > 0) && (
             <div className="border-t border-slate-200 dark:border-slate-700">
-                <div className="text-[10px] text-slate-400 dark:text-slate-500 px-2 pt-1 font-medium tracking-wide">RSI (14)</div>
-                <div ref={rsiContainerRef} className="w-full" style={{ height: 100 }} />
+                <div className="text-[10px] text-slate-400 dark:text-slate-500 px-2 pt-1 font-medium tracking-wide">{oscillatorPane.label}</div>
+                <div ref={rsiContainerRef} className="w-full" style={{ height: 110 }} />
             </div>
         )}
         </>

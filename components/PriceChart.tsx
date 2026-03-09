@@ -22,6 +22,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuTrigger,
   DropdownMenuSeparator,
   DropdownMenuLabel,
@@ -32,7 +34,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { UTCTimestamp } from "lightweight-charts";
-import { TradingViewChart, ChartDataPoint, RiskZone, ChartOverlay } from "./TradingViewChart";
+import { TradingViewChart, ChartDataPoint, RiskZone, ChartOverlay, OscillatorPaneConfig } from "./TradingViewChart";
 import { Camera, Settings2, BarChart3, TrendingUp, CandlestickChart, ChevronDown, Lock, Building2, MousePointerClick, ShieldAlert } from "lucide-react";
 import { useChartPreferences } from "@/hooks/useChartPreferences";
 import { useAuth } from "@/providers/AuthProvider";
@@ -54,6 +56,7 @@ const OVERLAY_CONFIGS: Record<
   string,
   { label: string; color: string; lineWidth?: 1 | 2 | 3 | 4; lineStyle?: 0 | 1 | 2 | 3 | 4; isOscillator?: boolean }
 > = {
+  // ── Moving Averages ───────────────────────────────────────────────────────
   ema_9:            { label: 'EMA 9',    color: '#f59e0b', lineWidth: 1 },
   ema_21:           { label: 'EMA 21',   color: '#f97316', lineWidth: 1 },
   ema_50:           { label: 'EMA 50',   color: '#3b82f6', lineWidth: 2 },
@@ -61,13 +64,121 @@ const OVERLAY_CONFIGS: Record<
   sma_20:           { label: 'SMA 20',   color: '#06b6d4', lineWidth: 1 },
   sma_50:           { label: 'SMA 50',   color: '#0ea5e9', lineWidth: 2 },
   sma_200:          { label: 'SMA 200',  color: '#6366f1', lineWidth: 2 },
+  wma_20:           { label: 'WMA 20',   color: '#10b981', lineWidth: 1 },
+  hma_20:           { label: 'HMA 20',   color: '#14b8a6', lineWidth: 1 },
+  dema_20:          { label: 'DEMA 20',  color: '#34d399', lineWidth: 1 },
+  tema_20:          { label: 'TEMA 20',  color: '#6ee7b7', lineWidth: 1 },
+  // ── Bollinger Bands ───────────────────────────────────────────────────────
   bollinger_upper:  { label: 'BB Upper', color: '#64748b', lineStyle: 2, lineWidth: 1 },
   bollinger_middle: { label: 'BB Mid',   color: '#94a3b8', lineWidth: 1 },
   bollinger_lower:  { label: 'BB Lower', color: '#64748b', lineStyle: 2, lineWidth: 1 },
-  rsi_14:           { label: 'RSI (14)', color: '#e879f9', lineWidth: 1, isOscillator: true },
+  // ── Keltner Channel ──────────────────────────────────────────────────────
+  keltner_upper:    { label: 'KC Upper', color: '#ec4899', lineStyle: 2, lineWidth: 1 },
+  keltner_middle:   { label: 'KC Mid',   color: '#f9a8d4', lineWidth: 1 },
+  keltner_lower:    { label: 'KC Lower', color: '#ec4899', lineStyle: 2, lineWidth: 1 },
+  // ── Donchian Channel ─────────────────────────────────────────────────────
+  donchian_upper:   { label: 'DC Upper', color: '#f43f5e', lineStyle: 2, lineWidth: 1 },
+  donchian_middle:  { label: 'DC Mid',   color: '#fda4af', lineWidth: 1 },
+  donchian_lower:   { label: 'DC Lower', color: '#f43f5e', lineStyle: 2, lineWidth: 1 },
+  // ── Ichimoku Cloud ───────────────────────────────────────────────────────
+  ichi_tenkan:      { label: 'Tenkan',   color: '#ef4444', lineWidth: 1 },
+  ichi_kijun:       { label: 'Kijun',    color: '#3b82f6', lineWidth: 1 },
+  ichi_senkou_a:    { label: 'Senkou A', color: '#22c55e', lineStyle: 2, lineWidth: 1 },
+  ichi_senkou_b:    { label: 'Senkou B', color: '#ef4444', lineStyle: 2, lineWidth: 1 },
+  ichi_chikou:      { label: 'Chikou',   color: '#a855f7', lineStyle: 1, lineWidth: 1 },
+  // ── Trend Overlays ───────────────────────────────────────────────────────
+  psar:             { label: 'PSAR',       color: '#f59e0b', lineWidth: 1, lineStyle: 1 },
+  supertrend:       { label: 'SuperTrend', color: '#22d3ee', lineWidth: 2 },
+  vwap:             { label: 'VWAP',       color: '#fb923c', lineWidth: 2 },
+  // ── Pivot Points ─────────────────────────────────────────────────────────
+  pivot:            { label: 'Pivot',  color: '#94a3b8', lineStyle: 2, lineWidth: 1 },
+  pivot_r1:         { label: 'R1',     color: '#fca5a5', lineStyle: 2, lineWidth: 1 },
+  pivot_r2:         { label: 'R2',     color: '#f87171', lineStyle: 2, lineWidth: 1 },
+  pivot_r3:         { label: 'R3',     color: '#ef4444', lineStyle: 2, lineWidth: 1 },
+  pivot_s1:         { label: 'S1',     color: '#86efac', lineStyle: 2, lineWidth: 1 },
+  pivot_s2:         { label: 'S2',     color: '#4ade80', lineStyle: 2, lineWidth: 1 },
+  pivot_s3:         { label: 'S3',     color: '#22c55e', lineStyle: 2, lineWidth: 1 },
+  // ── Fibonacci Levels ─────────────────────────────────────────────────────
+  fib_23_6:         { label: 'Fib 23.6%', color: '#c4b5fd', lineStyle: 3, lineWidth: 1 },
+  fib_38_2:         { label: 'Fib 38.2%', color: '#a78bfa', lineStyle: 3, lineWidth: 1 },
+  fib_50:           { label: 'Fib 50%',   color: '#8b5cf6', lineStyle: 3, lineWidth: 1 },
+  fib_61_8:         { label: 'Fib 61.8%', color: '#7c3aed', lineStyle: 3, lineWidth: 1 },
+  fib_78_6:         { label: 'Fib 78.6%', color: '#6d28d9', lineStyle: 3, lineWidth: 1 },
+  // ── Oscillators (sub-pane only – excluded from price overlays) ──────────
+  rsi_14:           { label: 'RSI (14)',       color: '#e879f9', lineWidth: 1, isOscillator: true },
+  macd:             { label: 'MACD',           color: '#3b82f6', lineWidth: 1, isOscillator: true },
+  macd_signal:      { label: 'MACD Signal',    color: '#ef4444', lineWidth: 1, isOscillator: true },
+  macd_histogram:   { label: 'MACD Hist',      color: '#22c55e', lineWidth: 1, isOscillator: true },
+  cci_20:           { label: 'CCI (20)',        color: '#f59e0b', lineWidth: 1, isOscillator: true },
+  williams_r:       { label: 'Williams %R',    color: '#8b5cf6', lineWidth: 1, isOscillator: true },
+  roc_12:           { label: 'ROC (12)',        color: '#06b6d4', lineWidth: 1, isOscillator: true },
+  mfi_14:           { label: 'MFI (14)',        color: '#10b981', lineWidth: 1, isOscillator: true },
+  ultimate_osc:     { label: 'Ultimate Osc',   color: '#f97316', lineWidth: 1, isOscillator: true },
+  trix_15:          { label: 'TRIX (15)',       color: '#e879f9', lineWidth: 1, isOscillator: true },
+  stochastic_k:     { label: 'Stoch %K',       color: '#3b82f6', lineWidth: 1, isOscillator: true },
+  stochastic_d:     { label: 'Stoch %D',       color: '#ef4444', lineWidth: 1, isOscillator: true },
+  adx:              { label: 'ADX',             color: '#f59e0b', lineWidth: 2, isOscillator: true },
+  adx_plus_di:      { label: '+DI',             color: '#22c55e', lineWidth: 1, isOscillator: true },
+  adx_minus_di:     { label: '-DI',             color: '#ef4444', lineWidth: 1, isOscillator: true },
+  aroon_up:         { label: 'Aroon Up',        color: '#22c55e', lineWidth: 1, isOscillator: true },
+  aroon_down:       { label: 'Aroon Down',      color: '#ef4444', lineWidth: 1, isOscillator: true },
+  aroon_osc:        { label: 'Aroon Osc',       color: '#f59e0b', lineWidth: 1, isOscillator: true },
+  elder_ray_bull:   { label: 'Elder Bull',      color: '#22c55e', lineWidth: 1, isOscillator: true },
+  elder_ray_bear:   { label: 'Elder Bear',      color: '#ef4444', lineWidth: 1, isOscillator: true },
+  obv:              { label: 'OBV',             color: '#3b82f6', lineWidth: 1, isOscillator: true },
+  cmf_20:           { label: 'CMF (20)',        color: '#06b6d4', lineWidth: 1, isOscillator: true },
+  force_index:      { label: 'Force Index',     color: '#f97316', lineWidth: 1, isOscillator: true },
+  eom_14:           { label: 'EOM (14)',        color: '#8b5cf6', lineWidth: 1, isOscillator: true },
+  pvt:              { label: 'PVT',             color: '#10b981', lineWidth: 1, isOscillator: true },
+  adosc:            { label: 'A/D Osc',         color: '#f59e0b', lineWidth: 1, isOscillator: true },
+  atr:              { label: 'ATR',             color: '#94a3b8', lineWidth: 1, isOscillator: true },
+  hist_vol_20:      { label: 'Hist Vol (20)',   color: '#64748b', lineWidth: 1, isOscillator: true },
+  chaikin_vol:      { label: 'Chaikin Vol',     color: '#475569', lineWidth: 1, isOscillator: true },
+  zscore_20:        { label: 'Z-Score (20)',    color: '#f43f5e', lineWidth: 1, isOscillator: true },
+  nvi:              { label: 'NVI',             color: '#a78bfa', lineWidth: 1, isOscillator: true },
+  pvi:              { label: 'PVI',             color: '#818cf8', lineWidth: 1, isOscillator: true },
 };
 
-const BB_COLS = ['bollinger_upper', 'bollinger_middle', 'bollinger_lower'] as const;
+const BB_COLS       = ['bollinger_upper', 'bollinger_middle', 'bollinger_lower'] as const;
+const KELTNER_COLS  = ['keltner_upper',   'keltner_middle',   'keltner_lower']   as const;
+const DONCHIAN_COLS = ['donchian_upper',  'donchian_middle',  'donchian_lower']  as const;
+const ICHI_COLS     = ['ichi_tenkan', 'ichi_kijun', 'ichi_senkou_a', 'ichi_senkou_b', 'ichi_chikou'] as const;
+const PIVOT_COLS    = ['pivot', 'pivot_r1', 'pivot_r2', 'pivot_r3', 'pivot_s1', 'pivot_s2', 'pivot_s3'] as const;
+const FIB_COLS      = ['fib_23_6', 'fib_38_2', 'fib_50', 'fib_61_8', 'fib_78_6'] as const;
+
+// ─── Oscillator sub-pane definitions ──────────────────────────────────────────
+interface OscillatorGroup {
+  key: string;
+  label: string;
+  cols: string[];
+  refLines: Array<{ price: number; color: string; label?: string }>;
+}
+
+const OSCILLATOR_GROUPS: OscillatorGroup[] = [
+  { key: 'rsi_14',      label: 'RSI (14)',      cols: ['rsi_14'],                                   refLines: [{ price: 70, color: 'rgba(239,68,68,0.5)', label: 'OB' }, { price: 30, color: 'rgba(34,197,94,0.5)', label: 'OS' }, { price: 50, color: 'rgba(100,116,139,0.3)' }] },
+  { key: 'macd',        label: 'MACD',          cols: ['macd', 'macd_signal', 'macd_histogram'],    refLines: [{ price: 0, color: 'rgba(100,116,139,0.4)' }] },
+  { key: 'stochastic',  label: 'Stochastic',    cols: ['stochastic_k', 'stochastic_d'],             refLines: [{ price: 80, color: 'rgba(239,68,68,0.5)', label: 'OB' }, { price: 20, color: 'rgba(34,197,94,0.5)', label: 'OS' }, { price: 50, color: 'rgba(100,116,139,0.3)' }] },
+  { key: 'adx',         label: 'ADX / DMI',     cols: ['adx', 'adx_plus_di', 'adx_minus_di'],       refLines: [{ price: 25, color: 'rgba(251,191,36,0.5)', label: 'Trend' }] },
+  { key: 'aroon',       label: 'Aroon',         cols: ['aroon_up', 'aroon_down', 'aroon_osc'],      refLines: [{ price: 70, color: 'rgba(239,68,68,0.3)' }, { price: 30, color: 'rgba(34,197,94,0.3)' }, { price: 50, color: 'rgba(100,116,139,0.3)' }] },
+  { key: 'elder_ray',   label: 'Elder Ray',     cols: ['elder_ray_bull', 'elder_ray_bear'],         refLines: [{ price: 0, color: 'rgba(100,116,139,0.4)' }] },
+  { key: 'cci_20',      label: 'CCI (20)',       cols: ['cci_20'],                                   refLines: [{ price: 100, color: 'rgba(239,68,68,0.5)', label: 'OB' }, { price: -100, color: 'rgba(34,197,94,0.5)', label: 'OS' }, { price: 0, color: 'rgba(100,116,139,0.3)' }] },
+  { key: 'williams_r',  label: 'Williams %R',   cols: ['williams_r'],                               refLines: [{ price: -20, color: 'rgba(239,68,68,0.5)', label: 'OB' }, { price: -80, color: 'rgba(34,197,94,0.5)', label: 'OS' }] },
+  { key: 'mfi_14',      label: 'MFI (14)',       cols: ['mfi_14'],                                   refLines: [{ price: 80, color: 'rgba(239,68,68,0.5)', label: 'OB' }, { price: 20, color: 'rgba(34,197,94,0.5)', label: 'OS' }, { price: 50, color: 'rgba(100,116,139,0.3)' }] },
+  { key: 'roc_12',      label: 'ROC (12)',       cols: ['roc_12'],                                   refLines: [{ price: 0, color: 'rgba(100,116,139,0.4)' }] },
+  { key: 'ultimate_osc',label: 'Ultimate Osc',  cols: ['ultimate_osc'],                             refLines: [{ price: 70, color: 'rgba(239,68,68,0.5)', label: 'OB' }, { price: 30, color: 'rgba(34,197,94,0.5)', label: 'OS' }, { price: 50, color: 'rgba(100,116,139,0.3)' }] },
+  { key: 'trix_15',     label: 'TRIX (15)',      cols: ['trix_15'],                                  refLines: [{ price: 0, color: 'rgba(100,116,139,0.4)' }] },
+  { key: 'obv',         label: 'OBV',            cols: ['obv'],                                      refLines: [] },
+  { key: 'cmf_20',      label: 'CMF (20)',       cols: ['cmf_20'],                                   refLines: [{ price: 0, color: 'rgba(100,116,139,0.4)' }] },
+  { key: 'force_index', label: 'Force Index',   cols: ['force_index'],                              refLines: [{ price: 0, color: 'rgba(100,116,139,0.4)' }] },
+  { key: 'eom_14',      label: 'EOM (14)',       cols: ['eom_14'],                                   refLines: [{ price: 0, color: 'rgba(100,116,139,0.4)' }] },
+  { key: 'pvt',         label: 'PVT',            cols: ['pvt'],                                      refLines: [] },
+  { key: 'adosc',       label: 'A/D Osc',        cols: ['adosc'],                                    refLines: [{ price: 0, color: 'rgba(100,116,139,0.4)' }] },
+  { key: 'atr',         label: 'ATR',            cols: ['atr'],                                      refLines: [] },
+  { key: 'hist_vol_20', label: 'Hist Vol (20)',  cols: ['hist_vol_20'],                              refLines: [] },
+  { key: 'chaikin_vol', label: 'Chaikin Vol',   cols: ['chaikin_vol'],                              refLines: [{ price: 0, color: 'rgba(100,116,139,0.4)' }] },
+  { key: 'zscore_20',   label: 'Z-Score (20)',  cols: ['zscore_20'],                                refLines: [{ price: 2, color: 'rgba(239,68,68,0.5)', label: '+2σ' }, { price: -2, color: 'rgba(34,197,94,0.5)', label: '-2σ' }, { price: 0, color: 'rgba(100,116,139,0.3)' }] },
+  { key: 'nvi_pvi',     label: 'NVI / PVI',     cols: ['nvi', 'pvi'],                               refLines: [] },
+];
 
 interface PriceChartProps {
   data: PriceData[];
@@ -110,6 +221,7 @@ export function PriceChart({ data, ticker }: PriceChartProps) {
     Record<string, Array<{ date: string; value: number | null }>>
   >({});
   const [indicatorLoading, setIndicatorLoading] = React.useState(false);
+  const [activeOscillatorKey, setActiveOscillatorKey] = React.useState<string | null>(null);
 
   const toggleIndicator = React.useCallback((col: string) => {
     setActiveIndicators((prev) =>
@@ -117,21 +229,42 @@ export function PriceChart({ data, ticker }: PriceChartProps) {
     );
   }, []);
 
-  const isBBActive = BB_COLS.every((k) => activeIndicators.includes(k));
-  const toggleBB = React.useCallback(() => {
+  // setActiveIndicators is stable, so these closures are stable too
+  const makeGroupToggle = (cols: readonly string[]) => () => {
     setActiveIndicators((prev) =>
-      BB_COLS.every((k) => prev.includes(k))
-        ? prev.filter((k2) => !(BB_COLS as readonly string[]).includes(k2))
-        : [...new Set([...prev.filter((k2) => !(BB_COLS as readonly string[]).includes(k2)), ...BB_COLS])]
+      cols.every((k) => prev.includes(k))
+        ? prev.filter((k2) => !(cols as readonly string[]).includes(k2))
+        : [...new Set([...prev.filter((k2) => !(cols as readonly string[]).includes(k2)), ...cols])]
     );
-  }, []);
+  };
+
+  const isBBActive       = BB_COLS.every((k)       => activeIndicators.includes(k));
+  const isKeltnerActive  = KELTNER_COLS.every((k)  => activeIndicators.includes(k));
+  const isDonchianActive = DONCHIAN_COLS.every((k) => activeIndicators.includes(k));
+  const isIchiActive     = ICHI_COLS.every((k)     => activeIndicators.includes(k));
+  const isPivotActive    = PIVOT_COLS.every((k)    => activeIndicators.includes(k));
+  const isFibActive      = FIB_COLS.every((k)      => activeIndicators.includes(k));
+
+  const toggleBB       = makeGroupToggle(BB_COLS);
+  const toggleKeltner  = makeGroupToggle(KELTNER_COLS);
+  const toggleDonchian = makeGroupToggle(DONCHIAN_COLS);
+  const toggleIchi     = makeGroupToggle(ICHI_COLS);
+  const togglePivot    = makeGroupToggle(PIVOT_COLS);
+  const toggleFib      = makeGroupToggle(FIB_COLS);
+
+  // Cols needed for the active oscillator group
+  const activeOscCols = React.useMemo(() => {
+    if (!activeOscillatorKey) return [] as string[];
+    return OSCILLATOR_GROUPS.find((g) => g.key === activeOscillatorKey)?.cols ?? [];
+  }, [activeOscillatorKey]);
 
   // Stable string dep so the effect doesn't re-run on every render
-  const indicatorKey = [...activeIndicators].sort().join(',');
+  const indicatorKey = [...activeIndicators, ...activeOscCols].sort().join(',');
 
   React.useEffect(() => {
-    if (!ticker || !activeIndicators.length) return;
-    const missing = activeIndicators.filter((k) => !indicatorCache[k]);
+    const allCols = [...activeIndicators, ...activeOscCols];
+    if (!ticker || !allCols.length) return;
+    const missing = allCols.filter((k) => !indicatorCache[k]);
     if (missing.length === 0) return;
 
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
@@ -333,18 +466,53 @@ export function PriceChart({ data, ticker }: PriceChartProps) {
       }));
   }, [activeIndicators, indicatorCache, filteredData]);
 
-  const rsiOverlayData = React.useMemo(() => {
-    if (!activeIndicators.includes('rsi_14') || !indicatorCache['rsi_14']) return undefined;
+  const oscillatorPaneConfig = React.useMemo((): OscillatorPaneConfig | undefined => {
+    if (!activeOscillatorKey) return undefined;
+    const group = OSCILLATOR_GROUPS.find((g) => g.key === activeOscillatorKey);
+    if (!group) return undefined;
+
     const startTime = filteredData?.length ? new Date(filteredData[0].date).getTime() / 1000 : 0;
-    const endTime = filteredData?.length ? new Date(filteredData[filteredData.length - 1].date).getTime() / 1000 : Infinity;
-    return (indicatorCache['rsi_14'] ?? [])
-      .filter((d) => {
-        if (d.value == null || Number.isNaN(d.value)) return false;
-        const t = new Date(d.date).getTime() / 1000;
-        return t >= startTime && t <= endTime;
-      })
-      .map((d) => ({ time: (new Date(d.date).getTime() / 1000) as UTCTimestamp, value: d.value as number }));
-  }, [activeIndicators, indicatorCache, filteredData]);
+    const endTime   = filteredData?.length ? new Date(filteredData[filteredData.length - 1].date).getTime() / 1000 : Infinity;
+
+    const toPoints = (col: string) =>
+      (indicatorCache[col] ?? [])
+        .filter((d) => {
+          if (d.value == null || Number.isNaN(d.value)) return false;
+          const t = new Date(d.date).getTime() / 1000;
+          return t >= startTime && t <= endTime;
+        })
+        .map((d) => ({ time: (new Date(d.date).getTime() / 1000) as UTCTimestamp, value: d.value as number }));
+
+    if (activeOscillatorKey === 'macd') {
+      const histogram = (indicatorCache['macd_histogram'] ?? [])
+        .filter((d) => {
+          if (d.value == null || Number.isNaN(d.value)) return false;
+          const t = new Date(d.date).getTime() / 1000;
+          return t >= startTime && t <= endTime;
+        })
+        .map((d) => ({
+          time: (new Date(d.date).getTime() / 1000) as UTCTimestamp,
+          value: d.value as number,
+          color: (d.value as number) >= 0 ? 'rgba(34,197,94,0.65)' : 'rgba(239,68,68,0.65)',
+        }));
+      return {
+        label: 'MACD',
+        lines: [
+          { data: toPoints('macd'),        color: '#3b82f6', lineWidth: 1 },
+          { data: toPoints('macd_signal'), color: '#ef4444', lineWidth: 1 },
+        ],
+        histogram,
+        refLines: group.refLines,
+      };
+    }
+
+    const lines = group.cols.map((col) => ({
+      data: toPoints(col),
+      color: OVERLAY_CONFIGS[col]?.color ?? '#94a3b8',
+      lineWidth: (OVERLAY_CONFIGS[col]?.lineWidth ?? 1) as 1 | 2,
+    }));
+    return { label: group.label, lines, refLines: group.refLines };
+  }, [activeOscillatorKey, indicatorCache, filteredData]);
 
   const rangeStats = React.useMemo(() => {
     if (!filteredData || filteredData.length === 0) return null;
@@ -706,9 +874,10 @@ export function PriceChart({ data, ticker }: PriceChartProps) {
                   <TrendingUp className="h-4 w-4 mr-2" />
                   Indicators{indicatorLoading && <span className="ml-1 text-[10px] text-slate-400">...</span>}
                 </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent className="w-52">
+                <DropdownMenuSubContent className="w-64 max-h-[90vh] overflow-y-auto">
+                  {/* Moving Averages */}
                   <DropdownMenuLabel className="text-xs">Moving Averages</DropdownMenuLabel>
-                  {(['ema_9','ema_21','ema_50','ema_200','sma_20','sma_50','sma_200'] as const).map((k) => (
+                  {(['ema_9','ema_21','ema_50','ema_200','sma_20','sma_50','sma_200','wma_20','hma_20','dema_20','tema_20'] as const).map((k) => (
                     <DropdownMenuCheckboxItem
                       key={k}
                       checked={activeIndicators.includes(k)}
@@ -720,25 +889,74 @@ export function PriceChart({ data, ticker }: PriceChartProps) {
                     </DropdownMenuCheckboxItem>
                   ))}
                   <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-xs">Bollinger Bands</DropdownMenuLabel>
-                  <DropdownMenuCheckboxItem
-                    checked={isBBActive}
-                    onCheckedChange={toggleBB}
-                    disabled={!ticker}
-                  >
+                  {/* Channels & Bands */}
+                  <DropdownMenuLabel className="text-xs">Channels &amp; Bands</DropdownMenuLabel>
+                  <DropdownMenuCheckboxItem checked={isBBActive} onCheckedChange={toggleBB} disabled={!ticker}>
                     <span className="mr-2 font-bold" style={{ color: OVERLAY_CONFIGS['bollinger_upper'].color }}>&#x2500;</span>
                     Bollinger Bands
                   </DropdownMenuCheckboxItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-xs">Oscillators</DropdownMenuLabel>
-                  <DropdownMenuCheckboxItem
-                    checked={activeIndicators.includes('rsi_14')}
-                    onCheckedChange={() => toggleIndicator('rsi_14')}
-                    disabled={!ticker}
-                  >
-                    <span className="mr-2 font-bold" style={{ color: OVERLAY_CONFIGS['rsi_14'].color }}>&#x2500;</span>
-                    RSI (14)
+                  <DropdownMenuCheckboxItem checked={isKeltnerActive} onCheckedChange={toggleKeltner} disabled={!ticker}>
+                    <span className="mr-2 font-bold" style={{ color: OVERLAY_CONFIGS['keltner_upper'].color }}>&#x2500;</span>
+                    Keltner Channel
                   </DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={isDonchianActive} onCheckedChange={toggleDonchian} disabled={!ticker}>
+                    <span className="mr-2 font-bold" style={{ color: OVERLAY_CONFIGS['donchian_upper'].color }}>&#x2500;</span>
+                    Donchian Channel
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuSeparator />
+                  {/* Ichimoku Cloud */}
+                  <DropdownMenuLabel className="text-xs">Ichimoku Cloud</DropdownMenuLabel>
+                  <DropdownMenuCheckboxItem checked={isIchiActive} onCheckedChange={toggleIchi} disabled={!ticker}>
+                    <span className="mr-2 font-bold" style={{ color: '#ef4444' }}>&#x2500;</span>
+                    Ichimoku Cloud
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuSeparator />
+                  {/* Trend Overlays */}
+                  <DropdownMenuLabel className="text-xs">Trend Overlays</DropdownMenuLabel>
+                  {(['psar','supertrend','vwap'] as const).map((k) => (
+                    <DropdownMenuCheckboxItem
+                      key={k}
+                      checked={activeIndicators.includes(k)}
+                      onCheckedChange={() => toggleIndicator(k)}
+                      disabled={!ticker}
+                    >
+                      <span className="mr-2 font-bold" style={{ color: OVERLAY_CONFIGS[k].color }}>&#x2500;</span>
+                      {OVERLAY_CONFIGS[k].label}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                  {/* Support & Resistance */}
+                  <DropdownMenuLabel className="text-xs">Support &amp; Resistance</DropdownMenuLabel>
+                  <DropdownMenuCheckboxItem checked={isPivotActive} onCheckedChange={togglePivot} disabled={!ticker}>
+                    <span className="mr-2 font-bold" style={{ color: OVERLAY_CONFIGS['pivot'].color }}>&#x2500;</span>
+                    Pivot Points
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuCheckboxItem checked={isFibActive} onCheckedChange={toggleFib} disabled={!ticker}>
+                    <span className="mr-2 font-bold" style={{ color: OVERLAY_CONFIGS['fib_61_8'].color }}>&#x2500;</span>
+                    Fibonacci Levels
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuSeparator />
+                  {/* Oscillator Sub-Pane */}
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <BarChart3 className="h-3 w-3 mr-2" />
+                      Oscillator Sub-Pane{activeOscillatorKey && <span className="ml-1 text-[10px] text-slate-400">(active)</span>}
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="w-52 max-h-[80vh] overflow-y-auto">
+                      <DropdownMenuLabel className="text-xs">Select Oscillator</DropdownMenuLabel>
+                      <DropdownMenuRadioGroup
+                        value={activeOscillatorKey ?? ''}
+                        onValueChange={(v) => setActiveOscillatorKey(v || null)}
+                      >
+                        <DropdownMenuRadioItem value="">None</DropdownMenuRadioItem>
+                        {OSCILLATOR_GROUPS.map((g) => (
+                          <DropdownMenuRadioItem key={g.key} value={g.key} disabled={!ticker}>
+                            {g.label}
+                          </DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
               <DropdownMenuSeparator />
@@ -1065,7 +1283,7 @@ export function PriceChart({ data, ticker }: PriceChartProps) {
               showBaselineMarker={priceDisplayMode === "rangeChange"}
               baselinePrice={rangeStats?.startPrice ?? undefined}
               overlays={overlays}
-              rsiData={rsiOverlayData}
+              oscillatorPane={oscillatorPaneConfig}
               colors={{
                 lineColor: isDark ? "#3b82f6" : "#2563eb",
                 areaTopColor: isDark ? "rgba(59, 130, 246, 0.4)" : "rgba(37, 99, 235, 0.3)",
