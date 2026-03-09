@@ -515,16 +515,16 @@ export function ChartSettingsPopover({
                   Oscillator Sub-Pane
                 </div>
                 <Select
-                  value={activeOscillatorKey || ""}
+                  value={activeOscillatorKey || "none"}
                   onValueChange={(v) =>
-                    onSetActiveOscillatorKey(v || null)
+                    onSetActiveOscillatorKey(v === "none" ? null : v)
                   }
                 >
                   <SelectTrigger className="w-full h-9">
                     <SelectValue placeholder="Select oscillator" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {oscillatorGroups.map((g) => (
                       <SelectItem key={g.key} value={g.key} disabled={!ticker}>
                         {g.label}
