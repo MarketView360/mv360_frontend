@@ -241,7 +241,7 @@ function ResultsPageContent() {
   const limit = Number(sp.get("limit") || 500);
   const offset = Number(sp.get("offset") || 0);
 
-  const { session } = useAuth();
+  const { session, loading: authLoading } = useAuth();
 
   // Tier is fetched from database by backend, not from session metadata
   const [backendTier, setBackendTier] = useState<string | null>(null);
@@ -436,6 +436,7 @@ function ResultsPageContent() {
 
     const run = async () => {
       if (!query.trim()) return;
+      if (authLoading) return; // Wait for auth to resolve before sending request
       setLoading(true);
       setStreaming(true);
       setError(null);
@@ -534,7 +535,7 @@ function ResultsPageContent() {
       active = false;
       controller.abort();
     };
-  }, [backendUrl, query, sort, limit, offset, exchange, session?.access_token]);
+  }, [backendUrl, query, sort, limit, offset, exchange, session?.access_token, authLoading]);
 
   // Sort rows
   // Backend already limits rows based on tier, so just use all rows
