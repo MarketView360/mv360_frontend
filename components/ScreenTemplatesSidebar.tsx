@@ -1,8 +1,6 @@
 "use client";
 
 import React from "react";
-import { Badge } from "@/components/ui/badge";
-import { Play } from "lucide-react";
 
 export const TEMPLATES = [
     {
@@ -109,23 +107,6 @@ export default function ScreenTemplatesSidebar({
                         </div>
                     </div>
                 ))}
-            </div>
-
-            <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
-                <h4 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-4">
-                    Your Screens
-                </h4>
-                <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-center">
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">
-                        Login to save your custom screens
-                    </p>
-                    <a
-                        href="/auth?mode=login"
-                        className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
-                    >
-                        Sign In / Register
-                    </a>
-                </div>
             </div>
         </div>
     );

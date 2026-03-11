@@ -1,6 +1,6 @@
 "use client";
 
-import { Crown, ArrowRight, Zap, Shield, Sparkles, Mail } from "lucide-react";
+import { Crown, ArrowRight, Zap, Shield, Sparkles, Mail, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
@@ -12,7 +12,7 @@ export default function BillingPage() {
         {/* Hero Section */}
         <div className="text-center space-y-6 mb-12">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand/20 border-2 border-brand">
-            <Sparkles className="h-4 w-4 text-brand" />
+            <Clock className="h-4 w-4 text-brand" />
             <span className="text-sm font-bold text-brand uppercase tracking-wide">
               Coming Soon
             </span>
@@ -81,7 +81,7 @@ export default function BillingPage() {
           <CardContent className="pt-8 pb-8">
             <div className="text-center mb-6">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-brand/20 border-2 border-brand mb-3">
-                <Sparkles className="h-6 w-6 text-brand" />
+                <Clock className="h-6 w-6 text-brand" />
               </div>
               <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">
                 What's Coming

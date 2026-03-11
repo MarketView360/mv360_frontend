@@ -1572,47 +1572,37 @@ export const KEYBOARD_SHORTCUTS = {
 };
 
 // Common query examples and templates
-// Example queries for the query builder
+// Example queries for the query builder - using verified field names from FIELD_ALIASES
 export const QUERY_EXAMPLES = [
   {
-    name: "High Market Cap",
-    query: "Market Cap > 100000000000",
-    description: "Stocks with a market capitalization greater than $100 billion.",
+    name: "Large Cap Leaders",
+    query: "Market Capitalization > 10000 AND PE > 0",
+    description: "Large cap stocks with positive earnings. Market cap in millions (>$10B).",
   },
   {
-    name: "Undervalued Growth",
-    query: "PE < 20 AND ROE > 15 AND Revenue > 1000000000",
-    description: "Companies with reasonable valuation, high return on equity, and significant revenue.",
+    name: "Value Stocks",
+    query: "PE < 15 AND PE > 0 AND ROE > 10",
+    description: "Companies with low P/E ratios, positive earnings, and decent return on equity.",
   },
   {
-    name: "Dividend Aristocrats",
-    query: "Dividend Yield > 3 AND Payout Ratio < 60",
-    description: "Sustainable dividend payers with yield over 3% and healthy payout ratio.",
+    name: "High Dividend Yield",
+    query: "Dividend Yield > 3 AND Dividend Yield < 10 AND Market Capitalization > 1000",
+    description: "Stocks with sustainable dividend yields between 3-10%.",
   },
   {
-    name: "Tech Growth",
-    query: "Sector = 'Technology' AND Revenue > 500000000 AND PE < 50",
-    description: "Technology companies with significant revenue and growth potential.",
+    name: "Growth at Reasonable Price",
+    query: "PEG Ratio < 1.5 AND PEG Ratio > 0 AND ROE > 15",
+    description: "Growth stocks with reasonable valuation (PEG < 1.5).",
   },
   {
-    name: "Deep Value",
-    query: "Price to Book Value < 1 AND PE < 15 AND Net Debt < 0",
-    description: "Stocks trading below book value with low earnings multiples and strong balance sheets.",
+    name: "Profitable Quality",
+    query: "ROE > 20 AND ROA > 10 AND Operating Margin > 15",
+    description: "High quality companies with strong profitability metrics.",
   },
   {
-    name: "Momentum",
-    query: "Price > SMA200 AND Price > SMA50 AND RSI > 50",
-    description: "Stocks in an uptrend trading above their moving averages.",
-  },
-  {
-    name: "High Quality Defensives",
-    query: "Sector = 'Healthcare' OR Sector = 'Consumer Defensive' AND ROE > 20",
-    description: "High quality companies in defensive sectors.",
-  },
-  {
-    name: "Debt Free Cash Cows",
-    query: "Long Term Debt = 0 AND Free Cash Flow > 100000000",
-    description: "Companies with zero long term debt and strong free cash flow.",
+    name: "Low Debt Companies",
+    query: "Debt to Equity < 0.5 AND Current Ratio > 1.5 AND Market Capitalization > 500",
+    description: "Financially healthy companies with low leverage and good liquidity.",
   },
 ];
 

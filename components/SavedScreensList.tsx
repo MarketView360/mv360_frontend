@@ -10,8 +10,11 @@ import {
   Trash2,
   Edit2,
   FileText,
-  ChevronRight,
   Clock,
+  LogIn,
+  UserPlus,
+  Save,
+  Info,
 } from "lucide-react";
 import {
   Dialog,
@@ -24,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 interface SavedScreensListProps {
   savedScreens: SavedScreen[];
@@ -34,6 +38,7 @@ interface SavedScreensListProps {
     updates: { name?: string; description?: string }
   ) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  isAuthenticated?: boolean;
 }
 
 export function SavedScreensList({
@@ -42,6 +47,7 @@ export function SavedScreensList({
   onRun,
   onUpdate,
   onDelete,
+  isAuthenticated = true,
 }: SavedScreensListProps) {
   const [editingScreen, setEditingScreen] = useState<SavedScreen | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -81,16 +87,61 @@ export function SavedScreensList({
     );
   }
 
+  // Show login prompt for unauthenticated users
+  if (!isAuthenticated) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-center">
+        <div className="w-16 h-16 rounded-2xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-4">
+          <Save className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+        </div>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+          Save Your Custom Screens
+        </h3>
+        <p className="text-sm text-slate-500 dark:text-slate-400 max-w-[280px] mb-6">
+          Sign in to save your queries and access them anytime from any device.
+        </p>
+        <div className="flex flex-col gap-3 w-full max-w-[200px]">
+          <Link href="/auth?mode=login">
+            <Button className="w-full bg-brand hover:bg-brand/90 text-white">
+              <LogIn className="h-4 w-4 mr-2" />
+              Sign In
+            </Button>
+          </Link>
+          <Link href="/auth?mode=register">
+            <Button variant="outline" className="w-full border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
+              <UserPlus className="h-4 w-4 mr-2" />
+              Create Account
+            </Button>
+          </Link>
+        </div>
+        <div className="mt-6 flex items-start gap-2 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 max-w-[280px]">
+          <Info className="h-4 w-4 text-slate-500 dark:text-slate-400 mt-0.5 shrink-0" />
+          <p className="text-xs text-slate-500 dark:text-slate-400 text-left">
+            Free users can save up to 5 screens. Premium users get unlimited saves.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (savedScreens.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-8 text-center">
-        <FileText className="h-12 w-12 text-slate-300 dark:text-slate-600 mb-4" />
+        <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
+          <FileText className="h-8 w-8 text-slate-400 dark:text-slate-500" />
+        </div>
         <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
           No saved screens yet
         </h3>
-        <p className="text-sm text-slate-500 dark:text-slate-400 max-w-[250px]">
+        <p className="text-sm text-slate-500 dark:text-slate-400 max-w-[250px] mb-4">
           Save your custom queries to quickly access them later
         </p>
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 max-w-[280px]">
+          <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+          <p className="text-xs text-blue-700 dark:text-blue-300 text-left">
+            Click the "Save" button in the query editor to save your first screen!
+          </p>
+        </div>
       </div>
     );
   }
@@ -122,18 +173,16 @@ export function SavedScreensList({
               </div>
 
               <div className="flex items-center gap-2 mb-3">
-                <Badge variant="secondary" className="text-xs">
+                <Badge variant="secondary" className="text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
                   {screen.exchange.toUpperCase()}
                 </Badge>
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className="text-xs border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400">
                   {screen.limit_count} results
                 </Badge>
-                {screen.last_run_at && (
-                  <div className="flex items-center gap-1 text-xs text-slate-400">
-                    <Clock className="h-3 w-3" />
-                    <span>{formatDate(screen.last_run_at)}</span>
-                  </div>
-                )}
+                <div className="flex items-center gap-1 text-xs text-slate-400">
+                  <Clock className="h-3 w-3" />
+                  <span>{formatDate(screen.created_at)}</span>
+                </div>
               </div>
 
               <div className="flex items-center gap-2">

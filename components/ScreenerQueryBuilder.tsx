@@ -76,9 +76,11 @@ interface HistoryEntry {
 export default function ScreenerQueryBuilder({
   value,
   onChange,
+  onSaveClick,
 }: {
   value: string;
   onChange: (val: string) => void;
+  onSaveClick?: () => void;
 }) {
   const { session } = useAuth();
   // Check if user has access to pro features (pro or elite tier)
@@ -1019,10 +1021,10 @@ export default function ScreenerQueryBuilder({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleSaveQuery}
+                onClick={onSaveClick || handleSaveQuery}
                 disabled={!value.trim()}
-                title="Save Query"
-                className=" bg-white border-slate-300 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                title="Save Screen"
+                className="bg-white border-slate-300 text-slate-700 hover:bg-slate-100 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
               >
                 <Save className="w-4 h-4 mr-1" />
                 Save
@@ -1032,7 +1034,7 @@ export default function ScreenerQueryBuilder({
                 disabled={isRunning || !isValidQuery || !value.trim()}
                 size="sm"
                 title="Execute Query (Ctrl+Enter, Alt+Enter)"
-                className="bg-green-100 dark:bg-green-900/50 hover:bg-green-200 dark:hover:bg-green-900/70 text-green-800 dark:text-green-400 border border-green-300 dark:border-green-700"
+                className="bg-green-600 hover:bg-green-700 text-white border border-green-700 dark:bg-green-700 dark:hover:bg-green-600 dark:border-green-600"
               >
                 {isRunning ? (
                   <Loader2 className="w-4 h-4 mr-1 animate-spin" />

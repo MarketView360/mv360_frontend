@@ -11,7 +11,6 @@ import {
   Users,
   Star,
   FolderOpen,
-  Save,
 } from "lucide-react";
 import Link from "next/link";
 import ScreenerQueryBuilder from "@/components/ScreenerQueryBuilder";
@@ -148,7 +147,7 @@ function ScreensPageContent() {
               variant="outline"
               size="sm"
               onClick={() => setShowSavedScreens(true)}
-              className="flex items-center gap-2 h-9 bg-white dark:bg-slate-800"
+              className="flex items-center gap-2 h-9 bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
             >
               <FolderOpen className="w-4 h-4" />
               <span className="hidden sm:inline">My Saved Screens</span>
@@ -159,30 +158,19 @@ function ScreensPageContent() {
               <Button
                 variant="outline"
                 size="sm"
-                className="flex items-center gap-2 h-9 bg-white dark:bg-slate-800"
+                className="flex items-center gap-2 h-9 bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
               >
                 <Star className="w-4 h-4" />
                 <span className="hidden sm:inline">Watchlists</span>
               </Button>
             </Link>
 
-            {/* Save Button */}
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => setShowSaveDialog(true)}
-              className="flex items-center gap-2 h-9 bg-brand hover:bg-brand/90"
-            >
-              <Save className="w-4 h-4" />
-              <span className="hidden sm:inline">Save</span>
-            </Button>
-
             {/* Templates Toggle Button */}
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowTemplates(!showTemplates)}
-              className={`flex items-center gap-2 h-9 ${showTemplates ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300' : 'bg-white dark:bg-slate-800'}`}
+              className={`flex items-center gap-2 h-9 ${showTemplates ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
             >
               <Layers className="w-4 h-4" />
               <span className="hidden sm:inline">Templates</span>
@@ -195,7 +183,7 @@ function ScreensPageContent() {
       <div className="mx-auto max-w-[1920px] px-4 md:px-6 lg:px-8 py-6">
         {/* Query Builder */}
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all duration-300">
-          <ScreenerQueryBuilder value={query} onChange={setQuery} />
+          <ScreenerQueryBuilder value={query} onChange={setQuery} onSaveClick={() => setShowSaveDialog(true)} />
         </div>
 
         {/* Community Card */}
@@ -250,6 +238,7 @@ function ScreensPageContent() {
                 onRun={handleRunSavedScreen}
                 onUpdate={handleUpdateScreen}
                 onDelete={handleDeleteScreen}
+                isAuthenticated={!!session}
               />
             </div>
           </div>
@@ -296,6 +285,7 @@ function ScreensPageContent() {
         maxAllowed={quotaInfo?.max_allowed || 5}
         canSave={quotaInfo?.can_save ?? true}
         quotaMessage={quotaInfo?.message || ""}
+        subscriptionTier={quotaInfo?.subscription_tier || "free"}
       />
     </div>
   );
