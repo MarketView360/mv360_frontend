@@ -9,18 +9,13 @@ export interface SavedScreen {
   name: string;
   description: string | null;
   query: string;
-  configuration: {
-    sort_order?: string;
-    limit_count?: number;
-    exchange?: string;
-  } | null;
-  is_public: boolean;
-  created_at: string;
-  updated_at: string;
-  // Computed fields for backwards compatibility
   sort_order: string;
   limit_count: number;
   exchange: string;
+  result_count: number | null;
+  last_run_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface QuotaInfo {
@@ -111,22 +106,13 @@ export function useSavedScreens(token: string | null): UseSavedScreensResult {
 
     try {
       const { data, error } = await supabase
-        .from("user_screens")
+        .from("user_saved_screens")
         .select("*")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      // Transform data to include backwards-compatible fields
-      const transformedData = (data || []).map((screen) => ({
-        ...screen,
-        query: screen.configuration?.query || "",
-        sort_order: screen.configuration?.sort_order || "market_capitalization.desc",
-        limit_count: screen.configuration?.limit_count || 50,
-        exchange: screen.configuration?.exchange || "us",
-      }));
-
-      setSavedScreens(transformedData);
+      setSavedScreens(data || []);
       await checkQuota();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch saved screens");
@@ -158,18 +144,19 @@ export function useSavedScreens(token: string | null): UseSavedScreensResult {
     }
 
     try {
+      const userId = (await supabase.auth.getUser()).data.user?.id;
+      if (!userId) throw new Error("User not authenticated");
+
       const { data: result, error } = await supabase
-        .from("user_screens")
+        .from("user_saved_screens")
         .insert({
-          user_id: (await supabase.auth.getUser()).data.user?.id,
+          user_id: userId,
           name: data.name,
           description: data.description || null,
-          configuration: {
-            query: data.query,
-            sort_order: data.sort_order || "market_capitalization.desc",
-            limit_count: data.limit_count || 50,
-            exchange: data.exchange || "us",
-          },
+          query: data.query,
+          sort_order: data.sort_order || "market_capitalization.desc",
+          limit_count: data.limit_count || 50,
+          exchange: data.exchange || "us",
         })
         .select()
         .single();
@@ -196,7 +183,7 @@ export function useSavedScreens(token: string | null): UseSavedScreensResult {
 
     try {
       const { error } = await supabase
-        .from("user_screens")
+        .from("user_saved_screens")
         .update({
           ...updates,
           updated_at: new Date().toISOString(),
@@ -224,7 +211,7 @@ export function useSavedScreens(token: string | null): UseSavedScreensResult {
 
     try {
       const { error } = await supabase
-        .from("user_screens")
+        .from("user_saved_screens")
         .delete()
         .eq("id", id);
 
