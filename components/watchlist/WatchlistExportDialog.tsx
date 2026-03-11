@@ -657,7 +657,7 @@ export function WatchlistExportDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Download className="w-5 h-5 text-brand" />
@@ -684,31 +684,31 @@ export function WatchlistExportDialog({
             <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
               Export Format
             </label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2.5">
               <button
                 type="button"
                 onClick={() => setFormat("csv")}
-                className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+                className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
                   format === "csv"
                     ? "border-brand bg-brand/10 shadow-lg ring-2 ring-brand/20"
-                    : "border-slate-200 dark:border-slate-700 hover:border-brand/30 hover:shadow-md"
+                    : "border-slate-200 dark:border-slate-700 hover:border-brand/30 hover:shadow-sm"
                 }`}
               >
                 <div
-                  className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                  className={`w-12 h-12 rounded-lg flex items-center justify-center ${
                     format === "csv"
-                      ? "bg-brand/10 text-brand"
+                      ? "bg-brand text-white"
                       : "bg-slate-100 dark:bg-slate-800 text-slate-500"
                   }`}
                 >
-                  <FileSpreadsheet className="w-5 h-5" />
+                  <FileSpreadsheet className="w-6 h-6" />
                 </div>
-                <div className="text-left">
-                  <div className="font-medium text-slate-900 dark:text-white">
+                <div className="text-center">
+                  <div className="font-semibold text-sm text-slate-900 dark:text-white">
                     CSV
                   </div>
                   <div className="text-xs text-slate-500">
-                    For import/analysis
+                    For import
                   </div>
                 </div>
               </button>
@@ -716,45 +716,49 @@ export function WatchlistExportDialog({
               <button
                 type="button"
                 onClick={() => setFormat("pdf")}
-                className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+                className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
                   format === "pdf"
                     ? "border-brand bg-brand/10 shadow-lg ring-2 ring-brand/20"
-                    : "border-slate-200 dark:border-slate-700 hover:border-brand/30 hover:shadow-md"
+                    : "border-slate-200 dark:border-slate-700 hover:border-brand/30 hover:shadow-sm"
                 }`}
               >
                 <div
-                  className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                  className={`w-12 h-12 rounded-lg flex items-center justify-center ${
                     format === "pdf"
-                      ? "bg-brand/10 text-brand"
+                      ? "bg-brand text-white"
                       : "bg-slate-100 dark:bg-slate-800 text-slate-500"
                   }`}
                 >
-                  <FileText className="w-5 h-5" />
+                  <FileText className="w-6 h-6" />
                 </div>
-                <div className="text-left">
-                  <div className="font-medium text-slate-900 dark:text-white">
+                <div className="text-center">
+                  <div className="font-semibold text-sm text-slate-900 dark:text-white">
                     PDF
                   </div>
-                  <div className="text-xs text-slate-500">For viewing/sharing</div>
+                  <div className="text-xs text-slate-500">For viewing</div>
                 </div>
               </button>
             </div>
           </div>
 
           {/* Metadata Toggle */}
-          <div className="space-y-3 p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30">
-            <div className="flex items-center gap-3">
+          <div className="space-y-2.5 p-3.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30">
+            <div className="flex items-start gap-3">
               <Checkbox
                 id="include-metadata"
                 checked={includeMetadata}
                 onCheckedChange={(checked) => setIncludeMetadata(checked === true)}
+                className="mt-0.5"
               />
-              <Label
-                htmlFor="include-metadata"
-                className="text-sm text-slate-700 dark:text-slate-300 cursor-pointer font-medium"
-              >
-                Include Metadata
-              </Label>
+              <div className="flex-1">
+                <Label
+                  htmlFor="include-metadata"
+                  className="text-sm text-slate-700 dark:text-slate-300 cursor-pointer font-medium block"
+                >
+                  Include Metadata
+                </Label>
+                <p className="text-xs text-slate-500 mt-1">Watchlist name, description, colors, dates</p>
+              </div>
             </div>
             {!includeMetadata && (
               <div className="flex items-start gap-2 p-2 rounded bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
@@ -768,43 +772,48 @@ export function WatchlistExportDialog({
 
           {/* PDF Chart Options */}
           {format === "pdf" && (
-            <div className="space-y-3 p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30">
-              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                Include Charts (Optional)
+            <div className="space-y-2.5 p-3.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30">
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                Include Charts
               </p>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
+              <div className="space-y-2.5">
+                <div className="flex items-start gap-3">
                   <Checkbox
                     id="price-chart"
                     checked={includePriceChart}
                     onCheckedChange={(checked) => setIncludePriceChart(checked === true)}
+                    className="mt-0.5"
                   />
                   <Label
                     htmlFor="price-chart"
-                    className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 cursor-pointer"
+                    className="flex-1 cursor-pointer"
                   >
-                    <TrendingUp className="w-4 h-4 text-brand" />
-                    Price Comparison Chart
+                    <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 font-medium">
+                      <TrendingUp className="w-4 h-4 text-brand" />
+                      Price Comparison
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">Bar chart comparing stock prices</p>
                   </Label>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-start gap-3">
                   <Checkbox
                     id="comparison-charts"
                     checked={includeComparisonCharts}
                     onCheckedChange={(checked) => setIncludeComparisonCharts(checked === true)}
+                    className="mt-0.5"
                   />
                   <Label
                     htmlFor="comparison-charts"
-                    className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 cursor-pointer"
+                    className="flex-1 cursor-pointer"
                   >
-                    <BarChart3 className="w-4 h-4 text-brand" />
-                    Metrics Comparison Charts
+                    <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 font-medium">
+                      <BarChart3 className="w-4 h-4 text-brand" />
+                      Metrics Comparison
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">P/E, Market Cap, Dividend charts</p>
                   </Label>
                 </div>
               </div>
-              <p className="text-xs text-slate-500">
-                Charts show visual comparisons of your watchlist stocks
-              </p>
             </div>
           )}
 
