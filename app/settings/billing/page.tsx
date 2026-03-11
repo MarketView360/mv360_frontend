@@ -134,7 +134,7 @@ export default function BillingPage() {
                 Want Early Access or Custom Features?
               </h3>
               <p className="text-base font-medium text-slate-700 dark:text-slate-300 mb-6 max-w-lg mx-auto">
-                If you'd like to try the billing system earlier and provide feedback, or need custom features, we'd love to hear from you!
+                If you'd like to try our premium plan earlier and provide feedback, or need custom features, we'd love to hear from you!
               </p>
               <Link href="/contact">
                 <Button className="bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 text-white font-bold px-6 py-4 rounded-lg border-2 border-slate-900 dark:border-white">

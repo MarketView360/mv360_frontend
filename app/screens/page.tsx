@@ -9,12 +9,18 @@ import {
   Layers,
   X,
   Users,
-  Plus,
   Star,
+  FolderOpen,
+  Save,
 } from "lucide-react";
 import Link from "next/link";
 import ScreenerQueryBuilder from "@/components/ScreenerQueryBuilder";
 import ScreenTemplatesSidebar from "@/components/ScreenTemplatesSidebar";
+import { SavedScreensList } from "@/components/SavedScreensList";
+import { SaveScreenDialog } from "@/components/SaveScreenDialog";
+import { useSavedScreens } from "@/hooks/useSavedScreens";
+import { useAuth } from "@/providers/AuthProvider";
+import { toast } from "sonner";
 
 export default function ScreensPage() {
   return (
@@ -34,18 +40,28 @@ function ScreensPageSkeleton() {
 
 function ScreensPageContent() {
   const router = useRouter();
+  const { session } = useAuth();
   const [query, setQuery] = useState(
     "Market Capitalization > 1000 AND\nPE < 25 AND\nROE > 15"
   );
   const [showTemplates, setShowTemplates] = useState(false);
+  const [showSavedScreens, setShowSavedScreens] = useState(false);
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
 
-  // Handle template selection - populate query builder and close overlay
-  // Handle template selection - directly run the query
+  const {
+    savedScreens,
+    loading: screensLoading,
+    saveScreen,
+    updateScreen,
+    deleteScreen,
+    quotaInfo,
+  } = useSavedScreens(session?.access_token || null);
+
+  // Handle template selection
   const handleTemplateSelect = (templateQuery: string) => {
     setQuery(templateQuery);
     setShowTemplates(false);
 
-    // Auto-run: Navigate to results page
     const params = new URLSearchParams({
       query: templateQuery,
       sort: "market_capitalization.desc",
@@ -54,6 +70,60 @@ function ScreensPageContent() {
       exchange: "us",
     });
     router.push(`/screens/results?${params.toString()}`);
+  };
+
+  // Handle saved screen selection
+  const handleRunSavedScreen = (screen: typeof savedScreens[0]) => {
+    setShowSavedScreens(false);
+    setQuery(screen.query);
+
+    const params = new URLSearchParams({
+      query: screen.query,
+      sort: screen.sort_order,
+      limit: String(screen.limit_count),
+      offset: String(0),
+      exchange: screen.exchange,
+    });
+    router.push(`/screens/results?${params.toString()}`);
+  };
+
+  // Handle saving a new screen
+  const handleSaveScreen = async (data: { name: string; description?: string }) => {
+    const result = await saveScreen({
+      name: data.name,
+      description: data.description,
+      query: query,
+      sort_order: "market_capitalization.desc",
+      limit_count: 50,
+      exchange: "us",
+    });
+
+    if (result.success) {
+      toast.success("Screen saved successfully!");
+    } else {
+      toast.error(result.error || "Failed to save screen");
+    }
+  };
+
+  const handleUpdateScreen = async (
+    id: string,
+    updates: { name?: string; description?: string }
+  ) => {
+    const result = await updateScreen(id, updates);
+    if (result.success) {
+      toast.success("Screen updated!");
+    } else {
+      toast.error(result.error || "Failed to update screen");
+    }
+  };
+
+  const handleDeleteScreen = async (id: string) => {
+    const result = await deleteScreen(id);
+    if (result.success) {
+      toast.success("Screen deleted!");
+    } else {
+      toast.error(result.error || "Failed to delete screen");
+    }
   };
 
   return (
@@ -72,7 +142,18 @@ function ScreensPageContent() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* My Saved Screens Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowSavedScreens(true)}
+              className="flex items-center gap-2 h-9 bg-white dark:bg-slate-800"
+            >
+              <FolderOpen className="w-4 h-4" />
+              <span className="hidden sm:inline">My Saved Screens</span>
+            </Button>
+
             {/* Watchlists Button */}
             <Link href="/watchlist">
               <Button
@@ -85,14 +166,22 @@ function ScreensPageContent() {
               </Button>
             </Link>
 
+            {/* Save Button */}
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setShowSaveDialog(true)}
+              className="flex items-center gap-2 h-9 bg-brand hover:bg-brand/90"
+            >
+              <Save className="w-4 h-4" />
+              <span className="hidden sm:inline">Save</span>
+            </Button>
+
             {/* Templates Toggle Button */}
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                console.log("Toggling templates. Current state:", showTemplates);
-                setShowTemplates(!showTemplates);
-              }}
+              onClick={() => setShowTemplates(!showTemplates)}
               className={`flex items-center gap-2 h-9 ${showTemplates ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300' : 'bg-white dark:bg-slate-800'}`}
             >
               <Layers className="w-4 h-4" />
@@ -102,9 +191,9 @@ function ScreensPageContent() {
         </div>
       </div>
 
-      {/* Main Content - 100% WIDTH */}
+      {/* Main Content */}
       <div className="mx-auto max-w-[1920px] px-4 md:px-6 lg:px-8 py-6">
-        {/* Query Builder - FULL WIDTH */}
+        {/* Query Builder */}
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all duration-300">
           <ScreenerQueryBuilder value={query} onChange={setQuery} />
         </div>
@@ -132,16 +221,48 @@ function ScreensPageContent() {
         </div>
       </div>
 
-      {/* Slide-out Templates Overlay Panel */}
+      {/* Saved Screens Sidebar Panel */}
+      {showSavedScreens && (
+        <>
+          <div
+            className="fixed inset-0 bg-slate-900/20 dark:bg-black/40 backdrop-blur-[1px] z-40 transition-opacity animate-in fade-in duration-200"
+            onClick={() => setShowSavedScreens(false)}
+          />
+          <div className="fixed right-0 top-16 bottom-0 w-80 max-w-[90vw] bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl z-50 animate-in slide-in-from-right duration-300">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
+              <h2 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                <FolderOpen className="w-4 h-4" />
+                My Saved Screens
+              </h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSavedScreens(false)}
+                className="p-1 h-7 w-7 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="h-[calc(100%-60px)]">
+              <SavedScreensList
+                savedScreens={savedScreens}
+                loading={screensLoading}
+                onRun={handleRunSavedScreen}
+                onUpdate={handleUpdateScreen}
+                onDelete={handleDeleteScreen}
+              />
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Templates Overlay Panel */}
       {showTemplates && (
         <>
-          {/* Backdrop */}
           <div
             className="fixed inset-0 bg-slate-900/20 dark:bg-black/40 backdrop-blur-[1px] z-40 transition-opacity animate-in fade-in duration-200"
             onClick={() => setShowTemplates(false)}
           />
-
-          {/* Slide-in Panel */}
           <div className="fixed right-0 top-16 bottom-0 w-80 max-w-[90vw] bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl z-50 animate-in slide-in-from-right duration-300">
             <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
               <h2 className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
@@ -164,6 +285,18 @@ function ScreensPageContent() {
           </div>
         </>
       )}
+
+      {/* Save Screen Dialog */}
+      <SaveScreenDialog
+        open={showSaveDialog}
+        onOpenChange={setShowSaveDialog}
+        onSave={handleSaveScreen}
+        query={query}
+        currentCount={quotaInfo?.current_count || 0}
+        maxAllowed={quotaInfo?.max_allowed || 5}
+        canSave={quotaInfo?.can_save ?? true}
+        quotaMessage={quotaInfo?.message || ""}
+      />
     </div>
   );
 }
