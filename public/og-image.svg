@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="ogBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e3a8a"/>
+      <stop offset="100%" style="stop-color:#172554"/>
+    </linearGradient>
+    <linearGradient id="ogChart" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#3b82f6"/>
+      <stop offset="100%" style="stop-color:#93c5fd"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#ogBg)"/>
+
+  <!-- Decorative grid lines -->
+  <g stroke="#334155" stroke-width="1" opacity="0.3">
+    <line x1="0" y1="100" x2="1200" y2="100"/>
+    <line x1="0" y1="200" x2="1200" y2="200"/>
+    <line x1="0" y1="300" x2="1200" y2="300"/>
+    <line x1="0" y1="400" x2="1200" y2="400"/>
+    <line x1="0" y1="500" x2="1200" y2="500"/>
+    <line x1="200" y1="0" x2="200" y2="630"/>
+    <line x1="400" y1="0" x2="400" y2="630"/>
+    <line x1="600" y1="0" x2="600" y2="630"/>
+    <line x1="800" y1="0" x2="800" y2="630"/>
+    <line x1="1000" y1="0" x2="1000" y2="630"/>
+  </g>
+
+  <!-- Logo Icon (large) -->
+  <g transform="translate(100, 240)">
+    <circle cx="75" cy="75" r="75" fill="url(#ogChart)"/>
+    <path d="M30 95 L50 75 L70 85 L100 55 L120 65 L150 35"
+          stroke="#ffffff" stroke-width="6" fill="none"
+          stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="50" cy="75" r="6" fill="#ffffff"/>
+    <circle cx="100" cy="55" r="6" fill="#ffffff"/>
+    <circle cx="150" cy="35" r="6" fill="#ffffff"/>
+  </g>
+
+  <!-- Main Title -->
+  <text x="520" y="220" font-family="'Inter', Arial, sans-serif" font-size="72" font-weight="700" fill="#ffffff">
+    MarketView360
+  </text>
+
+  <!-- Subtitle -->
+  <text x="520" y="290" font-family="'Inter', Arial, sans-serif" font-size="32" font-weight="400" fill="#93c5fd">
+    Professional Stock Analysis &amp; Screening
+  </text>
+
+  <!-- Feature highlights -->
+  <g transform="translate(520, 380)">
+    <!-- Feature 1 -->
+    <rect x="0" y="0" width="280" height="60" rx="8" fill="#1e40af" opacity="0.6"/>
+    <text x="30" y="38" font-family="'Inter', Arial, sans-serif" font-size="24" font-weight="500" fill="#ffffff">
+      80+ Financial Metrics
+    </text>
+
+    <!-- Feature 2 -->
+    <rect x="300" y="0" width="280" height="60" rx="8" fill="#1e40af" opacity="0.6"/>
+    <text x="330" y="38" font-family="'Inter', Arial, sans-serif" font-size="24" font-weight="500" fill="#ffffff">
+      AI-Powered Insights
+    </text>
+
+    <!-- Feature 3 -->
+    <rect x="0" y="80" width="280" height="60" rx="8" fill="#1e40af" opacity="0.6"/>
+    <text x="30" y="118" font-family="'Inter', Arial, sans-serif" font-size="24" font-weight="500" fill="#ffffff">
+      Real-Time Charts
+    </text>
+
+    <!-- Feature 4 -->
+    <rect x="300" y="80" width="280" height="60" rx="8" fill="#1e40af" opacity="0.6"/>
+    <text x="330" y="118" font-family="'Inter', Arial, sans-serif" font-size="24" font-weight="500" fill="#ffffff">
+      Advanced Screening
+    </text>
+  </g>
+
+  <!-- URL at bottom -->
+  <text x="1100" y="590" font-family="'Inter', Arial, sans-serif" font-size="24" font-weight="500" fill="#60a5fa" text-anchor="end">
+    www.marketview360.io
+  </text>
+</svg>
