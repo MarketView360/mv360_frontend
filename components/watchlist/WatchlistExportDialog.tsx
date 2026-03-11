@@ -488,7 +488,7 @@ export function WatchlistExportDialog({
     // Peers section
     if (peerData.size > 0) {
       y += 10;
-      if (y > 250) {
+      if (y > 240) {
         doc.addPage();
         addWatermarks();
         y = 20;
@@ -496,39 +496,96 @@ export function WatchlistExportDialog({
 
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
+      doc.setTextColor(0, 0, 0);
       doc.text("Peer Companies", 14, y);
       y += 8;
 
-      doc.setFontSize(8);
       const peerEntriesPDF = Array.from(peerData.entries());
       for (const [parentTicker, peers] of peerEntriesPDF) {
         if (peers.length === 0) continue;
 
-        if (y > 260) {
+        // Check if we need a new page for the section header
+        if (y > 255) {
           doc.addPage();
           addWatermarks();
           y = 20;
         }
 
+        // Section header for each stock's peers
+        doc.setFontSize(10);
         doc.setFont("helvetica", "bold");
-        doc.text(`Peers for ${parentTicker}:`, 14, y);
-        y += 5;
+        doc.setTextColor(60, 60, 60);
+        doc.text(`Peers for ${parentTicker}`, 14, y);
+        y += 6;
 
+        // Table headers
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(0, 0, 0);
+        const peerHeaders = ["Ticker", "Company Name", "Sector", "Price", "1D %", "Mkt Cap", "P/E"];
+        const peerColWidths = [18, 45, 32, 20, 18, 25, 18];
+        let peerX = 14;
+        for (let i = 0; i < peerHeaders.length; i++) {
+          doc.text(peerHeaders[i], peerX, y);
+          peerX += peerColWidths[i];
+        }
+        y += 4;
+
+        // Draw header line
+        doc.setDrawColor(200, 200, 200);
+        doc.line(14, y, pageWidth - 14, y);
+        y += 4;
+
+        // Peer rows
         doc.setFont("helvetica", "normal");
-        for (const peer of peers.slice(0, 3)) {
+        for (const peer of peers.slice(0, 5)) {
           if (y > 270) {
             doc.addPage();
             addWatermarks();
             y = 20;
+            
+            // Redraw headers on new page
+            doc.setFontSize(8);
+            doc.setFont("helvetica", "bold");
+            peerX = 14;
+            for (let i = 0; i < peerHeaders.length; i++) {
+              doc.text(peerHeaders[i], peerX, y);
+              peerX += peerColWidths[i];
+            }
+            y += 4;
+            doc.setDrawColor(200, 200, 200);
+            doc.line(14, y, pageWidth - 14, y);
+            y += 4;
+            doc.setFont("helvetica", "normal");
           }
-          doc.text(
-            `  ${peer.ticker} - ${peer.name?.substring(0, 30) || ""} | ${formatMarketCap(peer.market_cap)} | P/E: ${peer.pe_ratio?.toFixed(2) || "—"}`,
-            14,
-            y
-          );
-          y += 4;
+
+          peerX = 14;
+          doc.text(peer.ticker, peerX, y);
+          peerX += peerColWidths[0];
+          doc.text((peer.name || "").substring(0, 25), peerX, y);
+          peerX += peerColWidths[1];
+          doc.text((peer.sector || "—").substring(0, 18), peerX, y);
+          peerX += peerColWidths[2];
+          doc.text(peer.price != null ? `$${peer.price.toFixed(2)}` : "—", peerX, y);
+          peerX += peerColWidths[3];
+
+          // Color change percentage
+          const peerChange1d = peer.price_change_1d;
+          if (peerChange1d != null) {
+            doc.setTextColor(peerChange1d >= 0 ? 0 : 200, peerChange1d >= 0 ? 150 : 0, 0);
+            doc.text(`${peerChange1d >= 0 ? "+" : ""}${peerChange1d.toFixed(2)}%`, peerX, y);
+            doc.setTextColor(0, 0, 0);
+          } else {
+            doc.text("—", peerX, y);
+          }
+          peerX += peerColWidths[4];
+          doc.text(formatMarketCap(peer.market_cap ?? null), peerX, y);
+          peerX += peerColWidths[5];
+          doc.text(peer.pe_ratio != null ? peer.pe_ratio.toFixed(2) : "—", peerX, y);
+
+          y += 5;
         }
-        y += 3;
+        y += 5; // Extra space between different stocks' peer tables
       }
     }
 
