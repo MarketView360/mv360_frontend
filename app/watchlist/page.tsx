@@ -44,7 +44,10 @@ import { AddStockSearch } from "@/components/watchlist/AddStockSearch";
 import { SimilarStocks } from "@/components/watchlist/SimilarStocks";
 import { WatchlistNews } from "@/components/watchlist/WatchlistNews";
 import { AnalyzeWithAI } from "@/components/watchlist/AnalyzeWithAI";
+import { WatchlistExportDialog } from "@/components/watchlist/WatchlistExportDialog";
+import { WatchlistImportDialog } from "@/components/watchlist/WatchlistImportDialog";
 import { cleanTicker } from "@/lib/watchlist-utils";
+import { toast } from "sonner";
 
 export default function WatchlistPage() {
   return (
@@ -98,6 +101,8 @@ function WatchlistPageContent() {
   const [showCompare, setShowCompare] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [stockMetrics, setStockMetrics] = useState<Map<string, StockRowData>>(new Map());
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
 
   // Auto-select first watchlist
   useEffect(() => {
@@ -142,8 +147,8 @@ function WatchlistPageContent() {
     setDialogTarget(null);
   };
 
-  const handleRemoveStock = async (watchlistId: string, ticker: string) => {
-    await removeFromWatchlist(watchlistId, ticker);
+  const handleRemoveStock = async (watchlistId: string, ticker: string): Promise<boolean> => {
+    return await removeFromWatchlist(watchlistId, ticker);
   };
 
   const handleBulkRemove = async () => {
@@ -165,8 +170,9 @@ function WatchlistPageContent() {
 
   const handleAddPeersToComparison = (tickers: string[]) => {
     setCompareTickers(prev => {
-      const newTickers = [...new Set([...prev, ...tickers])];
-      return newTickers;
+      const combined = [...prev, ...tickers];
+      const unique = combined.filter((t, i) => combined.indexOf(t) === i);
+      return unique;
     });
     setShowCompare(true);
   };
@@ -178,103 +184,90 @@ function WatchlistPageContent() {
     setShowCompare(false);
   }, [activeId]);
 
-  const exportWatchlistCsv = (watchlist: WatchlistWithItems) => {
-    const header = "Ticker,Name,Sector,Price,Change_1D,Change_5D,Change_1M,Change_3M,Change_1Y,Notes,Added_Date";
-    const rows = watchlist.items.map((item) => {
-      const ticker = item.ticker.replace(/\.US$/i, "").toUpperCase();
-      const notes = (item.notes || "").replace(/"/g, '""');
-      const date = item.added_at ? new Date(item.added_at).toISOString().split('T')[0] : "";
-      return `${ticker},"","","","","","","","","${notes}",${date}`;
-    });
-    const csv = [header, ...rows].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${watchlist.name.replace(/\s+/g, "_")}_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
+  // Import handlers
+  const handleImportToExisting = async (
+    watchlistId: string,
+    stocks: Array<{ ticker: string; notes?: string }>
+  ): Promise<{ added: number; skipped: number; errors: number }> => {
+    let added = 0;
+    let skipped = 0;
+    let errors = 0;
 
-  const importWatchlistCsv = async (watchlist: WatchlistWithItems) => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".csv";
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
+    const watchlist = watchlists.find((w) => w.id === watchlistId);
+    const existingTickers = new Set(
+      watchlist?.items.map((i) => cleanTicker(i.ticker)) || []
+    );
+
+    for (const stock of stocks) {
+      const ticker = cleanTicker(stock.ticker);
       
+      // Skip duplicates
+      if (existingTickers.has(ticker)) {
+        skipped++;
+        continue;
+      }
+
       try {
-        const text = await file.text();
-        const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
-        
-        // Detect if first line is a header
-        const startIdx = lines[0]?.toLowerCase().includes("ticker") ? 1 : 0;
-        
-        let added = 0;
-        let skipped = 0;
-        let errors = 0;
-        
-        setActionLoading(true);
-        
-        for (let i = startIdx; i < lines.length; i++) {
-          // Handle CSV with quoted fields
-          const parts = lines[i].match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g) || [];
-          const ticker = parts[0]?.trim().replace(/^"(.*)"$/, '$1').replace(/"/g, '').toUpperCase();
-          
-          if (!ticker || ticker.length === 0) {
-            continue;
-          }
-          
-          // Check if already exists
-          const existing = watchlist.items.some(
-            (it) => cleanTicker(it.ticker) === cleanTicker(ticker)
-          );
-          
-          if (existing) {
-            skipped++;
-            continue;
-          }
-          
-          try {
-            // Add small delay to avoid rate limiting
-            if (added > 0 && added % 5 === 0) {
-              await new Promise(resolve => setTimeout(resolve, 500));
-            }
-            
-            const ok = await addToWatchlist(watchlist.id, ticker);
-            if (ok) {
-              added++;
-            } else {
-              errors++;
-            }
-          } catch (err) {
-            console.error(`Failed to add ${ticker}:`, err);
-            errors++;
-          }
+        // Add small delay to avoid rate limiting
+        if (added > 0 && added % 5 === 0) {
+          await new Promise((resolve) => setTimeout(resolve, 300));
         }
-        
-        setActionLoading(false);
-        
-        // Show summary
-        const { toast } = await import("sonner");
-        if (added > 0) {
-          toast.success(`Imported ${added} stock${added !== 1 ? 's' : ''}${skipped > 0 ? ` (${skipped} skipped - already in watchlist)` : ''}${errors > 0 ? ` (${errors} failed)` : ''}`);
-        } else if (skipped > 0) {
-          toast.info(`All ${skipped} stocks are already in the watchlist`);
+
+        const ok = await addToWatchlist(watchlistId, ticker, stock.notes);
+        if (ok) {
+          added++;
+          existingTickers.add(ticker);
         } else {
-          toast.error(`Failed to import stocks${errors > 0 ? ` (${errors} errors)` : ''}`);
+          errors++;
         }
       } catch (err) {
-        setActionLoading(false);
-        const { toast } = await import("sonner");
-        toast.error('Failed to parse CSV file');
-        console.error('CSV import error:', err);
+        console.error(`Failed to add ${ticker}:`, err);
+        errors++;
       }
-    };
-    input.click();
+    }
+
+    return { added, skipped, errors };
+  };
+
+  const handleImportToNew = async (
+    name: string,
+    description: string,
+    color: string,
+    stocks: Array<{ ticker: string; notes?: string }>
+  ): Promise<{ watchlistId: string | null; added: number; errors: number }> => {
+    // Create the new watchlist first
+    const newWatchlist = await createWatchlist(name, description, color);
+    
+    if (!newWatchlist) {
+      return { watchlistId: null, added: 0, errors: 0 };
+    }
+
+    let added = 0;
+    let errors = 0;
+
+    for (const stock of stocks) {
+      try {
+        // Add small delay to avoid rate limiting
+        if (added > 0 && added % 5 === 0) {
+          await new Promise((resolve) => setTimeout(resolve, 300));
+        }
+
+        const ok = await addToWatchlist(newWatchlist.id, cleanTicker(stock.ticker), stock.notes);
+        if (ok) {
+          added++;
+        } else {
+          errors++;
+        }
+      } catch (err) {
+        console.error(`Failed to add ${stock.ticker}:`, err);
+        errors++;
+      }
+    }
+
+    // Select the newly created watchlist
+    setActiveId(newWatchlist.id);
+
+    return { watchlistId: newWatchlist.id, added, errors };
   };
 
   // --- Sidebar content (shared between desktop and mobile) ---
@@ -568,11 +561,11 @@ function WatchlistPageContent() {
                         <Pencil className="w-4 h-4 mr-2" /> Edit
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => exportWatchlistCsv(activeWatchlist)}>
-                        <Download className="w-4 h-4 mr-2" /> Export CSV
+                      <DropdownMenuItem onClick={() => setShowExportDialog(true)}>
+                        <Download className="w-4 h-4 mr-2" /> Export
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => importWatchlistCsv(activeWatchlist)}>
-                        <Upload className="w-4 h-4 mr-2" /> Import CSV
+                      <DropdownMenuItem onClick={() => setShowImportDialog(true)}>
+                        <Upload className="w-4 h-4 mr-2" /> Import
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
@@ -808,6 +801,24 @@ function WatchlistPageContent() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Export Dialog */}
+      {activeWatchlist && (
+        <WatchlistExportDialog
+          open={showExportDialog}
+          onOpenChange={setShowExportDialog}
+          watchlist={activeWatchlist}
+        />
+      )}
+
+      {/* Import Dialog */}
+      <WatchlistImportDialog
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+        watchlists={watchlists}
+        onImportToExisting={handleImportToExisting}
+        onImportToNew={handleImportToNew}
+      />
     </div>
   );
 }
