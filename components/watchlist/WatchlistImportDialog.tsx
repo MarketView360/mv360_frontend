@@ -422,21 +422,21 @@ export function WatchlistImportDialog({
         );
 
         if (result.watchlistId) {
-          setStatus("success");
-          setStatusMessage(
-            `Created watchlist with ${result.added} stock${result.added !== 1 ? "s" : ""}${result.errors > 0 ? ` (${result.errors} failed)` : ""}`
-          );
+          // Import to toast library
+          const { toast } = await import("sonner");
+          
+          // Close dialog immediately
+          handleClose();
+          
+          // Show success toast
+          toast.success("Watchlist Created!", {
+            description: `Added ${result.added} stock${result.added !== 1 ? "s" : ""} to "${newWatchlistName.trim()}"${result.errors > 0 ? `. ${result.errors} failed to import.` : "."}`,
+            duration: 4000,
+          });
         } else {
           setStatus("error");
           setStatusMessage("Failed to create watchlist");
         }
-      }
-
-      // Auto-close after success
-      if (status === "success") {
-        setTimeout(() => {
-          handleClose();
-        }, 2000);
       }
     } catch (err) {
       console.error("Import error:", err);
@@ -471,7 +471,7 @@ export function WatchlistImportDialog({
             Import Watchlist
           </DialogTitle>
           <DialogDescription>
-            Import stocks from a CSV file exported from this app or a simple
+            Import stocks from a CSV file exported from MarketView360 or a simple
             ticker list.
           </DialogDescription>
         </DialogHeader>

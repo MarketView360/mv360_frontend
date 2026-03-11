@@ -84,10 +84,36 @@ export function WatchlistExportDialog({
   const [stockData, setStockData] = useState<Map<string, StockData>>(new Map());
   const [peerData, setPeerData] = useState<Map<string, PeerData[]>>(new Map());
   const [dataLoading, setDataLoading] = useState(false);
+  const [loadingPhrase, setLoadingPhrase] = useState("");
   
   // PDF chart options
   const [includePriceChart, setIncludePriceChart] = useState(true);
   const [includeComparisonCharts, setIncludeComparisonCharts] = useState(true);
+  const [includeMetadata, setIncludeMetadata] = useState(true);
+
+  // Rotating loading phrases
+  useEffect(() => {
+    if (!dataLoading) return;
+
+    const phrases = [
+      "Gathering stock data...",
+      "Fetching peer companies...",
+      "Analyzing metrics...",
+      "Almost there...",
+      "Final touches...",
+      "Structuring data...",
+    ];
+
+    let index = 0;
+    setLoadingPhrase(phrases[0]);
+
+    const interval = setInterval(() => {
+      index = (index + 1) % phrases.length;
+      setLoadingPhrase(phrases[index]);
+    }, 3500);
+
+    return () => clearInterval(interval);
+  }, [dataLoading]);
 
   // Fetch stock data and peers when dialog opens
   useEffect(() => {
@@ -206,14 +232,16 @@ export function WatchlistExportDialog({
     const lines: string[] = [];
     const exportDate = new Date().toISOString();
 
-    // Metadata section
-    lines.push("# WATCHLIST EXPORT");
-    lines.push(`# Watchlist Name: ${watchlist.name}`);
-    lines.push(`# Description: ${watchlist.description || ""}`);
-    lines.push(`# Export Date: ${exportDate}`);
-    lines.push(`# Total Stocks: ${watchlist.items.length}`);
-    lines.push(`# Color: ${watchlist.color}`);
-    lines.push("");
+    // Metadata section (optional)
+    if (includeMetadata) {
+      lines.push("# WATCHLIST EXPORT");
+      lines.push(`# Watchlist Name: ${watchlist.name}`);
+      lines.push(`# Description: ${watchlist.description || ""}`);
+      lines.push(`# Export Date: ${exportDate}`);
+      lines.push(`# Total Stocks: ${watchlist.items.length}`);
+      lines.push(`# Color: ${watchlist.color}`);
+      lines.push("");
+    }
 
     // Stock data section
     lines.push("## STOCKS");
@@ -284,7 +312,7 @@ export function WatchlistExportDialog({
       lines.push(row.join(","));
     }
 
-    // Peer data section
+    // Peers section
     lines.push("");
     lines.push("## PEERS");
     const peerHeaders = [
@@ -302,7 +330,8 @@ export function WatchlistExportDialog({
     ];
     lines.push(peerHeaders.join(","));
 
-    for (const [parentTicker, peers] of peerData.entries()) {
+    const peerEntries = Array.from(peerData.entries());
+    for (const [parentTicker, peers] of peerEntries) {
       for (const peer of peers) {
         const row = [
           "PEER",
@@ -332,28 +361,30 @@ export function WatchlistExportDialog({
     const pageWidth = doc.internal.pageSize.getWidth();
     let y = 20;
 
-    // Title
-    doc.setFontSize(20);
-    doc.setFont("helvetica", "bold");
-    doc.text(watchlist.name, pageWidth / 2, y, { align: "center" });
-    y += 10;
+    // Title and metadata (optional)
+    if (includeMetadata) {
+      doc.setFontSize(20);
+      doc.setFont("helvetica", "bold");
+      doc.text(watchlist.name, pageWidth / 2, y, { align: "center" });
+      y += 10;
 
-    // Metadata
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Exported: ${new Date().toLocaleDateString()}`, pageWidth / 2, y, {
-      align: "center",
-    });
-    y += 5;
-    if (watchlist.description) {
-      doc.text(watchlist.description, pageWidth / 2, y, { align: "center" });
+      // Metadata
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Exported: ${new Date().toLocaleDateString()}`, pageWidth / 2, y, {
+        align: "center",
+      });
       y += 5;
+      if (watchlist.description) {
+        doc.text(watchlist.description, pageWidth / 2, y, { align: "center" });
+        y += 5;
+      }
+      doc.text(`${watchlist.items.length} stocks`, pageWidth / 2, y, {
+        align: "center",
+      });
+      y += 15;
     }
-    doc.text(`${watchlist.items.length} stocks`, pageWidth / 2, y, {
-      align: "center",
-    });
-    y += 15;
 
     // Stocks table header
     doc.setTextColor(0, 0, 0);
@@ -431,7 +462,8 @@ export function WatchlistExportDialog({
       y += 8;
 
       doc.setFontSize(8);
-      for (const [parentTicker, peers] of peerData.entries()) {
+      const peerEntriesPDF = Array.from(peerData.entries());
+      for (const [parentTicker, peers] of peerEntriesPDF) {
         if (peers.length === 0) continue;
 
         if (y > 260) {
@@ -534,7 +566,7 @@ export function WatchlistExportDialog({
 
         // Get max value for this metric
         const values = Array.from(stockData.values()).map((d) => {
-          const val = (d as Record<string, unknown>)[metric.key] as number | null;
+          const val = (d as any)[metric.key] as number | null;
           return metric.divisor ? (val || 0) / metric.divisor : val || 0;
         });
         const maxVal = Math.max(...values, 0.01);
@@ -543,7 +575,7 @@ export function WatchlistExportDialog({
         for (const item of watchlist.items.slice(0, 8)) {
           const ticker = cleanTicker(item.ticker);
           const data = stockData.get(ticker);
-          let val = (data as Record<string, unknown> | undefined)?.[metric.key] as number | null;
+          let val = (data as any)?.[metric.key] as number | null;
           if (metric.divisor && val) val = val / metric.divisor;
 
           const barWidth = maxVal > 0 ? ((val || 0) / maxVal) * (chartWidth - 25) : 0;
@@ -639,9 +671,11 @@ export function WatchlistExportDialog({
         <div className="py-4 space-y-4">
           {/* Data loading indicator */}
           {dataLoading && (
-            <div className="flex items-center gap-2 text-sm text-slate-500">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Loading stock data and peers...
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+              <Loader2 className="w-4 h-4 animate-spin text-brand" />
+              <span className="text-sm text-blue-700 dark:text-blue-300 font-medium">
+                {loadingPhrase}
+              </span>
             </div>
           )}
 
@@ -656,8 +690,8 @@ export function WatchlistExportDialog({
                 onClick={() => setFormat("csv")}
                 className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
                   format === "csv"
-                    ? "border-brand bg-brand/5 shadow-sm"
-                    : "border-slate-200 dark:border-slate-700 hover:border-brand/30"
+                    ? "border-brand bg-brand/10 shadow-lg ring-2 ring-brand/20"
+                    : "border-slate-200 dark:border-slate-700 hover:border-brand/30 hover:shadow-md"
                 }`}
               >
                 <div
@@ -684,8 +718,8 @@ export function WatchlistExportDialog({
                 onClick={() => setFormat("pdf")}
                 className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
                   format === "pdf"
-                    ? "border-brand bg-brand/5 shadow-sm"
-                    : "border-slate-200 dark:border-slate-700 hover:border-brand/30"
+                    ? "border-brand bg-brand/10 shadow-lg ring-2 ring-brand/20"
+                    : "border-slate-200 dark:border-slate-700 hover:border-brand/30 hover:shadow-md"
                 }`}
               >
                 <div
@@ -705,6 +739,31 @@ export function WatchlistExportDialog({
                 </div>
               </button>
             </div>
+          </div>
+
+          {/* Metadata Toggle */}
+          <div className="space-y-3 p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30">
+            <div className="flex items-center gap-3">
+              <Checkbox
+                id="include-metadata"
+                checked={includeMetadata}
+                onCheckedChange={(checked) => setIncludeMetadata(checked === true)}
+              />
+              <Label
+                htmlFor="include-metadata"
+                className="text-sm text-slate-700 dark:text-slate-300 cursor-pointer font-medium"
+              >
+                Include Metadata
+              </Label>
+            </div>
+            {!includeMetadata && (
+              <div className="flex items-start gap-2 p-2 rounded bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  <strong>Note:</strong> Removing metadata makes the export unsuitable for re-importing but ideal for external analysis tools.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* PDF Chart Options */}
