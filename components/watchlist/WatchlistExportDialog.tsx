@@ -19,7 +19,11 @@ import {
   CheckCircle,
   AlertCircle,
   Info,
+  BarChart3,
+  TrendingUp,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import type { WatchlistWithItems } from "@/providers/WatchlistProvider";
 import { cleanTicker } from "@/lib/watchlist-utils";
 
@@ -80,6 +84,10 @@ export function WatchlistExportDialog({
   const [stockData, setStockData] = useState<Map<string, StockData>>(new Map());
   const [peerData, setPeerData] = useState<Map<string, PeerData[]>>(new Map());
   const [dataLoading, setDataLoading] = useState(false);
+  
+  // PDF chart options
+  const [includePriceChart, setIncludePriceChart] = useState(true);
+  const [includeComparisonCharts, setIncludeComparisonCharts] = useState(true);
 
   // Fetch stock data and peers when dialog opens
   useEffect(() => {
@@ -452,6 +460,114 @@ export function WatchlistExportDialog({
       }
     }
 
+    // Price Comparison Chart (if selected)
+    if (includePriceChart && watchlist.items.length > 1) {
+      doc.addPage();
+      y = 20;
+
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(0, 0, 0);
+      doc.text("Price Comparison", 14, y);
+      y += 10;
+
+      // Draw a simple bar chart for prices
+      const chartWidth = pageWidth - 28;
+      const barHeight = 12;
+      const maxPrice = Math.max(
+        ...Array.from(stockData.values()).map((d) => d.price || 0)
+      );
+
+      doc.setFontSize(8);
+      for (const item of watchlist.items.slice(0, 10)) {
+        const ticker = cleanTicker(item.ticker);
+        const data = stockData.get(ticker);
+        const price = data?.price || 0;
+        const barWidth = maxPrice > 0 ? (price / maxPrice) * (chartWidth - 60) : 0;
+
+        // Ticker label
+        doc.setFont("helvetica", "bold");
+        doc.text(ticker, 14, y + barHeight / 2 + 2);
+
+        // Bar
+        doc.setFillColor(59, 130, 246); // brand blue
+        doc.rect(50, y, barWidth, barHeight - 2, "F");
+
+        // Price label
+        doc.setFont("helvetica", "normal");
+        doc.text(`$${price.toFixed(2)}`, 52 + barWidth, y + barHeight / 2 + 2);
+
+        y += barHeight + 4;
+      }
+    }
+
+    // Metrics Comparison Charts (if selected)
+    if (includeComparisonCharts && watchlist.items.length > 1) {
+      doc.addPage();
+      y = 20;
+
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(0, 0, 0);
+      doc.text("Metrics Comparison", 14, y);
+      y += 15;
+
+      const metrics = [
+        { key: "pe_ratio", label: "P/E Ratio", color: [59, 130, 246] },
+        { key: "market_cap", label: "Market Cap (B)", divisor: 1e9, color: [16, 185, 129] },
+        { key: "dividend_yield", label: "Dividend Yield %", color: [245, 158, 11] },
+      ];
+
+      const chartWidth = (pageWidth - 42) / 3;
+
+      for (let m = 0; m < metrics.length; m++) {
+        const metric = metrics[m];
+        const startX = 14 + m * (chartWidth + 7);
+
+        // Metric title
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "bold");
+        doc.text(metric.label, startX, y);
+
+        let chartY = y + 8;
+        const barHeight = 8;
+
+        // Get max value for this metric
+        const values = Array.from(stockData.values()).map((d) => {
+          const val = (d as Record<string, unknown>)[metric.key] as number | null;
+          return metric.divisor ? (val || 0) / metric.divisor : val || 0;
+        });
+        const maxVal = Math.max(...values, 0.01);
+
+        doc.setFontSize(6);
+        for (const item of watchlist.items.slice(0, 8)) {
+          const ticker = cleanTicker(item.ticker);
+          const data = stockData.get(ticker);
+          let val = (data as Record<string, unknown> | undefined)?.[metric.key] as number | null;
+          if (metric.divisor && val) val = val / metric.divisor;
+
+          const barWidth = maxVal > 0 ? ((val || 0) / maxVal) * (chartWidth - 25) : 0;
+
+          // Ticker
+          doc.setFont("helvetica", "normal");
+          doc.text(ticker.substring(0, 4), startX, chartY + barHeight / 2 + 1);
+
+          // Bar
+          doc.setFillColor(metric.color[0], metric.color[1], metric.color[2]);
+          doc.rect(startX + 18, chartY, Math.max(barWidth, 1), barHeight - 2, "F");
+
+          // Value
+          doc.text(
+            val != null ? val.toFixed(2) : "—",
+            startX + 20 + Math.max(barWidth, 1),
+            chartY + barHeight / 2 + 1
+          );
+
+          chartY += barHeight + 2;
+        }
+      }
+    }
+
     // Footer on last page
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
@@ -591,6 +707,48 @@ export function WatchlistExportDialog({
             </div>
           </div>
 
+          {/* PDF Chart Options */}
+          {format === "pdf" && (
+            <div className="space-y-3 p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30">
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Include Charts (Optional)
+              </p>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    id="price-chart"
+                    checked={includePriceChart}
+                    onCheckedChange={(checked) => setIncludePriceChart(checked === true)}
+                  />
+                  <Label
+                    htmlFor="price-chart"
+                    className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 cursor-pointer"
+                  >
+                    <TrendingUp className="w-4 h-4 text-brand" />
+                    Price Comparison Chart
+                  </Label>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    id="comparison-charts"
+                    checked={includeComparisonCharts}
+                    onCheckedChange={(checked) => setIncludeComparisonCharts(checked === true)}
+                  />
+                  <Label
+                    htmlFor="comparison-charts"
+                    className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 cursor-pointer"
+                  >
+                    <BarChart3 className="w-4 h-4 text-brand" />
+                    Metrics Comparison Charts
+                  </Label>
+                </div>
+              </div>
+              <p className="text-xs text-slate-500">
+                Charts show visual comparisons of your watchlist stocks
+              </p>
+            </div>
+          )}
+
           {/* Export contents info */}
           <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
             <div className="flex items-start gap-2">
@@ -604,6 +762,9 @@ export function WatchlistExportDialog({
                   <li>• Peer companies for each stock</li>
                   <li>• Current prices and changes</li>
                   <li>• Watchlist metadata and notes</li>
+                  {format === "pdf" && (includePriceChart || includeComparisonCharts) && (
+                    <li className="text-brand">• Visual comparison charts</li>
+                  )}
                 </ul>
                 {format === "csv" && (
                   <p className="mt-2 text-brand">

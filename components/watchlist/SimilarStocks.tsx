@@ -224,108 +224,114 @@ export function SimilarStocks({ watchlist, onAddToComparison }: SimilarStocksPro
           No similar stocks found
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50/50 dark:bg-slate-800/30">
-              <tr className="border-b border-slate-200 dark:border-slate-700">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                  Company
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                  Price
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                  1D Change
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                  Market Cap
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                  P/E
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                  Fwd P/E
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                  Sector
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {peers.map((peer, idx) => (
-                <tr
-                  key={peer.ticker}
-                  className={`${idx % 2 === 0 ? '' : 'bg-slate-50/30 dark:bg-slate-800/10'} hover:bg-slate-100/50 dark:hover:bg-slate-800/30 transition-colors`}
-                >
-                  <td className="px-4 py-3">
-                    <Link href={`/company/${peer.ticker}`} className="flex items-center gap-2 group">
-                      <CompanyLogo ticker={peer.ticker} name={peer.name} size="sm" />
-                      <div className="min-w-0">
-                        <div className="font-medium text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">
-                          {peer.ticker}
-                        </div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[150px]">
-                          {peer.name}
-                        </div>
-                      </div>
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300">
-                    {peer.price != null ? `$${peer.price.toFixed(2)}` : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {peer.refund_1d_p != null ? (
-                      <span className={`font-mono font-semibold ${peer.refund_1d_p >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                        {peer.refund_1d_p >= 0 ? '+' : ''}{peer.refund_1d_p.toFixed(2)}%
-                      </span>
-                    ) : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300">
-                    {formatMarketCap(peer.market_capitalization)}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300">
-                    {peer.pe_ratio != null ? peer.pe_ratio.toFixed(2) : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300">
-                    {peer.forward_pe != null ? peer.forward_pe.toFixed(2) : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300">
-                    {peer.sector || '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 gap-1 text-xs"
-                        onClick={() => onAddToComparison?.([peer.ticker])}
-                        disabled={!onAddToComparison}
-                      >
-                        <GitCompareArrows className="w-3 h-3" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 px-2 gap-1 text-xs"
-                        onClick={() => handleAddStock(peer.ticker)}
-                        disabled={addingTicker === peer.ticker}
-                      >
-                        {addingTicker === peer.ticker ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : (
-                          <Plus className="w-3 h-3" />
-                        )}
-                        Add
-                      </Button>
-                    </div>
-                  </td>
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
+          <div className="min-w-[600px] sm:min-w-0">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50/50 dark:bg-slate-800/30">
+                <tr className="border-b border-slate-200 dark:border-slate-700">
+                  <th className="px-3 sm:px-4 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                    Company
+                  </th>
+                  <th className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                    Price
+                  </th>
+                  <th className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider hidden sm:table-cell">
+                    1D
+                  </th>
+                  <th className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider hidden md:table-cell">
+                    Mkt Cap
+                  </th>
+                  <th className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider hidden lg:table-cell">
+                    P/E
+                  </th>
+                  <th className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider hidden xl:table-cell">
+                    Fwd P/E
+                  </th>
+                  <th className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider hidden xl:table-cell">
+                    Sector
+                  </th>
+                  <th className="px-2 sm:px-4 py-3 text-right text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider whitespace-nowrap">
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {peers.map((peer, idx) => (
+                  <tr
+                    key={peer.ticker}
+                    className={`${idx % 2 === 0 ? '' : 'bg-slate-50/30 dark:bg-slate-800/10'} hover:bg-slate-100/50 dark:hover:bg-slate-800/30 transition-colors`}
+                  >
+                    <td className="px-3 sm:px-4 py-3">
+                      <Link href={`/company/${peer.ticker}`} className="flex items-center gap-2 group">
+                        <CompanyLogo ticker={peer.ticker} name={peer.name} size="sm" />
+                        <div className="min-w-0">
+                          <div className="font-medium text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">
+                            {peer.ticker}
+                          </div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[100px] sm:max-w-[150px]">
+                            {peer.name}
+                          </div>
+                        </div>
+                      </Link>
+                    </td>
+                    <td className="px-2 sm:px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 text-xs sm:text-sm">
+                      {peer.price != null ? `$${peer.price.toFixed(2)}` : '—'}
+                    </td>
+                    <td className="px-2 sm:px-4 py-3 text-right hidden sm:table-cell">
+                      {peer.refund_1d_p != null ? (
+                        <span className={`font-mono font-semibold text-xs sm:text-sm ${peer.refund_1d_p >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                          {peer.refund_1d_p >= 0 ? '+' : ''}{peer.refund_1d_p.toFixed(2)}%
+                        </span>
+                      ) : '—'}
+                    </td>
+                    <td className="px-2 sm:px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 text-xs sm:text-sm hidden md:table-cell">
+                      {formatMarketCap(peer.market_capitalization)}
+                    </td>
+                    <td className="px-2 sm:px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 text-xs sm:text-sm hidden lg:table-cell">
+                      {peer.pe_ratio != null ? peer.pe_ratio.toFixed(2) : '—'}
+                    </td>
+                    <td className="px-2 sm:px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 text-xs sm:text-sm hidden xl:table-cell">
+                      {peer.forward_pe != null ? peer.forward_pe.toFixed(2) : '—'}
+                    </td>
+                    <td className="px-2 sm:px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 text-xs sm:text-sm hidden xl:table-cell truncate max-w-[100px]">
+                      {peer.sector || '—'}
+                    </td>
+                    <td className="px-2 sm:px-4 py-3">
+                      <div className="flex items-center justify-end gap-1 flex-nowrap">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 shrink-0"
+                          onClick={() => onAddToComparison?.([peer.ticker])}
+                          disabled={!onAddToComparison}
+                          title="Compare"
+                        >
+                          <GitCompareArrows className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 w-7 sm:w-auto sm:px-2 p-0 shrink-0"
+                          onClick={() => handleAddStock(peer.ticker)}
+                          disabled={addingTicker === peer.ticker}
+                          title="Add to watchlist"
+                        >
+                          {addingTicker === peer.ticker ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <>
+                              <Plus className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline ml-1 text-xs">Add</span>
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
