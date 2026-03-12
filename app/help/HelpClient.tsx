@@ -1,20 +1,46 @@
 "use client";
 
 import { useState } from "react";
-import { Search, ChevronDown, ChevronRight } from "lucide-react";
+import {
+  Search,
+  ChevronDown,
+  ChevronRight,
+  HelpCircle,
+  User,
+  CreditCard,
+  BarChart3,
+  MessageSquare,
+  Shield,
+  Settings,
+  Zap,
+  Key,
+  LucideIcon
+} from "lucide-react";
 
 interface FAQItem {
   question: string;
   answer: string;
 }
 
-interface FAQCategory {
+export interface FAQCategory {
   id: string;
   title: string;
-  icon: React.ElementType;
+  iconName: string;
   description: string;
   faqs: FAQItem[];
 }
+
+const iconMap: Record<string, LucideIcon> = {
+  HelpCircle,
+  User,
+  CreditCard,
+  BarChart3,
+  MessageSquare,
+  Shield,
+  Settings,
+  Zap,
+  Key,
+};
 
 export function HelpClient({ categories }: { categories: FAQCategory[] }) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -48,7 +74,7 @@ export function HelpClient({ categories }: { categories: FAQCategory[] }) {
       {/* FAQ Categories */}
       <div className="space-y-4">
         {filteredCategories.map((category) => {
-          const Icon = category.icon;
+          const Icon = iconMap[category.iconName] || HelpCircle;
           const isExpanded = expandedCategory === category.id;
 
           return (

@@ -3,35 +3,24 @@ import { SupportWidget } from "@/components/support/SupportWidget";
 import {
   ArrowLeft,
   HelpCircle,
-  User,
-  CreditCard,
-  BarChart3,
   MessageSquare,
   Shield,
   Settings,
   Zap,
   Key
 } from "lucide-react";
-import { HelpClient } from "./HelpClient";
+import { HelpClient, FAQCategory } from "./HelpClient";
 
 interface FAQItem {
   question: string;
   answer: string;
 }
 
-interface FAQCategory {
-  id: string;
-  title: string;
-  icon: React.ElementType;
-  description: string;
-  faqs: FAQItem[];
-}
-
 const faqCategories: FAQCategory[] = [
   {
     id: "getting-started",
     title: "Getting Started",
-    icon: Zap,
+    iconName: "Zap",
     description: "New to Marketview360? Start here.",
     faqs: [
       {
@@ -55,7 +44,7 @@ const faqCategories: FAQCategory[] = [
   {
     id: "account",
     title: "Account & Profile",
-    icon: User,
+    iconName: "User",
     description: "Manage your account settings.",
     faqs: [
       {
@@ -79,7 +68,7 @@ const faqCategories: FAQCategory[] = [
   {
     id: "stock-screener",
     title: "Stock Screener",
-    icon: BarChart3,
+    iconName: "BarChart3",
     description: "Learn to use our powerful screener.",
     faqs: [
       {
@@ -103,7 +92,7 @@ const faqCategories: FAQCategory[] = [
   {
     id: "ai-assistant",
     title: "AI Assistant (Jovan)",
-    icon: MessageSquare,
+    iconName: "MessageSquare",
     description: "Get the most out of our AI chat.",
     faqs: [
       {
@@ -127,7 +116,7 @@ const faqCategories: FAQCategory[] = [
   {
     id: "data-security",
     title: "Data & Security",
-    icon: Shield,
+    iconName: "Shield",
     description: "How we protect your information.",
     faqs: [
       {
@@ -151,7 +140,7 @@ const faqCategories: FAQCategory[] = [
   {
     id: "billing",
     title: "Billing & Subscriptions",
-    icon: CreditCard,
+    iconName: "CreditCard",
     description: "Payments and plan information.",
     faqs: [
       {
