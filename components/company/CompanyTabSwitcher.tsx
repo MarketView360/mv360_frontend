@@ -2,10 +2,11 @@
 
 import React, { useState } from "react";
 import { cn } from "@/lib/utils";
-import { BarChart3, TrendingUp, DollarSign } from "lucide-react";
+import { BarChart3, TrendingUp, DollarSign, Users } from "lucide-react";
 import { KeyMetrics } from "@/components/company/KeyMetrics";
 import { TechnicalsSection } from "@/components/company/TechnicalsSection";
 import { FinancialsPageContent } from "@/components/company/FinancialsPageContent";
+import { OwnershipSection } from "@/components/company/OwnershipSection";
 import { CompanyChartsSwitcher, type PriceHistoryPoint } from "@/components/company/CompanyChartsSwitcher";
 
 interface ValuationMetric {
@@ -30,12 +31,13 @@ interface CompanyTabSwitcherProps {
   valuationHistory: ValuationHistoryPoint[];
 }
 
-type Tab = "fundamentals" | "technicals" | "financials";
+type Tab = "fundamentals" | "technicals" | "financials" | "ownership";
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "fundamentals", label: "Fundamentals", icon: <BarChart3 className="w-4 h-4" /> },
   { id: "technicals", label: "Technicals", icon: <TrendingUp className="w-4 h-4" /> },
   { id: "financials", label: "Financials", icon: <DollarSign className="w-4 h-4" /> },
+  { id: "ownership", label: "Ownership", icon: <Users className="w-4 h-4" /> },
 ];
 
 export function CompanyTabSwitcher({
@@ -95,6 +97,10 @@ export function CompanyTabSwitcher({
 
       {activeTab === "financials" && (
         <FinancialsPageContent ticker={ticker} metrics={metrics as Parameters<typeof FinancialsPageContent>[0]["metrics"]} />
+      )}
+
+      {activeTab === "ownership" && (
+        <OwnershipSection ticker={ticker} />
       )}
     </div>
   );
