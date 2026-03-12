@@ -1,13 +1,7 @@
-"use client";
-
-import { useState } from "react";
 import Link from "next/link";
 import { SupportWidget } from "@/components/support/SupportWidget";
 import {
   ArrowLeft,
-  Search,
-  ChevronDown,
-  ChevronRight,
   HelpCircle,
   User,
   CreditCard,
@@ -18,6 +12,7 @@ import {
   Zap,
   Key
 } from "lucide-react";
+import { HelpClient } from "./HelpClient";
 
 interface FAQItem {
   question: string;
@@ -180,31 +175,6 @@ const faqCategories: FAQCategory[] = [
 ];
 
 export default function HelpCenterPage() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [expandedCategory, setExpandedCategory] = useState<string | null>("getting-started");
-  const [expandedFAQs, setExpandedFAQs] = useState<Set<string>>(new Set());
-
-  const toggleFAQ = (categoryId: string, faqIndex: number) => {
-    const key = `${categoryId}-${faqIndex}`;
-    const newExpanded = new Set(expandedFAQs);
-    if (newExpanded.has(key)) {
-      newExpanded.delete(key);
-    } else {
-      newExpanded.add(key);
-    }
-    setExpandedFAQs(newExpanded);
-  };
-
-  const filteredCategories = searchQuery
-    ? faqCategories.map(cat => ({
-      ...cat,
-      faqs: cat.faqs.filter(faq =>
-        faq.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        faq.answer.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    })).filter(cat => cat.faqs.length > 0)
-    : faqCategories;
-
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-12 px-4">
       <SupportWidget />
@@ -228,20 +198,6 @@ export default function HelpCenterPage() {
           </p>
         </div>
 
-        {/* Search */}
-        <div className="max-w-2xl mx-auto mb-12">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search for help..."
-              className="w-full pl-12 pr-4 py-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
-            />
-          </div>
-        </div>
-
         {/* Quick Links */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
           <Link href="/contact" className="flex flex-col items-center p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700 transition-colors group">
@@ -262,62 +218,8 @@ export default function HelpCenterPage() {
           </Link>
         </div>
 
-        {/* FAQ Categories */}
-        <div className="space-y-4">
-          {filteredCategories.map((category) => {
-            const Icon = category.icon;
-            const isExpanded = expandedCategory === category.id || searchQuery !== "";
-
-            return (
-              <div
-                key={category.id}
-                className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden"
-              >
-                <button
-                  onClick={() => setExpandedCategory(isExpanded && !searchQuery ? null : category.id)}
-                  className="w-full flex items-center justify-between p-5 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                      <Icon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div>
-                      <h2 className="font-semibold text-slate-900 dark:text-white">{category.title}</h2>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">{category.description}</p>
-                    </div>
-                  </div>
-                  <ChevronDown className={`h-5 w-5 text-slate-400 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
-                </button>
-
-                {isExpanded && (
-                  <div className="border-t border-slate-100 dark:border-slate-800">
-                    {category.faqs.map((faq, index) => {
-                      const faqKey = `${category.id}-${index}`;
-                      const isFAQExpanded = expandedFAQs.has(faqKey);
-
-                      return (
-                        <div key={index} className="border-b border-slate-100 dark:border-slate-800 last:border-b-0">
-                          <button
-                            onClick={() => toggleFAQ(category.id, index)}
-                            className="w-full flex items-center justify-between p-4 pl-16 text-left hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors"
-                          >
-                            <span className="font-medium text-slate-800 dark:text-slate-200 pr-4">{faq.question}</span>
-                            <ChevronRight className={`h-4 w-4 text-slate-400 flex-shrink-0 transition-transform ${isFAQExpanded ? "rotate-90" : ""}`} />
-                          </button>
-                          {isFAQExpanded && (
-                            <div className="px-16 pb-4">
-                              <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{faq.answer}</p>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+        {/* Interactive FAQ Component */}
+        <HelpClient categories={faqCategories} />
 
         {/* Still Need Help */}
         <div className="mt-12 bg-blue-600 rounded-2xl p-8 text-center text-white">

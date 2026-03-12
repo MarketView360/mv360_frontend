@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import { ArrowLeft, FileText, Scale, AlertTriangle, Shield, Users, CreditCard, Ban, RefreshCw } from "lucide-react";
 
