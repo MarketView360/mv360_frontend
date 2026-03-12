@@ -10,6 +10,7 @@ import { ThemeProvider } from "./providers";
 import RouteChrome from "./RouteChrome";
 import { Toaster } from "@/components/ui/sonner";
 import { MaintenanceWrapper } from "@/components/MaintenanceWrapper";
+import { GlobalStructuredData } from "@/components/seo";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -30,6 +31,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <GlobalStructuredData />
+      </head>
       <body
         suppressHydrationWarning
         className={cn(

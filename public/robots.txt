@@ -1,0 +1,56 @@
+# MarketView360 - Robots.txt
+# Allow retrieval bots (for AI citations & search) but control training bots
+
+# Google (Search & AI Overviews)
+User-agent: Googlebot
+Allow: /
+
+# Bing & ChatGPT Citations
+User-agent: bingbot
+Allow: /
+
+# ChatGPT Retrieval (for citations in ChatGPT responses)
+User-agent: GPTBot
+Allow: /
+
+# Perplexity AI (for citations)
+User-agent: PerplexityBot
+Allow: /
+
+# Anthropic Claude
+User-agent: ClaudeBot
+Allow: /
+
+# Google Extended (Gemini training - allow for citations)
+User-agent: Google-Extended
+Allow: /
+
+# Common Crawl (used by many AI tools)
+User-agent: CCBot
+Allow: /
+
+# Block aggressive scrapers
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+# Default rule for all other bots
+User-agent: *
+Allow: /
+
+# Disallow admin and API routes
+Disallow: /api/
+Disallow: /admin/
+Disallow: /_next/
+Disallow: /sentry-example-page
+
+# Sitemap
+Sitemap: https://www.marketview360.io/sitemap.xml
+
+# IndexNow Key for instant indexing (Bing, Yandex, etc.)
+# Key file: /fd33e1d170a841198cc2751f74fbe212.txt

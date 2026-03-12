@@ -31,20 +31,24 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/",
   },
+  applicationName: "MarketView360",
+  category: "finance",
+  classification: "Stock Market Analysis & Screening Platform",
   openGraph: {
     type: "website",
     locale: "en_US",
     url: "https://www.marketview360.io",
     siteName: "MarketView360",
-    title: "MarketView360 - Professional Stock Analysis Platform",
+    title: "MarketView360 - Professional Stock Analysis & Screening Platform",
     description:
-      "Advanced financial data screening and analysis platform with 80+ metrics, AI-powered insights, and real-time charts.",
+      "Advanced financial data screening and analysis platform with 80+ metrics, AI-powered insights, real-time charts, and comprehensive company analytics for US equities.",
     images: [
       {
-        url: "/og-image.png",
+        url: "/og-image.svg",
         width: 1200,
         height: 630,
-        alt: "MarketView360 Platform",
+        alt: "MarketView360 - Professional Stock Analysis Platform",
+        type: "image/svg+xml",
       },
     ],
   },
