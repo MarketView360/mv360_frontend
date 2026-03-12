@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 
 import { Inter, Lexend_Mega } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import "./globals.css";
 import { cn } from "@/lib/utils";
@@ -60,6 +62,8 @@ export default function RootLayout({
             <Toaster position="top-right" richColors closeButton />
           </MaintenanceWrapper>
         </ThemeProvider>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
