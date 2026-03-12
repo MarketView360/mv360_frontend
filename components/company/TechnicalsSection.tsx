@@ -24,23 +24,35 @@ import { cn } from "@/lib/utils";
 
 interface TechnicalData {
   date: string;
+  close: number | null;
+  volume: number | null;
   sma_20: number | null;
   sma_50: number | null;
   sma_200: number | null;
-  ema_12: number | null;
-  ema_26: number | null;
+  ema_9: number | null;
+  ema_21: number | null;
+  ema_50: number | null;
+  ema_200: number | null;
   rsi_14: number | null;
   macd: number | null;
   macd_signal: number | null;
   macd_histogram: number | null;
-  stoch_k: number | null;
-  stoch_d: number | null;
-  bb_upper: number | null;
-  bb_middle: number | null;
-  bb_lower: number | null;
-  atr_14: number | null;
+  stochastic_k: number | null;
+  stochastic_d: number | null;
+  bollinger_upper: number | null;
+  bollinger_middle: number | null;
+  bollinger_lower: number | null;
+  atr: number | null;
+  hist_vol_20: number | null;
   adx: number | null;
-  volatility: number | null;
+  adx_plus_di: number | null;
+  adx_minus_di: number | null;
+  obv: number | null;
+  vwap: number | null;
+  cmf_20: number | null;
+  supertrend: number | null;
+  supertrend_direction: number | null;
+  change_percent: number | null;
 }
 
 interface TechnicalsSectionProps {
@@ -119,7 +131,7 @@ export function TechnicalsSection({ ticker, currentPrice }: TechnicalsSectionPro
     return sorted.slice(-limit);
   }, [technicals, range]);
 
-  const latestData = technicals[0]; // Most recent (desc order)
+  const latestData = technicals[technicals.length - 1]; // Most recent (asc order, last = latest)
 
   if (loading) {
     return (
@@ -152,9 +164,10 @@ export function TechnicalsSection({ ticker, currentPrice }: TechnicalsSectionPro
     );
   }
 
-  const rsiSignal = getRsiSignal(latestData?.rsi_14);
-  const macdSignal = getMacdSignal(latestData?.macd, latestData?.macd_signal);
-  const trendSignal = getTrendSignal(currentPrice ?? null, latestData?.sma_50, latestData?.sma_200);
+  const price = currentPrice ?? latestData?.close ?? null;
+  const rsiSignal = getRsiSignal(latestData?.rsi_14 ?? null);
+  const macdSignal = getMacdSignal(latestData?.macd ?? null, latestData?.macd_signal ?? null);
+  const trendSignal = getTrendSignal(price, latestData?.sma_50 ?? null, latestData?.sma_200 ?? null);
 
   return (
     <Card>
@@ -201,10 +214,10 @@ export function TechnicalsSection({ ticker, currentPrice }: TechnicalsSectionPro
             signalColor={trendSignal.color}
           />
           <SignalCard
-            label="Volatility"
-            value={latestData?.volatility ? `${latestData.volatility.toFixed(1)}%` : "—"}
-            signal={latestData?.volatility && latestData.volatility > 30 ? "High" : "Normal"}
-            signalColor={latestData?.volatility && latestData.volatility > 30 ? "orange" : "slate"}
+            label="Volatility (20d)"
+            value={latestData?.hist_vol_20 ? `${(latestData.hist_vol_20 * 100).toFixed(1)}%` : "—"}
+            signal={latestData?.hist_vol_20 && latestData.hist_vol_20 > 0.3 ? "High" : "Normal"}
+            signalColor={latestData?.hist_vol_20 && latestData.hist_vol_20 > 0.3 ? "orange" : "slate"}
           />
         </div>
 
@@ -322,7 +335,7 @@ export function TechnicalsSection({ ticker, currentPrice }: TechnicalsSectionPro
                 />
                 <Area
                   type="monotone"
-                  dataKey="bb_upper"
+                  dataKey="bollinger_upper"
                   stroke="#94a3b8"
                   fill="#94a3b8"
                   fillOpacity={0.1}
@@ -331,7 +344,7 @@ export function TechnicalsSection({ ticker, currentPrice }: TechnicalsSectionPro
                 />
                 <Area
                   type="monotone"
-                  dataKey="bb_lower"
+                  dataKey="bollinger_lower"
                   stroke="#94a3b8"
                   fill="#ffffff"
                   fillOpacity={1}
@@ -340,7 +353,7 @@ export function TechnicalsSection({ ticker, currentPrice }: TechnicalsSectionPro
                 />
                 <Line
                   type="monotone"
-                  dataKey="bb_middle"
+                  dataKey="bollinger_middle"
                   stroke="#3b82f6"
                   strokeWidth={2}
                   dot={false}
@@ -376,11 +389,11 @@ export function TechnicalsSection({ ticker, currentPrice }: TechnicalsSectionPro
             <ValueItem label="SMA 20" value={latestData?.sma_20} prefix="$" />
             <ValueItem label="SMA 50" value={latestData?.sma_50} prefix="$" />
             <ValueItem label="SMA 200" value={latestData?.sma_200} prefix="$" />
-            <ValueItem label="EMA 12" value={latestData?.ema_12} prefix="$" />
+            <ValueItem label="EMA 21" value={latestData?.ema_21} prefix="$" />
             <ValueItem label="RSI (14)" value={latestData?.rsi_14} />
-            <ValueItem label="ATR (14)" value={latestData?.atr_14} prefix="$" />
+            <ValueItem label="ATR" value={latestData?.atr} prefix="$" />
             <ValueItem label="ADX" value={latestData?.adx} />
-            <ValueItem label="Stoch %K" value={latestData?.stoch_k} />
+            <ValueItem label="Stoch %K" value={latestData?.stochastic_k} />
           </div>
         </div>
       </CardContent>

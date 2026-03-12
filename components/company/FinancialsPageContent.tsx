@@ -29,11 +29,10 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
-  LineChart,
   Line,
   Legend,
-  AreaChart,
   Area,
+  AreaChart,
   ComposedChart,
   ReferenceLine,
   PieChart,
@@ -41,12 +40,8 @@ import {
   Cell,
 } from "recharts";
 import {
-  TrendingUp,
-  TrendingDown,
-  Minus,
   DollarSign,
   BarChart3,
-  PieChartIcon,
   Wallet,
   Building2,
   ArrowUpRight,
@@ -55,42 +50,76 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-interface FinancialPeriod {
-  period_end: string;
-  period_type: string;
-  revenue: number | null;
+// Real column names from income_statement_annual/quarterly
+interface IncomeRow {
+  date: string;
+  filing_date: string | null;
+  currency: string | null;
+  total_revenue: number | null;
   cost_of_revenue: number | null;
   gross_profit: number | null;
   operating_income: number | null;
-  net_income: number | null;
+  ebit: number | null;
   ebitda: number | null;
-  eps_basic: number | null;
-  eps_diluted: number | null;
-  gross_margin: number | null;
-  operating_margin: number | null;
-  net_margin: number | null;
-  ebitda_margin: number | null;
-  total_assets: number | null;
-  total_liabilities: number | null;
-  stockholder_equity: number | null;
-  total_debt: number | null;
-  cash_and_equivalents: number | null;
-  current_assets: number | null;
-  current_liabilities: number | null;
-  operating_cf: number | null;
-  investing_cf: number | null;
-  financing_cf: number | null;
-  free_cash_flow: number | null;
-  capex: number | null;
-  dividends_paid: number | null;
-  current_ratio: number | null;
-  quick_ratio: number | null;
-  debt_to_equity: number | null;
-  debt_to_assets: number | null;
-  roe: number | null;
-  roa: number | null;
+  net_income: number | null;
+  net_income_from_continuing_ops: number | null;
+  income_before_tax: number | null;
+  income_tax_expense: number | null;
+  interest_expense: number | null;
+  depreciation_and_amortization: number | null;
   research_development: number | null;
-  selling_general_admin: number | null;
+  selling_general_administrative: number | null;
+  net_income_applicable_to_common_shares: number | null;
+}
+
+// Real column names from balance_sheet_annual/quarterly
+interface BalanceRow {
+  date: string;
+  filing_date: string | null;
+  currency: string | null;
+  total_assets: number | null;
+  total_current_assets: number | null;
+  cash_and_equivalents: number | null;
+  net_receivables: number | null;
+  inventory: number | null;
+  total_liabilities: number | null;
+  total_current_liabilities: number | null;
+  short_term_debt: number | null;
+  long_term_debt: number | null;
+  total_stockholder_equity: number | null;
+  retained_earnings: number | null;
+  net_debt: number | null;
+  net_working_capital: number | null;
+  goodwill: number | null;
+  intangible_assets: number | null;
+  property_plant_equipment_net: number | null;
+  common_stock_shares_outstanding: number | null;
+}
+
+// Real column names from cash_flow_annual/quarterly
+interface CashFlowRow {
+  date: string;
+  filing_date: string | null;
+  currency: string | null;
+  total_cash_from_operating_activities: number | null;
+  capital_expenditures: number | null;
+  total_cashflows_from_investing_activities: number | null;
+  total_cash_from_financing_activities: number | null;
+  free_cash_flow: number | null;
+  dividends_paid: number | null;
+  net_borrowings: number | null;
+  stock_based_compensation: number | null;
+  depreciation: number | null;
+  change_in_working_capital: number | null;
+  begin_period_cash_flow: number | null;
+  end_period_cash_flow: number | null;
+}
+
+interface FinancialsResponse {
+  ticker: string;
+  income: { annual: IncomeRow[]; quarterly: IncomeRow[] };
+  balance: { annual: BalanceRow[]; quarterly: BalanceRow[] };
+  cashflow: { annual: CashFlowRow[]; quarterly: CashFlowRow[] };
 }
 
 interface MetricsProps {
@@ -151,7 +180,7 @@ const formatYear = (dateStr: string): string => {
 };
 
 export function FinancialsPageContent({ ticker, metrics }: Readonly<FinancialsPageContentProps>) {
-  const [financials, setFinancials] = useState<FinancialPeriod[]>([]);
+  const [financials, setFinancials] = useState<FinancialsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [periodType, setPeriodType] = useState<"quarterly" | "annual">("quarterly");
@@ -163,11 +192,11 @@ export function FinancialsPageContent({ ticker, metrics }: Readonly<FinancialsPa
       try {
         const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
         const res = await fetch(
-          `${baseUrl}/api/company/${encodeURIComponent(ticker)}/financials?type=${periodType}&limit=20`
+          `${baseUrl}/api/company/${encodeURIComponent(ticker)}/financials?type=all&limit=20`
         );
         if (!res.ok) throw new Error("Failed to fetch financials");
-        const data = await res.json();
-        setFinancials(data.financials || []);
+        const data: FinancialsResponse = await res.json();
+        setFinancials(data);
       } catch (err) {
         setError((err as Error).message);
       } finally {
@@ -175,26 +204,30 @@ export function FinancialsPageContent({ ticker, metrics }: Readonly<FinancialsPa
       }
     };
     fetchFinancials();
-  }, [ticker, periodType]);
+  }, [ticker]);
 
-  const sortedAsc = useMemo(
-    () => [...financials].sort((a, b) => new Date(a.period_end).getTime() - new Date(b.period_end).getTime()),
-    [financials]
-  );
+  const income = useMemo(() => (
+    periodType === "annual" ? (financials?.income.annual ?? []) : (financials?.income.quarterly ?? [])
+  ), [financials, periodType]);
 
-  const sortedDesc = useMemo(
-    () => [...financials].sort((a, b) => new Date(b.period_end).getTime() - new Date(a.period_end).getTime()),
-    [financials]
-  );
+  const balance = useMemo(() => (
+    periodType === "annual" ? (financials?.balance.annual ?? []) : (financials?.balance.quarterly ?? [])
+  ), [financials, periodType]);
 
-  const latestPeriod = sortedDesc[0];
-  const previousPeriod = sortedDesc[1];
+  const cashflow = useMemo(() => (
+    periodType === "annual" ? (financials?.cashflow.annual ?? []) : (financials?.cashflow.quarterly ?? [])
+  ), [financials, periodType]);
 
-  if (loading) {
-    return <LoadingSkeleton />;
-  }
+  // Data arrives desc from API — sort asc for charts, keep desc for tables
+  const incomeAsc = useMemo(() => [...income].sort((a, b) => a.date.localeCompare(b.date)), [income]);
+  const balanceAsc = useMemo(() => [...balance].sort((a, b) => a.date.localeCompare(b.date)), [balance]);
+  const cashflowAsc = useMemo(() => [...cashflow].sort((a, b) => a.date.localeCompare(b.date)), [cashflow]);
 
-  if (error || financials.length === 0) {
+  const hasData = income.length > 0 || balance.length > 0 || cashflow.length > 0;
+
+  if (loading) return <LoadingSkeleton />;
+
+  if (error || !hasData) {
     return (
       <Card>
         <CardContent className="py-12">
@@ -231,36 +264,38 @@ export function FinancialsPageContent({ ticker, metrics }: Readonly<FinancialsPa
       </div>
 
       {/* Key Financial Highlights */}
-      <KeyHighlights latestPeriod={latestPeriod} previousPeriod={previousPeriod} metrics={metrics} periodType={periodType} />
+      <KeyHighlights
+        latestIncome={income[0] ?? null}
+        previousIncome={income[1] ?? null}
+        latestBalance={balance[0] ?? null}
+        latestCashflow={cashflow[0] ?? null}
+        metrics={metrics}
+        periodType={periodType}
+      />
 
       {/* Main Tabs */}
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="income">Income</TabsTrigger>
           <TabsTrigger value="balance">Balance Sheet</TabsTrigger>
           <TabsTrigger value="cashflow">Cash Flow</TabsTrigger>
-          <TabsTrigger value="ratios">Ratios</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
-          <OverviewTab data={sortedAsc} periodType={periodType} />
+          <OverviewTab incomeAsc={incomeAsc} cashflowAsc={cashflowAsc} periodType={periodType} />
         </TabsContent>
 
         <TabsContent value="income">
-          <IncomeStatementTab data={sortedAsc} sortedDesc={sortedDesc} periodType={periodType} />
+          <IncomeStatementTab incomeAsc={incomeAsc} income={income} periodType={periodType} />
         </TabsContent>
 
         <TabsContent value="balance">
-          <BalanceSheetTab data={sortedAsc} sortedDesc={sortedDesc} periodType={periodType} />
+          <BalanceSheetTab balanceAsc={balanceAsc} balance={balance} periodType={periodType} />
         </TabsContent>
 
         <TabsContent value="cashflow">
-          <CashFlowTab data={sortedAsc} sortedDesc={sortedDesc} periodType={periodType} />
-        </TabsContent>
-
-        <TabsContent value="ratios">
-          <RatiosTab data={sortedAsc} sortedDesc={sortedDesc} periodType={periodType} />
+          <CashFlowTab cashflowAsc={cashflowAsc} cashflow={cashflow} periodType={periodType} />
         </TabsContent>
       </Tabs>
     </div>
@@ -283,13 +318,17 @@ function LoadingSkeleton() {
 
 // Key Highlights Component
 function KeyHighlights({
-  latestPeriod,
-  previousPeriod,
+  latestIncome,
+  previousIncome,
+  latestBalance,
+  latestCashflow,
   metrics,
   periodType,
 }: Readonly<{
-  latestPeriod: FinancialPeriod;
-  previousPeriod?: FinancialPeriod;
+  latestIncome: IncomeRow | null;
+  previousIncome: IncomeRow | null;
+  latestBalance: BalanceRow | null;
+  latestCashflow: CashFlowRow | null;
   metrics: MetricsProps | null;
   periodType: string;
 }>) {
@@ -301,32 +340,32 @@ function KeyHighlights({
   const highlights = [
     {
       label: "Revenue",
-      value: formatCurrency(latestPeriod.revenue),
-      change: calcChange(latestPeriod.revenue, previousPeriod?.revenue ?? null),
+      value: formatCurrency(latestIncome?.total_revenue ?? null),
+      change: calcChange(latestIncome?.total_revenue ?? null, previousIncome?.total_revenue ?? null),
       icon: DollarSign,
       color: "text-blue-600",
       bgColor: "bg-blue-50 dark:bg-blue-950/30",
     },
     {
       label: "Net Income",
-      value: formatCurrency(latestPeriod.net_income),
-      change: calcChange(latestPeriod.net_income, previousPeriod?.net_income ?? null),
+      value: formatCurrency(latestIncome?.net_income ?? null),
+      change: calcChange(latestIncome?.net_income ?? null, previousIncome?.net_income ?? null),
       icon: BarChart3,
       color: "text-green-600",
       bgColor: "bg-green-50 dark:bg-green-950/30",
     },
     {
       label: "Free Cash Flow",
-      value: formatCurrency(latestPeriod.free_cash_flow),
-      change: calcChange(latestPeriod.free_cash_flow, previousPeriod?.free_cash_flow ?? null),
+      value: formatCurrency(latestCashflow?.free_cash_flow ?? null),
+      change: null,
       icon: Wallet,
       color: "text-purple-600",
       bgColor: "bg-purple-50 dark:bg-purple-950/30",
     },
     {
       label: "Total Assets",
-      value: formatCurrency(latestPeriod.total_assets),
-      change: calcChange(latestPeriod.total_assets, previousPeriod?.total_assets ?? null),
+      value: formatCurrency(latestBalance?.total_assets ?? null),
+      change: null,
       icon: Building2,
       color: "text-amber-600",
       bgColor: "bg-amber-50 dark:bg-amber-950/30",
@@ -363,26 +402,29 @@ function KeyHighlights({
 }
 
 // Overview Tab
-function OverviewTab({ data, periodType }: Readonly<{ data: FinancialPeriod[]; periodType: string }>) {
-  const chartData = data.map((f) => ({
-    period: periodType === "quarterly" ? formatQuarter(f.period_end) : formatYear(f.period_end),
-    revenue: f.revenue ? f.revenue / 1e9 : 0,
+function OverviewTab({ incomeAsc, cashflowAsc, periodType }: Readonly<{ incomeAsc: IncomeRow[]; cashflowAsc: CashFlowRow[]; periodType: string }>) {
+  const fmt = (d: string) => periodType === "quarterly" ? formatQuarter(d) : formatYear(d);
+
+  const chartData = incomeAsc.map((f) => ({
+    period: fmt(f.date),
+    revenue: f.total_revenue ? f.total_revenue / 1e9 : 0,
     netIncome: f.net_income ? f.net_income / 1e9 : 0,
     grossProfit: f.gross_profit ? f.gross_profit / 1e9 : 0,
   }));
 
-  const marginData = data.map((f) => ({
-    period: periodType === "quarterly" ? formatQuarter(f.period_end) : formatYear(f.period_end),
-    grossMargin: f.gross_margin ? f.gross_margin * 100 : null,
-    operatingMargin: f.operating_margin ? f.operating_margin * 100 : null,
-    netMargin: f.net_margin ? f.net_margin * 100 : null,
+  // Compute margins from raw values
+  const marginData = incomeAsc.map((f) => ({
+    period: fmt(f.date),
+    grossMargin: f.gross_profit && f.total_revenue ? (f.gross_profit / f.total_revenue) * 100 : null,
+    operatingMargin: f.operating_income && f.total_revenue ? (f.operating_income / f.total_revenue) * 100 : null,
+    netMargin: f.net_income && f.total_revenue ? (f.net_income / f.total_revenue) * 100 : null,
   }));
 
-  const cashFlowData = data.map((f) => ({
-    period: periodType === "quarterly" ? formatQuarter(f.period_end) : formatYear(f.period_end),
-    operatingCF: f.operating_cf ? f.operating_cf / 1e9 : 0,
-    investingCF: f.investing_cf ? f.investing_cf / 1e9 : 0,
-    financingCF: f.financing_cf ? f.financing_cf / 1e9 : 0,
+  const cashFlowData = cashflowAsc.map((f) => ({
+    period: fmt(f.date),
+    operatingCF: f.total_cash_from_operating_activities ? f.total_cash_from_operating_activities / 1e9 : 0,
+    investingCF: f.total_cashflows_from_investing_activities ? f.total_cashflows_from_investing_activities / 1e9 : 0,
+    financingCF: f.total_cash_from_financing_activities ? f.total_cash_from_financing_activities / 1e9 : 0,
     freeCF: f.free_cash_flow ? f.free_cash_flow / 1e9 : 0,
   }));
 
@@ -467,10 +509,12 @@ function OverviewTab({ data, periodType }: Readonly<{ data: FinancialPeriod[]; p
 
 // Income Statement Tab
 function IncomeStatementTab({
-  data,
-  sortedDesc,
+  incomeAsc,
+  income,
   periodType,
-}: Readonly<{ data: FinancialPeriod[]; sortedDesc: FinancialPeriod[]; periodType: string }>) {
+}: Readonly<{ incomeAsc: IncomeRow[]; income: IncomeRow[]; periodType: string }>) {
+  const fmt = (d: string) => periodType === "quarterly" ? formatQuarter(d) : formatYear(d);
+  const top5 = income.slice(0, 5);
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Table */}
@@ -484,23 +528,20 @@ function IncomeStatementTab({
               <thead className="text-xs uppercase text-slate-500 border-b border-slate-200 dark:border-slate-700">
                 <tr>
                   <th className="py-2 text-left">Metric</th>
-                  {sortedDesc.slice(0, 5).map((f) => (
-                    <th key={f.period_end} className="py-2 text-right">
-                      {periodType === "quarterly" ? formatQuarter(f.period_end) : formatYear(f.period_end)}
-                    </th>
+                  {top5.map((f) => (
+                    <th key={f.date} className="py-2 text-right">{fmt(f.date)}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                <TableRow label="Revenue" data={sortedDesc.slice(0, 5)} field="revenue" format={formatCurrency} />
-                <TableRow label="Cost of Revenue" data={sortedDesc.slice(0, 5)} field="cost_of_revenue" format={formatCurrency} />
-                <TableRow label="Gross Profit" data={sortedDesc.slice(0, 5)} field="gross_profit" format={formatCurrency} highlight />
-                <TableRow label="R&D Expenses" data={sortedDesc.slice(0, 5)} field="research_development" format={formatCurrency} />
-                <TableRow label="SG&A Expenses" data={sortedDesc.slice(0, 5)} field="selling_general_admin" format={formatCurrency} />
-                <TableRow label="Operating Income" data={sortedDesc.slice(0, 5)} field="operating_income" format={formatCurrency} highlight />
-                <TableRow label="EBITDA" data={sortedDesc.slice(0, 5)} field="ebitda" format={formatCurrency} />
-                <TableRow label="Net Income" data={sortedDesc.slice(0, 5)} field="net_income" format={formatCurrency} highlight />
-                <TableRow label="EPS (Diluted)" data={sortedDesc.slice(0, 5)} field="eps_diluted" format={(v) => formatNumber(v)} />
+                <IncomeTableRow label="Revenue" rows={top5} field="total_revenue" format={formatCurrency} />
+                <IncomeTableRow label="Cost of Revenue" rows={top5} field="cost_of_revenue" format={formatCurrency} />
+                <IncomeTableRow label="Gross Profit" rows={top5} field="gross_profit" format={formatCurrency} highlight />
+                <IncomeTableRow label="R&D Expenses" rows={top5} field="research_development" format={formatCurrency} />
+                <IncomeTableRow label="SG&A Expenses" rows={top5} field="selling_general_administrative" format={formatCurrency} />
+                <IncomeTableRow label="Operating Income" rows={top5} field="operating_income" format={formatCurrency} highlight />
+                <IncomeTableRow label="EBITDA" rows={top5} field="ebitda" format={formatCurrency} />
+                <IncomeTableRow label="Net Income" rows={top5} field="net_income" format={formatCurrency} highlight />
               </tbody>
             </table>
           </div>
@@ -514,18 +555,19 @@ function IncomeStatementTab({
           <CardDescription>Latest Period</CardDescription>
         </CardHeader>
         <CardContent>
-          <ExpenseBreakdownPie period={sortedDesc[0]} />
+          <ExpenseBreakdownPie period={income[0] ?? null} />
         </CardContent>
       </Card>
     </div>
   );
 }
 
-function ExpenseBreakdownPie({ period }: Readonly<{ period: FinancialPeriod }>) {
+function ExpenseBreakdownPie({ period }: Readonly<{ period: IncomeRow | null }>) {
+  if (!period) return <div className="text-sm text-slate-500">No data</div>;
   const expenses = [
     { name: "Cost of Revenue", value: period.cost_of_revenue || 0, color: COLORS.primary },
     { name: "R&D", value: period.research_development || 0, color: COLORS.success },
-    { name: "SG&A", value: period.selling_general_admin || 0, color: COLORS.warning },
+    { name: "SG&A", value: period.selling_general_administrative || 0, color: COLORS.warning },
   ].filter((e) => e.value > 0);
 
   if (expenses.length === 0) {
@@ -544,7 +586,7 @@ function ExpenseBreakdownPie({ period }: Readonly<{ period: FinancialPeriod }>) 
             cy="50%"
             innerRadius={40}
             outerRadius={80}
-            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+            label={(props) => `${props.name ?? ""}: ${(((props.percent as number | undefined) ?? 0) * 100).toFixed(0)}%`}
             labelLine={false}
           >
             {expenses.map((entry, index) => (
@@ -560,16 +602,18 @@ function ExpenseBreakdownPie({ period }: Readonly<{ period: FinancialPeriod }>) 
 
 // Balance Sheet Tab
 function BalanceSheetTab({
-  data,
-  sortedDesc,
+  balanceAsc,
+  balance,
   periodType,
-}: Readonly<{ data: FinancialPeriod[]; sortedDesc: FinancialPeriod[]; periodType: string }>) {
-  const chartData = data.map((f) => ({
-    period: periodType === "quarterly" ? formatQuarter(f.period_end) : formatYear(f.period_end),
+}: Readonly<{ balanceAsc: BalanceRow[]; balance: BalanceRow[]; periodType: string }>) {
+  const fmt = (d: string) => periodType === "quarterly" ? formatQuarter(d) : formatYear(d);
+  const chartData = balanceAsc.map((f) => ({
+    period: fmt(f.date),
     assets: f.total_assets ? f.total_assets / 1e9 : 0,
     liabilities: f.total_liabilities ? f.total_liabilities / 1e9 : 0,
-    equity: f.stockholder_equity ? f.stockholder_equity / 1e9 : 0,
+    equity: f.total_stockholder_equity ? f.total_stockholder_equity / 1e9 : 0,
   }));
+  const top5 = balance.slice(0, 5);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -583,21 +627,20 @@ function BalanceSheetTab({
               <thead className="text-xs uppercase text-slate-500 border-b border-slate-200 dark:border-slate-700">
                 <tr>
                   <th className="py-2 text-left">Metric</th>
-                  {sortedDesc.slice(0, 5).map((f) => (
-                    <th key={f.period_end} className="py-2 text-right">
-                      {periodType === "quarterly" ? formatQuarter(f.period_end) : formatYear(f.period_end)}
-                    </th>
+                  {top5.map((f) => (
+                    <th key={f.date} className="py-2 text-right">{fmt(f.date)}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                <TableRow label="Total Assets" data={sortedDesc.slice(0, 5)} field="total_assets" format={formatCurrency} highlight />
-                <TableRow label="Current Assets" data={sortedDesc.slice(0, 5)} field="current_assets" format={formatCurrency} />
-                <TableRow label="Cash & Equiv." data={sortedDesc.slice(0, 5)} field="cash_and_equivalents" format={formatCurrency} />
-                <TableRow label="Total Liabilities" data={sortedDesc.slice(0, 5)} field="total_liabilities" format={formatCurrency} highlight />
-                <TableRow label="Current Liabilities" data={sortedDesc.slice(0, 5)} field="current_liabilities" format={formatCurrency} />
-                <TableRow label="Total Debt" data={sortedDesc.slice(0, 5)} field="total_debt" format={formatCurrency} />
-                <TableRow label="Stockholder Equity" data={sortedDesc.slice(0, 5)} field="stockholder_equity" format={formatCurrency} highlight />
+                <BalanceTableRow label="Total Assets" rows={top5} field="total_assets" format={formatCurrency} highlight />
+                <BalanceTableRow label="Current Assets" rows={top5} field="total_current_assets" format={formatCurrency} />
+                <BalanceTableRow label="Cash & Equiv." rows={top5} field="cash_and_equivalents" format={formatCurrency} />
+                <BalanceTableRow label="Total Liabilities" rows={top5} field="total_liabilities" format={formatCurrency} highlight />
+                <BalanceTableRow label="Current Liabilities" rows={top5} field="total_current_liabilities" format={formatCurrency} />
+                <BalanceTableRow label="Long Term Debt" rows={top5} field="long_term_debt" format={formatCurrency} />
+                <BalanceTableRow label="Stockholder Equity" rows={top5} field="total_stockholder_equity" format={formatCurrency} highlight />
+                <BalanceTableRow label="Net Debt" rows={top5} field="net_debt" format={formatCurrency} />
               </tbody>
             </table>
           </div>
@@ -630,16 +673,18 @@ function BalanceSheetTab({
 
 // Cash Flow Tab
 function CashFlowTab({
-  data,
-  sortedDesc,
+  cashflowAsc,
+  cashflow,
   periodType,
-}: Readonly<{ data: FinancialPeriod[]; sortedDesc: FinancialPeriod[]; periodType: string }>) {
-  const chartData = data.map((f) => ({
-    period: periodType === "quarterly" ? formatQuarter(f.period_end) : formatYear(f.period_end),
-    operatingCF: f.operating_cf ? f.operating_cf / 1e9 : 0,
-    capex: f.capex ? Math.abs(f.capex) / 1e9 : 0,
+}: Readonly<{ cashflowAsc: CashFlowRow[]; cashflow: CashFlowRow[]; periodType: string }>) {
+  const fmt = (d: string) => periodType === "quarterly" ? formatQuarter(d) : formatYear(d);
+  const chartData = cashflowAsc.map((f) => ({
+    period: fmt(f.date),
+    operatingCF: f.total_cash_from_operating_activities ? f.total_cash_from_operating_activities / 1e9 : 0,
+    capex: f.capital_expenditures ? Math.abs(f.capital_expenditures) / 1e9 : 0,
     freeCF: f.free_cash_flow ? f.free_cash_flow / 1e9 : 0,
   }));
+  const top5 = cashflow.slice(0, 5);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -653,20 +698,19 @@ function CashFlowTab({
               <thead className="text-xs uppercase text-slate-500 border-b border-slate-200 dark:border-slate-700">
                 <tr>
                   <th className="py-2 text-left">Metric</th>
-                  {sortedDesc.slice(0, 5).map((f) => (
-                    <th key={f.period_end} className="py-2 text-right">
-                      {periodType === "quarterly" ? formatQuarter(f.period_end) : formatYear(f.period_end)}
-                    </th>
+                  {top5.map((f) => (
+                    <th key={f.date} className="py-2 text-right">{fmt(f.date)}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                <TableRow label="Operating Cash Flow" data={sortedDesc.slice(0, 5)} field="operating_cf" format={formatCurrency} highlight />
-                <TableRow label="Investing Cash Flow" data={sortedDesc.slice(0, 5)} field="investing_cf" format={formatCurrency} />
-                <TableRow label="Financing Cash Flow" data={sortedDesc.slice(0, 5)} field="financing_cf" format={formatCurrency} />
-                <TableRow label="CapEx" data={sortedDesc.slice(0, 5)} field="capex" format={formatCurrency} />
-                <TableRow label="Dividends Paid" data={sortedDesc.slice(0, 5)} field="dividends_paid" format={formatCurrency} />
-                <TableRow label="Free Cash Flow" data={sortedDesc.slice(0, 5)} field="free_cash_flow" format={formatCurrency} highlight />
+                <CashFlowTableRow label="Operating Cash Flow" rows={top5} field="total_cash_from_operating_activities" format={formatCurrency} highlight />
+                <CashFlowTableRow label="Investing Cash Flow" rows={top5} field="total_cashflows_from_investing_activities" format={formatCurrency} />
+                <CashFlowTableRow label="Financing Cash Flow" rows={top5} field="total_cash_from_financing_activities" format={formatCurrency} />
+                <CashFlowTableRow label="CapEx" rows={top5} field="capital_expenditures" format={formatCurrency} />
+                <CashFlowTableRow label="Dividends Paid" rows={top5} field="dividends_paid" format={formatCurrency} />
+                <CashFlowTableRow label="Free Cash Flow" rows={top5} field="free_cash_flow" format={formatCurrency} highlight />
+                <CashFlowTableRow label="Stock-Based Comp" rows={top5} field="stock_based_compensation" format={formatCurrency} />
               </tbody>
             </table>
           </div>
@@ -698,111 +742,40 @@ function CashFlowTab({
   );
 }
 
-// Ratios Tab
-function RatiosTab({
-  data,
-  sortedDesc,
-  periodType,
-}: Readonly<{ data: FinancialPeriod[]; sortedDesc: FinancialPeriod[]; periodType: string }>) {
-  const chartData = data.map((f) => ({
-    period: periodType === "quarterly" ? formatQuarter(f.period_end) : formatYear(f.period_end),
-    currentRatio: f.current_ratio,
-    quickRatio: f.quick_ratio,
-    debtToEquity: f.debt_to_equity,
-    roe: f.roe ? f.roe * 100 : null,
-    roa: f.roa ? f.roa * 100 : null,
-  }));
 
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Liquidity Ratios */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Liquidity Ratios</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
-                <XAxis dataKey="period" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 10 }} />
-                <Tooltip formatter={(v: number) => [v?.toFixed(2), ""]} />
-                <Legend />
-                <ReferenceLine y={1} stroke="#94a3b8" strokeDasharray="5 5" label="1.0" />
-                <Line type="monotone" dataKey="currentRatio" name="Current Ratio" stroke={COLORS.primary} strokeWidth={2} dot={{ r: 3 }} />
-                <Line type="monotone" dataKey="quickRatio" name="Quick Ratio" stroke={COLORS.success} strokeWidth={2} dot={{ r: 3 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Leverage */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Leverage</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
-                <XAxis dataKey="period" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 10 }} />
-                <Tooltip formatter={(v: number) => [v?.toFixed(2), ""]} />
-                <Legend />
-                <Area type="monotone" dataKey="debtToEquity" name="Debt/Equity" stroke={COLORS.danger} fill={COLORS.danger} fillOpacity={0.3} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Return Ratios */}
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <CardTitle className="text-base">Profitability Returns</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
-                <XAxis dataKey="period" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 10 }} />
-                <Tooltip formatter={(v: number) => [`${v?.toFixed(2)}%`, ""]} />
-                <Legend />
-                <Area type="monotone" dataKey="roe" name="ROE %" stroke={COLORS.primary} fill={COLORS.primary} fillOpacity={0.3} />
-                <Area type="monotone" dataKey="roa" name="ROA %" stroke={COLORS.success} fill={COLORS.success} fillOpacity={0.3} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-// Table Row Helper
-function TableRow({
-  label,
-  data,
-  field,
-  format,
-  highlight = false,
-}: Readonly<{
-  label: string;
-  data: FinancialPeriod[];
-  field: keyof FinancialPeriod;
-  format: (value: number | null) => string;
-  highlight?: boolean;
-}>) {
+// Typed table row helpers for each statement type
+function IncomeTableRow({ label, rows, field, format, highlight = false }: Readonly<{ label: string; rows: IncomeRow[]; field: keyof IncomeRow; format: (v: number | null) => string; highlight?: boolean }>) {
   return (
     <tr className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 ${highlight ? "bg-slate-50/50 dark:bg-slate-800/30 font-medium" : ""}`}>
       <td className="py-2 text-slate-700 dark:text-slate-300">{label}</td>
-      {data.map((f) => (
-        <td key={f.period_end} className="py-2 text-right text-slate-900 dark:text-white font-mono">
+      {rows.map((f) => (
+        <td key={f.date} className="py-2 text-right text-slate-900 dark:text-white font-mono">
+          {format(f[field] as number | null)}
+        </td>
+      ))}
+    </tr>
+  );
+}
+
+function BalanceTableRow({ label, rows, field, format, highlight = false }: Readonly<{ label: string; rows: BalanceRow[]; field: keyof BalanceRow; format: (v: number | null) => string; highlight?: boolean }>) {
+  return (
+    <tr className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 ${highlight ? "bg-slate-50/50 dark:bg-slate-800/30 font-medium" : ""}`}>
+      <td className="py-2 text-slate-700 dark:text-slate-300">{label}</td>
+      {rows.map((f) => (
+        <td key={f.date} className="py-2 text-right text-slate-900 dark:text-white font-mono">
+          {format(f[field] as number | null)}
+        </td>
+      ))}
+    </tr>
+  );
+}
+
+function CashFlowTableRow({ label, rows, field, format, highlight = false }: Readonly<{ label: string; rows: CashFlowRow[]; field: keyof CashFlowRow; format: (v: number | null) => string; highlight?: boolean }>) {
+  return (
+    <tr className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 ${highlight ? "bg-slate-50/50 dark:bg-slate-800/30 font-medium" : ""}`}>
+      <td className="py-2 text-slate-700 dark:text-slate-300">{label}</td>
+      {rows.map((f) => (
+        <td key={f.date} className="py-2 text-right text-slate-900 dark:text-white font-mono">
           {format(f[field] as number | null)}
         </td>
       ))}
