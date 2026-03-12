@@ -23,12 +23,12 @@ import {
 } from "@/components/ui/tooltip";
 
 import { AddToWatchlistButton } from "@/components/company/AddToWatchlistButton";
-import { CompanyChartsSwitcher, type PriceHistoryPoint } from "@/components/company/CompanyChartsSwitcher";
+import { type PriceHistoryPoint } from "@/components/company/CompanyChartsSwitcher";
 import { CompanyDescriptionModal } from "@/components/company/CompanyDescriptionModal";
 import { CompanyLogo } from "@/components/company/CompanyLogo";
+import { CompanyTabSwitcher } from "@/components/company/CompanyTabSwitcher";
 
 import { FiftyTwoWeekRange } from "@/components/company/FiftyTwoWeekRange";
-import { KeyMetrics } from "@/components/company/KeyMetrics";
 import { NewsFeed, type NewsArticle } from "@/components/company/NewsFeed";
 import { PeerComparison } from "@/components/company/PeerComparison";
 import { UsdValue } from "@/components/company/UsdValue";
@@ -507,28 +507,20 @@ async function CompanyContent({ ticker }: { ticker: string }) {
           {/* Hero Section */}
           <CompanyHero data={data} />
 
-          {/* Navigation Tabs */}
-
-
           {/* Main Grid */}
           <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
             {/* Left Column - Main Content */}
-            <div className="xl:col-span-3 space-y-10">
-              <div id="overview" className="scroll-mt-32">
-                {/* Charts: Price vs Valuations */}
-                <CompanyChartsSwitcher
-                  priceHistory={data.priceHistory}
-                  valuationMetrics={data.valuationMetrics}
-                  valuationHistory={data.valuationHistory}
-                  ticker={ticker}
-                />
-              </div>
-
-              {/* Key Metrics Grid */}
-              <KeyMetrics
+            <div className="xl:col-span-3 space-y-8">
+              {/* Fundamentals / Technicals / Financials tab switcher */}
+              <CompanyTabSwitcher
+                ticker={ticker}
                 metrics={data.rawMetrics}
-                snapshotDate={data.snapshotDate ?? undefined}
+                snapshotDate={data.snapshotDate}
                 sector={data.sector}
+                price={data.price}
+                priceHistory={data.priceHistory}
+                valuationMetrics={data.valuationMetrics}
+                valuationHistory={data.valuationHistory}
               />
 
               <div id="peers" className="scroll-mt-32">
