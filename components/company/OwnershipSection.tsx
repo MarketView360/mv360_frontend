@@ -32,7 +32,8 @@ import {
 } from "recharts";
 
 interface InstitutionalHolder {
-  holder_name: string;
+  holder_name?: string;
+  fund_name?: string;
   report_date: string;
   total_shares_percent: number | null;
   total_assets_percent: number | null;
@@ -215,10 +216,13 @@ function InstitutionalHoldersTab({ holders }: Readonly<{ holders: HoldersRespons
   const data = view === "institutional" ? (holders?.institutional ?? []) : (holders?.fund ?? []);
 
   const topForChart = data.slice(0, 10);
-  const chartData = topForChart.map((h) => ({
-    name: h.holder_name.length > 20 ? h.holder_name.slice(0, 20) + "…" : h.holder_name,
-    shares_pct: h.total_shares_percent ? Number(h.total_shares_percent) : 0,
-  }));
+  const chartData = topForChart.map((h) => {
+    const displayName = h.holder_name ?? h.fund_name ?? "Unknown";
+    return {
+      name: displayName.length > 20 ? displayName.slice(0, 20) + "…" : displayName,
+      shares_pct: h.total_shares_percent ? Number(h.total_shares_percent) : 0,
+    };
+  });
 
   return (
     <div className="space-y-6">
@@ -288,9 +292,10 @@ function InstitutionalHoldersTab({ holders }: Readonly<{ holders: HoldersRespons
                       const chg = h.change_shares ?? 0;
                       const isUp = chg > 0;
                       const isDown = chg < 0;
+                      const displayName = h.holder_name ?? h.fund_name ?? "Unknown";
                       return (
                         <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                          <td className="py-2 text-slate-900 dark:text-white font-medium max-w-[200px] truncate">{h.holder_name}</td>
+                          <td className="py-2 text-slate-900 dark:text-white font-medium max-w-[200px] truncate">{displayName}</td>
                           <td className="py-2 text-right font-mono text-slate-700 dark:text-slate-300">{formatShares(h.current_shares)}</td>
                           <td className="py-2 text-right font-mono text-slate-700 dark:text-slate-300">{formatPercent(h.total_shares_percent, 3)}</td>
                           <td className={`py-2 text-right font-mono ${isUp ? "text-green-600" : isDown ? "text-red-500" : "text-slate-500"}`}>
