@@ -234,7 +234,11 @@ export function WatchlistExportDialog({
 
     // Metadata section (optional)
     if (includeMetadata) {
-      lines.push("# WATCHLIST EXPORT");
+      lines.push("# MARKETVIEW360 - WATCHLIST EXPORT");
+      lines.push(`# Platform: MarketView360`);
+      lines.push(`# URL: https://www.marketview360.io/`);
+      lines.push("");
+      lines.push("# --- WATCHLIST DETAILS ---");
       lines.push(`# Watchlist Name: ${watchlist.name}`);
       lines.push(`# Description: ${watchlist.description || ""}`);
       lines.push(`# Export Date: ${exportDate}`);
