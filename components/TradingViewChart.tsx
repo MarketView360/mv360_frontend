@@ -71,6 +71,7 @@ interface TradingViewChartProps {
         wickDownColor?: string;
     };
     chartType?: "area" | "candlestick";
+    /** Pixel height. Pass 0 to auto-fill the parent container height. */
     height?: number;
     showVolume?: boolean;
     showDetailedTooltip?: boolean;
@@ -84,6 +85,8 @@ interface TradingViewChartProps {
     overlays?: ChartOverlay[];
     /** Generic oscillator pane shown below the main chart (replaces rsiData) */
     oscillatorPane?: OscillatorPaneConfig;
+    /** Always reserve space for the sub-panel even when no oscillator is active */
+    reserveSubPanel?: boolean;
 }
 
 export const TradingViewChart: React.FC<TradingViewChartProps> = ({
@@ -101,11 +104,13 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
     baselinePrice,
     overlays = [],
     oscillatorPane,
+    reserveSubPanel = false,
 }) => {
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartRef = useRef<IChartApi | null>(null);
     const rsiContainerRef = useRef<HTMLDivElement>(null);
     const rsiChartRef = useRef<IChartApi | null>(null);
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const overlaySeriesRef = useRef<any[]>([]);
     // Tracks the user-selected visible time range so overlay mutations never
@@ -359,12 +364,15 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
 
         return () => {
             window.removeEventListener("resize", handleResize);
-            overlaySeriesRef.current = []; // cleared before overlay-effect cleanup runs
-            if (rsiChartRef.current) {
-                rsiChartRef.current.remove();
-                rsiChartRef.current = null;
+            // Null refs BEFORE remove() so any in-flight RAF paint bails out
+            overlaySeriesRef.current = [];
+            const rsiToRemove = rsiChartRef.current;
+            rsiChartRef.current = null;
+            if (rsiToRemove) {
+                try { rsiToRemove.remove(); } catch { /* already disposed */ }
             }
-            chart.remove();
+            chartRef.current = null;
+            try { chart.remove(); } catch { /* already disposed */ }
         };
     }, [
         data,
@@ -395,34 +403,32 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
         const chart = chartRef.current;
         if (!chart) return;
 
-        for (const s of overlaySeriesRef.current) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            try { chart.removeSeries(s as any); } catch { /* chart may have been recreated */ }
-        }
-        overlaySeriesRef.current = [];
-        for (const overlay of overlays) {
-            if (!overlay.data?.length) continue;
-            const s = chart.addSeries(LineSeries, {
-                color: overlay.color,
-                lineWidth: overlay.lineWidth ?? 1,
-                lineStyle: overlay.lineStyle ?? 0,
-                crosshairMarkerVisible: false,
-                priceLineVisible: false,
-                lastValueVisible: false,
-            });
-            const uniqueSortedOverlayData = Array.from(
-                new Map(overlay.data.filter((d) => d.value != null && !Number.isNaN(d.value)).map(d => [d.time, d])).values()
-            ).sort((a, b) => (a.time as number) - (b.time as number));
-            s.setData(uniqueSortedOverlayData);
-            overlaySeriesRef.current.push(s);
-        }
-
-        // Always restore the tracked range after series mutations.
-        // Using the ref (not getVisibleRange) avoids the race where fitContent
-        // is still pending and getVisibleRange returns null / stale data.
-        if (visibleRangeRef.current) {
-            chart.timeScale().setVisibleRange(visibleRangeRef.current);
-        }
+        try {
+            for (const s of overlaySeriesRef.current) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                try { chart.removeSeries(s as any); } catch { /* already removed */ }
+            }
+            overlaySeriesRef.current = [];
+            for (const overlay of overlays) {
+                if (!overlay.data?.length) continue;
+                const s = chart.addSeries(LineSeries, {
+                    color: overlay.color,
+                    lineWidth: overlay.lineWidth ?? 1,
+                    lineStyle: overlay.lineStyle ?? 0,
+                    crosshairMarkerVisible: false,
+                    priceLineVisible: false,
+                    lastValueVisible: false,
+                });
+                const uniqueSortedOverlayData = Array.from(
+                    new Map(overlay.data.filter((d) => d.value != null && !Number.isNaN(d.value)).map(d => [d.time, d])).values()
+                ).sort((a, b) => (a.time as number) - (b.time as number));
+                s.setData(uniqueSortedOverlayData);
+                overlaySeriesRef.current.push(s);
+            }
+            if (visibleRangeRef.current) {
+                chart.timeScale().setVisibleRange(visibleRangeRef.current);
+            }
+        } catch { /* chart was disposed between render and effect */ }
 
         return () => {
             const c = chartRef.current;
@@ -563,13 +569,15 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
                 });
             }
         } else if (!hasData && rsiChartRef.current) {
-            rsiChartRef.current.remove();
+            const c = rsiChartRef.current;
             rsiChartRef.current = null;
+            try { c.remove(); } catch { /* already disposed */ }
         }
         return () => {
-            if (rsiChartRef.current) {
-                rsiChartRef.current.remove();
+            const c = rsiChartRef.current;
+            if (c) {
                 rsiChartRef.current = null;
+                try { c.remove(); } catch { /* already disposed */ }
             }
         };
     }, [oscillatorPane, isDark]);
@@ -577,21 +585,23 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
     // Handle theme changes
     useEffect(() => {
         if (!chartRef.current) return;
-        chartRef.current.applyOptions({
-            layout: {
-                textColor: isDark ? "#94a3b8" : "#64748b",
-            },
-            grid: {
-                vertLines: { color: isDark ? "#334155" : "#e2e8f0" },
-                horzLines: { color: isDark ? "#334155" : "#e2e8f0" },
-            },
-            rightPriceScale: {
-                borderColor: isDark ? "#475569" : "#cbd5e1",
-            },
-            timeScale: {
-                borderColor: isDark ? "#475569" : "#cbd5e1",
-            },
-        });
+        try {
+            chartRef.current.applyOptions({
+                layout: {
+                    textColor: isDark ? "#94a3b8" : "#64748b",
+                },
+                grid: {
+                    vertLines: { color: isDark ? "#334155" : "#e2e8f0" },
+                    horzLines: { color: isDark ? "#334155" : "#e2e8f0" },
+                },
+                rightPriceScale: {
+                    borderColor: isDark ? "#475569" : "#cbd5e1",
+                },
+                timeScale: {
+                    borderColor: isDark ? "#475569" : "#cbd5e1",
+                },
+            });
+        } catch { /* chart disposed */ }
     }, [isDark]);
 
     const formatNumber = (value: number | undefined) => {
@@ -615,9 +625,11 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
         });
     };
 
+    const hasOscillator = oscillatorPane && oscillatorPane.lines.some((l) => l.data.length > 0);
+
     return (
-        <>
-            <div ref={chartContainerRef} className="w-full h-full relative">
+        <div className="w-full flex flex-col">
+            <div ref={chartContainerRef} className="w-full relative">
                 {showDetailedTooltip && hoverInfo && (
                     <div className="pointer-events-none absolute top-3 left-3 z-10 rounded-lg border border-slate-200/80 dark:border-slate-700/80 bg-white/75 dark:bg-slate-900/75 backdrop-blur-sm shadow-lg px-3 py-2 text-[11px] space-y-1 min-w-[180px]">
                         <div className="font-semibold text-slate-800 dark:text-slate-100 border-b border-slate-100 dark:border-slate-800 pb-1 mb-1">
@@ -664,12 +676,22 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
                     </div>
                 )}
             </div>
-            {oscillatorPane && oscillatorPane.lines.some((l) => l.data.length > 0) && (
-                <div className="border-t border-slate-200 dark:border-slate-700">
-                    <div className="text-[10px] text-slate-400 dark:text-slate-500 px-2 pt-1 font-medium tracking-wide">{oscillatorPane.label}</div>
-                    <div ref={rsiContainerRef} className="w-full" style={{ height: 110 }} />
+            {/* Sub-panel: active oscillator or placeholder */}
+            {(hasOscillator || reserveSubPanel) && (
+                <div className="border-t border-slate-200 dark:border-slate-700 shrink-0" style={{ height: 155 }}>
+                    {hasOscillator ? (
+                        <>
+                            <div className="text-[10px] text-slate-400 dark:text-slate-500 px-2 pt-1 font-medium tracking-wide">{oscillatorPane!.label}</div>
+                            <div ref={rsiContainerRef} className="w-full" style={{ height: 125 }} />
+                        </>
+                    ) : (
+                        <div className="h-full flex items-center justify-center text-[11px] text-slate-500 dark:text-slate-600 gap-2">
+                            <span>No indicator selected — choose one in</span>
+                            <span className="font-medium text-slate-400 dark:text-slate-500">Chart Settings → Oscillator</span>
+                        </div>
+                    )}
                 </div>
             )}
-        </>
+        </div>
     );
 };

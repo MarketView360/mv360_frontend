@@ -159,6 +159,10 @@ export function AdvancedPriceChart({ data, ticker }: AdvancedPriceChartProps) {
       chartRef.current = null;
     }
 
+    const containerHeight = isFullscreen
+      ? window.innerHeight - 140
+      : 380;
+
     const chart = createChart(chartContainerRef.current, {
       layout: {
         background: { type: ColorType.Solid, color: colors.background },
@@ -167,7 +171,7 @@ export function AdvancedPriceChart({ data, ticker }: AdvancedPriceChartProps) {
         attributionLogo: false,
       },
       width: chartContainerRef.current.clientWidth,
-      height: isFullscreen ? window.innerHeight - 120 : 380,
+      height: containerHeight,
       grid: {
         vertLines: { color: colors.grid, style: 1 },
         horzLines: { color: colors.grid, style: 1 },
@@ -291,9 +295,12 @@ export function AdvancedPriceChart({ data, ticker }: AdvancedPriceChartProps) {
     // Handle resize
     const handleResize = () => {
       if (chartContainerRef.current && chartRef.current) {
+        const containerHeight = isFullscreen
+          ? window.innerHeight - 140
+          : 380;
         chartRef.current.applyOptions({
           width: chartContainerRef.current.clientWidth,
-          height: isFullscreen ? window.innerHeight - 120 : 380,
+          height: containerHeight,
         });
       }
     };
@@ -340,16 +347,19 @@ export function AdvancedPriceChart({ data, ticker }: AdvancedPriceChartProps) {
   }, [setShowAnimations]);
 
   const containerClasses = isFullscreen
-    ? "fixed inset-0 z-50 bg-white dark:bg-slate-900 p-4"
+    ? "fixed inset-0 z-50 bg-white dark:bg-slate-900 p-4 overflow-hidden"
     : "";
 
   return (
     <div className={containerClasses}>
       <Card className={cn(
         "w-full border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 transition-colors duration-200",
-        isFullscreen && "h-full border-0 shadow-none"
+        isFullscreen && "h-[calc(100vh-2rem)] border-0 shadow-none"
       )}>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <CardHeader className={cn(
+          "flex flex-row items-center justify-between space-y-0 pb-3 border-b border-slate-100 dark:border-slate-800",
+          isFullscreen && "h-[60px]"
+        )}>
           <div className="flex items-center gap-3">
             <CardTitle className="text-base font-semibold text-slate-800 dark:text-slate-200">
               {ticker && <span className="text-brand mr-2">{ticker}</span>}
@@ -480,7 +490,7 @@ export function AdvancedPriceChart({ data, ticker }: AdvancedPriceChartProps) {
           </div>
         </CardHeader>
 
-        <CardContent className={cn("p-4", isFullscreen && "h-[calc(100%-80px)]")}>
+        <CardContent className={cn("p-4", isFullscreen && "h-[calc(100vh-140px)]")}>
           {chartData.length === 0 ? (
             <div className="h-[380px] flex items-center justify-center text-slate-500 dark:text-slate-400">
               No price data available

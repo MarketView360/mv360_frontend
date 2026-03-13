@@ -10,7 +10,7 @@ import {
   YAxis,
   Tooltip,
 } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip as UITooltip,
@@ -30,7 +30,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { UTCTimestamp } from "lightweight-charts";
 import { TradingViewChart, ChartDataPoint, RiskZone, ChartOverlay, OscillatorPaneConfig } from "./TradingViewChart";
-import { Camera, Settings2, BarChart3, TrendingUp, CandlestickChart, ChevronDown, Lock, Building2, MousePointerClick, ShieldAlert } from "lucide-react";
+import { Camera, Settings2, BarChart3, TrendingUp, CandlestickChart, ChevronDown, Lock, Building2, MousePointerClick, ShieldAlert, X } from "lucide-react";
 import { useChartPreferences } from "@/hooks/useChartPreferences";
 import { useAuth } from "@/providers/AuthProvider";
 import Link from "next/link";
@@ -179,12 +179,16 @@ interface PriceChartProps {
   data: PriceData[];
   /** Stock ticker symbol – required to fetch indicator data on demand */
   ticker?: string;
+  /** Whether the chart is rendered in fullscreen mode */
+  fullscreen?: boolean;
+  /** Callback to close fullscreen — renders an X button in the header */
+  onClose?: () => void;
 }
 
 // Enterprise-only ranges
 const ENTERPRISE_RANGES = ["Max"];
 
-export function PriceChart({ data, ticker }: PriceChartProps) {
+export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceChartProps) {
   const chartContainerRef = React.useRef<HTMLDivElement>(null);
   const {
     preferences,
@@ -724,9 +728,20 @@ export function PriceChart({ data, ticker }: PriceChartProps) {
     return `${sign}${fixed}%`;
   };
 
+  const [fsChartHeight] = React.useState(() =>
+    Math.round(Math.max(300, (typeof window !== "undefined" ? window.innerHeight : 800) * 0.97 - 205))
+  );
+
+  const Wrapper = fullscreen ? React.Fragment : Card;
+  const wrapperProps = fullscreen ? {} : { className: "w-full border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 transition-colors duration-300" };
+  const headerClass = fullscreen
+    ? "flex flex-row items-center justify-between space-y-0 pb-2 border-b border-slate-700 transition-colors duration-300"
+    : "flex flex-row items-center justify-between space-y-0 pb-2 border-b border-slate-100 dark:border-slate-800 transition-colors duration-300";
+  const contentClass = fullscreen ? "pt-1 relative" : "p-4 relative";
+
   return (
-    <Card className="w-full border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 transition-colors duration-300">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b border-slate-100 dark:border-slate-800 transition-colors duration-300">
+    <Wrapper {...(wrapperProps as any)}>
+      <div className={headerClass}>
         <div className="flex items-center gap-3">
           <CardTitle className="text-base font-medium text-slate-700 dark:text-slate-300 font-heading transition-colors duration-300">
             {view === "price" ? "Price & Volume" : view === "candlestick" ? "Candlestick" : riskMode === "volatility" ? "Volatility" : "Risk (Drawdown)"}
@@ -853,8 +868,8 @@ export function PriceChart({ data, ticker }: PriceChartProps) {
             onSetPriceDisplayMode={setPriceDisplayMode}
             showDetailedTooltip={showDetailedTooltip}
             onSetShowDetailedTooltip={setShowDetailedTooltip}
-            view={view}
-            onViewChange={setView}
+            view={view === "risk" ? "price" : view}
+            onViewChange={(v) => setView(v)}
             areaStyle={areaStyle}
             onSetAreaStyle={setAreaStyle}
             candlestickStyle={candlestickStyle}
@@ -893,7 +908,7 @@ export function PriceChart({ data, ticker }: PriceChartProps) {
                 <Camera className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="end" className="w-48 z-[70]">
               <DropdownMenuLabel>Snapshot Options</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => handleSnapshot("default")}>
@@ -914,9 +929,19 @@ export function PriceChart({ data, ticker }: PriceChartProps) {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700 text-slate-300 hover:bg-slate-800 ml-1"
+              aria-label="Close fullscreen"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
-      </CardHeader>
-      <CardContent className="p-4 relative">
+      </div>
+      <div className={contentClass}>
         {/* Enterprise Gate Overlay */}
         {showEnterpriseGate && (
           <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm rounded-lg">
@@ -978,14 +1003,14 @@ export function PriceChart({ data, ticker }: PriceChartProps) {
           </div>
         )}
 
-        <div ref={chartContainerRef} className={cn("w-full pb-6", view === "risk" ? "h-80" : undefined)}>
+        <div ref={chartContainerRef} className={cn("w-full", !fullscreen && "pb-6", view === "risk" && !fullscreen ? "h-80" : undefined)}>
           {view === "risk" ? (
             riskMode === "volatility" && (!filteredData || filteredData.length < 25) ? (
               <div className="flex h-full items-center justify-center text-xs text-slate-500 dark:text-slate-400">
                 Volatility analysis is not available for very short periods. Try a longer range like 3M or 1Y.
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height={296}>
+              <ResponsiveContainer width="100%" height={fullscreen ? 550 : 296}>
                 <ComposedChart
                   data={riskData}
                   margin={{ top: 8, right: 8, bottom: 28, left: 0 }}
@@ -1066,6 +1091,7 @@ export function PriceChart({ data, ticker }: PriceChartProps) {
               baselinePrice={rangeStats?.startPrice ?? undefined}
               overlays={overlays}
               oscillatorPane={oscillatorPaneConfig}
+              reserveSubPanel={fullscreen}
               colors={{
                 lineColor: isDark ? "#3b82f6" : "#2563eb",
                 areaTopColor: isDark ? "rgba(59, 130, 246, 0.4)" : "rgba(37, 99, 235, 0.3)",
@@ -1075,11 +1101,11 @@ export function PriceChart({ data, ticker }: PriceChartProps) {
                 wickUpColor: isDark ? "#22c55e" : "#16a34a",
                 wickDownColor: isDark ? "#ef4444" : "#dc2626",
               }}
-              height={320}
+              height={fullscreen ? fsChartHeight : 320}
             />
           )}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </Wrapper>
   );
 }

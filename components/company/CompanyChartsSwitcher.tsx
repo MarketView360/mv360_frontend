@@ -22,7 +22,7 @@ import {
   Area,
   Line,
 } from "recharts";
-import { Maximize2, X } from "lucide-react";
+import { Maximize2 } from "lucide-react";
 
 export interface PriceHistoryPoint {
   date: string;
@@ -404,26 +404,18 @@ export function CompanyChartsSwitcher({
       </Card>
 
       {fullscreen && (
-        <div className="fixed inset-0 z-60 bg-black/70 backdrop-blur-sm flex items-center justify-center">
-          <div className="w-full max-w-6xl mx-4 bg-slate-950 text-slate-50 rounded-xl shadow-2xl border border-slate-800 relative p-4">
-            <button
-              type="button"
-              onClick={() => setFullscreen(false)}
-              className="absolute right-3 top-3 inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-700 text-slate-300 hover:bg-slate-800"
-              aria-label="Close full screen chart"
-            >
-              <X className="w-3 h-3" />
-            </button>
-            <div className="mb-3 flex items-center justify-between pr-8">
-              <div className="text-sm font-semibold">
-                {mode === "price"
-                  ? "Price & Volume (Full screen)"
-                  : mode === "valuations"
-                    ? "Valuations (Coming Soon)"
-                    : "Price & P/E (Coming Soon)"}
-              </div>
+        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-2">
+          <div className="w-full max-w-[98vw] bg-slate-950 text-slate-50 rounded-xl shadow-2xl border border-slate-800 flex flex-col h-[97vh] overflow-hidden">
+            <div className="flex-1 flex flex-col min-h-0 px-3 pt-2 pb-0">
+              {mode === "price" && (
+                <PriceChart
+                  data={priceHistory}
+                  ticker={ticker}
+                  fullscreen={fullscreen}
+                  onClose={() => setFullscreen(false)}
+                />
+              )}
             </div>
-            {renderChartBody("h-[70vh]")}
           </div>
         </div>
       )}
