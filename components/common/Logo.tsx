@@ -1,37 +1,57 @@
-"use client";
-
 import Image from "next/image";
-import { useEffect, useState } from "react";
-import { useTheme } from "@/app/providers";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 interface LogoProps {
-    className?: string;
-    width?: number;
-    height?: number;
+  className?: string;
+  size?: "sm" | "md" | "lg";
+  priority?: boolean;
 }
 
-export function Logo({ className, width = 160, height = 30 }: LogoProps) {
-    const { isDark } = useTheme();
-    const [mounted, setMounted] = useState(false);
+const SIZES = {
+  sm: { width: 120, height: 28 },
+  md: { width: 152, height: 32 },
+  lg: { width: 180, height: 40 },
+} as const;
 
-    useEffect(() => {
-        setMounted(true);
-    }, []);
+export function Logo({
+  className,
+  size = "md",
+  priority = false,
+}: LogoProps) {
+  const { width, height } = SIZES[size];
 
-    // Keep SSR and first client render identical to avoid hydration warnings.
-    const logoSrc = mounted && isDark ? "/logo/logo-dark.svg" : "/logo/logo-light.svg";
-
-    return (
-        <div className={cn("relative flex items-center shrink-0", className)}>
-            <Image
-                src={logoSrc}
-                alt="Marketview360 Logo"
-                width={width}
-                height={height}
-                className="h-12 w-auto object-contain"
-                priority
-            />
-        </div>
-    );
+  return (
+    <Link
+      href="/"
+      aria-label="MarketView360 — Home"
+      className={cn(
+        "flex-shrink-0 rounded-sm",
+        "focus-visible:outline-none focus-visible:ring-2",
+        "focus-visible:ring-ring focus-visible:ring-offset-2",
+        className
+      )}
+    >
+      {/* Light mode */}
+      <Image
+        src="/logo/logo-light.svg"
+        alt="MarketView360"
+        width={width}
+        height={height}
+        priority={priority}
+        className="block dark:hidden w-auto h-auto"
+      />
+      {/* Dark mode */}
+      <Image
+        src="/logo/logo-dark.svg"
+        alt="MarketView360"
+        width={width}
+        height={height}
+        priority={priority}
+        className="hidden dark:block w-auto h-auto"
+      />
+    </Link>
+  );
 }
+
+export default Logo;

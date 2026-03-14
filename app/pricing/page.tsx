@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import {
     Check,
     X,
+    Minus,
     Lock,
     Crown,
     Shield,
@@ -14,6 +15,17 @@ import {
     Loader2,
     Bell,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
 import { waitlistApi } from "@/lib/api/waitlist";
 import { toast } from "sonner";
 import { WaitlistDialog, WaitlistFormData } from "./components/WaitlistDialog";
@@ -50,7 +62,6 @@ const plans: PricingPlan[] = [
             "Basic statistics",
             "Annual financials (2 years)",
             "Market overview",
-            "Mobile responsive",
         ],
     },
     {
@@ -291,31 +302,17 @@ export default function PricingPage() {
                     </p>
 
                     {/* Billing Toggle */}
-                    <div className="inline-flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-full">
-                        <button
-                            onClick={() => setBillingPeriod("monthly")}
-                            className={`px-5 py-1.5 rounded-full text-xs font-semibold transition-all ${!isAnnual
-                                ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
-                                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white"
-                                }`}
-                        >
-                            Monthly
-                        </button>
-                        <button
-                            onClick={() => setBillingPeriod("annually")}
-                            className={`px-5 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5 ${isAnnual
-                                ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
-                                : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white"
-                                }`}
-                        >
+                    <div className="flex items-center gap-3">
+                        <Label htmlFor="billing-toggle" className="text-sm">Monthly</Label>
+                        <Switch
+                            id="billing-toggle"
+                            checked={isAnnual}
+                            onCheckedChange={(checked) => setBillingPeriod(checked ? "annually" : "monthly")}
+                        />
+                        <Label htmlFor="billing-toggle" className="text-sm">
                             Annually
-                            <span
-                                className="px-1.5 py-0.5 text-[10px] font-bold rounded-full text-white"
-                                style={{ backgroundColor: '#16a34a' }}
-                            >
-                                -{savingsPercent}%
-                            </span>
-                        </button>
+                            <Badge variant="secondary" className="ml-2 text-xs">Save {savingsPercent}%</Badge>
+                        </Label>
                     </div>
                 </div>
             </section>
@@ -351,61 +348,56 @@ export default function PricingPage() {
                         Compare Plans
                     </h2>
 
-                    <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
-                        <table className="w-full min-w-[640px]">
-                            <thead>
-                                <tr className="bg-slate-50 dark:bg-slate-800/80">
-                                    <th className="text-left py-3 px-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-[40%]">
+                    <div className="overflow-x-auto rounded-lg border border-border">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="sticky left-0 z-10 bg-background min-w-[180px] font-medium">
                                         Feature
-                                    </th>
-                                    <th className="text-center py-3 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                                        Free
-                                    </th>
-                                    <th className="text-center py-3 px-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#f59e0b' }}>
-                                        Premium
-                                    </th>
-                                    <th className="text-center py-3 px-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#8b5cf6' }}>
-                                        Max
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                                    </TableHead>
+                                    <TableHead className="text-center font-medium">Free</TableHead>
+                                    <TableHead className="text-center font-medium">Premium</TableHead>
+                                    <TableHead className="text-center font-medium">Max</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
                                 {comparisonFeatures
                                     .slice(0, showAllFeatures ? undefined : 4)
                                     .map((category) => (
                                         <React.Fragment key={category.category}>
-                                            <tr className="bg-slate-50/50 dark:bg-slate-800/30">
-                                                <td
+                                            <TableRow className="bg-muted/30">
+                                                <TableCell
                                                     colSpan={4}
-                                                    className="py-2 px-4 text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider"
+                                                    className="py-2 px-4 text-xs font-bold uppercase tracking-wider"
                                                 >
                                                     {category.category}
-                                                </td>
-                                            </tr>
+                                                </TableCell>
+                                            </TableRow>
                                             {category.features.map((feature) => (
-                                                <tr
-                                                    key={feature.name}
-                                                    className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors"
-                                                >
-                                                    <td className="py-2.5 px-4 text-sm text-slate-600 dark:text-slate-300">
+                                                <TableRow key={feature.name}>
+                                                    <TableCell className="sticky left-0 z-10 bg-background text-sm text-muted-foreground">
                                                         {feature.name}
-                                                    </td>
-                                                    <td className="py-2.5 px-3 text-center">
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
                                                         <FeatureValue value={feature.free} />
-                                                    </td>
-                                                    <td className="py-2.5 px-3 text-center">
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
                                                         <FeatureValue value={feature.pro} />
-                                                    </td>
-                                                    <td className="py-2.5 px-3 text-center">
+                                                    </TableCell>
+                                                    <TableCell className="text-center">
                                                         <FeatureValue value={feature.elite} />
-                                                    </td>
-                                                </tr>
+                                                    </TableCell>
+                                                </TableRow>
                                             ))}
                                         </React.Fragment>
                                     ))}
-                            </tbody>
-                        </table>
+                            </TableBody>
+                        </Table>
                     </div>
+
+                    <p className="text-center text-xs text-muted-foreground mt-6">
+                        All plans include full mobile responsiveness, dark mode, and SSL security.
+                    </p>
 
                     {/* Show All / Show Less button below the table */}
                     <div className="flex justify-center mt-4">
@@ -738,16 +730,9 @@ function PricingCard({
 
 // Feature Value Component
 function FeatureValue({ value }: { value: boolean | string }) {
-    if (typeof value === "boolean") {
-        return value ? (
-            <Check className="w-4 h-4 mx-auto" style={{ color: '#16a34a' }} />
-        ) : (
-            <X className="w-4 h-4 text-slate-300 dark:text-slate-600 mx-auto" />
-        );
-    }
-    return (
-        <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{value}</span>
-    );
+    if (value === true)  return <Check size={16} strokeWidth={2} className="mx-auto text-green-500" aria-label="Included" />;
+    if (value === false) return <Minus size={16} strokeWidth={2} className="mx-auto text-muted-foreground/40" aria-label="Not included" />;
+    return <span className="text-sm">{value}</span>;
 }
 
 // Trust Signal Component

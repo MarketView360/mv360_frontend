@@ -1,126 +1,186 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
-import ThemeToggle from "@/components/ThemeToggle";
+import { usePathname } from "next/navigation";
+import {
+  BarChart2,
+  BookMarked,
+  DollarSign,
+  Menu,
+  Newspaper,
+  SlidersHorizontal,
+  Sparkles,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Logo } from "@/components/common/Logo";
 import { NavSearch } from "@/components/NavSearch";
+import ThemeToggle from "@/components/ThemeToggle";
 import { useAuth } from "@/providers/AuthProvider";
 import { UserDropdown } from "@/components/auth/UserDropdown";
-import { Logo } from "@/components/common/Logo";
+import { cn } from "@/lib/utils";
+
+const NAV_LINKS = [
+  { href: "/screens",   label: "Screens",      Icon: SlidersHorizontal },
+  { href: "/watchlist", label: "Watchlist",     Icon: BookMarked        },
+  { href: "/market",    label: "Markets",       Icon: BarChart2         },
+  { href: "/news",      label: "News",          Icon: Newspaper         },
+  { href: "/ai",        label: "AI Assistant",  Icon: Sparkles          },
+  { href: "/pricing",   label: "Pricing",       Icon: DollarSign        },
+] as const;
 
 export default function NavigationBar() {
+  const pathname = usePathname();
   const { user, loading } = useAuth();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
-  const navLinks = [
-    { href: "/screens", label: "Screens" },
-    { href: "/watchlist", label: "Watchlist" },
-    { href: "/market", label: "Markets" },
-    { href: "/news", label: "News" },
-    { href: "/ai", label: "AI Assistant" },
-    { href: "/pricing", label: "Pricing" },
-  ];
+  // Close sheet on navigation
+  useEffect(() => {
+    setSheetOpen(false);
+  }, [pathname]);
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-sm transition-colors duration-300">
-      <div className="mx-auto max-w-container flex h-16 items-center justify-between px-4 md:px-6">
-        <div className="flex items-center gap-8">
-          <Link className="flex items-center" href="/">
-            <Logo />
-          </Link>
-          <div className="hidden lg:flex items-center gap-6 text-sm font-medium text-slate-600 dark:text-slate-400">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="hover:text-brand transition-colors"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </div>
-        </div>
+    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="mx-auto flex h-14 max-w-[1600px] items-center justify-between px-4 sm:px-6 lg:px-8">
 
-        <div className="flex items-center gap-4 flex-shrink-0">
+        {/* Logo */}
+        <Logo size="sm" priority className="lg:hidden" />
+        <Logo size="md" priority className="hidden lg:flex" />
+
+        {/* Desktop nav */}
+        <nav aria-label="Main navigation" className="hidden lg:flex items-center gap-0.5">
+          {NAV_LINKS.map(({ href, label, Icon }) => {
+            const isActive =
+              pathname === href || pathname.startsWith(href + "/");
+            return (
+              <Button
+                key={href}
+                variant="ghost"
+                size="sm"
+                asChild
+                className={cn(
+                  "gap-1.5 text-muted-foreground hover:text-foreground",
+                  isActive && "bg-muted text-foreground"
+                )}
+                aria-current={isActive ? "page" : undefined}
+              >
+                <Link href={href}>
+                  <Icon
+                    size={15}
+                    strokeWidth={1.75}
+                    aria-hidden="true"
+                  />
+                  {label}
+                </Link>
+              </Button>
+            );
+          })}
+        </nav>
+
+        {/* Right controls */}
+        <div className="flex items-center gap-1">
           <div className="hidden lg:flex flex-shrink-0">
             <NavSearch />
           </div>
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <ThemeToggle />
-            {loading ? (
-              <div className="hidden lg:flex items-center gap-2">
-                <div className="h-9 w-16 rounded-md bg-slate-200 dark:bg-slate-800 animate-pulse" />
-                <div className="h-9 w-20 rounded-full bg-slate-200 dark:bg-slate-800 animate-pulse" />
-              </div>
-            ) : user ? (
-              <UserDropdown />
-            ) : (
-              <>
-                <Link
-                  href="/auth/login"
-                  className="hidden lg:inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-white dark:ring-offset-slate-950 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 dark:focus-visible:ring-slate-300 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white h-9 px-4 py-2"
-                >
-                  Log in
-                </Link>
-                <Link
-                  href="/auth/signup"
-                  className="inline-flex items-center justify-center whitespace-nowrap rounded-full text-sm font-medium ring-offset-white dark:ring-offset-slate-950 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 dark:focus-visible:ring-slate-300 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-slate-900 dark:bg-slate-100 text-slate-50 dark:text-slate-900 hover:bg-slate-900/90 dark:hover:bg-slate-100/90 h-9 px-4 py-2"
-                >
-                  Sign up
-                </Link>
-              </>
-            )}
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden inline-flex items-center justify-center p-2 rounded-md text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          <ThemeToggle />
+          {loading ? (
+            <div className="hidden sm:flex items-center gap-2">
+              <div className="h-9 w-16 rounded-md bg-muted animate-pulse" />
+            </div>
+          ) : user ? (
+            <UserDropdown />
+          ) : (
+            <div className="hidden sm:flex items-center gap-2">
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/auth/login">Log in</Link>
+              </Button>
+              <Button size="sm" asChild>
+                <Link href="/auth/signup">Sign up</Link>
+              </Button>
+            </div>
+          )}
+
+          {/* Mobile menu trigger — Sheet */}
+          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden h-9 w-9"
+              onClick={() => setSheetOpen(true)}
+              aria-label="Open navigation menu"
             >
-              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-          </div>
+              <Menu size={20} strokeWidth={1.75} aria-hidden="true" />
+            </Button>
+
+            <SheetContent side="left" className="w-72 p-0">
+              <SheetHeader className="px-6 py-4 border-b border-border">
+                <SheetTitle asChild>
+                  <div className="flex items-center">
+                    <Logo size="sm" />
+                    <span className="sr-only">Navigation menu</span>
+                  </div>
+                </SheetTitle>
+              </SheetHeader>
+
+              {/* Nav links */}
+              <nav
+                aria-label="Mobile navigation"
+                className="flex flex-col gap-1 p-3"
+              >
+                {NAV_LINKS.map(({ href, label, Icon }) => {
+                  const isActive =
+                    pathname === href || pathname.startsWith(href + "/");
+                  return (
+                    <Button
+                      key={href}
+                      variant={isActive ? "secondary" : "ghost"}
+                      className="w-full justify-start gap-3 h-11 text-base"
+                      asChild
+                      aria-current={isActive ? "page" : undefined}
+                    >
+                      <Link href={href}>
+                        <Icon
+                          size={18}
+                          strokeWidth={1.75}
+                          aria-hidden="true"
+                        />
+                        {label}
+                      </Link>
+                    </Button>
+                  );
+                })}
+              </nav>
+
+              <Separator />
+
+              {/* Auth in drawer bottom */}
+              <div className="p-4">
+                {loading ? (
+                  <div className="h-9 w-full rounded-md bg-muted animate-pulse" />
+                ) : user ? (
+                  <UserDropdown />
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button variant="outline" asChild>
+                      <Link href="/auth/login">Log in</Link>
+                    </Button>
+                    <Button asChild>
+                      <Link href="/auth/signup">Sign up</Link>
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
-
-      {/* Mobile Menu Overlay */}
-      {isMobileMenuOpen && (
-        <div className="lg:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 animate-in fade-in slide-in-from-top-4 duration-200">
-          <div className="space-y-4 px-4 py-6">
-            <div className="mb-6">
-              <NavSearch />
-            </div>
-            <div className="flex flex-col gap-4">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="text-lg font-medium text-slate-600 dark:text-slate-400 hover:text-brand dark:hover:text-white transition-colors"
-                >
-                  {link.label}
-                </Link>
-              ))}
-              {!user && !loading && (
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-                  <Link
-                    href="/auth/login"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="flex h-11 items-center justify-center rounded-md border border-slate-200 dark:border-slate-800 font-medium"
-                  >
-                    Log in
-                  </Link>
-                  <Link
-                    href="/auth/signup"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="flex h-11 items-center justify-center rounded-md bg-brand text-white font-medium"
-                  >
-                    Sign up
-                  </Link>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </nav>
+    </header>
   );
 }

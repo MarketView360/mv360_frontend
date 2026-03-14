@@ -27,6 +27,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import type { UTCTimestamp } from "lightweight-charts";
 import { TradingViewChart, ChartDataPoint, RiskZone, ChartOverlay, OscillatorPaneConfig } from "./TradingViewChart";
@@ -746,21 +748,18 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
           <CardTitle className="text-base font-medium text-slate-700 dark:text-slate-300 font-heading transition-colors duration-300">
             {view === "price" ? "Price & Volume" : view === "candlestick" ? "Candlestick" : riskMode === "volatility" ? "Volatility" : "Risk (Drawdown)"}
           </CardTitle>
-          <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
+          <ToggleGroup
+            type="single"
+            value={view}
+            onValueChange={(v) => { if (v) setView(v as typeof view); }}
+            className="h-8"
+          >
             <TooltipProvider>
               <UITooltip>
                 <TooltipTrigger asChild>
-                  <button
-                    onClick={() => setView("price")}
-                    className={cn(
-                      "p-1.5 rounded-md transition-colors",
-                      view === "price"
-                        ? "bg-white dark:bg-slate-700 text-brand shadow-sm"
-                        : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
-                    )}
-                  >
+                  <ToggleGroupItem value="price" aria-label="Area Chart" className="h-7 w-7 p-0">
                     <TrendingUp className="h-4 w-4" />
-                  </button>
+                  </ToggleGroupItem>
                 </TooltipTrigger>
                 <TooltipContent>Area Chart</TooltipContent>
               </UITooltip>
@@ -768,17 +767,9 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
             <TooltipProvider>
               <UITooltip>
                 <TooltipTrigger asChild>
-                  <button
-                    onClick={() => setView("candlestick")}
-                    className={cn(
-                      "p-1.5 rounded-md transition-colors",
-                      view === "candlestick"
-                        ? "bg-white dark:bg-slate-700 text-brand shadow-sm"
-                        : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
-                    )}
-                  >
+                  <ToggleGroupItem value="candlestick" aria-label="Candlestick Chart" className="h-7 w-7 p-0">
                     <CandlestickChart className="h-4 w-4" />
-                  </button>
+                  </ToggleGroupItem>
                 </TooltipTrigger>
                 <TooltipContent>Candlestick Chart</TooltipContent>
               </UITooltip>
@@ -786,22 +777,14 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
             <TooltipProvider>
               <UITooltip>
                 <TooltipTrigger asChild>
-                  <button
-                    onClick={() => setView("risk")}
-                    className={cn(
-                      "p-1.5 rounded-md transition-colors",
-                      view === "risk"
-                        ? "bg-white dark:bg-slate-700 text-brand shadow-sm"
-                        : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
-                    )}
-                  >
+                  <ToggleGroupItem value="risk" aria-label="Risk Chart" className="h-7 w-7 p-0">
                     <ShieldAlert className="h-4 w-4" />
-                  </button>
+                  </ToggleGroupItem>
                 </TooltipTrigger>
                 <TooltipContent>Risk Chart</TooltipContent>
               </UITooltip>
             </TooltipProvider>
-          </div>
+          </ToggleGroup>
         </div>
         <div className="flex items-center gap-3">
           {priceDisplayMode === "rangeChange" && rangeStats && (
@@ -837,28 +820,24 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
             </div>
           )}
 
-          <div className="flex space-x-1">
-            {["1M", "6M", "1Y", "3Y", "5Y", "10Y", "Max"].map((r) => {
-              const isLocked = ENTERPRISE_RANGES.includes(r) && !isEnterprise;
-              return (
-                <button
-                  key={r}
-                  onClick={() => handleRangeSelect(r)}
-                  className={cn(
-                    "px-2 py-1 text-xs font-medium rounded-md transition-colors flex items-center gap-0.5",
-                    range === r
-                      ? "bg-brand text-white"
-                      : isLocked
-                        ? "text-slate-400 dark:text-slate-500"
-                        : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
-                  )}
-                >
-                  {r}
-                  {isLocked && <Lock className="h-2.5 w-2.5 ml-0.5" />}
-                </button>
-              );
-            })}
-          </div>
+          <Tabs value={range} onValueChange={handleRangeSelect}>
+            <TabsList className="h-7">
+              {["1M", "6M", "1Y", "3Y", "5Y", "10Y", "Max"].map((r) => {
+                const isLocked = ENTERPRISE_RANGES.includes(r) && !isEnterprise;
+                return (
+                  <TabsTrigger
+                    key={r}
+                    value={r}
+                    className="text-xs h-5 px-2 gap-0.5"
+                    disabled={isLocked}
+                  >
+                    {r}
+                    {isLocked && <Lock className="h-2.5 w-2.5" />}
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+          </Tabs>
 
           {/* Settings */}
           <ChartSettingsPopover

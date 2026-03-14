@@ -11,6 +11,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ZoomIn,
   ZoomOut,
@@ -597,41 +599,41 @@ export function MarketHeatmapNew() {
         <div className="flex items-center gap-4">
           <h2 className="text-lg font-semibold text-white">Market Heatmap</h2>
 
-          {/* Index selector */}
-          <div className="flex items-center gap-1 bg-gray-800 rounded-lg p-1">
-            {indexOptions.map((opt) => (
-              <button
-                key={opt.id}
-                onClick={() => setSelectedIndex(opt.id)}
-                className={cn(
-                  "px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
-                  selectedIndex === opt.id
-                    ? "bg-blue-600 text-white"
-                    : "text-gray-400 hover:text-white hover:bg-gray-700"
-                )}
-              >
-                {opt.name}
-              </button>
-            ))}
-          </div>
+          {/* Index selector — shadcn Tabs */}
+          <Tabs
+            value={selectedIndex}
+            onValueChange={setSelectedIndex}
+          >
+            <TabsList className="h-8">
+              {indexOptions.map((opt) => (
+                <TabsTrigger
+                  key={opt.id}
+                  value={opt.id}
+                  className="text-xs px-3 h-6"
+                >
+                  {opt.name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
 
-          {/* Cap selector */}
-          <div className="flex items-center gap-1 bg-gray-800 rounded-lg p-1">
-            {capOptions.map((opt) => (
-              <button
-                key={opt.id}
-                onClick={() => setSelectedCap(opt.id as typeof selectedCap)}
-                className={cn(
-                  "px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
-                  selectedCap === opt.id
-                    ? "bg-emerald-600 text-white"
-                    : "text-gray-400 hover:text-white hover:bg-gray-700"
-                )}
-              >
-                {opt.name}
-              </button>
-            ))}
-          </div>
+          {/* Cap selector — shadcn Tabs */}
+          <Tabs
+            value={selectedCap}
+            onValueChange={(v) => setSelectedCap(v as typeof selectedCap)}
+          >
+            <TabsList className="h-8">
+              {capOptions.map((opt) => (
+                <TabsTrigger
+                  key={opt.id}
+                  value={opt.id}
+                  className="text-xs px-3 h-6"
+                >
+                  {opt.name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
 
           {/* Sector selector */}
           <div className="flex items-center gap-2 ml-2">
@@ -732,11 +734,8 @@ export function MarketHeatmapNew() {
       {/* Heatmap area */}
       <div className="relative" style={{ height: 650 }}>
         {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-950/80 z-50">
-            <div className="flex flex-col items-center gap-2">
-              <RefreshCw className="w-8 h-8 text-blue-500 animate-spin" />
-              <span className="text-gray-400 text-sm">Loading heatmap...</span>
-            </div>
+          <div className="absolute inset-0 z-50 p-4">
+            <Skeleton className="w-full h-full rounded-lg" />
           </div>
         )}
 

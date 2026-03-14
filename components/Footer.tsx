@@ -10,7 +10,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
           <div className="space-y-4">
             <Link href="/" className="flex items-center">
-              <Logo width={192} height={36} />
+              <Logo size="md" />
             </Link>
             <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
               The fastest way to screen, analyze, and track US equities.

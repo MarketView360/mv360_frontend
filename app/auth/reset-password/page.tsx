@@ -114,7 +114,7 @@ export default function ResetPasswordPage() {
           {/* Header */}
           <div className="text-center mb-8">
             <Link href="/" className="inline-block mb-4">
-              <Logo width={200} height={40} className="h-10 md:h-12" />
+              <Logo size="lg" className="h-10 md:h-12" />
             </Link>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
               Set new password

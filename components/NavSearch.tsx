@@ -7,11 +7,13 @@ import { cn } from "@/lib/utils";
 import { CompanyLogo } from "@/components/company/CompanyLogo";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { createClient } from "@/lib/supabase/client";
+import { usePlatform } from "@/hooks/usePlatform";
 
 interface Suggestion { ticker: string; name: string; }
 
 export function NavSearch() {
   const router = useRouter();
+  const { isMac } = usePlatform();
   const [value, setValue] = useState("");
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -89,7 +91,6 @@ export function NavSearch() {
   // Global shortcut: Cmd/Ctrl + K focuses the nav search
   useEffect(() => {
     function onShortcut(e: KeyboardEvent) {
-      const isMac = navigator.platform.toLowerCase().includes("mac");
       const isModifier = isMac ? e.metaKey : e.ctrlKey;
       if (isModifier && (e.key === "k" || e.key === "K")) {
         e.preventDefault();
@@ -100,7 +101,7 @@ export function NavSearch() {
 
     window.addEventListener("keydown", onShortcut);
     return () => window.removeEventListener("keydown", onShortcut);
-  }, []);
+  }, [isMac]);
 
   // Click outside
   useEffect(() => {
@@ -140,7 +141,7 @@ export function NavSearch() {
         {/* Keyboard shortcut hint */}
         <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 hidden md:flex">
           <KbdGroup>
-            <Kbd className="h-5 px-1.5">⌘</Kbd>
+            <Kbd className="h-5 px-1.5">{isMac ? "⌘" : "Ctrl"}</Kbd>
             <Kbd className="h-5 px-1.5">K</Kbd>
           </KbdGroup>
         </div>

@@ -2,6 +2,9 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Layers,
   RefreshCw,
@@ -9,6 +12,7 @@ import {
   TrendingDown,
   ChevronUp,
   ChevronDown,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -79,6 +83,17 @@ export function SectorPerformance() {
     void fetchData();
   }, [fetchData]);
 
+  // Timeout guard — "Refreshing…" can never be permanent
+  const [hasTimedOut, setHasTimedOut] = useState(false);
+  useEffect(() => {
+    if (!loading) return;
+    const timeout = setTimeout(() => {
+      setLoading(false);
+      setHasTimedOut(true);
+    }, 8000);
+    return () => clearTimeout(timeout);
+  }, [loading]);
+
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortAsc(!sortAsc);
@@ -110,43 +125,38 @@ export function SectorPerformance() {
   const totalStocks = sectors.reduce((sum, s) => sum + s.stock_count, 0);
 
   return (
-    <Card className="border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 h-full">
+    <Card className="h-full">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base font-medium text-slate-800 dark:text-slate-100 flex items-center justify-between">
+        <CardTitle className="text-base font-medium flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Layers className="w-4 h-4 text-slate-500" />
+            <Layers className="w-4 h-4 text-muted-foreground" />
             Sector Performance
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Time frame toggle */}
-            <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-md p-0.5">
-              {(Object.keys(TIME_FRAME_LABELS) as TimeFrame[]).map((tf) => (
-                <button
-                  key={tf}
-                  type="button"
-                  onClick={() => setTimeFrame(tf)}
-                  className={cn(
-                    "px-2.5 py-1 text-xs font-medium rounded transition-all",
-                    timeFrame === tf
-                      ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm"
-                      : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
-                  )}
-                >
-                  {TIME_FRAME_LABELS[tf]}
-                </button>
-              ))}
-            </div>
+            {/* Time frame toggle — shadcn Tabs */}
+            <Tabs
+              defaultValue="1d"
+              value={timeFrame}
+              onValueChange={(v) => setTimeFrame(v as TimeFrame)}
+            >
+              <TabsList className="h-7">
+                <TabsTrigger value="1d" className="text-xs h-5 px-2.5">1D</TabsTrigger>
+                <TabsTrigger value="1w" className="text-xs h-5 px-2.5">1W</TabsTrigger>
+                <TabsTrigger value="1m" className="text-xs h-5 px-2.5">1M</TabsTrigger>
+              </TabsList>
+            </Tabs>
 
             {!loading && (
-              <button
-                type="button"
-                onClick={() => void fetchData()}
-                className="p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                title="Refresh"
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => { setHasTimedOut(false); void fetchData(); }}
+                aria-label="Refresh sector data"
               >
-                <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
-              </button>
+                <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
+              </Button>
             )}
           </div>
         </CardTitle>
@@ -169,19 +179,28 @@ export function SectorPerformance() {
 
       <CardContent className="pt-1">
         {loading ? (
-          <div className="flex items-center justify-center h-40">
-            <div className="h-6 w-6 rounded-full border-2 border-slate-200 dark:border-slate-700 border-t-brand animate-spin" />
+          <div className="space-y-2 p-4">
+            {Array.from({ length: 11 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-4 flex-1" />
+                <Skeleton className="h-4 w-12" />
+              </div>
+            ))}
           </div>
-        ) : error ? (
-          <div className="flex flex-col items-center justify-center h-40 gap-2">
-            <p className="text-sm text-slate-500">{error}</p>
-            <button
-              type="button"
-              onClick={() => void fetchData()}
-              className="text-xs text-brand hover:underline"
+        ) : error || hasTimedOut ? (
+          <div className="flex flex-col items-center gap-3 py-8 text-muted-foreground">
+            <AlertCircle size={20} strokeWidth={1.5} aria-hidden="true" />
+            <p className="text-sm">Sector data unavailable</p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setHasTimedOut(false); void fetchData(); }}
+              className="h-7 gap-1.5 text-xs"
             >
-              Try again
-            </button>
+              <RefreshCw size={12} strokeWidth={1.75} aria-hidden="true" />
+              Retry
+            </Button>
           </div>
         ) : (
           <>

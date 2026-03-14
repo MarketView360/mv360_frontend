@@ -1,7 +1,11 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { Search, Code, Replace, Plus, AlertTriangle, X, Ban, CheckCircle } from "lucide-react";
+import {
+  Search, Code, Replace, Plus, AlertTriangle, X, Ban, CheckCircle,
+  TrendingDown, TrendingUp, PiggyBank, Zap, CandlestickChart, ShieldCheck,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -924,6 +928,15 @@ const CATEGORIES = [
   "Fundamental",
 ];
 
+const CATEGORY_ICONS: Record<string, { Icon: React.ElementType; color: string; bg: string }> = {
+  Value:       { Icon: TrendingDown,     color: "text-blue-500",   bg: "bg-blue-500/10" },
+  Growth:      { Icon: TrendingUp,       color: "text-green-500",  bg: "bg-green-500/10" },
+  Income:      { Icon: PiggyBank,        color: "text-amber-500",  bg: "bg-amber-500/10" },
+  Momentum:    { Icon: Zap,              color: "text-purple-500", bg: "bg-purple-500/10" },
+  Technical:   { Icon: CandlestickChart, color: "text-orange-500", bg: "bg-orange-500/10" },
+  Fundamental: { Icon: ShieldCheck,      color: "text-teal-500",   bg: "bg-teal-500/10" },
+};
+
 interface StrategyLibraryProps {
   onOverwrite?: (logic: string) => void;
   onAppend?: (logic: string, operator: "AND" | "OR") => void;
@@ -1024,9 +1037,19 @@ export default function StrategyLibrary({
           >
             <CardHeader className="pb-4 space-y-3">
               <div className="flex items-start justify-between gap-3">
-                <h3 className="font-bold text-lg leading-tight text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300">
-                  {strategy.name}
-                </h3>
+                <div className="flex items-start gap-3">
+                  {CATEGORY_ICONS[strategy.category] && (() => {
+                    const { Icon: CatIcon, color, bg } = CATEGORY_ICONS[strategy.category];
+                    return (
+                      <div className={cn("flex h-9 w-9 items-center justify-center rounded-lg shrink-0", bg)}>
+                        <CatIcon size={18} strokeWidth={1.5} className={color} aria-hidden="true" />
+                      </div>
+                    );
+                  })()}
+                  <h3 className="font-bold text-lg leading-tight text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300">
+                    {strategy.name}
+                  </h3>
+                </div>
                 <div className="flex flex-col items-end gap-1">
                   <Badge
                     variant="secondary"

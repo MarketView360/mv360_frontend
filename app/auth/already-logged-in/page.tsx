@@ -82,7 +82,7 @@ export default function AlreadyLoggedInPage() {
                 </div>
               </div>
               
-              <Logo width={240} height={48} className="mx-auto mb-6 h-12" />
+              <Logo size="lg" className="mx-auto mb-6 h-12" />
               
               <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-3">
                 You&apos;re Already Logged In!

@@ -306,3 +306,77 @@ body {
   }
 }
 
+/* ── Scrollbar — consistent across Firefox and Chromium ─────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(from var(--muted-foreground) l c h / 40%);
+}
+
+/* Hide scrollbar but keep functional — apply with className="hide-scrollbar" */
+.hide-scrollbar {
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+
+/* ── Paywall blur fix — pseudo-element carries backdrop-filter ───────────── */
+/* Prevents WebKit (Safari/iOS) from bleeding blur onto child CTA buttons */
+.paywall-overlay-inner::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  background: oklch(from var(--background) l c h / 55%);
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+
+/* ── iOS safe area — applies to the AI chat widget fixed button ──────────── */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .safe-area-bottom {
+    bottom: calc(1.5rem + env(safe-area-inset-bottom));
+  }
+}
+
+
+/* ── Sticky table column helper ─────────────────────────────────────────── */
+.table-sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--background);
+}
+
+.table-sticky-col::after {
+  content: "";
+  position: absolute;
+  right: -1px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+}
+

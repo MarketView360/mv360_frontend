@@ -2,7 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { TrendingUp, TrendingDown, Minus, AlertCircle, RefreshCw } from "lucide-react";
 
 const BACKEND_URL =
   (process.env.NEXT_PUBLIC_BACKEND_URL as string | undefined) ??
@@ -51,8 +54,50 @@ export function MarketBreadth() {
   const adRatio = dec > 0 ? (adv / dec).toFixed(2) : "-";
   const isBullish = adv > dec;
 
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-5 w-24" />
+            <Skeleton className="h-5 w-16" />
+          </div>
+          <Skeleton className="h-3 w-full rounded-full" />
+          <div className="flex justify-between">
+            <Skeleton className="h-10 w-16" />
+            <Skeleton className="h-10 w-16" />
+            <Skeleton className="h-10 w-16" />
+          </div>
+          <Skeleton className="h-4 w-32" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const hasData = adv > 0 || dec > 0 || unc > 0;
+
+  if (error || !hasData) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center gap-3 py-8 text-muted-foreground">
+          <AlertCircle size={20} strokeWidth={1.5} aria-hidden="true" />
+          <p className="text-sm">Breadth data unavailable</p>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => { setError(null); setLoading(true); }}
+            className="h-7 gap-1.5 text-xs"
+          >
+            <RefreshCw size={12} strokeWidth={1.75} aria-hidden="true" />
+            Retry
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <Card className="border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900">
+    <Card>
       <CardContent className="p-4">
         {/* Header Row */}
         <div className="flex items-center justify-between mb-3">
@@ -107,13 +152,12 @@ export function MarketBreadth() {
               {adRatio}
             </span>
           </span>
-          <span
-            className={`font-medium ${
-              isBullish ? "text-emerald-500" : "text-rose-500"
-            }`}
+          <Badge
+            variant={isBullish ? "default" : "destructive"}
+            className="text-xs"
           >
-            {isBullish ? "Bullish" : "Bearish"}
-          </span>
+            {isBullish ? "Bullish" : "Bearish"} · {adRatio}
+          </Badge>
         </div>
       </CardContent>
     </Card>

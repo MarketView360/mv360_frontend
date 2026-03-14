@@ -110,6 +110,45 @@ export function WatchlistProvider({ children }: { children: React.ReactNode }) {
     fetchWatchlists();
   }, [fetchWatchlists]);
 
+  // Realtime subscription with proper channel cleanup (P2-10)
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabaseRef.current
+      .channel(`watchlist-user-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "watchlists",
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          // Re-fetch on any watchlist change from another tab/device
+          hasFetchedRef.current = false;
+          fetchWatchlists();
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "watchlist_items",
+        },
+        () => {
+          hasFetchedRef.current = false;
+          fetchWatchlists();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabaseRef.current.removeChannel(channel);
+    };
+  }, [user?.id, fetchWatchlists]);
+
   const createWatchlist = useCallback(
     async (name: string, description?: string, color?: string) => {
       if (!user) return null;

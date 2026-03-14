@@ -1,9 +1,22 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { MessageCircle, X, Send } from "lucide-react";
+import { MessageSquare, X, Send, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -144,32 +157,72 @@ function AiChatWidgetInner() {
 
   return (
     <>
-      {/* Floating Action Button and Chat Panel */}
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-3 md:bottom-6 md:right-6">
-        {open && (
-          <Card className="w-[340px] sm:w-[380px] shadow-xl border border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md supports-backdrop-filter:bg-white/85 dark:supports-backdrop-filter:bg-slate-900/85 flex flex-col max-h-[70vh]">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200/80 dark:border-slate-800/80 bg-slate-50/80 dark:bg-slate-900/80">
-              <div>
-                <p className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-                  Jovan · MarketView360 AI
-                </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Ask Jovan about metrics, screens, or how to use MarketView360.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-200/80 dark:text-slate-400 dark:hover:text-slate-50 dark:hover:bg-slate-800/80 transition-colors"
-                aria-label="Close chat"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+      {/* Floating trigger button */}
+      <TooltipProvider delayDuration={400}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              size="icon"
+              onClick={() => setOpen(true)}
+              aria-label="Open Jovan AI assistant"
+              aria-haspopup="dialog"
+              aria-expanded={open}
+              className={[
+                "fixed z-50 h-12 w-12 rounded-full shadow-lg",
+                "bottom-8 right-8",
+                "max-md:bottom-6 max-md:right-4",
+                "[bottom:calc(1.5rem_+_env(safe-area-inset-bottom))]",
+                "transition-transform duration-150 hover:scale-105 active:scale-95",
+              ].join(" ")}
+            >
+              <MessageSquare size={20} strokeWidth={1.75} aria-hidden="true" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="left">
+            <p>Ask Jovan AI</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
 
-            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 text-sm">
+      {/* Chat panel as Sheet from the right */}
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent
+          side="right"
+          className="w-full sm:w-[420px] p-0 flex flex-col"
+          aria-label="Jovan AI assistant"
+        >
+          <SheetHeader className="px-4 py-3 border-b border-border flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary">
+                  <Sparkles
+                    size={14}
+                    strokeWidth={1.75}
+                    className="text-primary-foreground"
+                    aria-hidden="true"
+                  />
+                </div>
+                <SheetTitle className="text-sm font-semibold">
+                  Jovan AI
+                </SheetTitle>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setOpen(false)}
+                aria-label="Close AI assistant"
+              >
+                <X size={16} strokeWidth={1.75} aria-hidden="true" />
+              </Button>
+            </div>
+          </SheetHeader>
+
+          {/* Chat messages */}
+          <ScrollArea className="flex-1 px-4">
+            <div className="py-3 space-y-3 text-sm">
               {messages.length === 0 && !loading && !error && (
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   This assistant can help explain financial ratios, metrics, and how
                   to interpret the data in Marketview360. Try asking about a
                   specific screen or company metric.
@@ -186,8 +239,8 @@ function AiChatWidgetInner() {
                   <div
                     className={`rounded-2xl px-3 py-2 max-w-[80%] whitespace-pre-wrap text-xs sm:text-sm leading-relaxed shadow-sm ${
                       msg.role === "user"
-                        ? "bg-brand text-white"
-                        : "bg-slate-100/95 dark:bg-slate-800/95 text-slate-900 dark:text-slate-50"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-foreground"
                     }`}
                   >
                     {msg.role === "assistant"
@@ -198,53 +251,46 @@ function AiChatWidgetInner() {
               ))}
 
               {loading && (
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-muted-foreground">
                   Thinking...
                 </p>
               )}
 
               {error && (
-                <p className="text-xs text-red-500">{error}</p>
+                <p className="text-xs text-destructive">{error}</p>
               )}
             </div>
+          </ScrollArea>
 
-            <div className="border-t border-slate-200/80 dark:border-slate-800/80 px-3 py-2 bg-slate-50/60 dark:bg-slate-900/70">
-              <div className="flex items-end gap-2">
-                <textarea
-                  rows={2}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Ask a question about a ratio, screen, or metric..."
-                  className="flex-1 resize-none rounded-lg border border-slate-200/80 bg-white/95 px-2.5 py-1.5 text-xs sm:text-sm text-slate-900 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 focus-visible:ring-offset-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-50 dark:focus-visible:ring-offset-slate-900"
-                />
-                <Button
-                  size="icon"
-                  className="h-9 w-9 rounded-full bg-brand text-white hover:bg-brand-dark shadow-md disabled:opacity-60"
-                  onClick={handleSend}
-                  disabled={loading || !input.trim()}
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
-              <p className="mt-1 text-[10px] text-slate-400 dark:text-slate-500">
-                AI answers are for educational purposes only, not investment
-                advice.
-              </p>
+          <Separator />
+
+          {/* Input area */}
+          <div className="p-4 flex-shrink-0">
+            <div className="flex items-end gap-2">
+              <textarea
+                rows={2}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask a question about a ratio, screen, or metric..."
+                className="flex-1 resize-none rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs sm:text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+              />
+              <Button
+                size="icon"
+                className="h-9 w-9 rounded-full"
+                onClick={handleSend}
+                disabled={loading || !input.trim()}
+              >
+                <Send className="h-4 w-4" />
+              </Button>
             </div>
-          </Card>
-        )}
-
-        <Button
-          size="icon"
-          variant="default"
-          className="h-12 w-12 rounded-full shadow-xl bg-brand text-white hover:bg-brand-dark focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-transform hover:scale-[1.03]"
-          onClick={() => setOpen((v) => !v)}
-          aria-label={open ? "Close AI assistant" : "Open AI assistant"}
-        >
-          <MessageCircle className="h-6 w-6" />
-        </Button>
-      </div>
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              AI answers are for educational purposes only, not investment
+              advice.
+            </p>
+          </div>
+        </SheetContent>
+      </Sheet>
     </>
   );
 }

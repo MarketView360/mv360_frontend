@@ -154,7 +154,7 @@ export default function SignupPage() {
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 p-8">
           <div className="text-center mb-8">
             <Link href="/" className="inline-block mb-4">
-              <Logo width={200} height={40} className="h-10 md:h-12" />
+              <Logo size="lg" className="h-10 md:h-12" />
             </Link>
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Create your account</h1>
             <p className="text-slate-600 dark:text-slate-400 mt-2">Start analyzing markets for free</p>

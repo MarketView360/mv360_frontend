@@ -2,6 +2,8 @@
 
 import { Lock, Crown, Sparkles, X } from "lucide-react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 export type TierType = "premium" | "elite" | "max";
 
@@ -36,7 +38,7 @@ export function PaywallOverlay({
     // Compact version for smaller spaces
     if (compact) {
         return (
-            <div className={`glass-paywall px-6 py-4 max-w-sm mx-auto text-center relative z-50 animate-in fade-in zoom-in-95 duration-300 ${className}`}>
+            <div className={`glass-paywall paywall-overlay-inner px-6 py-4 max-w-sm mx-auto text-center relative z-50 animate-in fade-in zoom-in-95 duration-300 ${className}`}>
                 <div className="flex items-center justify-center gap-3">
                     <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isPremium ? "gradient-premium" : isMax ? "gradient-max" : "gradient-elite"}`}>
                         {isPremium ? (
@@ -66,17 +68,19 @@ export function PaywallOverlay({
 
     return (
         <div
-            className={`glass-paywall p-8 max-w-md mx-auto text-center relative z-50 animate-in fade-in zoom-in-95 duration-300 ${className}`}
+            className={`glass-paywall paywall-overlay-inner p-8 max-w-md mx-auto text-center relative z-50 animate-in fade-in zoom-in-95 duration-300 ${className}`}
         >
             {/* Close button */}
             {onClose && (
-                <button
+                <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={onClose}
-                    className="absolute top-4 right-4 p-1 rounded-full hover:bg-slate-200/20 transition-colors"
+                    className="absolute top-4 right-4 h-7 w-7"
                     aria-label="Close"
                 >
-                    <X className="w-5 h-5 text-slate-500 dark:text-slate-400" />
-                </button>
+                    <X className="w-5 h-5" aria-hidden="true" />
+                </Button>
             )}
 
             {/* Lock icon with tier-based gradient */}
@@ -117,13 +121,11 @@ export function PaywallOverlay({
             )}
 
             {/* CTA Button */}
-            <Link
-                href="/pricing"
-                className={`w-full inline-flex items-center justify-center px-6 py-3 rounded-xl font-semibold text-white transition-all hover:scale-[1.02] hover:shadow-lg ${isPremium ? "gradient-premium" : isMax ? "gradient-max" : "gradient-elite"
-                    }`}
-            >
-                {ctaText || defaultCta}
-            </Link>
+            <Button size="lg" className="w-full" asChild>
+                <Link href="/pricing">
+                    {ctaText || defaultCta}
+                </Link>
+            </Button>
 
             {/* Secondary link */}
             <Link
@@ -135,12 +137,13 @@ export function PaywallOverlay({
 
             {/* Maybe later */}
             {onClose && (
-                <button
+                <Button
+                    variant="ghost"
                     onClick={onClose}
-                    className="block w-full mt-3 text-sm text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                    className="w-full mt-3 text-sm text-muted-foreground"
                 >
                     Maybe Later
-                </button>
+                </Button>
             )}
         </div>
     );
