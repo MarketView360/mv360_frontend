@@ -14,11 +14,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Palette, Sun, Moon, Monitor, Type, Wifi, Zap, LayoutGrid, Newspaper, List, Infinity, LineChart, BarChart3, Sparkles, Eye, Tag } from "lucide-react";
+import { Palette, Sun, Moon, Monitor, Type, Wifi, Zap, LayoutGrid, Newspaper, List, Infinity, LineChart, BarChart3, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useNewsPreferences, PaginationStyle } from "@/hooks/useNewsPreferences";
 import { useChartPreferences } from "@/hooks/useChartPreferences";
-import { useMetricsPreferences } from "@/hooks/useMetricsPreferences";
+import { KeyMetricsSettings } from "./KeyMetricsSettings";
 
 interface AppearanceSettings {
   theme: "light" | "dark" | "system";
@@ -35,7 +35,6 @@ export default function AppearancePage() {
   const [loading, setLoading] = useState(true);
   const { preferences: newsPrefs, setPaginationStyle, isLoaded: newsPrefsLoaded } = useNewsPreferences();
   const { preferences: chartPrefs, setShowVolume, setShowAnimations, setDefaultChartType, isLoaded: chartPrefsLoaded } = useChartPreferences();
-  const { preferences: metricsPrefs, setShowQualityTags, setShowAdvancedMetrics, isLoaded: metricsPrefsLoaded } = useMetricsPreferences();
 
   const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -431,63 +430,8 @@ export default function AppearancePage() {
         </CardContent>
       </Card>
 
-      {/* Key Metrics Display */}
-      <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <BarChart3 className="h-5 w-5 text-indigo-500" />
-            Key Metrics Display
-          </CardTitle>
-          <CardDescription>Control how financial metrics are displayed on company pages</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
-                <Tag className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-              </div>
-              <div>
-                <Label className="font-medium text-slate-900 dark:text-white">Quality Indicators</Label>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Show Strong, Normal, Weak tags below metric values
-                </p>
-              </div>
-            </div>
-            <Switch
-              checked={metricsPrefsLoaded ? metricsPrefs.showQualityTags : true}
-              onCheckedChange={(checked) => {
-                setShowQualityTags(checked);
-                toast.success(checked ? "Quality tags enabled" : "Quality tags disabled");
-              }}
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-cyan-100 dark:bg-cyan-900/30 rounded-lg">
-                <Eye className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-              </div>
-              <div>
-                <Label className="font-medium text-slate-900 dark:text-white">Show Advanced Metrics</Label>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Include detailed metrics like EV/EBITDA, PEG Ratio, Operating Margin
-                </p>
-              </div>
-            </div>
-            <Switch
-              checked={metricsPrefsLoaded ? metricsPrefs.showAdvancedMetrics : false}
-              onCheckedChange={(checked) => {
-                setShowAdvancedMetrics(checked);
-                toast.success(checked ? "Advanced metrics enabled" : "Advanced metrics disabled");
-              }}
-            />
-          </div>
-          
-          <p className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg">
-            Metric preferences are stored locally in your browser. Visit a company page to see these settings in action.
-          </p>
-        </CardContent>
-      </Card>
+      {/* Key Metrics Display - Full Component */}
+      <KeyMetricsSettings />
     </div>
   );
 }
