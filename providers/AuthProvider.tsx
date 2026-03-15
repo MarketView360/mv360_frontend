@@ -11,11 +11,17 @@ interface MfaFactor {
   status: 'verified' | 'unverified';
 }
 
+interface AalLevel {
+  currentLevel: 'aal1' | 'aal2' | null;
+  nextLevel: 'aal1' | 'aal2' | null;
+  currentAuthenticationMethods: { method: string; timestamp: number }[];
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signInWithEmail: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signInWithEmail: (email: string, password: string) => Promise<{ error: Error | null; mfaRequired?: boolean }>;
   signUpWithEmail: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
   signInWithOAuth: (provider: 'google' | 'github') => Promise<{ error: Error | null }>;
   signInWithMagicLink: (email: string) => Promise<{ error: Error | null }>;
@@ -31,6 +37,8 @@ interface AuthContextType {
   listMfaFactors: () => Promise<{ factors: MfaFactor[]; error: Error | null }>;
   challengeMfa: (factorId: string) => Promise<{ challengeId: string } | { error: Error }>;
   verifyMfaChallenge: (factorId: string, challengeId: string, code: string) => Promise<{ error: Error | null }>;
+  getAalLevel: () => Promise<AalLevel | { error: Error }>;
+  requiresMfaVerification: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -108,12 +116,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithEmail = useCallback(async (email: string, password: string) => {
     if (!supabase) return { error: new Error('Auth not available') };
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
+    
+    if (error) {
+      setLoading(false);
+      return { error: error as Error };
+    }
+
+    // Check if MFA verification is required
+    if (data.session) {
+      const { data: aalData, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      
+      if (!aalError && aalData) {
+        // User has MFA enrolled and needs to verify
+        if (aalData.nextLevel === 'aal2' && aalData.currentLevel === 'aal1') {
+          setLoading(false);
+          return { error: null, mfaRequired: true };
+        }
+      }
+    }
+    
     setLoading(false);
-    return { error: error as Error | null };
+    return { error: null, mfaRequired: false };
   }, [supabase]);
 
   const signUpWithEmail = useCallback(async (email: string, password: string, fullName?: string) => {
@@ -267,6 +294,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error as Error | null };
   }, [supabase]);
 
+  const getAalLevel = useCallback(async () => {
+    if (!supabase) return { error: new Error('Auth not available') };
+    const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (error) return { error: error as Error };
+    return {
+      currentLevel: data.currentLevel as 'aal1' | 'aal2' | null,
+      nextLevel: data.nextLevel as 'aal1' | 'aal2' | null,
+      currentAuthenticationMethods: data.currentAuthenticationMethods.map(m => ({
+        method: m.method,
+        timestamp: m.timestamp,
+      })),
+    };
+  }, [supabase]);
+
+  const requiresMfaVerification = useCallback(async () => {
+    if (!supabase) return false;
+    try {
+      const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (error) return false;
+      // User needs MFA if they have aal2 available but are currently at aal1
+      return data.nextLevel === 'aal2' && data.currentLevel === 'aal1';
+    } catch {
+      return false;
+    }
+  }, [supabase]);
+
   const value: AuthContextType = {
     user,
     session,
@@ -286,6 +339,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     listMfaFactors,
     challengeMfa,
     verifyMfaChallenge,
+    getAalLevel,
+    requiresMfaVerification,
   };
 
   return (

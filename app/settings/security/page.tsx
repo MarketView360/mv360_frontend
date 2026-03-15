@@ -9,6 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Shield,
   Lock,
   Key,
@@ -24,6 +32,15 @@ import {
   AlertTriangle,
   Trash2,
   Globe,
+  Copy,
+  Download,
+  RefreshCw,
+  ShieldCheck,
+  ShieldAlert,
+  Mail,
+  MessageSquare,
+  ChevronRight,
+  Info,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -78,6 +95,19 @@ export default function SecurityPage() {
   const [verifyCode, setVerifyCode] = useState("");
   const [verifyingMfa, setVerifyingMfa] = useState(false);
   const [unenrollingMfa, setUnenrollingMfa] = useState<string | null>(null);
+  
+  // Recovery codes state
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+  const [showRecoveryCodesDialog, setShowRecoveryCodesDialog] = useState(false);
+  const [recoveryCodesCount, setRecoveryCodesCount] = useState<number>(0);
+  const [loadingRecoveryCodes, setLoadingRecoveryCodes] = useState(false);
+  const [showConfirmDisableDialog, setShowConfirmDisableDialog] = useState(false);
+  const [factorToDisable, setFactorToDisable] = useState<string | null>(null);
+  
+  // 2FA method selection state
+  const [showMethodSelection, setShowMethodSelection] = useState(false);
+  const [mfaError, setMfaError] = useState<string | null>(null);
+  const [setupStep, setSetupStep] = useState<1 | 2 | 3>(1); // 1: Select method, 2: Scan QR, 3: Verify
 
   const authProvider = (user?.app_metadata?.provider || "email").toLowerCase();
   const isOAuthUser = authProvider !== "email";
@@ -118,10 +148,34 @@ export default function SecurityPage() {
     }
   }, [listMfaFactors]);
 
+  // Fetch recovery codes count
+  const fetchRecoveryCodesCount = useCallback(async () => {
+    if (!session?.access_token || !API_BASE) return;
+    
+    try {
+      const res = await fetch(`${API_BASE}/profile/mfa/recovery-codes/count`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRecoveryCodesCount(data.count || 0);
+      }
+    } catch (err) {
+      console.error("Failed to fetch recovery codes count:", err);
+    }
+  }, [session?.access_token]);
+
   useEffect(() => {
     fetchSessions();
     fetchMfaFactors();
   }, [fetchSessions, fetchMfaFactors]);
+
+  // Fetch recovery codes count when MFA factors change
+  useEffect(() => {
+    if (mfaFactors.length > 0) {
+      fetchRecoveryCodesCount();
+    }
+  }, [mfaFactors, fetchRecoveryCodesCount]);
 
   const handlePasswordReset = async () => {
     if (!user?.email) return;
@@ -177,15 +231,32 @@ export default function SecurityPage() {
 
   const handleEnrollMfa = async () => {
     setEnrollingMfa(true);
+    setMfaError(null);
     try {
       const result = await enrollMfa("Authenticator App");
       if ("error" in result) {
-        toast.error("Failed to setup 2FA");
+        const errorMessage = result.error.message || "Failed to setup 2FA";
+        // Handle specific error cases
+        if (errorMessage.includes("already enrolled")) {
+          setMfaError("You already have an authenticator app enrolled. Remove it first to set up a new one.");
+          toast.error("Authenticator app already enrolled");
+        } else if (errorMessage.includes("rate limit")) {
+          setMfaError("Too many attempts. Please wait a few minutes and try again.");
+          toast.error("Rate limit exceeded. Please wait and try again.");
+        } else {
+          setMfaError(errorMessage);
+          toast.error("Failed to setup 2FA: " + errorMessage);
+        }
       } else {
         setMfaSetup(result);
+        setSetupStep(2);
+        setShowMethodSelection(false);
+        toast.info("Scan the QR code with your authenticator app");
       }
-    } catch {
-      toast.error("Failed to setup 2FA");
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : "An unexpected error occurred";
+      setMfaError(errorMsg);
+      toast.error("Failed to setup 2FA: " + errorMsg);
     } finally {
       setEnrollingMfa(false);
     }
@@ -194,32 +265,147 @@ export default function SecurityPage() {
   const handleVerifyMfa = async () => {
     if (!mfaSetup || !verifyCode) return;
     
+    // Validate code format
+    if (!/^\d{6}$/.test(verifyCode)) {
+      setMfaError("Please enter a valid 6-digit code");
+      toast.error("Invalid code format. Please enter 6 digits.");
+      return;
+    }
+    
     setVerifyingMfa(true);
+    setMfaError(null);
     try {
       const result = await verifyMfa(mfaSetup.factorId, verifyCode);
       if (result.error) {
-        toast.error("Invalid verification code");
+        const errorMsg = result.error.message || "Invalid verification code";
+        if (errorMsg.includes("expired")) {
+          setMfaError("The verification code has expired. Please try scanning the QR code again.");
+          toast.error("Code expired. Please start over.");
+        } else if (errorMsg.includes("invalid") || errorMsg.includes("incorrect")) {
+          setMfaError("The code you entered is incorrect. Please check your authenticator app and try again.");
+          toast.error("Invalid code. Please try again.");
+        } else {
+          setMfaError(errorMsg);
+          toast.error("Verification failed: " + errorMsg);
+        }
+        setVerifyCode("");
       } else {
-        toast.success("Two-factor authentication enabled!");
+        // Generate recovery codes
+        if (session?.access_token && API_BASE) {
+          try {
+            const res = await fetch(`${API_BASE}/profile/mfa/recovery-codes/generate`, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${session.access_token}` },
+            });
+            if (res.ok) {
+              const data = await res.json();
+              setRecoveryCodes(data.codes || []);
+              setShowRecoveryCodesDialog(true);
+            }
+            
+            // Send notification email
+            await fetch(`${API_BASE}/profile/mfa/notify`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({ event_type: "enrolled" }),
+            });
+            
+            // Log the event
+            await fetch(`${API_BASE}/profile/mfa/events`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({
+                event_type: "enrolled",
+                factor_type: "totp",
+                factor_id: mfaSetup.factorId,
+              }),
+            });
+          } catch (err) {
+            console.error("Failed to generate recovery codes:", err);
+          }
+        }
+        
+        toast.success("Two-factor authentication enabled! Your account is now more secure.");
         setMfaSetup(null);
         setVerifyCode("");
+        setSetupStep(1);
+        setMfaError(null);
         await fetchMfaFactors();
       }
-    } catch {
-      toast.error("Failed to verify code");
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : "An unexpected error occurred";
+      setMfaError(errorMsg);
+      toast.error("Failed to verify code: " + errorMsg);
     } finally {
       setVerifyingMfa(false);
     }
   };
+  
+  // Cancel MFA setup and reset state
+  const handleCancelMfaSetup = () => {
+    setMfaSetup(null);
+    setVerifyCode("");
+    setSetupStep(1);
+    setMfaError(null);
+    setShowMethodSelection(false);
+    toast.info("2FA setup cancelled");
+  };
 
   const handleUnenrollMfa = async (factorId: string) => {
     setUnenrollingMfa(factorId);
+    setMfaError(null);
     try {
       const result = await unenrollMfa(factorId);
       if (result.error) {
-        toast.error("Failed to remove 2FA");
+        const errorMsg = result.error.message || "Failed to remove 2FA";
+        if (errorMsg.includes("not found")) {
+          setMfaError("This authentication factor was not found. It may have already been removed.");
+          toast.error("Factor not found");
+        } else {
+          setMfaError(errorMsg);
+          toast.error("Failed to remove 2FA: " + errorMsg);
+        }
+        return;
       } else {
+        // Send notification email
+        if (session?.access_token && API_BASE) {
+          try {
+            await fetch(`${API_BASE}/profile/mfa/notify`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({ event_type: "unenrolled" }),
+            });
+            
+            // Log the event
+            await fetch(`${API_BASE}/profile/mfa/events`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${session.access_token}`,
+              },
+              body: JSON.stringify({
+                event_type: "unenrolled",
+                factor_type: "totp",
+                factor_id: factorId,
+              }),
+            });
+          } catch (err) {
+            console.error("Failed to send unenroll notification:", err);
+          }
+        }
+        
         toast.success("Two-factor authentication removed");
+        setShowConfirmDisableDialog(false);
+        setFactorToDisable(null);
         await fetchMfaFactors();
       }
     } catch {
@@ -227,6 +413,54 @@ export default function SecurityPage() {
     } finally {
       setUnenrollingMfa(null);
     }
+  };
+
+  // Handle regenerating recovery codes
+  const handleRegenerateRecoveryCodes = async () => {
+    if (!session?.access_token || !API_BASE) return;
+    
+    setLoadingRecoveryCodes(true);
+    try {
+      const res = await fetch(`${API_BASE}/profile/mfa/recovery-codes/regenerate`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRecoveryCodes(data.codes || []);
+        setShowRecoveryCodesDialog(true);
+        toast.success("New recovery codes generated");
+        await fetchRecoveryCodesCount();
+      } else {
+        toast.error("Failed to regenerate recovery codes");
+      }
+    } catch {
+      toast.error("Failed to regenerate recovery codes");
+    } finally {
+      setLoadingRecoveryCodes(false);
+    }
+  };
+
+  // Copy recovery codes to clipboard
+  const handleCopyRecoveryCodes = () => {
+    const codesText = recoveryCodes.join("\n");
+    navigator.clipboard.writeText(codesText);
+    toast.success("Recovery codes copied to clipboard");
+  };
+
+  // Download recovery codes as text file
+  const handleDownloadRecoveryCodes = () => {
+    const codesText = `MarketView360 Recovery Codes\n${"=".repeat(30)}\n\nSave these codes in a safe place. Each code can only be used once.\n\n${recoveryCodes.join("\n")}\n\nGenerated: ${new Date().toLocaleString()}`;
+    const blob = new Blob([codesText], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "marketview360-recovery-codes.txt";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success("Recovery codes downloaded");
   };
 
   return (
@@ -363,12 +597,125 @@ export default function SecurityPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Error Display */}
+          {mfaError && (
+            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+                <p className="text-sm text-red-700 dark:text-red-300">{mfaError}</p>
+              </div>
+            </div>
+          )}
+          
           {loadingMfa ? (
             <div className="space-y-3">
               <Skeleton className="h-16 w-full" />
             </div>
-          ) : mfaSetup ? (
+          ) : showMethodSelection ? (
+            /* Method Selection UI */
             <div className="space-y-4">
+              <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                <h4 className="font-medium text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                  <Info className="h-4 w-4 text-blue-500" />
+                  Choose your 2FA method
+                </h4>
+                
+                {/* Authenticator App - Available */}
+                <div
+                  onClick={handleEnrollMfa}
+                  className="p-4 border-2 border-purple-200 dark:border-purple-800 bg-white dark:bg-slate-900 rounded-lg cursor-pointer hover:border-purple-400 dark:hover:border-purple-600 transition-colors mb-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                        <Smartphone className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-slate-900 dark:text-white">Authenticator App</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Use Google Authenticator, Authy, or similar apps
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                        Recommended
+                      </Badge>
+                      {enrollingMfa ? (
+                        <Loader2 className="h-5 w-5 animate-spin text-purple-500" />
+                      ) : (
+                        <ChevronRight className="h-5 w-5 text-slate-400" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* SMS - Coming Soon */}
+                <div className="p-4 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/30 rounded-lg opacity-60 cursor-not-allowed mb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                        <MessageSquare className="h-5 w-5 text-slate-400" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-slate-500 dark:text-slate-400">SMS Verification</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">
+                          Receive codes via text message
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-slate-400 border-slate-300">
+                      Coming Soon
+                    </Badge>
+                  </div>
+                </div>
+                
+                {/* Email - Coming Soon */}
+                <div className="p-4 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/30 rounded-lg opacity-60 cursor-not-allowed">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                        <Mail className="h-5 w-5 text-slate-400" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-slate-500 dark:text-slate-400">Email Verification</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">
+                          Receive codes via email
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="text-slate-400 border-slate-300">
+                      Coming Soon
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+              
+              <Button variant="outline" onClick={() => setShowMethodSelection(false)} className="w-full">
+                Cancel
+              </Button>
+            </div>
+          ) : mfaSetup ? (
+            /* QR Code Setup */
+            <div className="space-y-4">
+              {/* Step indicator */}
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <div className="flex items-center gap-1">
+                  <div className="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center text-xs">✓</div>
+                  <span className="text-xs text-slate-500">Method</span>
+                </div>
+                <div className="w-8 h-0.5 bg-purple-500" />
+                <div className="flex items-center gap-1">
+                  <div className="w-6 h-6 rounded-full bg-purple-500 text-white flex items-center justify-center text-xs">2</div>
+                  <span className="text-xs text-purple-600 font-medium">Scan</span>
+                </div>
+                <div className="w-8 h-0.5 bg-slate-200" />
+                <div className="flex items-center gap-1">
+                  <div className="w-6 h-6 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-xs">3</div>
+                  <span className="text-xs text-slate-400">Verify</span>
+                </div>
+              </div>
+              
               <div className="p-4 bg-purple-50 dark:bg-purple-900/10 border border-purple-200 dark:border-purple-800 rounded-lg">
                 <div className="flex items-start gap-4">
                   <div className="p-2 bg-white dark:bg-slate-800 rounded-lg">
@@ -376,33 +723,52 @@ export default function SecurityPage() {
                   </div>
                   <div className="flex-1">
                     <h4 className="font-medium text-purple-900 dark:text-purple-300 mb-2">
-                      Scan QR Code
+                      Step 2: Scan QR Code
                     </h4>
                     <p className="text-sm text-purple-700 dark:text-purple-400 mb-4">
-                      Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)
+                      Open your authenticator app and scan this QR code to add your account.
                     </p>
                     <div className="flex justify-center mb-4">
-                      <img src={mfaSetup.qrCode} alt="2FA QR Code" className="w-48 h-48 rounded-lg border" />
+                      <div className="p-2 bg-white rounded-lg shadow-sm">
+                        <img src={mfaSetup.qrCode} alt="2FA QR Code" className="w-48 h-48 rounded" />
+                      </div>
                     </div>
                     <div className="mb-4">
                       <Label className="text-purple-700 dark:text-purple-300 text-xs">
-                        Or enter this code manually:
+                        Can&apos;t scan? Enter this code manually:
                       </Label>
-                      <code className="block mt-1 p-2 bg-white dark:bg-slate-800 rounded text-xs font-mono break-all">
-                        {mfaSetup.secret}
-                      </code>
+                      <div className="flex items-center gap-2 mt-1">
+                        <code className="flex-1 p-2 bg-white dark:bg-slate-800 rounded text-xs font-mono break-all border">
+                          {mfaSetup.secret}
+                        </code>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            navigator.clipboard.writeText(mfaSetup.secret);
+                            toast.success("Secret copied to clipboard");
+                          }}
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label className="text-purple-700 dark:text-purple-300 text-sm">
-                        Enter verification code
+                        Step 3: Enter the 6-digit code from your app
                       </Label>
                       <div className="flex gap-2">
                         <Input
                           value={verifyCode}
-                          onChange={(e) => setVerifyCode(e.target.value)}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/\D/g, "");
+                            setVerifyCode(value);
+                            setMfaError(null);
+                          }}
                           placeholder="000000"
                           maxLength={6}
-                          className="flex-1"
+                          className="flex-1 text-center text-lg tracking-widest font-mono"
+                          autoComplete="one-time-code"
                         />
                         <Button
                           onClick={handleVerifyMfa}
@@ -410,24 +776,28 @@ export default function SecurityPage() {
                         >
                           {verifyingMfa ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify"}
                         </Button>
-                        <Button variant="outline" onClick={() => setMfaSetup(null)}>
+                        <Button variant="outline" onClick={handleCancelMfaSetup}>
                           Cancel
                         </Button>
                       </div>
+                      <p className="text-xs text-purple-600 dark:text-purple-400">
+                        The code changes every 30 seconds
+                      </p>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
           ) : mfaFactors.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-4">
+              {/* MFA Status */}
               {mfaFactors.map((factor) => (
                 <div
                   key={factor.id}
                   className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded-lg"
                 >
                   <div className="flex items-center gap-3">
-                    <CheckCircle className="h-5 w-5 text-green-500" />
+                    <ShieldCheck className="h-5 w-5 text-green-500" />
                     <div>
                       <p className="font-medium text-green-900 dark:text-green-300">
                         {factor.friendly_name || "Authenticator App"}
@@ -440,41 +810,106 @@ export default function SecurityPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleUnenrollMfa(factor.id)}
-                    disabled={unenrollingMfa === factor.id}
+                    onClick={() => {
+                      setFactorToDisable(factor.id);
+                      setShowConfirmDisableDialog(true);
+                    }}
                     className="text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50"
                   >
-                    {unenrollingMfa === factor.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Remove
                   </Button>
                 </div>
               ))}
+
+              {/* Recovery Codes Section */}
+              <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Key className="h-5 w-5 text-amber-500" />
+                      <h4 className="font-medium text-slate-900 dark:text-white">
+                        Recovery Codes
+                      </h4>
+                      {recoveryCodesCount > 0 && (
+                        <Badge variant="outline" className="text-xs">
+                          {recoveryCodesCount} remaining
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      Recovery codes can be used to access your account if you lose your authenticator app.
+                      {recoveryCodesCount <= 3 && recoveryCodesCount > 0 && (
+                        <span className="text-amber-600 dark:text-amber-400 font-medium">
+                          {" "}You&apos;re running low on codes!
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={handleRegenerateRecoveryCodes}
+                    disabled={loadingRecoveryCodes}
+                  >
+                    {loadingRecoveryCodes ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                    )}
+                    {recoveryCodesCount > 0 ? "Regenerate" : "Generate"}
+                  </Button>
+                </div>
+              </div>
             </div>
           ) : (
-            <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Shield className="h-5 w-5 text-slate-400" />
-                    <h4 className="font-medium text-slate-900 dark:text-white">
-                      Enable 2FA
-                    </h4>
+            /* No 2FA enabled - show setup option */
+            <div className="space-y-4">
+              <div className="p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <ShieldAlert className="h-5 w-5 text-amber-500" />
+                      <h4 className="font-medium text-slate-900 dark:text-white">
+                        Two-Factor Authentication Not Enabled
+                      </h4>
+                    </div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      Add an extra layer of security to your account. You&apos;ll need to enter a verification code each time you sign in.
+                    </p>
                   </div>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Protect your account with an authenticator app. You&apos;ll need to enter a code each time you sign in.
-                  </p>
+                  <Button onClick={() => setShowMethodSelection(true)}>
+                    <Shield className="h-4 w-4 mr-2" />
+                    Enable 2FA
+                  </Button>
                 </div>
-                <Button onClick={handleEnrollMfa} disabled={enrollingMfa}>
-                  {enrollingMfa ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Smartphone className="h-4 w-4 mr-2" />
-                  )}
-                  Setup
-                </Button>
+              </div>
+              
+              {/* Available Methods Preview */}
+              <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">Available Methods</h4>
+                <div className="grid gap-2 md:grid-cols-3">
+                  <div className="flex items-center gap-2 p-2 bg-white dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700">
+                    <Smartphone className="h-4 w-4 text-purple-500" />
+                    <span className="text-xs text-slate-600 dark:text-slate-400">Authenticator App</span>
+                    <Badge className="ml-auto text-[10px] bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                      Available
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 opacity-60">
+                    <MessageSquare className="h-4 w-4 text-slate-400" />
+                    <span className="text-xs text-slate-400">SMS</span>
+                    <Badge variant="outline" className="ml-auto text-[10px] text-slate-400 border-slate-300">
+                      Soon
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2 p-2 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 opacity-60">
+                    <Mail className="h-4 w-4 text-slate-400" />
+                    <span className="text-xs text-slate-400">Email</span>
+                    <Badge variant="outline" className="ml-auto text-[10px] text-slate-400 border-slate-300">
+                      Soon
+                    </Badge>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -631,6 +1066,104 @@ export default function SecurityPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Recovery Codes Dialog */}
+      <Dialog open={showRecoveryCodesDialog} onOpenChange={setShowRecoveryCodesDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5 text-amber-500" />
+              Your Recovery Codes
+            </DialogTitle>
+            <DialogDescription>
+              Save these codes in a safe place. Each code can only be used once to sign in if you lose access to your authenticator app.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  <strong>Important:</strong> These codes will only be shown once. Make sure to save them now!
+                </p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg font-mono text-sm">
+              {recoveryCodes.map((code, index) => (
+                <div key={index} className="p-2 bg-white dark:bg-slate-900 rounded border text-center">
+                  {code}
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={handleCopyRecoveryCodes} className="w-full sm:w-auto">
+              <Copy className="h-4 w-4 mr-2" />
+              Copy
+            </Button>
+            <Button variant="outline" onClick={handleDownloadRecoveryCodes} className="w-full sm:w-auto">
+              <Download className="h-4 w-4 mr-2" />
+              Download
+            </Button>
+            <Button onClick={() => setShowRecoveryCodesDialog(false)} className="w-full sm:w-auto">
+              I&apos;ve saved my codes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm Disable 2FA Dialog */}
+      <Dialog open={showConfirmDisableDialog} onOpenChange={setShowConfirmDisableDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <ShieldAlert className="h-5 w-5" />
+              Disable Two-Factor Authentication?
+            </DialogTitle>
+            <DialogDescription>
+              This will remove the extra layer of security from your account. Your recovery codes will also be invalidated.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+              <p className="text-sm text-red-800 dark:text-red-200">
+                Without 2FA, your account will only be protected by your password. We strongly recommend keeping 2FA enabled.
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowConfirmDisableDialog(false);
+                setFactorToDisable(null);
+              }}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => factorToDisable && handleUnenrollMfa(factorToDisable)}
+              disabled={unenrollingMfa !== null}
+              className="w-full sm:w-auto"
+            >
+              {unenrollingMfa ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Disable 2FA
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

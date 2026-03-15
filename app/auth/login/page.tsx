@@ -54,12 +54,16 @@ function LoginPageContent() {
     setIsLoading(true);
     setIsLoggingIn(true);
 
-    const { error } = await signInWithEmail(email, password);
+    const result = await signInWithEmail(email, password);
 
-    if (error) {
-      setError(error.message);
+    if (result.error) {
+      setError(result.error.message);
       setIsLoading(false);
       setIsLoggingIn(false);
+    } else if (result.mfaRequired) {
+      // User has MFA enabled, redirect to MFA verification page
+      const mfaRedirect = `/auth/mfa-verify?redirectTo=${encodeURIComponent(redirectTo)}`;
+      router.push(mfaRedirect);
     } else {
       router.push(redirectTo);
       router.refresh();
