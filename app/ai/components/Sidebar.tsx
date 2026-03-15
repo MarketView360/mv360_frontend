@@ -284,7 +284,7 @@ export function Sidebar({
                                         variant="ghost"
                                         onClick={() => onSelectSession?.(session.id)}
                                         className={cn(
-                                          "w-full justify-start text-sm font-normal px-2 h-8 truncate pr-8",
+                                          "w-full justify-start text-sm font-normal px-2 h-8 pr-8 overflow-hidden",
                                           activeSessionId === session.id
                                             ? "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white"
                                             : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
@@ -296,12 +296,12 @@ export function Sidebar({
                                           <History className="w-4 h-4 mr-2 shrink-0 opacity-70" />
                                         )}
                                         {session.titleGenerating ? (
-                                          <span className="truncate flex items-center gap-2">
+                                          <span className="truncate max-w-[160px] flex items-center gap-2">
                                             <span className="inline-block h-2 w-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-pulse" />
                                             <span className="text-slate-400 dark:text-slate-500">Generating title...</span>
                                           </span>
                                         ) : (
-                                          <span className="truncate">{session.title || "Untitled"}</span>
+                                          <span className="truncate max-w-[160px] block">{session.title || "Untitled"}</span>
                                         )}
                                       </Button>
                                     </TooltipTrigger>
@@ -393,13 +393,13 @@ export function Sidebar({
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && handleCancelDelete()}>
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-red-500" />
+            <AlertDialogTitle className="flex items-center gap-2 text-slate-900 dark:text-white">
+              <AlertTriangle className="w-5 h-5 text-red-500 dark:text-red-400" />
               Delete Conversation
             </AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
               Are you sure you want to delete &ldquo;{getSessionTitle(deletingId || '')}&rdquo;? This action cannot be undone and all messages in this conversation will be permanently deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>

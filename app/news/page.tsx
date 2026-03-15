@@ -21,6 +21,7 @@ export default function NewsPage() {
       <section className="mx-auto max-w-[1400px] px-4 md:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           <div className="lg:col-span-3">
+            {/* Main News Grid */}
             <Suspense fallback={<NewsSkeleton />}>
               <NewsGrid sort={sort} />
             </Suspense>

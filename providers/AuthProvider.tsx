@@ -21,6 +21,15 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function buildRedirectUrl(path: string): string {
+  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  const base = configured && /^https?:\/\//.test(configured)
+    ? configured
+    : window.location.origin;
+
+  return `${base.replace(/\/$/, '')}${path}`;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -28,6 +37,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [supabase, setSupabase] = useState<ReturnType<typeof createClient> | null>(null);
 
   useEffect(() => {
+    // Migration: Clear old Supabase project sessions (one-time per user)
+    const MIGRATION_VERSION = 'v2_production_project';
+    const currentVersion = localStorage.getItem('supabase_migration_version');
+    
+    if (currentVersion !== MIGRATION_VERSION) {
+      // Clear all localStorage items related to old Supabase project
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('sb-') || key.includes('supabase') || key.includes('auth-token'))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      
+      // Clear sessionStorage
+      sessionStorage.clear();
+      
+      // Set new migration version
+      localStorage.setItem('supabase_migration_version', MIGRATION_VERSION);
+    }
+
     // Create the Supabase client
     const client = createClient();
     setSupabase(client);
@@ -78,7 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: buildRedirectUrl('/auth/callback'),
         data: {
           full_name: fullName,
         },
@@ -93,7 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: buildRedirectUrl('/auth/callback'),
       },
     });
     return { error: error as Error | null };
@@ -104,7 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: buildRedirectUrl('/auth/callback'),
       },
     });
     return { error: error as Error | null };
@@ -119,7 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const resetPassword = useCallback(async (email: string) => {
     if (!supabase) return { error: new Error('Auth not available') };
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset-password`,
+      redirectTo: buildRedirectUrl('/auth/reset-password'),
     });
     return { error: error as Error | null };
   }, [supabase]);
@@ -148,7 +179,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       type: 'signup',
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: buildRedirectUrl('/auth/callback'),
       },
     });
     return { error: error as Error | null };

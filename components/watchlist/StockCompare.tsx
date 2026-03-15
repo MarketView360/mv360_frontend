@@ -247,7 +247,7 @@ export function StockCompare({ tickers, onAddTicker, onRemoveTicker, onClear }: 
     if (candlestickChartRef.current) { candlestickChartRef.current.remove(); candlestickChartRef.current = null; }
     const container = candlestickContainerRef.current;
     const chart = createChart(container, {
-      layout: { background: { type: ColorType.Solid, color: "transparent" }, textColor: isDark ? "#94a3b8" : "#64748b" },
+      layout: { background: { type: ColorType.Solid, color: "transparent" }, textColor: isDark ? "#94a3b8" : "#64748b", attributionLogo: false },
       width: container.clientWidth, height: 260,
       grid: { vertLines: { color: isDark ? "#1e293b" : "#f1f5f9" }, horzLines: { color: isDark ? "#1e293b" : "#f1f5f9" } },
       crosshair: { mode: CrosshairMode.Normal },

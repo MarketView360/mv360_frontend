@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
-import { Paperclip, Mic, Globe, Image as ImageIcon, CornerRightUp, Loader2, Square } from "lucide-react";
+import { Paperclip, Mic, Globe, Image as ImageIcon, CornerRightUp, Loader2, Square, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,12 +15,15 @@ import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useAuth } from "@/providers/AuthProvider";
 import { toast } from "sonner";
 import { PaywallModal } from "@/components/paywall/PaywallModal";
+import { ContextSelector } from "./ContextSelector";
+import { Badge } from "@/components/ui/badge";
 
 interface MessageInputProps {
-  onSendMessage: (content: string) => void;
+  onSendMessage: (content: string, contextData?: { watchlistName: string; context: string; isWatchlistAnalysis?: boolean }) => void;
   className?: string;
   disabled?: boolean;
   maxLength?: number;
+  onContextSelect?: (watchlistId: string, watchlistName: string, context: string) => void;
 }
 
 const DEFAULT_MAX_LENGTH = 4000;
@@ -29,9 +32,11 @@ export function MessageInput({
   onSendMessage,
   className,
   disabled = false,
-  maxLength = DEFAULT_MAX_LENGTH
+  maxLength = DEFAULT_MAX_LENGTH,
+  onContextSelect
 }: MessageInputProps) {
   const [input, setInput] = useState("");
+  const [selectedContext, setSelectedContext] = useState<{ watchlistName: string; context: string; isWatchlistAnalysis?: boolean } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { session } = useAuth();
   // Simplified check, assuming session structure. 
@@ -71,6 +76,13 @@ export function MessageInput({
     }
   };
 
+  const handleContextSelect = (watchlistId: string, watchlistName: string, context: string) => {
+    setSelectedContext({ watchlistName, context, isWatchlistAnalysis: true });
+    if (onContextSelect) {
+      onContextSelect(watchlistId, watchlistName, context);
+    }
+  };
+
   const handleSubmit = () => {
     if (!input.trim() && !isRecording) return;
 
@@ -80,8 +92,9 @@ export function MessageInput({
       return;
     }
 
-    onSendMessage(input);
+    onSendMessage(input, selectedContext || undefined);
     setInput("");
+    setSelectedContext(null);
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
@@ -131,12 +144,21 @@ export function MessageInput({
   return (
     <>
       <div className={cn("relative max-w-3xl mx-auto w-full", className)}>
-        <div className={cn(
-          "relative flex flex-col bg-white dark:bg-slate-900 border rounded-xl shadow-sm transition-all duration-200",
-          isRecording
-            ? "border-red-500 ring-2 ring-red-500/20"
-            : "border-slate-200 dark:border-slate-800 focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500"
-        )}>
+        <div className={cn("relative flex flex-col rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm transition-all duration-200 focus-within:border-indigo-400 focus-within:shadow-md", className)}>
+          {/* Selected Context Badge */}
+          {selectedContext && (
+            <div className="px-4 pt-3 pb-1">
+              <Badge variant="secondary" className="bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 gap-1.5">
+                <span>📋 {selectedContext.watchlistName}</span>
+                <button
+                  onClick={() => setSelectedContext(null)}
+                  className="ml-1 hover:bg-violet-200 dark:hover:bg-violet-800 rounded-full p-0.5"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            </div>
+          )}
 
           {/* Text Area */}
           <Textarea
@@ -198,6 +220,13 @@ export function MessageInput({
                   </TooltipTrigger>
                   <TooltipContent>Search web</TooltipContent>
                 </Tooltip>
+
+                {onContextSelect && (
+                  <ContextSelector
+                    onSelectWatchlist={handleContextSelect}
+                    disabled={isRecording || disabled}
+                  />
+                )}
               </TooltipProvider>
             </div>
 

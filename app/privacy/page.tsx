@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import { ArrowLeft, Shield, Database, Eye, Lock, Share2, Globe, Trash2, Baby, Mail } from "lucide-react";
 

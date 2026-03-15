@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, Suspense, useMemo, useEffect } from "react";
+import React, { useState, Suspense, useMemo } from "react";
 import {
   Card,
   CardHeader,
@@ -22,9 +22,7 @@ import {
   Area,
   Line,
 } from "recharts";
-import { Maximize2, X, Lock } from "lucide-react";
-import { useAuth } from "@/providers/AuthProvider";
-import { PaywallModal } from "@/components/paywall/PaywallModal";
+import { Maximize2 } from "lucide-react";
 
 export interface PriceHistoryPoint {
   date: string;
@@ -51,18 +49,15 @@ interface CompanyChartsSwitcherProps {
   priceHistory: PriceHistoryPoint[];
   valuationMetrics: ValuationMetric[];
   valuationHistory: ValuationHistoryPoint[];
+  ticker?: string;
 }
 
 export function CompanyChartsSwitcher({
   priceHistory,
   valuationMetrics,
   valuationHistory,
+  ticker,
 }: CompanyChartsSwitcherProps) {
-  const { session } = useAuth();
-  const isPro = session?.tier === "premium" || session?.tier === "pro" || session?.tier === "elite";
-  const [showPaywall, setShowPaywall] = useState(false);
-  const [paywallFeature, setPaywallFeature] = useState("");
-
   const [mode, setMode] = useState<"price" | "valuations" | "price_pe">(
     "price",
   );
@@ -136,16 +131,8 @@ export function CompanyChartsSwitcher({
   const handleModeChange = (newMode: "price" | "valuations" | "price_pe") => {
     if (newMode === "price") {
       setMode("price");
-      return;
     }
-
-    if (!isPro) {
-      setPaywallFeature(newMode === "valuations" ? "Valuation Charts" : "Historical P/E Charts");
-      setShowPaywall(true);
-      return;
-    }
-
-    setMode(newMode);
+    // Coming soon features - do nothing, buttons are disabled
   };
 
   const renderChartBody = (heightClass: string) => (
@@ -153,7 +140,7 @@ export function CompanyChartsSwitcher({
       {mode === "price" && (
         <div className={cn(heightClass, "w-full")}>
           <Suspense fallback={<div className="h-full w-full bg-slate-100 dark:bg-slate-800 animate-pulse rounded-lg" />}>
-            <PriceChart data={priceHistory} />
+            <PriceChart data={priceHistory} ticker={ticker} />
           </Suspense>
         </div>
       )}
@@ -253,7 +240,7 @@ export function CompanyChartsSwitcher({
                     className={cn(
                       "px-2 py-1 rounded-md border transition-all",
                       range === r
-                        ? "bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white"
+                        ? "bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white font-semibold"
                         : "bg-white/70 dark:bg-slate-900/70 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800",
                     )}
                   >
@@ -346,13 +333,13 @@ export function CompanyChartsSwitcher({
   return (
     <>
       <Card className="w-full border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 overflow-hidden">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 border-b border-slate-100 dark:border-slate-800">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-slate-100 dark:border-slate-800">
           <CardTitle className="text-base font-medium text-slate-800 dark:text-slate-100 font-heading">
             {mode === "price"
               ? "Price & Volume"
               : mode === "valuations"
-                ? "Valuations (snapshot)"
-                : "Price & P/E over time"}
+                ? "Valuations (Coming Soon)"
+                : "Price & P/E (Coming Soon)"}
           </CardTitle>
           <div className="flex items-center gap-2">
             <div className="inline-flex items-center gap-1 rounded-full bg-slate-100 dark:bg-slate-800 p-0.5 text-xs">
@@ -375,31 +362,30 @@ export function CompanyChartsSwitcher({
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "h-6 px-3 rounded-full text-[11px] gap-1",
+                  "h-6 px-3 rounded-full text-[11px] gap-1 opacity-60 cursor-not-allowed",
                   mode === "price_pe"
                     ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
                     : "text-slate-500 dark:text-slate-400"
                 )}
-                onClick={() => handleModeChange("price_pe")}
+                disabled
               >
                 Price & P/E
-                {!isPro && <Lock className="w-2.5 h-2.5 opacity-70" />}
+                <span className="text-[9px] bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300">Coming Soon</span>
               </Button>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "h-6 px-3 rounded-full text-[11px] gap-1",
+                  "h-6 px-3 rounded-full text-[11px] gap-1 opacity-60 cursor-not-allowed",
                   mode === "valuations"
                     ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
                     : "text-slate-500 dark:text-slate-400"
                 )}
-                onClick={() => handleModeChange("valuations")}
-                disabled={!hasValuations}
+                disabled
               >
                 Valuation
-                {!isPro && <Lock className="w-2.5 h-2.5 opacity-70" />}
+                <span className="text-[9px] bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300">Coming Soon</span>
               </Button>
             </div>
             <button
@@ -418,36 +404,21 @@ export function CompanyChartsSwitcher({
       </Card>
 
       {fullscreen && (
-        <div className="fixed inset-0 z-60 bg-black/70 backdrop-blur-sm flex items-center justify-center">
-          {/* ... keeping fullscreen content ... */}
-          <div className="w-full max-w-6xl mx-4 bg-slate-950 text-slate-50 rounded-xl shadow-2xl border border-slate-800 relative p-4">
-            <button
-              type="button"
-              onClick={() => setFullscreen(false)}
-              className="absolute right-3 top-3 inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-700 text-slate-300 hover:bg-slate-800"
-              aria-label="Close full screen chart"
-            >
-              <X className="w-3 h-3" />
-            </button>
-            <div className="mb-3 flex items-center justify-between pr-8">
-              <div className="text-sm font-semibold">
-                {mode === "price"
-                  ? "Price & Volume (Full screen)"
-                  : mode === "valuations"
-                    ? "Valuations snapshot (Full screen)"
-                    : "Price & P/E over time (Full screen)"}
-              </div>
+        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-2">
+          <div className="w-full max-w-[98vw] bg-slate-950 text-slate-50 rounded-xl shadow-2xl border border-slate-800 flex flex-col h-[97vh] overflow-hidden">
+            <div className="flex-1 flex flex-col min-h-0 px-3 pt-2 pb-0">
+              {mode === "price" && (
+                <PriceChart
+                  data={priceHistory}
+                  ticker={ticker}
+                  fullscreen={fullscreen}
+                  onClose={() => setFullscreen(false)}
+                />
+              )}
             </div>
-            {renderChartBody("h-[70vh]")}
           </div>
         </div>
       )}
-
-      <PaywallModal
-        isOpen={showPaywall}
-        onClose={() => setShowPaywall(false)}
-        feature={paywallFeature}
-      />
     </>
   );
 }

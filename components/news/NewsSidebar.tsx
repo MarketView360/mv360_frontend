@@ -3,9 +3,10 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, BookOpen, Loader2 } from "lucide-react";
+import { TrendingUp, ListChecks, Loader2, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow, parseISO, isValid } from "date-fns";
+import { useWatchlist } from "@/providers/WatchlistProvider";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
 
@@ -57,10 +58,23 @@ function extractTrendingTickers(articles: NewsItem[]): string[] {
         .map(([ticker]) => ticker);
 }
 
-export function NewsSidebar() {
-    const [latestNews, setLatestNews] = useState<NewsItem[]>([]);
-    const [loading, setLoading] = useState(true);
+interface WatchlistArticle {
+    id: string;
+    title: string;
+    url: string;
+    source: string;
+    published_at: string;
+    tickers?: string[];
+}
 
+export function NewsSidebar() {
+    const { watchlists, loading: watchlistsLoading } = useWatchlist();
+    const [latestNews, setLatestNews] = useState<NewsItem[]>([]);
+    const [watchlistNews, setWatchlistNews] = useState<WatchlistArticle[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [watchlistNewsLoading, setWatchlistNewsLoading] = useState(true);
+
+    // Fetch general news for trending tickers
     useEffect(() => {
         async function fetchNews() {
             try {
@@ -78,8 +92,42 @@ export function NewsSidebar() {
         fetchNews();
     }, []);
 
+    // Fetch watchlist-specific news
+    useEffect(() => {
+        if (watchlistsLoading) return;
+
+        const allTickers = new Set<string>();
+        watchlists.forEach(wl => {
+            wl.items.forEach(item => {
+                allTickers.add(item.ticker.replace(/\.US$/i, '').toUpperCase());
+            });
+        });
+
+        if (allTickers.size === 0) {
+            setWatchlistNews([]);
+            setWatchlistNewsLoading(false);
+            return;
+        }
+
+        (async () => {
+            try {
+                setWatchlistNewsLoading(true);
+                const tickerParam = Array.from(allTickers).join(',');
+                const res = await fetch(`${BACKEND_URL}/api/news?tickers=${encodeURIComponent(tickerParam)}&limit=5`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setWatchlistNews(data.articles || data || []);
+                }
+            } catch {
+                setWatchlistNews([]);
+            } finally {
+                setWatchlistNewsLoading(false);
+            }
+        })();
+    }, [watchlists, watchlistsLoading]);
+
     const trendingTickers = extractTrendingTickers(latestNews);
-    const topArticles = latestNews.slice(0, 5);
+    const totalWatchlistStocks = watchlists.reduce((sum, wl) => sum + wl.items.length, 0);
 
     return (
         <div className="space-y-6">
@@ -115,16 +163,28 @@ export function NewsSidebar() {
                 </CardContent>
             </Card>
 
-            {/* Latest Headlines */}
+            {/* From Your Watchlist */}
             <Card className="border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900">
                 <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800">
-                    <CardTitle className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                        <BookOpen className="w-4 h-4 text-brand" />
-                        Latest Headlines
-                    </CardTitle>
+                    <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                            <ListChecks className="w-4 h-4 text-brand" />
+                            From Your Watchlist
+                        </CardTitle>
+                        {totalWatchlistStocks > 0 && (
+                            <Link href="/watchlist" className="text-[10px] text-brand hover:text-brand/80">
+                                Manage →
+                            </Link>
+                        )}
+                    </div>
+                    {totalWatchlistStocks > 0 && (
+                        <p className="text-[10px] text-slate-400 mt-1">
+                            {totalWatchlistStocks} stocks tracked
+                        </p>
+                    )}
                 </CardHeader>
                 <CardContent className="pt-4">
-                    {loading ? (
+                    {watchlistsLoading || watchlistNewsLoading ? (
                         <div className="space-y-3">
                             {[0, 1, 2].map((i) => (
                                 <div key={i} className="space-y-1.5 animate-pulse">
@@ -133,40 +193,48 @@ export function NewsSidebar() {
                                 </div>
                             ))}
                         </div>
-                    ) : topArticles.length > 0 ? (
-                        <div className="space-y-4">
-                            {topArticles.map((article, index) => {
-                                const slug = generateNewsSlug(article.title, article.link);
-                                return (
-                                    <Link
-                                        key={article.link}
-                                        href={`/news/${slug}`}
-                                        onClick={() => {
-                                            if (typeof window !== "undefined") {
-                                                sessionStorage.setItem(`article_${slug}`, JSON.stringify(article));
-                                            }
-                                        }}
-                                        className="group block"
-                                    >
-                                        <div className="flex gap-3">
-                                            <span className="text-xl font-bold text-slate-200 dark:text-slate-700 group-hover:text-brand transition-colors shrink-0">
-                                                {index + 1}
-                                            </span>
-                                            <div className="min-w-0">
-                                                <h4 className="text-sm font-medium text-slate-800 dark:text-slate-200 leading-snug group-hover:text-brand transition-colors line-clamp-2">
-                                                    {article.title}
-                                                </h4>
-                                                <span className="text-xs text-slate-400 mt-1 block">
-                                                    {formatTimeAgo(article.date)}
-                                                </span>
-                                            </div>
+                    ) : totalWatchlistStocks === 0 ? (
+                        <div className="text-center py-4">
+                            <p className="text-xs text-slate-400 mb-2">No stocks in watchlist</p>
+                            <Link href="/watchlist" className="text-xs text-brand hover:text-brand/80 font-medium">
+                                Create watchlist →
+                            </Link>
+                        </div>
+                    ) : watchlistNews.length > 0 ? (
+                        <div className="space-y-3">
+                            {watchlistNews.slice(0, 5).map((article) => (
+                                <a
+                                    key={article.id || article.url}
+                                    href={article.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="group block"
+                                >
+                                    <h4 className="text-sm font-medium text-slate-800 dark:text-slate-200 leading-snug group-hover:text-brand transition-colors line-clamp-2">
+                                        {article.title}
+                                    </h4>
+                                    <div className="flex items-center gap-2 mt-1 text-xs text-slate-400">
+                                        <span>{article.source}</span>
+                                        <span>•</span>
+                                        <div className="flex items-center gap-1">
+                                            <Clock className="w-3 h-3" />
+                                            <span>{formatTimeAgo(article.published_at)}</span>
                                         </div>
-                                    </Link>
-                                );
-                            })}
+                                    </div>
+                                    {article.tickers && article.tickers.length > 0 && (
+                                        <div className="flex gap-1 mt-1.5 flex-wrap">
+                                            {article.tickers.slice(0, 3).map((t) => (
+                                                <Badge key={t} variant="secondary" className="text-[10px] px-1.5 py-0">
+                                                    {t}
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                    )}
+                                </a>
+                            ))}
                         </div>
                     ) : (
-                        <p className="text-xs text-slate-400 text-center py-2">No recent headlines</p>
+                        <p className="text-xs text-slate-400 text-center py-2">No recent news for your stocks</p>
                     )}
                 </CardContent>
             </Card>

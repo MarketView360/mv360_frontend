@@ -682,14 +682,14 @@ export default function JovanAIPage() {
 
       {/* Delete All Conversations Confirmation Dialog */}
       <AlertDialog open={showDeleteAllDialog} onOpenChange={setShowDeleteAllDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
               <AlertTriangle className="h-5 w-5" />
               Delete All Conversations
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-3">
-              <p>
+            <AlertDialogDescription className="space-y-3 text-slate-600 dark:text-slate-400">
+              <p className="text-slate-700 dark:text-slate-300">
                 Are you sure you want to delete <strong>all</strong> your AI conversations? 
                 This action is <strong>permanent</strong> and cannot be undone.
               </p>

@@ -14,6 +14,7 @@ import {
   FileDown,
   Volume2,
   StopCircle,
+  ListChecks,
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import { toast } from "sonner";
@@ -45,6 +46,7 @@ export interface Message {
   reasoning?: string;
   toolCalls?: string[];
   toolStatus?: string;
+  isWatchlistAnalysis?: boolean;
 }
 
 interface ChatAreaProps {
@@ -276,6 +278,13 @@ export function ChatArea({ messages }: ChatAreaProps) {
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                   {message.role === "user" ? "You" : getModelName(message.model)}
                 </span>
+                {/* Show watchlist analysis badge for user messages from watchlist */}
+                {message.role === "user" && message.isWatchlistAnalysis && (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 text-[10px] font-medium">
+                    <ListChecks className="w-3 h-3" />
+                    Watchlist
+                  </span>
+                )}
                 {/* Show reasoning indicator badge for assistant messages with reasoning */}
                 {message.role === "assistant" && message.reasoning !== undefined && (
                   <ReasoningIndicator isActive={message.isStreaming && !message.content} />

@@ -1,14 +1,21 @@
-import { Metadata } from "next";
+import { BreadcrumbSchema } from "@/components/seo";
 
-export const metadata: Metadata = {
-    title: "Pricing - MarketView360",
-    description: "Choose the perfect plan for your investment journey. Start free, upgrade anytime.",
-};
+export { metadata } from "./metadata";
 
 export default function PricingLayout({
     children,
-}: {
+}: Readonly<{
     children: React.ReactNode;
-}) {
-    return children;
+}>) {
+    return (
+        <>
+            <BreadcrumbSchema
+                items={[
+                    { name: "Home", url: "https://www.marketview360.io" },
+                    { name: "Pricing", url: "https://www.marketview360.io/pricing" },
+                ]}
+            />
+            {children}
+        </>
+    );
 }

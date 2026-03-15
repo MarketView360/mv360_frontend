@@ -30,6 +30,8 @@ interface Blog {
   description: string;
   date: string;
   type: string;
+  image_url?: string;
+  thumbnail_url?: string;
 }
 
 type MarkdownPart =

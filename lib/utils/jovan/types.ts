@@ -7,6 +7,7 @@ export interface ChatMessage {
   reasoning?: string;
   toolCalls?: string[];
   toolStatus?: string;
+  isWatchlistAnalysis?: boolean; // Badge indicator for watchlist analysis messages
 }
 
 export interface SessionSummary {

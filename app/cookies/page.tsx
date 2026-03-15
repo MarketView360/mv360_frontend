@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import { ArrowLeft, Cookie, Settings, BarChart3, Shield, AlertCircle } from "lucide-react";
 

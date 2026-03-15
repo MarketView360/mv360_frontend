@@ -21,16 +21,22 @@ type StoreState = {
   error: string | null;
 };
 
-const store: StoreState = {
+// Mutable backing store — mutated in place, then a new snapshot is created
+const _store: StoreState = {
   token: null,
   quota: null,
   loading: false,
   error: null,
 };
 
+// Immutable snapshot — replaced on every change so React detects updates
+let _snapshot: StoreState = { ..._store };
+
 const listeners = new Set<() => void>();
 
 function emitChange() {
+  // Create a NEW object reference so useSyncExternalStore triggers re-renders
+  _snapshot = { ..._store };
   listeners.forEach((l) => l());
 }
 
@@ -40,18 +46,25 @@ function subscribe(listener: () => void) {
 }
 
 function getSnapshot() {
-  return store;
+  return _snapshot;
 }
 
+let _fetchInFlight = false;
+
 async function fetchQuotaIntoStore(token: string | null, forceFresh: boolean = false) {
-  store.token = token;
-  store.loading = true;
-  store.error = null;
+  // Prevent duplicate concurrent fetches
+  if (_fetchInFlight && !forceFresh) return;
+  _fetchInFlight = true;
+
+  _store.token = token;
+  _store.loading = true;
+  _store.error = null;
   emitChange();
 
   if (!token) {
-    store.quota = null;
-    store.loading = false;
+    _store.quota = null;
+    _store.loading = false;
+    _fetchInFlight = false;
     emitChange();
     return;
   }
@@ -75,13 +88,13 @@ async function fetchQuotaIntoStore(token: string | null, forceFresh: boolean = f
     }
 
     const data = (await response.json()) as QuotaStatus;
-    store.quota = data;
+    _store.quota = data;
   } catch (err) {
     console.error("Quota fetch error:", err);
-    // Keep last known quota if available; don't overwrite with dummy values.
-    store.error = err instanceof Error ? err.message : "Unknown error";
+    _store.error = err instanceof Error ? err.message : "Unknown error";
   } finally {
-    store.loading = false;
+    _store.loading = false;
+    _fetchInFlight = false;
     emitChange();
   }
 }

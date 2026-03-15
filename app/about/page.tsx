@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import { ArrowLeft, TrendingUp, Zap, Shield, Users, Target, Eye, BarChart3, Globe, Heart } from "lucide-react";
 
@@ -188,6 +186,111 @@ export default function AboutPage() {
                 <p className="text-xs text-slate-500 dark:text-slate-400">AI Analysis</p>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Preview Section */}
+      <section className="py-16 px-4 bg-slate-50 dark:bg-slate-900/30">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-3">
+              Choose Your Plan
+            </h2>
+            <p className="text-slate-600 dark:text-slate-300">
+              Start free, upgrade anytime. No credit card required.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* Free Tier */}
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Free Forever</h3>
+              <p className="text-3xl font-bold text-slate-900 dark:text-white mb-1">$0</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Perfect for getting started</p>
+              <ul className="space-y-2 mb-6">
+                <li className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
+                  <span className="text-green-500 mt-0.5">✓</span>
+                  Basic screener (10 filters)
+                </li>
+                <li className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
+                  <span className="text-green-500 mt-0.5">✓</span>
+                  3 watchlists (25 stocks each)
+                </li>
+                <li className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
+                  <span className="text-green-500 mt-0.5">✓</span>
+                  5 AI questions per day
+                </li>
+              </ul>
+            </div>
+
+            {/* Premium Tier */}
+            <div className="bg-white dark:bg-slate-900 rounded-xl border-2 border-blue-500 p-6 relative">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <span className="bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
+                  Most Popular
+                </span>
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Premium</h3>
+              <p className="text-3xl font-bold text-slate-900 dark:text-white mb-1">
+                $19.99<span className="text-lg text-slate-500">/mo</span>
+              </p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">For serious investors</p>
+              <ul className="space-y-2 mb-6">
+                <li className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
+                  <span className="text-green-500 mt-0.5">✓</span>
+                  Unlimited filters & results
+                </li>
+                <li className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
+                  <span className="text-green-500 mt-0.5">✓</span>
+                  Real-time quotes
+                </li>
+                <li className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
+                  <span className="text-green-500 mt-0.5">✓</span>
+                  100 AI questions/day
+                </li>
+                <li className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
+                  <span className="text-green-500 mt-0.5">✓</span>
+                  Advanced charts & alerts
+                </li>
+              </ul>
+            </div>
+
+            {/* Max Tier */}
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-6">
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Max</h3>
+              <p className="text-3xl font-bold text-slate-900 dark:text-white mb-1">
+                $49.99<span className="text-lg text-slate-500">/mo</span>
+              </p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">For professionals</p>
+              <ul className="space-y-2 mb-6">
+                <li className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
+                  <span className="text-green-500 mt-0.5">✓</span>
+                  Everything in Premium
+                </li>
+                <li className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
+                  <span className="text-green-500 mt-0.5">✓</span>
+                  Unlimited AI questions
+                </li>
+                <li className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
+                  <span className="text-green-500 mt-0.5">✓</span>
+                  API access (10k calls/mo)
+                </li>
+                <li className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
+                  <span className="text-green-500 mt-0.5">✓</span>
+                  Pre/post-market data
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="text-center mt-8">
+            <Link
+              href="/pricing"
+              className="inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 hover:underline font-medium"
+            >
+              View full pricing details and feature comparison →
+            </Link>
           </div>
         </div>
       </section>

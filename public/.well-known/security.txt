@@ -1,0 +1,22 @@
+Contact: mailto:security@marketview360.io
+Expires: 2027-12-31T23:59:59.000Z
+Preferred-Languages: en
+Canonical: https://www.marketview360.io/.well-known/security.txt
+
+# Security Policy
+
+We take security seriously at MarketView360. If you discover a security vulnerability, please report it responsibly.
+
+# Reporting Guidelines
+- Email security@marketview360.io with details
+- Include steps to reproduce the issue
+- Allow reasonable time for us to address before public disclosure
+- Do not access or modify user data without permission
+
+# Out of Scope
+- Theoretical vulnerabilities without proof of concept
+- Social engineering attacks
+- Physical attacks
+- Denial of service attacks
+
+Thank you for helping keep MarketView360 secure!

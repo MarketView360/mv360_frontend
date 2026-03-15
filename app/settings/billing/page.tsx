@@ -1,322 +1,151 @@
 "use client";
 
-import { useState } from "react";
-import { useProfile } from "@/hooks/useProfile";
-import { useAuth } from "@/providers/AuthProvider";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Crown, ArrowRight, Zap, Shield, Sparkles, Mail, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { 
-  CreditCard, 
-  Crown, 
-  Calendar, 
-  ArrowUpRight,
-  Receipt,
-  Download,
-  AlertCircle,
-  CheckCircle2
-} from "lucide-react";
-import { toast } from "sonner";
+import { Card, CardContent } from "@/components/ui/card";
+import Link from "next/link";
 
 export default function BillingPage() {
-  const { session } = useAuth();
-  const { profile, loading } = useProfile(session?.access_token || null);
-  const [cancellingSubscription, setCancellingSubscription] = useState(false);
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-64 w-full" />
-      </div>
-    );
-  }
-
-  const isPremium = profile?.subscription_tier === "premium";
-
-  const handleCancelSubscription = async () => {
-    if (!confirm("Are you sure you want to cancel your subscription? You'll lose access to premium features at the end of your billing period.")) {
-      return;
-    }
-
-    setCancellingSubscription(true);
-    try {
-      // API call to cancel subscription
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      toast.success("Subscription cancelled. You'll have access until the end of your billing period.");
-    } catch {
-      toast.error("Failed to cancel subscription");
-    } finally {
-      setCancellingSubscription(false);
-    }
-  };
-
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Billing & Subscription</h2>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-          Manage your subscription, payment methods, and billing history
-        </p>
-      </div>
-
-      {/* Current Subscription Status */}
-      <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <CreditCard className="h-5 w-5 text-brand" />
-            Current Plan
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-start justify-between mb-6">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <h3 className="text-3xl font-bold text-slate-900 dark:text-white capitalize">
-                  {profile?.subscription_tier || "Free"}
-                </h3>
-                {isPremium && (
-                  <Badge className="bg-brand text-white border-0">
-                    <Crown className="h-3 w-3 mr-1" />
-                    Active
-                  </Badge>
-                )}
-              </div>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                {isPremium
-                  ? "Premium subscription with full access to all features"
-                  : "Free plan with limited features"}
-              </p>
-            </div>
-            {isPremium && (
-              <div className="text-right">
-                <p className="text-3xl font-bold text-slate-900 dark:text-white">$29</p>
-                <p className="text-sm text-slate-500 dark:text-slate-400">per month</p>
-              </div>
-            )}
+    <div className="min-h-[80vh] flex items-center justify-center">
+      <div className="w-full max-w-4xl mx-auto px-4">
+        {/* Hero Section */}
+        <div className="text-center space-y-6 mb-12">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand/20 border-2 border-brand">
+            <Clock className="h-4 w-4 text-brand" />
+            <span className="text-sm font-bold text-brand uppercase tracking-wide">
+              Coming Soon
+            </span>
           </div>
 
-          {!isPremium ? (
-            <Button className="w-full bg-brand hover:bg-brand/90 text-white">
-              <Crown className="h-4 w-4 mr-2" />
-              Upgrade to Premium
-              <ArrowUpRight className="h-4 w-4 ml-2" />
-            </Button>
-          ) : (
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <Button variant="outline" className="w-full">
-                  Change Plan
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
-                  onClick={handleCancelSubscription}
-                  disabled={cancellingSubscription}
-                >
-                  {cancellingSubscription ? "Cancelling..." : "Cancel Subscription"}
-                </Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            Billing & Subscriptions
+            <span className="block text-brand mt-2">
+              launching soon
+            </span>
+          </h1>
 
-      {/* Payment Method */}
-      {isPremium && (
-        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <CreditCard className="h-5 w-5 text-green-500" />
-              Payment Method
-            </CardTitle>
-            <CardDescription>Manage your payment information</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                  <CreditCard className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div>
-                  <p className="font-medium text-slate-900 dark:text-white">Visa ending in 4242</p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Expires 12/2025</p>
-                </div>
-              </div>
-              <Button variant="outline" size="sm">
-                Update
-              </Button>
-            </div>
+          <p className="text-lg font-medium text-slate-700 dark:text-slate-300 max-w-xl mx-auto">
+            We're building something special. Manage your subscription, view invoices,
+            and handle payments — all in one seamless experience.
+          </p>
+        </div>
 
-            <Button variant="ghost" className="w-full">
-              + Add New Payment Method
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+        {/* Feature Cards */}
+        <div className="grid md:grid-cols-3 gap-4 mb-12">
+          <Card className="border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-md">
+            <CardContent className="pt-6 text-center space-y-3">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-brand/20 border-2 border-brand">
+                <Crown className="h-6 w-6 text-brand" />
+              </div>
+              <h3 className="font-bold text-lg text-slate-900 dark:text-white">
+                Flexible Plans
+              </h3>
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Choose from multiple tiers designed for every type of investor
+              </p>
+            </CardContent>
+          </Card>
 
-      {/* Billing Information */}
-      {isPremium && (
-        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Calendar className="h-5 w-5 text-brand" />
-              Billing Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Next Billing Date</p>
-                <p className="font-semibold text-slate-900 dark:text-white">
-                  {new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </p>
+          <Card className="border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-md">
+            <CardContent className="pt-6 text-center space-y-3">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-growth/20 border-2 border-growth">
+                <Shield className="h-6 w-6 text-growth" />
               </div>
-              <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Billing Cycle</p>
-                <p className="font-semibold text-slate-900 dark:text-white">Monthly</p>
+              <h3 className="font-bold text-lg text-slate-900 dark:text-white">
+                Secure Payments
+              </h3>
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Enterprise-grade security for all your transactions
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-md">
+            <CardContent className="pt-6 text-center space-y-3">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-warning/20 border-2 border-warning">
+                <Zap className="h-6 w-6 text-warning" />
               </div>
+              <h3 className="font-bold text-lg text-slate-900 dark:text-white">
+                Instant Access
+              </h3>
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                Upgrade anytime and get immediate access to premium features
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* What's Coming Section */}
+        <Card className="border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg mb-8">
+          <CardContent className="pt-8 pb-8">
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-brand/20 border-2 border-brand mb-3">
+                <Clock className="h-6 w-6 text-brand" />
+              </div>
+              <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">
+                What's Coming
+              </h2>
             </div>
 
-            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-              <Label className="text-sm text-slate-500 dark:text-slate-400 mb-2 block">Billing Email</Label>
-              <div className="flex gap-2">
-                <Input 
-                  type="email" 
-                  value={profile?.email || ""} 
-                  className="flex-1"
-                  disabled
-                />
-                <Button variant="outline" size="sm">
-                  Change
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Billing History */}
-      {isPremium && (
-        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Receipt className="h-5 w-5 text-brand" />
-              Billing History
-            </CardTitle>
-            <CardDescription>View and download your past invoices</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
+            <div className="grid md:grid-cols-2 gap-4 max-w-2xl mx-auto">
               {[
-                { date: "Dec 1, 2024", amount: "$29.00", status: "Paid" },
-                { date: "Nov 1, 2024", amount: "$29.00", status: "Paid" },
-                { date: "Oct 1, 2024", amount: "$29.00", status: "Paid" },
-              ].map((invoice, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                      <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-slate-900 dark:text-white">{invoice.date}</p>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">
-                        Premium Subscription
-                      </p>
-                    </div>
+                "Monthly & annual subscription plans",
+                "Secure payment processing",
+                "Invoice history & downloads",
+                "Plan upgrades & downgrades",
+                "Automatic billing management",
+                "Refund & cancellation support",
+              ].map((feature, idx) => (
+                <div key={idx} className="flex items-center gap-3">
+                  <div className="shrink-0 w-6 h-6 rounded-full bg-growth/20 border-2 border-growth flex items-center justify-center">
+                    <svg className="w-3.5 h-3.5 text-growth" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <p className="font-semibold text-slate-900 dark:text-white">{invoice.amount}</p>
-                      <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 border-0 text-xs">
-                        {invoice.status}
-                      </Badge>
-                    </div>
-                    <Button variant="ghost" size="sm">
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  <span className="text-base font-medium text-slate-800 dark:text-slate-200">{feature}</span>
                 </div>
               ))}
             </div>
-
-            <Button variant="outline" className="w-full mt-4">
-              View All Invoices
-            </Button>
           </CardContent>
         </Card>
-      )}
 
-      {/* Upgrade CTA for Free Users */}
-      {!isPremium && (
-        <Card className="border-2 border-brand/20 bg-blue-50 dark:bg-blue-950/20">
-          <CardContent className="pt-6">
-            <div className="text-center space-y-4">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-brand/10">
-                <Crown className="h-8 w-8 text-brand" />
+        {/* CTA Section */}
+        <div className="text-center space-y-4 mb-8">
+          <p className="text-base font-medium text-slate-700 dark:text-slate-300">
+            Want to see what premium features await you?
+          </p>
+          <Link href="/pricing">
+            <Button className="bg-brand hover:bg-brand/90 text-white font-bold text-lg px-8 py-6 rounded-xl border-4 border-brand/30 shadow-xl hover:shadow-2xl transition-all">
+              View Pricing Plans
+              <ArrowRight className="h-5 w-5 ml-2" />
+            </Button>
+          </Link>
+        </div>
+
+        {/* Contact Us CTA */}
+        <Card className="border-2 border-brand bg-brand/10 dark:bg-brand/5">
+          <CardContent className="pt-8 pb-8">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-brand/20 border-2 border-brand mb-4">
+                <Mail className="h-6 w-6 text-brand" />
               </div>
-              <div>
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
-                  Unlock Premium Features
-                </h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                  Get unlimited AI chat, advanced screening, BYOK support, and priority support for just $29/month
-                </p>
-              </div>
-              <div className="flex flex-col gap-2 max-w-xs mx-auto">
-                <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                  <CheckCircle2 className="h-4 w-4 text-brand shrink-0" />
-                  <span>20 reasoning requests per day</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                  <CheckCircle2 className="h-4 w-4 text-brand shrink-0" />
-                  <span>Bring Your Own API Keys</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                  <CheckCircle2 className="h-4 w-4 text-brand shrink-0" />
-                  <span>Advanced stock screening</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
-                  <CheckCircle2 className="h-4 w-4 text-brand shrink-0" />
-                  <span>Priority customer support</span>
-                </div>
-              </div>
-              <Button className="bg-brand hover:bg-brand/90 text-white mt-4">
-                <Crown className="h-4 w-4 mr-2" />
-                Upgrade to Premium
-              </Button>
+              <h3 className="text-xl font-extrabold text-slate-900 dark:text-white mb-3">
+                Want Early Access or Custom Features?
+              </h3>
+              <p className="text-base font-medium text-slate-700 dark:text-slate-300 mb-6 max-w-lg mx-auto">
+                If you'd like to try our premium plan earlier and provide feedback, or need custom features, we'd love to hear from you!
+              </p>
+              <Link href="/contact">
+                <Button className="bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 text-white font-bold px-6 py-4 rounded-lg border-2 border-slate-900 dark:border-white">
+                  <Mail className="h-4 w-4 mr-2" />
+                  Contact Us
+                </Button>
+              </Link>
             </div>
           </CardContent>
         </Card>
-      )}
-
-      {/* Billing Support */}
-      <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <AlertCircle className="h-5 w-5 text-amber-500" />
-            Need Help?
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-            Have questions about billing or need to update your payment information? Our support team is here to help.
-          </p>
-          <Button variant="outline" className="w-full">
-            Contact Billing Support
-          </Button>
-        </CardContent>
-      </Card>
+      </div>
     </div>
   );
 }

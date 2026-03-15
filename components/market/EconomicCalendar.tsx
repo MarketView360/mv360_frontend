@@ -71,7 +71,7 @@ function EconomicCalendarContent() {
 
 export function EconomicCalendar() {
     return (
-        <ContentGate feature="Economic Calendar" tier="pro" compact>
+        <ContentGate feature="Economic Calendar" tier="max" compact>
             <EconomicCalendarContent />
         </ContentGate>
     );

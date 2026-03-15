@@ -61,6 +61,8 @@ export function useChatStream(token: string | null, sessionId: string | null) {
         reasoning?: boolean; 
         enableTools?: boolean;
         onSessionCreated?: (id: string, title: string) => void;
+        displayContent?: string; // What to show in chat (if different from content sent to AI)
+        isWatchlistAnalysis?: boolean; // Badge indicator
       } = {}
     ): Promise<{ sessionId: string | null; title: string | null }> => {
       if (!token) {
@@ -78,8 +80,9 @@ export function useChatStream(token: string | null, sessionId: string | null) {
       const userMessage: ChatMessage = {
         id: `temp-${Date.now()}`,
         role: "user",
-        content,
+        content: options.displayContent || content, // Show display content in chat
         timestamp: new Date().toISOString(),
+        isWatchlistAnalysis: options.isWatchlistAnalysis,
       };
 
       setMessages((prev) => [...prev, userMessage]);
@@ -100,9 +103,12 @@ export function useChatStream(token: string | null, sessionId: string | null) {
       setMessages((prev) => [...prev, assistantMessage]);
 
       try {
+        // Only send recent messages — backend trims to 8 anyway, no need to send full history
+        const MAX_HISTORY_TO_SEND = 10;
         const history = messagesRef.current
           .filter((m) => m.role !== "assistant" || m.content.trim() !== "")
-          .filter((m) => !m.isStreaming);
+          .filter((m) => !m.isStreaming)
+          .slice(-MAX_HISTORY_TO_SEND);
 
         const allMessages = [
           ...history.map((m) => ({ role: m.role, content: m.content })),

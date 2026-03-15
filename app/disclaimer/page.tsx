@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import { ArrowLeft, AlertTriangle, TrendingUp, Bot, Database, Scale } from "lucide-react";
 

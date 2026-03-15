@@ -12,11 +12,11 @@ export function ContentGate({
 }: {
     children: React.ReactNode;
     feature?: string;
-    tier?: "premium" | "elite";
+    tier?: "premium" | "elite" | "max";
     compact?: boolean;
 }) {
     const { session } = useAuth();
-    const hasAccess = session?.tier === "premium" || session?.tier === "elite";
+    const hasAccess = session?.tier === "premium" || session?.tier === "elite" || session?.tier === "max";
 
     if (!hasAccess) {
         const minHeight = compact ? "min-h-[180px]" : "min-h-[400px]";

@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   X, Loader2, GitCompareArrows, StickyNote, Check,
   ArrowUpRight, ArrowDownRight, TrendingUp, TrendingDown, ChevronUp, ChevronDown,
+  Square, CheckSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CompanyLogo } from "@/components/company/CompanyLogo";
@@ -34,14 +35,13 @@ interface WatchlistStockTableProps {
   onCompareStock?: (ticker: string) => void;
   onUpdateNotes?: (watchlistId: string, ticker: string, notes: string) => void;
   compareTickers?: string[];
+  selectedTickers?: string[];
+  onSelectionChange?: (tickers: string[]) => void;
 }
 
 const RETURN_COLUMNS: { key: SortField; label: string; hideClass?: string }[] = [
   { key: "price_change_1d", label: "1D" },
-  { key: "price_change_1w", label: "5D", hideClass: "hidden sm:table-cell" },
   { key: "price_change_1m", label: "1M" },
-  { key: "price_change_3m", label: "3M", hideClass: "hidden md:table-cell" },
-  { key: "price_change_1y", label: "1Y", hideClass: "hidden lg:table-cell" },
 ];
 
 function relativeTime(dateStr: string | undefined | null): string {
@@ -77,13 +77,14 @@ function ChangePill({ val }: { val: number | null | undefined }) {
   );
 }
 
-export function WatchlistStockTable({ items, watchlistId, onRemoveStock, onCompareStock, onUpdateNotes, compareTickers = [] }: WatchlistStockTableProps) {
+export function WatchlistStockTable({ items, watchlistId, onRemoveStock, onCompareStock, onUpdateNotes, compareTickers = [], selectedTickers = [], onSelectionChange }: WatchlistStockTableProps) {
   const [stockData, setStockData] = useState<Map<string, StockRowData>>(new Map());
   const [loading, setLoading] = useState(true);
   const [sortField, setSortField] = useState<SortField>("price");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [editingNotes, setEditingNotes] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
+  const [localSelected, setLocalSelected] = useState<string[]>([]);
 
   const supabaseRef = useRef(createClient());
 
@@ -91,6 +92,32 @@ export function WatchlistStockTable({ items, watchlistId, onRemoveStock, onCompa
     () => items.map((i) => i.ticker.toUpperCase()).sort().join(","),
     [items]
   );
+
+  // Sync selection state
+  useEffect(() => {
+    setLocalSelected(selectedTickers);
+  }, [selectedTickers]);
+
+  const handleSelectToggle = (ticker: string) => {
+    const newSelection = localSelected.includes(ticker)
+      ? localSelected.filter(t => t !== ticker)
+      : [...localSelected, ticker];
+    setLocalSelected(newSelection);
+    onSelectionChange?.(newSelection);
+  };
+
+  const handleSelectAll = () => {
+    if (localSelected.length === items.length) {
+      setLocalSelected([]);
+      onSelectionChange?.([]);
+    } else {
+      const allTickers = items.map(item => cleanTicker(item.ticker));
+      setLocalSelected(allTickers);
+      onSelectionChange?.(allTickers);
+    }
+  };
+
+  const isAllSelected = items.length > 0 && localSelected.length === items.length;
 
   useEffect(() => {
     if (!tickerKey) {
@@ -277,6 +304,20 @@ export function WatchlistStockTable({ items, watchlistId, onRemoveStock, onCompa
         <table className="w-full">
           <thead>
             <tr className="border-b border-slate-200 dark:border-slate-700">
+              {onSelectionChange && (
+                <th className="w-12 px-4 py-2.5">
+                  <button
+                    onClick={handleSelectAll}
+                    className="flex items-center justify-center w-5 h-5 rounded border-2 border-slate-300 dark:border-slate-600 hover:border-brand dark:hover:border-brand transition-colors"
+                  >
+                    {isAllSelected ? (
+                      <CheckSquare className="w-4 h-4 text-brand" />
+                    ) : localSelected.length > 0 ? (
+                      <div className="w-2.5 h-2.5 bg-brand rounded-sm" />
+                    ) : null}
+                  </button>
+                </th>
+              )}
               <th className="text-left px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider w-[260px]">
                 <button
                   className={`inline-flex items-center gap-0.5 transition-colors ${
@@ -322,13 +363,28 @@ export function WatchlistStockTable({ items, watchlistId, onRemoveStock, onCompa
               const dayChange = data?.price_change_1d;
               const isUp = dayChange != null && dayChange >= 0;
 
+              const isSelected = localSelected.includes(cleanTicker(item.ticker));
+
               return (
                 <React.Fragment key={item.id}>
                   <tr
                     className={`group transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40 ${
                       idx % 2 === 0 ? "" : "bg-slate-50/30 dark:bg-slate-800/10"
-                    }`}
+                    } ${isSelected ? "ring-2 ring-brand/20" : ""}`}
                   >
+                    {onSelectionChange && (
+                      <td className="px-4 py-2.5">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectToggle(cleanTicker(item.ticker));
+                          }}
+                          className="flex items-center justify-center w-5 h-5 rounded border-2 border-slate-300 dark:border-slate-600 hover:border-brand dark:hover:border-brand transition-colors"
+                        >
+                          {isSelected && <CheckSquare className="w-4 h-4 text-brand" />}
+                        </button>
+                      </td>
+                    )}
                     <td className="px-4 py-2.5">
                       <Link
                         href={`/company/${item.ticker}`}
