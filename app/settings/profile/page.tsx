@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { User, Mail, Calendar, CheckCircle, Loader2 } from "lucide-react";
+import { User, Mail, Calendar, CheckCircle, Loader2, Crown } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
 export default function ProfilePage() {

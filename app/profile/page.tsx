@@ -1,28 +1,18 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
-import { UserAvatar } from "@/components/auth/UserAvatar";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  User,
-  Mail,
-  Crown,
-  Calendar,
-  AlertCircle,
-  MessageSquare,
-  Sparkles,
-  Save,
-  Loader2,
-  CheckCircle,
-  Shield,
-  Settings,
-} from "lucide-react";
+import { ProfileAvatar, ProfileStats, PersonalInfoForm, AccountInfo } from "@/components/profile";
+import { AlertCircle, Save, Loader2, CheckCircle } from "lucide-react";
+import { z } from "zod";
+
+// Validation schema
+const profileSchema = z.object({
+  display_name: z.string().max(100, "Display name must be 100 characters or less").optional(),
+  full_name: z.string().max(100, "Full name must be 100 characters or less").optional(),
+});
 
 interface UserProfile {
   id: string;
@@ -34,8 +24,16 @@ interface UserProfile {
   newsletter_opt_in: boolean;
   announcements_opt_in: boolean;
   alerts_opt_in: boolean;
+  events_and_promotions_opt_in: boolean;
+  temp_suspend?: boolean;
+  perm_suspend?: boolean;
   created_at: string;
   updated_at: string;
+}
+
+interface ValidationErrors {
+  displayName?: string;
+  fullName?: string;
 }
 
 interface ProfileStats {
@@ -59,11 +57,9 @@ export default function ProfilePage() {
   // Form state
   const [displayName, setDisplayName] = useState("");
   const [fullName, setFullName] = useState("");
-  const [newsletterOptIn, setNewsletterOptIn] = useState(false);
-  const [announcementsOptIn, setAnnouncementsOptIn] = useState(false);
-  const [alertsOptIn, setAlertsOptIn] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
 
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+  const apiBase = process.env.NEXT_PUBLIC_API_URL;
 
   const fetchProfile = useCallback(async () => {
     if (!session?.access_token) return;
@@ -84,9 +80,6 @@ export default function ProfilePage() {
       setProfile(profileData);
       setDisplayName(profileData.display_name || "");
       setFullName(profileData.full_name || "");
-      setNewsletterOptIn(!!profileData.newsletter_opt_in);
-      setAnnouncementsOptIn(!!profileData.announcements_opt_in);
-      setAlertsOptIn(!!profileData.alerts_opt_in);
 
       if (statsRes.ok) {
         const statsData = await statsRes.json();
@@ -110,8 +103,31 @@ export default function ProfilePage() {
     }
   }, [authLoading, user, session?.access_token, router, fetchProfile]);
 
+  // Validate form data
+  const validateForm = useCallback(() => {
+    const result = profileSchema.safeParse({
+      display_name: displayName || undefined,
+      full_name: fullName || undefined,
+    });
+
+    if (!result.success) {
+      const errors: ValidationErrors = {};
+      result.error.issues.forEach((issue) => {
+        if (issue.path[0] === "display_name") errors.displayName = issue.message;
+        if (issue.path[0] === "full_name") errors.fullName = issue.message;
+      });
+      setValidationErrors(errors);
+      return false;
+    }
+    setValidationErrors({});
+    return true;
+  }, [displayName, fullName]);
+
   const handleSave = async () => {
-    if (!session?.access_token) return;
+    if (!session?.access_token || !apiBase) return;
+
+    // Validate before saving
+    if (!validateForm()) return;
 
     setSaving(true);
     setSaveSuccess(false);
@@ -127,9 +143,6 @@ export default function ProfilePage() {
         body: JSON.stringify({
           display_name: displayName,
           full_name: fullName,
-          newsletter_opt_in: newsletterOptIn,
-          announcements_opt_in: announcementsOptIn,
-          alerts_opt_in: alertsOptIn,
         }),
       });
 
@@ -146,13 +159,22 @@ export default function ProfilePage() {
     }
   };
 
-  const hasChanges =
-    profile &&
-    (displayName !== (profile.display_name || "") ||
-      fullName !== (profile.full_name || "") ||
-      newsletterOptIn !== profile.newsletter_opt_in ||
-      announcementsOptIn !== profile.announcements_opt_in ||
-      alertsOptIn !== profile.alerts_opt_in);
+  const hasChanges = useMemo(() => {
+    if (!profile) return false;
+    return (
+      displayName !== (profile.display_name || "") ||
+      fullName !== (profile.full_name || "")
+    );
+  }, [profile, displayName, fullName]);
+
+  // Memoized member since date
+  const memberSince = useMemo(() => {
+    if (!stats?.memberSince) return "—";
+    return new Date(stats.memberSince).toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
+    });
+  }, [stats?.memberSince]);
 
   if (authLoading || loading) {
     return (
@@ -174,21 +196,7 @@ export default function ProfilePage() {
     return null;
   }
 
-  const tierConfig = {
-    free: { label: "Free", color: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },
-    premium: { label: "Premium", color: "bg-amber-500 text-white" },
-    pro: { label: "Pro", color: "bg-purple-600 text-white" },
-  };
-
-  const tier = (profile?.subscription_tier || "free") as keyof typeof tierConfig;
-  const tierInfo = tierConfig[tier] || tierConfig.free;
-
-  const memberSince = stats?.memberSince
-    ? new Date(stats.memberSince).toLocaleDateString("en-US", {
-      month: "long",
-      year: "numeric",
-    })
-    : "—";
+  const subscriptionTier = profile?.subscription_tier || "free";
 
   return (
     <div className="min-h-full bg-slate-50 dark:bg-slate-950">
@@ -229,233 +237,43 @@ export default function ProfilePage() {
 
         {/* Profile Overview */}
         <div className="grid gap-6 md:grid-cols-3">
-          {/* Avatar & Basic Info */}
-          <Card className="md:col-span-1 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-            <CardContent className="pt-6 flex flex-col items-center text-center">
-              <div className="relative">
-                <UserAvatar user={user} size="lg" className="h-24 w-24 text-2xl ring-4" />
-                <Badge className={`absolute -bottom-2 left-1/2 -translate-x-1/2 ${tierInfo.color} border-0`}>
-                  <Crown className="h-3 w-3 mr-1" />
-                  {tierInfo.label}
-                </Badge>
-              </div>
-              <h2 className="mt-6 text-xl font-semibold text-slate-900 dark:text-white">
-                {displayName || user.email?.split("@")[0] || "User"}
-              </h2>
-              <p className="text-slate-500 dark:text-slate-400 text-sm">{user.email}</p>
-              <div className="mt-4 flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
-                <Calendar className="h-3.5 w-3.5" />
-                Member since {memberSince}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Stats Cards */}
-          <Card className="md:col-span-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-            <CardHeader>
-              <CardTitle className="text-lg text-slate-900 dark:text-white">Usage Statistics</CardTitle>
-              <CardDescription>Your activity on MarketView360</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                      <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                        {stats?.chatSessionsCount ?? 0}
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Chat Sessions</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                      <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-white">
-                        {stats?.reasoningUsedToday ?? 0}
-                        <span className="text-sm font-normal text-slate-400">
-                          /{stats?.reasoningLimit ?? 3}
-                        </span>
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Reasoning Today</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {tier === "free" && (
-                <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded-lg">
-                  <p className="text-sm text-amber-800 dark:text-amber-200">
-                    <Crown className="h-4 w-4 inline mr-1" />
-                    Upgrade to Premium for 20 reasoning queries/day and priority support.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <ProfileAvatar
+            user={user}
+            displayName={displayName}
+            subscriptionTier={subscriptionTier}
+            memberSince={memberSince}
+          />
+          <ProfileStats
+            chatSessionsCount={stats?.chatSessionsCount ?? 0}
+            reasoningUsedToday={stats?.reasoningUsedToday ?? 0}
+            reasoningLimit={stats?.reasoningLimit ?? 3}
+            subscriptionTier={subscriptionTier}
+          />
         </div>
 
         {/* Personal Information */}
-        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg text-slate-900 dark:text-white">
-              <User className="h-5 w-5" />
-              Personal Information
-            </CardTitle>
-            <CardDescription>Update your personal details</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="displayName" className="text-slate-700 dark:text-slate-300">
-                  Display Name
-                </Label>
-                <Input
-                  id="displayName"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="How should we call you?"
-                  className="bg-white dark:bg-slate-800"
-                />
-                <p className="text-xs text-slate-400 dark:text-slate-500">
-                  This is how your name appears across the platform
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="fullName" className="text-slate-700 dark:text-slate-300">
-                  Full Name
-                </Label>
-                <Input
-                  id="fullName"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Your full name"
-                  className="bg-white dark:bg-slate-800"
-                />
-                <p className="text-xs text-slate-400 dark:text-slate-500">
-                  Used for official communications
-                </p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-slate-700 dark:text-slate-300">Email Address</Label>
-              <div className="flex items-center gap-3">
-                <div className="flex-1 flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-md border border-slate-200 dark:border-slate-700">
-                  <Mail className="h-4 w-4 text-slate-400" />
-                  <span className="text-sm text-slate-600 dark:text-slate-300">{user.email}</span>
-                </div>
-                <Badge variant="outline" className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800">
-                  <Shield className="h-3 w-3 mr-1" />
-                  Verified
-                </Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <PersonalInfoForm
+          email={user.email || ""}
+          displayName={displayName}
+          fullName={fullName}
+          onDisplayNameChange={setDisplayName}
+          onFullNameChange={setFullName}
+          errors={validationErrors}
+        />
 
-        
         {/* Account Info */}
-        <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg text-slate-900 dark:text-white">
-              <Shield className="h-5 w-5" />
-              Account Information
-            </CardTitle>
-            <CardDescription>Your account details and security (read-only)</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 text-sm">
-              <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-slate-500 dark:text-slate-400">Account ID</span>
-                <span className="font-mono text-slate-700 dark:text-slate-300 text-xs">
-                  {user.id.slice(0, 8)}...
-                </span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-slate-500 dark:text-slate-400">Email</span>
-                <span className="text-slate-700 dark:text-slate-300 text-xs">
-                  {user.email}
-                </span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-slate-500 dark:text-slate-400">Subscription</span>
-                <Badge className={`${tierInfo.color} border-0`}>{tierInfo.label}</Badge>
-              </div>
-              <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-slate-500 dark:text-slate-400">Role</span>
-                <span className="text-slate-700 dark:text-slate-300 capitalize">
-                  {profile?.role || "user"}
-                </span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-slate-500 dark:text-slate-400">Email Verified</span>
-                <span className="text-slate-700 dark:text-slate-300">
-                  {user.email_confirmed_at ? (
-                    <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 border-0 text-xs">
-                      Verified
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700 text-xs">
-                      Pending
-                    </Badge>
-                  )}
-                </span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-slate-500 dark:text-slate-400">Sign-in Method</span>
-                <span className="text-slate-700 dark:text-slate-300 capitalize text-xs">
-                  {user.app_metadata?.provider || "email"}
-                </span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-slate-500 dark:text-slate-400">Member Since</span>
-                <span className="text-slate-700 dark:text-slate-300 text-xs">
-                  {user.created_at
-                    ? new Date(user.created_at).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })
-                    : "—"}
-                </span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-slate-500 dark:text-slate-400">Last Updated</span>
-                <span className="text-slate-700 dark:text-slate-300 text-xs">
-                  {profile?.updated_at
-                    ? new Date(profile.updated_at).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })
-                    : "—"}
-                </span>
-              </div>
-            </div>
-
-            {/* Settings Link */}
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-              <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                  <AlertCircle className="h-4 w-4" />
-                  <span>This information is read-only. To manage your account, security, or data:</span>
-                </div>
-                <a
-                  href="/settings"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-brand hover:text-brand/80 bg-brand/10 hover:bg-brand/20 rounded-md transition-colors"
-                >
-                  <Settings className="h-4 w-4" />
-                  Go to Settings
-                </a>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {profile && (
+          <AccountInfo
+            user={user}
+            profile={{
+              role: profile.role,
+              subscription_tier: profile.subscription_tier,
+              updated_at: profile.updated_at,
+              temp_suspend: profile.temp_suspend,
+              perm_suspend: profile.perm_suspend,
+            }}
+          />
+        )}
       </div>
     </div>
   );

@@ -4,6 +4,13 @@ import { createContext, useContext, useEffect, useState, useCallback } from "rea
 import { createClient } from "@/lib/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
 
+interface MfaFactor {
+  id: string;
+  friendly_name?: string;
+  factor_type: 'totp' | 'phone';
+  status: 'verified' | 'unverified';
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -12,11 +19,18 @@ interface AuthContextType {
   signUpWithEmail: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
   signInWithOAuth: (provider: 'google' | 'github') => Promise<{ error: Error | null }>;
   signInWithMagicLink: (email: string) => Promise<{ error: Error | null }>;
-  signOut: () => Promise<void>;
+  signOut: (scope?: 'global' | 'local' | 'others') => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
   verifyOtp: (email: string, token: string, type: 'email' | 'recovery') => Promise<{ error: Error | null }>;
   resendVerificationEmail: (email: string) => Promise<{ error: Error | null }>;
+  // MFA methods
+  enrollMfa: (friendlyName?: string) => Promise<{ qrCode: string; secret: string; factorId: string } | { error: Error }>;
+  verifyMfa: (factorId: string, code: string) => Promise<{ error: Error | null }>;
+  unenrollMfa: (factorId: string) => Promise<{ error: Error | null }>;
+  listMfaFactors: () => Promise<{ factors: MfaFactor[]; error: Error | null }>;
+  challengeMfa: (factorId: string) => Promise<{ challengeId: string } | { error: Error }>;
+  verifyMfaChallenge: (factorId: string, challengeId: string, code: string) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -141,10 +155,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error as Error | null };
   }, [supabase]);
 
-  const signOut = useCallback(async () => {
-    if (supabase) await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
+  const signOut = useCallback(async (scope: 'global' | 'local' | 'others' = 'local') => {
+    if (supabase) await supabase.auth.signOut({ scope });
+    if (scope !== 'others') {
+      setUser(null);
+      setSession(null);
+    }
   }, [supabase]);
 
   const resetPassword = useCallback(async (email: string) => {
@@ -185,6 +201,72 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error as Error | null };
   }, [supabase]);
 
+  // MFA Methods
+  const enrollMfa = useCallback(async (friendlyName?: string) => {
+    if (!supabase) return { error: new Error('Auth not available') };
+    const { data, error } = await supabase.auth.mfa.enroll({
+      factorType: 'totp',
+      friendlyName: friendlyName || 'Authenticator App',
+    });
+    if (error) return { error: error as Error };
+    return {
+      qrCode: data.totp.qr_code,
+      secret: data.totp.secret,
+      factorId: data.id,
+    };
+  }, [supabase]);
+
+  const verifyMfa = useCallback(async (factorId: string, code: string) => {
+    if (!supabase) return { error: new Error('Auth not available') };
+    const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId });
+    if (challengeError) return { error: challengeError as Error };
+    
+    const { error } = await supabase.auth.mfa.verify({
+      factorId,
+      challengeId: challenge.id,
+      code,
+    });
+    return { error: error as Error | null };
+  }, [supabase]);
+
+  const unenrollMfa = useCallback(async (factorId: string) => {
+    if (!supabase) return { error: new Error('Auth not available') };
+    const { error } = await supabase.auth.mfa.unenroll({ factorId });
+    return { error: error as Error | null };
+  }, [supabase]);
+
+  const listMfaFactors = useCallback(async () => {
+    if (!supabase) return { factors: [], error: new Error('Auth not available') };
+    const { data, error } = await supabase.auth.mfa.listFactors();
+    if (error) return { factors: [], error: error as Error };
+    return {
+      factors: [...(data.totp || []), ...(data.phone || [])].map(f => ({
+        id: f.id,
+        friendly_name: f.friendly_name,
+        factor_type: f.factor_type as 'totp' | 'phone',
+        status: f.status as 'verified' | 'unverified',
+      })),
+      error: null,
+    };
+  }, [supabase]);
+
+  const challengeMfa = useCallback(async (factorId: string) => {
+    if (!supabase) return { error: new Error('Auth not available') };
+    const { data, error } = await supabase.auth.mfa.challenge({ factorId });
+    if (error) return { error: error as Error };
+    return { challengeId: data.id };
+  }, [supabase]);
+
+  const verifyMfaChallenge = useCallback(async (factorId: string, challengeId: string, code: string) => {
+    if (!supabase) return { error: new Error('Auth not available') };
+    const { error } = await supabase.auth.mfa.verify({
+      factorId,
+      challengeId,
+      code,
+    });
+    return { error: error as Error | null };
+  }, [supabase]);
+
   const value: AuthContextType = {
     user,
     session,
@@ -198,6 +280,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     updatePassword,
     verifyOtp,
     resendVerificationEmail,
+    enrollMfa,
+    verifyMfa,
+    unenrollMfa,
+    listMfaFactors,
+    challengeMfa,
+    verifyMfaChallenge,
   };
 
   return (
