@@ -175,7 +175,7 @@ export function ChartSettingsPopover({
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        className="w-80 p-0 z-[70]"
+        className="w-80 p-0 z-[10000]"
         sideOffset={8}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
@@ -216,7 +216,7 @@ export function ChartSettingsPopover({
                   <SelectTrigger className="w-[160px] h-8">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="z-[80]">
+                  <SelectContent className="z-[10000]">
                     <SelectItem value="rangeChange">
                       % Change (default)
                     </SelectItem>
@@ -276,7 +276,7 @@ export function ChartSettingsPopover({
                     <SelectTrigger className="w-[120px] h-8">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="z-[80]">
+                    <SelectContent className="z-[10000]">
                       <SelectItem value="area">Filled Area</SelectItem>
                       <SelectItem value="line">Line Only</SelectItem>
                     </SelectContent>
@@ -299,7 +299,7 @@ export function ChartSettingsPopover({
                       <SelectTrigger className="w-[120px] h-8">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="z-[80]">
+                      <SelectContent className="z-[10000]">
                         <SelectItem value="candlestick">Standard</SelectItem>
                         <SelectItem value="heikin-ashi" disabled={!isPro}>
                           Heikin Ashi {!isPro && ""}
@@ -523,7 +523,7 @@ export function ChartSettingsPopover({
                   <SelectTrigger className="w-full h-9">
                     <SelectValue placeholder="Select oscillator" />
                   </SelectTrigger>
-                  <SelectContent className="z-[80]">
+                  <SelectContent className="z-[10000]">
                     <SelectItem value="none">None</SelectItem>
                     {oscillatorGroups.map((g) => (
                       <SelectItem key={g.key} value={g.key} disabled={!ticker}>

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, Suspense, useMemo } from "react";
+import React, { useState, useMemo, Suspense, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   Card,
   CardHeader,
@@ -123,6 +124,12 @@ export function CompanyChartsSwitcher({
       };
     });
   }, [valuationHistory, range, normType]);
+
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const isDark =
     typeof window !== "undefined" &&
@@ -403,21 +410,20 @@ export function CompanyChartsSwitcher({
         </CardContent>
       </Card>
 
-      {fullscreen && (
-        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-2">
-          <div className="w-full max-w-[98vw] bg-slate-950 text-slate-50 rounded-xl shadow-2xl border border-slate-800 flex flex-col h-[97vh] overflow-hidden">
-            <div className="flex-1 flex flex-col min-h-0 px-3 pt-2 pb-0">
-              {mode === "price" && (
-                <PriceChart
-                  data={priceHistory}
-                  ticker={ticker}
-                  fullscreen={fullscreen}
-                  onClose={() => setFullscreen(false)}
-                />
-              )}
-            </div>
+      {fullscreen && mounted && createPortal(
+        <div className="fixed inset-0 z-[9999] bg-slate-950 text-slate-50 flex flex-col overflow-hidden">
+          <div className="flex-1 flex flex-col min-h-0 px-4 pt-3 pb-0">
+            {mode === "price" && (
+              <PriceChart
+                data={priceHistory}
+                ticker={ticker}
+                fullscreen={fullscreen}
+                onClose={() => setFullscreen(false)}
+              />
+            )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

@@ -233,7 +233,7 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
     setActiveIndicators((prev) =>
       cols.every((k) => prev.includes(k))
         ? prev.filter((k2) => !(cols as readonly string[]).includes(k2))
-        : [...new Set([...prev.filter((k2) => !(cols as readonly string[]).includes(k2)), ...cols])]
+        : Array.from(new Set([...prev.filter((k2) => !(cols as readonly string[]).includes(k2)), ...cols]))
     );
   };
 
@@ -729,15 +729,15 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
   };
 
   const [fsChartHeight] = React.useState(() =>
-    Math.round(Math.max(300, (typeof window !== "undefined" ? window.innerHeight : 800) * 0.97 - 205))
+    typeof window !== "undefined" ? Math.round(Math.max(300, window.innerHeight * 0.97 - 205)) : 600
   );
 
   const Wrapper = fullscreen ? React.Fragment : Card;
   const wrapperProps = fullscreen ? {} : { className: "w-full border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 transition-colors duration-300" };
   const headerClass = fullscreen
-    ? "flex flex-row items-center justify-between space-y-0 pb-2 border-b border-slate-700 transition-colors duration-300"
+    ? "flex flex-row items-center justify-between space-y-0 pb-2 border-b border-slate-700 transition-colors duration-300 shrink-0"
     : "flex flex-row items-center justify-between space-y-0 pb-2 border-b border-slate-100 dark:border-slate-800 transition-colors duration-300";
-  const contentClass = fullscreen ? "pt-1 relative" : "p-4 relative";
+  const contentClass = fullscreen ? "pt-1 flex flex-col flex-1 min-h-0 relative" : "p-4 relative";
 
   return (
     <Wrapper {...(wrapperProps as any)}>
@@ -762,7 +762,7 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
                     <TrendingUp className="h-4 w-4" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent>Area Chart</TooltipContent>
+                <TooltipContent className="z-[10000]">Area Chart</TooltipContent>
               </UITooltip>
             </TooltipProvider>
             <TooltipProvider>
@@ -780,7 +780,7 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
                     <CandlestickChart className="h-4 w-4" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent>Candlestick Chart</TooltipContent>
+                <TooltipContent className="z-[10000]">Candlestick Chart</TooltipContent>
               </UITooltip>
             </TooltipProvider>
             <TooltipProvider>
@@ -798,7 +798,7 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
                     <ShieldAlert className="h-4 w-4" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent>Risk Chart</TooltipContent>
+                <TooltipContent className="z-[10000]">Risk Chart</TooltipContent>
               </UITooltip>
             </TooltipProvider>
           </div>
@@ -908,7 +908,7 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
                 <Camera className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 z-[70]">
+            <DropdownMenuContent align="end" className="w-48 z-[10000]">
               <DropdownMenuLabel>Snapshot Options</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => handleSnapshot("default")}>
@@ -1003,7 +1003,7 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
           </div>
         )}
 
-        <div ref={chartContainerRef} className={cn("w-full", !fullscreen && "pb-6", view === "risk" && !fullscreen ? "h-80" : undefined)}>
+        <div ref={chartContainerRef} className={cn("w-full", fullscreen ? "flex-1 min-h-0 flex flex-col" : !fullscreen ? "pb-6" : undefined, view === "risk" && !fullscreen ? "h-80" : undefined)}>
           {view === "risk" ? (
             riskMode === "volatility" && (!filteredData || filteredData.length < 25) ? (
               <div className="flex h-full items-center justify-center text-xs text-slate-500 dark:text-slate-400">
@@ -1101,7 +1101,7 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
                 wickUpColor: isDark ? "#22c55e" : "#16a34a",
                 wickDownColor: isDark ? "#ef4444" : "#dc2626",
               }}
-              height={fullscreen ? fsChartHeight : 320}
+              height={fullscreen ? 0 : 320}
             />
           )}
         </div>
