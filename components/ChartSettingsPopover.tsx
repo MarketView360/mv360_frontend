@@ -523,7 +523,7 @@ export function ChartSettingsPopover({
                   <SelectTrigger className="w-full h-9">
                     <SelectValue placeholder="Select oscillator" />
                   </SelectTrigger>
-                  <SelectContent className="z-[10000]">
+                  <SelectContent className="z-[10000] max-h-[250px] overflow-y-auto custom-scrollbar">
                     <SelectItem value="none">None</SelectItem>
                     {oscillatorGroups.map((g) => (
                       <SelectItem key={g.key} value={g.key} disabled={!ticker}>
