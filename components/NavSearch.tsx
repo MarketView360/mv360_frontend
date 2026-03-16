@@ -180,7 +180,7 @@ export function NavSearch() {
             onClick={() => handleSelect(value.trim().toUpperCase())}
             className={cn(
               "w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm transition",
-              "hover:bg-slate-100 dark:hover:bg-slate-800 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50",
+              "hover:bg-slate-100 dark:hover:bg-slate-800 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800",
               activeIndex === suggestions.length && "bg-brand/10 dark:bg-brand/20"
             )}
           >
