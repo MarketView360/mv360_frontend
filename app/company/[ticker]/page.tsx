@@ -627,7 +627,7 @@ function CompanyHero({ data }: { data: CompanyViewModel }) {
 
 function PageHeader({ ticker }: { ticker: string }) {
   return (
-    <div className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-slate-200 dark:border-slate-800">
+    <div className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-slate-200 dark:border-slate-800">
       <div className="mx-auto max-w-[1600px] py-3 px-4 md:px-8 lg:px-12">
         <div className="flex items-center justify-between">
           <Breadcrumb ticker={ticker} />
