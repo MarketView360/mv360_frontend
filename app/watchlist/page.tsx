@@ -61,7 +61,7 @@ function WatchlistPageSkeleton() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-14" />
-      <div className="flex h-[calc(100vh-3.5rem)]">
+      <div className="flex h-[calc(100vh-8rem)]">
         <div className="w-72 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-3 hidden lg:block">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-14 rounded-lg bg-slate-100 dark:bg-slate-800 animate-pulse" />
@@ -422,7 +422,7 @@ function WatchlistPageContent() {
   // --- Main Layout: Sidebar + Detail ---
   return (
     <div className="min-h-full bg-slate-50 dark:bg-slate-950 font-sans transition-colors duration-300">
-      <div className="flex h-[calc(100vh-4rem)]">
+      <div className="flex h-[calc(100vh-8rem)]">
         {/* Desktop Sidebar */}
         <aside className="hidden lg:flex flex-col w-72 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
           <div className="p-4 border-b border-slate-200 dark:border-slate-800">

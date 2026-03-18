@@ -48,7 +48,7 @@ export default function RouteChrome({
         </main>
       ) : (
         <div className="app-scroll custom-scrollbar flex-1 w-full overflow-y-auto">
-          <main className="w-full relative">
+          <main className="w-full relative pt-4 md:pt-6">
             {children}
           </main>
           <Footer />
