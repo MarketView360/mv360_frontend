@@ -1,10 +1,18 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+// Lazily initialize to avoid build errors if env vars are missing during next build
+const getSupabase = () => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.warn('Supabase credentials missing in API route');
+    return null;
+  }
+  
+  return createClient(supabaseUrl, supabaseServiceKey);
+};
 
 interface UptimeRobotMonitor {
   id: number;
@@ -74,56 +82,69 @@ export async function GET() {
     }
 
     // Fetch services from database
-    const { data: services, error: servicesError } = await supabase
-      .from('services')
-      .select('*')
-      .order('display_order', { ascending: true });
+    const supabase = getSupabase();
+    let services: any[] = [];
+    let incidents: any[] = [];
+    let recentIncidents: any[] = [];
 
-    if (servicesError) {
-      console.error('Error fetching services:', servicesError);
-    }
+    if (supabase) {
+      const { data: s, error: servicesError } = await supabase
+        .from('services')
+        .select('*')
+        .order('display_order', { ascending: true });
 
-    // Fetch active incidents
-    const { data: incidents, error: incidentsError } = await supabase
-      .from('incidents')
-      .select(`
-        *,
-        incident_updates (
-          id,
-          status,
-          message,
-          created_at
-        )
-      `)
-      .neq('status', 'resolved')
-      .order('started_at', { ascending: false });
+      if (servicesError) {
+        console.error('Error fetching services:', servicesError);
+      } else {
+        services = s || [];
+      }
 
-    if (incidentsError) {
-      console.error('Error fetching incidents:', incidentsError);
-    }
+      // Fetch active incidents
+      const { data: i, error: incidentsError } = await supabase
+        .from('incidents')
+        .select(`
+          *,
+          incident_updates (
+            id,
+            status,
+            message,
+            created_at
+          )
+        `)
+        .neq('status', 'resolved')
+        .order('started_at', { ascending: false });
 
-    // Fetch recent resolved incidents (last 7 days)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    
-    const { data: recentIncidents, error: recentError } = await supabase
-      .from('incidents')
-      .select(`
-        *,
-        incident_updates (
-          id,
-          status,
-          message,
-          created_at
-        )
-      `)
-      .eq('status', 'resolved')
-      .gte('resolved_at', sevenDaysAgo.toISOString())
-      .order('resolved_at', { ascending: false })
-      .limit(10);
+      if (incidentsError) {
+        console.error('Error fetching incidents:', incidentsError);
+      } else {
+        incidents = i || [];
+      }
 
-    if (recentError) {
-      console.error('Error fetching recent incidents:', recentError);
+      // Fetch recent resolved incidents (last 7 days)
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      const { data: ri, error: recentError } = await supabase
+        .from('incidents')
+        .select(`
+          *,
+          incident_updates (
+            id,
+            status,
+            message,
+            created_at
+          )
+        `)
+        .eq('status', 'resolved')
+        .gte('resolved_at', sevenDaysAgo.toISOString())
+        .order('resolved_at', { ascending: false })
+        .limit(10);
+
+      if (recentError) {
+        console.error('Error fetching recent incidents:', recentError);
+      } else {
+        recentIncidents = ri || [];
+      }
     }
 
     // Merge UptimeRobot data with services and update status based on incidents

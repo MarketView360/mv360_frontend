@@ -7,7 +7,13 @@ import { KeyMetrics } from "@/components/company/KeyMetrics";
 import { TechnicalsSection } from "@/components/company/TechnicalsSection";
 import { FinancialsPageContent } from "@/components/company/FinancialsPageContent";
 import { OwnershipSection } from "@/components/company/OwnershipSection";
-import { CompanyChartsSwitcher, type PriceHistoryPoint } from "@/components/company/CompanyChartsSwitcher";
+import { type PriceHistoryPoint } from "@/components/company/CompanyChartsSwitcher";
+import dynamic from "next/dynamic";
+
+const CompanyChartsSwitcher = dynamic(
+  () => import("@/components/company/CompanyChartsSwitcher").then((mod) => mod.CompanyChartsSwitcher),
+  { ssr: false, loading: () => <div className="w-full h-full min-h-[400px] flex items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-xl animate-pulse" /> }
+);
 
 interface ValuationMetric {
   label: string;

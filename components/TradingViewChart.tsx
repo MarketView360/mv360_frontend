@@ -150,8 +150,8 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
                 textColor,
                 attributionLogo: false,
             },
-            width: chartContainerRef.current.clientWidth,
-            height: height === 0 ? (chartContainerRef.current.clientHeight || 300) : height,
+            width: chartContainerRef.current?.clientWidth || 800,
+            height: height === 0 ? (chartContainerRef.current?.clientHeight || 300) : height,
             grid: {
                 vertLines: { color: isDark ? "#334155" : "#e2e8f0" },
                 horzLines: { color: isDark ? "#334155" : "#e2e8f0" },
@@ -372,9 +372,8 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
                     }
                     if (rsiChartRef.current && rsiContainerRef.current) {
                         try {
-                            rsiChartRef.current.applyOptions({
-                                width: rsiContainerRef.current.clientWidth,
-                            });
+                            const width = rsiContainerRef.current.clientWidth;
+                            rsiChartRef.current.applyOptions({ width });
                         } catch (e) { /* ignore disposed */ }
                     }
                 }
@@ -486,7 +485,7 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
                     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                     attributionLogo: false,
                 },
-                width: rsiContainerRef.current.clientWidth || chartContainerRef.current?.clientWidth || 800,
+                width: rsiContainerRef.current?.clientWidth || chartContainerRef.current?.clientWidth || 800,
                 height: 131,
                 grid: {
                     vertLines: { color: isDark ? "#334155" : "#e2e8f0" },
