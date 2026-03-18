@@ -79,6 +79,8 @@ const RANGE_OPTIONS = [
 export function AdvancedPriceChart({ data, ticker }: AdvancedPriceChartProps) {
   const chartContainerRef = React.useRef<HTMLDivElement>(null);
   const chartRef = React.useRef<IChartApi | null>(null);
+  const mainSeriesRef = React.useRef<any>(null);
+  const volumeSeriesRef = React.useRef<any>(null);
 
   const { preferences, setShowVolume, setShowAnimations, isLoaded } = useChartPreferences();
 
@@ -170,7 +172,7 @@ export function AdvancedPriceChart({ data, ticker }: AdvancedPriceChartProps) {
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
         attributionLogo: false,
       },
-      width: chartContainerRef.current.clientWidth,
+      width: chartContainerRef.current?.clientWidth || 800,
       height: containerHeight,
       grid: {
         vertLines: { color: colors.grid, style: 1 },
@@ -299,7 +301,7 @@ export function AdvancedPriceChart({ data, ticker }: AdvancedPriceChartProps) {
           ? window.innerHeight - 140
           : 380;
         chartRef.current.applyOptions({
-          width: chartContainerRef.current.clientWidth,
+          width: chartContainerRef.current?.clientWidth || 800,
           height: containerHeight,
         });
       }

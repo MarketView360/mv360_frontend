@@ -29,7 +29,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { UTCTimestamp } from "lightweight-charts";
-import { TradingViewChart, ChartDataPoint, RiskZone, ChartOverlay, OscillatorPaneConfig } from "./TradingViewChart";
+import { ChartDataPoint, RiskZone, ChartOverlay, OscillatorPaneConfig } from "./TradingViewChart";
+import dynamic from "next/dynamic";
+
+const TradingViewChart = dynamic(
+  () => import("./TradingViewChart").then((mod) => mod.TradingViewChart),
+  { ssr: false, loading: () => <div className="w-full h-full min-h-[300px] flex items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-lg animate-pulse" /> }
+);
 import { Camera, Settings2, BarChart3, TrendingUp, CandlestickChart, ChevronDown, Lock, Building2, MousePointerClick, ShieldAlert, X } from "lucide-react";
 import { useChartPreferences } from "@/hooks/useChartPreferences";
 import { useAuth } from "@/providers/AuthProvider";

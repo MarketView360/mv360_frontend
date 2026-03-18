@@ -248,7 +248,7 @@ export function StockCompare({ tickers, onAddTicker, onRemoveTicker, onClear }: 
     const container = candlestickContainerRef.current;
     const chart = createChart(container, {
       layout: { background: { type: ColorType.Solid, color: "transparent" }, textColor: isDark ? "#94a3b8" : "#64748b", attributionLogo: false },
-      width: container.clientWidth, height: 260,
+      width: container?.clientWidth || 800, height: 260,
       grid: { vertLines: { color: isDark ? "#1e293b" : "#f1f5f9" }, horzLines: { color: isDark ? "#1e293b" : "#f1f5f9" } },
       crosshair: { mode: CrosshairMode.Normal },
       rightPriceScale: { borderColor: isDark ? "#334155" : "#e2e8f0" },
@@ -270,7 +270,12 @@ export function StockCompare({ tickers, onAddTicker, onRemoveTicker, onClear }: 
       }
     }
     chart.timeScale().fitContent();
-    const handleResize = () => { if (candlestickContainerRef.current) chart.applyOptions({ width: candlestickContainerRef.current.clientWidth }); };
+    const handleResize = () => { 
+      if (candlestickContainerRef.current) {
+        const width = candlestickContainerRef.current.clientWidth;
+        chart.applyOptions({ width }); 
+      } 
+    };
     window.addEventListener("resize", handleResize);
     return () => { window.removeEventListener("resize", handleResize); chart.remove(); candlestickChartRef.current = null; };
   }, [chartMode, selectedStock, candlestickDataByCode, stockCodes, colorMap, loading, isDark]);
