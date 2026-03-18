@@ -30,6 +30,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { useTheme } from "@/app/providers";
 
 interface CompanyMetrics {
   code: string;
@@ -103,7 +104,13 @@ interface EnhancedStockCompareProps {
   onClear: () => void;
 }
 
-export function EnhancedStockCompare({ tickers, onRemoveTicker, onClear }: EnhancedStockCompareProps) {
+export function EnhancedStockCompare({ 
+  tickers, 
+  onClear, 
+  onRemoveTicker 
+}: EnhancedStockCompareProps) {
+  const { isDark } = useTheme();
+  
   const [metricsData, setMetricsData] = useState<Map<string, CompanyMetrics>>(new Map());
   const [priceHistory, setPriceHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -475,13 +482,18 @@ export function EnhancedStockCompare({ tickers, onRemoveTicker, onClear }: Enhan
                     />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: '#fff',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '8px',
-                        fontSize: '12px',
+                        backgroundColor: isDark ? "rgba(15, 23, 42, 0.7)" : "rgba(255, 255, 255, 0.7)",
+                        backdropFilter: "blur(12px)",
+                        WebkitBackdropFilter: "blur(12px)",
+                        border: isDark ? "1px solid rgba(51, 65, 85, 0.5)" : "1px solid rgba(226, 232, 240, 0.5)",
+                        borderRadius: "8px",
+                        boxShadow: isDark ? "0 4px 6px -1px rgba(0, 0, 0, 0.3)" : "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                        color: isDark ? "#f8fafc" : "#0f172a",
                       }}
+                      itemStyle={{ fontSize: "12px", fontWeight: "500" }}
+                      labelStyle={{ color: isDark ? "#94a3b8" : "#64748b", marginBottom: "4px", fontSize: "12px", fontWeight: "600" }}
                       labelFormatter={(date) => new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      formatter={(value: number) => [`$${value.toFixed(2)}`, '']}
+                      formatter={(value: number, name: string) => [`$${value.toFixed(2)}`, name]}
                     />
                     <Legend />
                     {cleanedTickers.map((ticker, index) => (
@@ -541,12 +553,18 @@ export function EnhancedStockCompare({ tickers, onRemoveTicker, onClear }: Enhan
                             }}
                           />
                           <Tooltip
+                            cursor={{ fill: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }}
                             contentStyle={{
-                              backgroundColor: '#fff',
-                              border: '1px solid #e2e8f0',
-                              borderRadius: '8px',
-                              fontSize: '12px',
+                              backgroundColor: isDark ? "rgba(15, 23, 42, 0.7)" : "rgba(255, 255, 255, 0.7)",
+                              backdropFilter: "blur(12px)",
+                              WebkitBackdropFilter: "blur(12px)",
+                              border: isDark ? "1px solid rgba(51, 65, 85, 0.5)" : "1px solid rgba(226, 232, 240, 0.5)",
+                              borderRadius: "8px",
+                              boxShadow: isDark ? "0 4px 6px -1px rgba(0, 0, 0, 0.3)" : "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                              color: isDark ? "#f8fafc" : "#0f172a",
                             }}
+                            itemStyle={{ color: isDark ? "#f8fafc" : "#0f172a", fontSize: "12px", fontWeight: "500" }}
+                            labelStyle={{ color: isDark ? "#e2e8f0" : "#475569", marginBottom: "4px", fontSize: "12px", fontWeight: "600" }}
                             formatter={(value: number) => [metric.format(value), metric.label]}
                           />
                           <Bar dataKey="value" radius={[8, 8, 0, 0]}>
