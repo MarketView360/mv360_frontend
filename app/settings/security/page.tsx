@@ -123,25 +123,47 @@ export default function SecurityPage() {
   const [mfaError, setMfaError] = useState<string | null>(null);
   const [setupStep, setSetupStep] = useState<1 | 2 | 3>(1); // 1: Select method, 2: Scan QR, 3: Verify
 
+  // Security verification state
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [verificationAction, setVerificationAction] = useState<'revoke_sessions' | null>(null);
+  const [sendingVerification, setSendingVerification] = useState(false);
+  
+  // Emergency lock state
+  const [showLockDialog, setShowLockDialog] = useState(false);
+  const [lockingAccount, setLockingAccount] = useState(false);
+
   const authProvider = (user?.app_metadata?.provider || "email").toLowerCase();
   const isOAuthUser = authProvider !== "email";
   const providerLabel = authProvider.charAt(0).toUpperCase() + authProvider.slice(1);
 
   // Fetch active sessions
   const fetchSessions = useCallback(async () => {
-    if (!session?.access_token || !API_BASE) return;
+    if (!session?.access_token || !API_BASE) {
+      console.log("Cannot fetch sessions - missing token or API_BASE");
+      return;
+    }
     
     setLoadingSessions(true);
     try {
+      console.log("Fetching sessions from:", `${API_BASE}/profile/sessions`);
       const res = await fetch(`${API_BASE}/profile/sessions`, {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
+      console.log("Sessions response status:", res.status);
+      
       if (res.ok) {
         const data = await res.json();
-        setSessions(data);
+        console.log("Sessions data:", data);
+        setSessions(Array.isArray(data) ? data : []);
+      } else {
+        const errorText = await res.text();
+        console.error("Failed to fetch sessions:", res.status, errorText);
+        toast.error("Failed to load sessions");
       }
     } catch (err) {
       console.error("Failed to fetch sessions:", err);
+      toast.error("Error loading sessions");
     } finally {
       setLoadingSessions(false);
     }
@@ -215,15 +237,108 @@ export default function SecurityPage() {
   };
 
   const handleRevokeAllSessions = async () => {
+    // Check if user has MFA enabled
+    const hasMfa = mfaFactors.some(f => f.status === 'verified');
+    
+    if (!hasMfa) {
+      // No MFA - require email verification
+      setVerificationAction('revoke_sessions');
+      setShowVerificationDialog(true);
+      return;
+    }
+    
+    // Has MFA - proceed directly
+    await performRevokeAllSessions();
+  };
+
+  const performRevokeAllSessions = async (verificationCode?: string) => {
     setRevokingAll(true);
     try {
-      await signOut("others");
+      if (verificationCode) {
+        // Use new endpoint with verification
+        const res = await fetch(`${API_BASE}/profile/sessions/all`, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${session?.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ verification_code: verificationCode }),
+        });
+        
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.message || "Failed to revoke sessions");
+        }
+      } else {
+        // Use existing signOut method for MFA users
+        await signOut("others");
+      }
+      
       toast.success("All other sessions have been signed out");
+      setShowVerificationDialog(false);
+      setVerificationCode("");
       await fetchSessions();
-    } catch {
-      toast.error("Failed to sign out other sessions");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to sign out other sessions";
+      toast.error(message);
     } finally {
       setRevokingAll(false);
+    }
+  };
+
+  const handleRequestVerificationCode = async () => {
+    if (!session?.access_token || !API_BASE) return;
+    
+    setSendingVerification(true);
+    try {
+      const res = await fetch(`${API_BASE}/profile/sessions/revoke-all/request`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      
+      if (res.ok) {
+        toast.success("Verification code sent to your email");
+      } else {
+        toast.error("Failed to send verification code");
+      }
+    } catch {
+      toast.error("Failed to send verification code");
+    } finally {
+      setSendingVerification(false);
+    }
+  };
+
+  const handleVerifyAndRevoke = async () => {
+    if (!verificationCode || verificationCode.length !== 6) {
+      toast.error("Please enter a valid 6-digit code");
+      return;
+    }
+    
+    await performRevokeAllSessions(verificationCode);
+  };
+
+  const handleLockAccount = async () => {
+    if (!session?.access_token || !API_BASE) return;
+    
+    setLockingAccount(true);
+    try {
+      const res = await fetch(`${API_BASE}/profile/security-verification/lock-account`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      
+      if (res.ok) {
+        toast.success("Account locked. Check your email for unlock instructions.");
+        setShowLockDialog(false);
+        // Sign out user
+        await signOut();
+      } else {
+        toast.error("Failed to lock account");
+      }
+    } catch {
+      toast.error("Failed to lock account");
+    } finally {
+      setLockingAccount(false);
     }
   };
 
@@ -1032,7 +1147,7 @@ export default function SecurityPage() {
       {/* Active Sessions */}
       <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Globe className="h-5 w-5 text-blue-500" />
@@ -1042,22 +1157,33 @@ export default function SecurityPage() {
                 Manage your active sessions across devices
               </CardDescription>
             </div>
-            {sessions.length > 1 && (
+            <div className="flex gap-2">
+              {sessions.length > 1 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRevokeAllSessions}
+                  disabled={revokingAll}
+                  className="text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50"
+                >
+                  {revokingAll ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <LogOut className="h-4 w-4 mr-2" />
+                  )}
+                  Sign Out All Others
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleRevokeAllSessions}
-                disabled={revokingAll}
-                className="text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50"
+                onClick={() => setShowLockDialog(true)}
+                className="text-orange-600 hover:text-orange-700 border-orange-200 hover:bg-orange-50"
               >
-                {revokingAll ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <LogOut className="h-4 w-4 mr-2" />
-                )}
-                Sign Out All Others
+                <Ban className="h-4 w-4 mr-2" />
+                Emergency Lock
               </Button>
-            )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -1073,12 +1199,11 @@ export default function SecurityPage() {
           ) : (
             <div className="space-y-3">
               {sessions.map((s) => {
-                // Use device info from backend, fallback to parsing user agent
-                const deviceInfo = s.device || parseUserAgent(s.user_agent);
-                const deviceType = 'type' in deviceInfo ? deviceInfo.type : deviceInfo.device;
-                const deviceName = 'name' in deviceInfo ? deviceInfo.name : deviceType;
-                const browser = deviceInfo.browser;
-                const os = 'os' in deviceInfo ? deviceInfo.os : '';
+                // Device info comes from backend
+                const deviceType = s.device?.type || 'Unknown';
+                const deviceName = s.device?.name || 'Unknown Device';
+                const browser = s.device?.browser || 'Unknown';
+                const os = s.device?.os || '';
                 
                 return (
                   <div
@@ -1291,6 +1416,165 @@ export default function SecurityPage() {
                 <Trash2 className="h-4 w-4 mr-2" />
               )}
               Disable 2FA
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Email Verification Dialog - For users without MFA */}
+      <Dialog open={showVerificationDialog} onOpenChange={setShowVerificationDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-blue-500" />
+              Email Verification Required
+            </DialogTitle>
+            <DialogDescription>
+              For security, we need to verify this action. A 6-digit code has been sent to your email.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>Why?</strong> You don't have two-factor authentication enabled. Email verification provides an extra security layer.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="verification-code">Verification Code</Label>
+              <Input
+                id="verification-code"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                value={verificationCode}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, "");
+                  setVerificationCode(value);
+                }}
+                placeholder="000000"
+                className="text-center text-2xl tracking-widest font-mono"
+              />
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Check your email for the 6-digit code (expires in 10 minutes)
+              </p>
+            </div>
+
+            <Button
+              variant="outline"
+              onClick={handleRequestVerificationCode}
+              disabled={sendingVerification}
+              className="w-full"
+            >
+              {sendingVerification ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Sending Code...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Resend Code
+                </>
+              )}
+            </Button>
+          </div>
+          
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowVerificationDialog(false);
+                setVerificationCode("");
+              }}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleVerifyAndRevoke}
+              disabled={verificationCode.length !== 6 || revokingAll}
+              className="w-full sm:w-auto"
+            >
+              {revokingAll ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Verifying...
+                </>
+              ) : (
+                "Verify & Log Out Sessions"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Emergency Account Lock Dialog */}
+      <Dialog open={showLockDialog} onOpenChange={setShowLockDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Ban className="h-5 w-5" />
+              Emergency Account Lock
+            </DialogTitle>
+            <DialogDescription>
+              This will immediately lock your account and log you out of ALL devices.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-3">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                <div className="text-sm text-red-800 dark:text-red-200">
+                  <p className="font-semibold mb-1">Use this if:</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>You suspect unauthorized access</li>
+                    <li>Your device was lost or stolen</li>
+                    <li>You see suspicious activity</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  An unlock link will be sent to <strong>{user?.email}</strong>. The link expires in 24 hours.
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowLockDialog(false)}
+              disabled={lockingAccount}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleLockAccount}
+              disabled={lockingAccount}
+              className="w-full sm:w-auto"
+            >
+              {lockingAccount ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Locking Account...
+                </>
+              ) : (
+                <>
+                  <Ban className="h-4 w-4 mr-2" />
+                  Lock My Account Now
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

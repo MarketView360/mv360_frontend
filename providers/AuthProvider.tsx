@@ -128,13 +128,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Check if MFA verification is required
     if (data.session) {
+      console.log('Sign in successful, checking MFA status...');
       const { data: aalData, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       
+      console.log('AAL Data:', aalData);
+      console.log('AAL Error:', aalError);
+      
+      if (aalError) {
+        console.error('Error getting AAL level:', aalError);
+      }
+      
       if (!aalError && aalData) {
+        console.log('Current AAL:', aalData.currentLevel);
+        console.log('Next AAL:', aalData.nextLevel);
+        console.log('Current AAL ID:', aalData.currentAuthenticationMethods);
+        
         // User has MFA enrolled and needs to verify
         if (aalData.nextLevel === 'aal2' && aalData.currentLevel === 'aal1') {
+          console.log('MFA verification required - redirecting to MFA page');
           setLoading(false);
           return { error: null, mfaRequired: true };
+        } else {
+          console.log('No MFA verification needed - user already at AAL2 or MFA not enrolled');
         }
       }
     }
