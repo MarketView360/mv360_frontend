@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { CometCard } from "@/components/ui/comet-card";
 import { UserAvatar } from "@/components/auth/UserAvatar";
-import { Crown, Sparkles, Star, Zap, TrendingUp, Shield, Share2, Check, Copy } from "lucide-react";
+import { Crown, Sparkles, Star, Layers, TrendingUp, Bookmark, Calendar, Share2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
@@ -12,11 +12,25 @@ import type { User } from "@supabase/supabase-js";
 interface PremiumShowcaseCardProps {
   user: User;
   displayName: string;
+  stats?: {
+    watchlistsCount: number;
+    stocksTracked: number;
+    savedScreensCount: number;
+    memberSince: string;
+  };
 }
 
-export function PremiumShowcaseCard({ user, displayName }: PremiumShowcaseCardProps) {
+export function PremiumShowcaseCard({ user, displayName, stats }: PremiumShowcaseCardProps) {
   const name = displayName || user.email?.split("@")[0] || "Premium User";
   const [copied, setCopied] = useState(false);
+  
+  const memberSince = stats?.memberSince 
+    ? new Date(stats.memberSince).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+    : 'Recently';
+  
+  const watchlistsCount = stats?.watchlistsCount ?? 0;
+  const stocksTracked = stats?.stocksTracked ?? 0;
+  const savedScreensCount = stats?.savedScreensCount ?? 0;
   
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}/showcase/${user.id}?tier=premium`;
@@ -103,25 +117,43 @@ export function PremiumShowcaseCard({ user, displayName }: PremiumShowcaseCardPr
             </p>
           </div>
 
-          {/* Premium features showcase */}
+          {/* Portfolio Stats */}
           <div className="relative z-10 space-y-2">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-amber-900/30 to-transparent border border-amber-500/20">
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-500/20">
-                <Zap className="h-4 w-4 text-amber-400" />
+            <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-amber-900/30 to-transparent border border-amber-500/20">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-500/20">
+                  <Layers className="h-4 w-4 text-amber-400" />
+                </div>
+                <span className="text-sm font-medium text-white">Watchlists</span>
               </div>
-              <span className="text-sm font-medium text-white">Unlimited AI Chat</span>
+              <span className="text-sm font-bold text-amber-400">{watchlistsCount}</span>
             </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-amber-900/30 to-transparent border border-amber-500/20">
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-500/20">
-                <TrendingUp className="h-4 w-4 text-amber-400" />
+            <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-amber-900/30 to-transparent border border-amber-500/20">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-500/20">
+                  <TrendingUp className="h-4 w-4 text-amber-400" />
+                </div>
+                <span className="text-sm font-medium text-white">Stocks Tracked</span>
               </div>
-              <span className="text-sm font-medium text-white">Advanced Analytics</span>
+              <span className="text-sm font-bold text-amber-400">{stocksTracked}</span>
             </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-amber-900/30 to-transparent border border-amber-500/20">
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-500/20">
-                <Shield className="h-4 w-4 text-amber-400" />
+            <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-amber-900/30 to-transparent border border-amber-500/20">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-500/20">
+                  <Bookmark className="h-4 w-4 text-amber-400" />
+                </div>
+                <span className="text-sm font-medium text-white">Saved Screens</span>
               </div>
-              <span className="text-sm font-medium text-white">Priority Support</span>
+              <span className="text-sm font-bold text-amber-400">{savedScreensCount}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-amber-900/30 to-transparent border border-amber-500/20">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-500/20">
+                  <Calendar className="h-4 w-4 text-amber-400" />
+                </div>
+                <span className="text-sm font-medium text-white">Member Since</span>
+              </div>
+              <span className="text-sm font-bold text-amber-400">{memberSince}</span>
             </div>
           </div>
 
@@ -129,7 +161,7 @@ export function PremiumShowcaseCard({ user, displayName }: PremiumShowcaseCardPr
           <div className="relative z-10 mt-6 pt-6 border-t border-amber-500/20">
             <div className="flex items-center justify-between">
               <p className="text-xs font-medium text-amber-300/80 tracking-wide uppercase">
-                Elite Trading Experience
+                Premium Card
               </p>
               <Button
                 onClick={handleShare}

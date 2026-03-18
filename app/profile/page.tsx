@@ -37,9 +37,9 @@ interface ValidationErrors {
 }
 
 interface ProfileStats {
-  chatSessionsCount: number;
-  reasoningUsedToday: number;
-  reasoningLimit: number;
+  watchlistsCount: number;
+  stocksTracked: number;
+  savedScreensCount: number;
   memberSince: string;
 }
 
@@ -242,11 +242,12 @@ export default function ProfilePage() {
             displayName={displayName}
             subscriptionTier={subscriptionTier}
             memberSince={memberSince}
+            stats={stats ?? undefined}
           />
           <ProfileStats
-            chatSessionsCount={stats?.chatSessionsCount ?? 0}
-            reasoningUsedToday={stats?.reasoningUsedToday ?? 0}
-            reasoningLimit={stats?.reasoningLimit ?? 3}
+            watchlistsCount={stats?.watchlistsCount ?? 0}
+            stocksTracked={stats?.stocksTracked ?? 0}
+            savedScreensCount={stats?.savedScreensCount ?? 0}
             subscriptionTier={subscriptionTier}
           />
         </div>

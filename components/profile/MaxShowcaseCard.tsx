@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { CometCard } from "@/components/ui/comet-card";
 import { UserAvatar } from "@/components/auth/UserAvatar";
-import { Crown, Sparkles, Star, Zap, TrendingUp, Shield, Share2, Check, Rocket, Infinity } from "lucide-react";
+import { Crown, Star, Layers, TrendingUp, Bookmark, Calendar, Share2, Check, Infinity } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
@@ -12,11 +12,25 @@ import type { User } from "@supabase/supabase-js";
 interface MaxShowcaseCardProps {
   user: User;
   displayName: string;
+  stats?: {
+    watchlistsCount: number;
+    stocksTracked: number;
+    savedScreensCount: number;
+    memberSince: string;
+  };
 }
 
-export function MaxShowcaseCard({ user, displayName }: MaxShowcaseCardProps) {
+export function MaxShowcaseCard({ user, displayName, stats }: MaxShowcaseCardProps) {
   const name = displayName || user.email?.split("@")[0] || "Max User";
   const [copied, setCopied] = useState(false);
+  
+  const memberSince = stats?.memberSince 
+    ? new Date(stats.memberSince).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+    : 'Recently';
+  
+  const watchlistsCount = stats?.watchlistsCount ?? 0;
+  const stocksTracked = stats?.stocksTracked ?? 0;
+  const savedScreensCount = stats?.savedScreensCount ?? 0;
   
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}/showcase/${user.id}?tier=max`;
@@ -103,31 +117,43 @@ export function MaxShowcaseCard({ user, displayName }: MaxShowcaseCardProps) {
             </p>
           </div>
 
-          {/* Max features showcase */}
+          {/* Portfolio Stats */}
           <div className="relative z-10 space-y-2">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-purple-900/30 to-transparent border border-purple-500/20">
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-500/20">
-                <Infinity className="h-4 w-4 text-purple-400" />
+            <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-purple-900/30 to-transparent border border-purple-500/20">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-500/20">
+                  <Layers className="h-4 w-4 text-purple-400" />
+                </div>
+                <span className="text-sm font-medium text-white">Watchlists</span>
               </div>
-              <span className="text-sm font-medium text-white">Unlimited Everything</span>
+              <span className="text-sm font-bold text-purple-400">{watchlistsCount}</span>
             </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-purple-900/30 to-transparent border border-purple-500/20">
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-500/20">
-                <Rocket className="h-4 w-4 text-purple-400" />
+            <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-purple-900/30 to-transparent border border-purple-500/20">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-500/20">
+                  <TrendingUp className="h-4 w-4 text-purple-400" />
+                </div>
+                <span className="text-sm font-medium text-white">Stocks Tracked</span>
               </div>
-              <span className="text-sm font-medium text-white">Advanced AI Models</span>
+              <span className="text-sm font-bold text-purple-400">{stocksTracked}</span>
             </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-purple-900/30 to-transparent border border-purple-500/20">
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-500/20">
-                <TrendingUp className="h-4 w-4 text-purple-400" />
+            <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-purple-900/30 to-transparent border border-purple-500/20">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-500/20">
+                  <Bookmark className="h-4 w-4 text-purple-400" />
+                </div>
+                <span className="text-sm font-medium text-white">Saved Screens</span>
               </div>
-              <span className="text-sm font-medium text-white">Real-time Data Access</span>
+              <span className="text-sm font-bold text-purple-400">{savedScreensCount}</span>
             </div>
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-purple-900/30 to-transparent border border-purple-500/20">
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-500/20">
-                <Shield className="h-4 w-4 text-purple-400" />
+            <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-purple-900/30 to-transparent border border-purple-500/20">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-500/20">
+                  <Calendar className="h-4 w-4 text-purple-400" />
+                </div>
+                <span className="text-sm font-medium text-white">Member Since</span>
               </div>
-              <span className="text-sm font-medium text-white">VIP Support 24/7</span>
+              <span className="text-sm font-bold text-purple-400">{memberSince}</span>
             </div>
           </div>
 
@@ -135,7 +161,7 @@ export function MaxShowcaseCard({ user, displayName }: MaxShowcaseCardProps) {
           <div className="relative z-10 mt-6 pt-6 border-t border-purple-500/20">
             <div className="flex items-center justify-between">
               <p className="text-xs font-medium text-purple-300/80 tracking-wide uppercase">
-                Ultimate Trading Power
+                Max Card
               </p>
               <Button
                 onClick={handleShare}

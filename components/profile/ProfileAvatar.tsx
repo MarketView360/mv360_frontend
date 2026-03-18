@@ -27,9 +27,15 @@ interface ProfileAvatarProps {
   displayName: string;
   subscriptionTier: string;
   memberSince: string;
+  stats?: {
+    watchlistsCount: number;
+    stocksTracked: number;
+    savedScreensCount: number;
+    memberSince: string;
+  };
 }
 
-export function ProfileAvatar({ user, displayName, subscriptionTier, memberSince }: ProfileAvatarProps) {
+export function ProfileAvatar({ user, displayName, subscriptionTier, memberSince, stats }: ProfileAvatarProps) {
   const tierInfo = TIER_CONFIG[subscriptionTier] || TIER_CONFIG.free;
   const [showShowcaseCard, setShowShowcaseCard] = useState(false);
   const isMax = subscriptionTier === "max" || subscriptionTier === "pro";
@@ -66,9 +72,9 @@ export function ProfileAvatar({ user, displayName, subscriptionTier, memberSince
         <Dialog open={showShowcaseCard} onOpenChange={setShowShowcaseCard}>
           <DialogContent className="sm:max-w-[500px] bg-transparent border-0 shadow-none p-0">
             {isMax ? (
-              <MaxShowcaseCard user={user} displayName={displayName} />
+              <MaxShowcaseCard user={user} displayName={displayName} stats={stats} />
             ) : (
-              <PremiumShowcaseCard user={user} displayName={displayName} />
+              <PremiumShowcaseCard user={user} displayName={displayName} stats={stats} />
             )}
           </DialogContent>
         </Dialog>
