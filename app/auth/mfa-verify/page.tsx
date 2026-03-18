@@ -146,8 +146,8 @@ function MfaVerifyPageContent() {
     const API_BASE = process.env.NEXT_PUBLIC_API_URL;
     
     try {
-      // Verify the recovery code with the backend
-      const res = await fetch(`${API_BASE}/profile/mfa/recovery-codes/verify`, {
+      // Use recovery code to bypass MFA - this will disable MFA for the user
+      const res = await fetch(`${API_BASE}/profile/mfa/recovery-codes/bypass`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -156,31 +156,18 @@ function MfaVerifyPageContent() {
         body: JSON.stringify({ code: recoveryCode }),
       });
 
-      if (!res.ok) {
-        setError("Failed to verify recovery code");
-        setIsLoading(false);
-        return;
-      }
-
       const data = await res.json();
 
-      if (!data.valid) {
-        setError("Invalid recovery code. Please try again.");
+      if (!res.ok || !data.success) {
+        setError(data.message || "Invalid recovery code. Please try again.");
         setRecoveryCode("");
         setIsLoading(false);
         return;
       }
 
-      // Recovery code verified - now we need to complete MFA verification
-      // Since the recovery code is valid, we can proceed without TOTP
-      // The backend has marked the code as used
-      
-      // For Supabase MFA, we still need to verify using a factor
-      // But we can use the recovery code as a bypass
-      // This would require backend support to elevate the session to aal2
-      
-      // For now, redirect to success since recovery code was valid
-      router.push(redirectTo);
+      // Recovery code verified and MFA has been disabled
+      // User can now access their account and should set up MFA again
+      router.push(redirectTo + "?mfa_reset=true");
       router.refresh();
     } catch (err) {
       console.error("Recovery code verification error:", err);

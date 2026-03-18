@@ -51,7 +51,14 @@ interface SessionInfo {
   user_agent: string | null;
   ip: string | null;
   refreshed_at: string | null;
+  aal: string | null;
   is_current: boolean;
+  device: {
+    type: string;
+    name: string;
+    browser: string;
+    os: string;
+  };
 }
 
 interface MfaFactor {
@@ -1066,48 +1073,66 @@ export default function SecurityPage() {
           ) : (
             <div className="space-y-3">
               {sessions.map((s) => {
-                const { device, browser } = parseUserAgent(s.user_agent);
-                const isCurrentSession = s.is_current;
+                // Use device info from backend, fallback to parsing user agent
+                const deviceInfo = s.device || parseUserAgent(s.user_agent);
+                const deviceType = 'type' in deviceInfo ? deviceInfo.type : deviceInfo.device;
+                const deviceName = 'name' in deviceInfo ? deviceInfo.name : deviceType;
+                const browser = deviceInfo.browser;
+                const os = 'os' in deviceInfo ? deviceInfo.os : '';
                 
                 return (
                   <div
                     key={s.id}
                     className={`flex items-center justify-between p-4 rounded-lg border ${
-                      isCurrentSession
+                      s.is_current
                         ? "bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800"
                         : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700"
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      {device === "Mobile" ? (
-                        <Smartphone className="h-5 w-5 text-slate-400" />
+                      {deviceType === "Mobile" ? (
+                        <Smartphone className={`h-5 w-5 ${s.is_current ? "text-green-600" : "text-slate-400"}`} />
+                      ) : deviceType === "Tablet" ? (
+                        <Smartphone className={`h-5 w-5 ${s.is_current ? "text-green-600" : "text-slate-400"}`} />
                       ) : (
-                        <Monitor className="h-5 w-5 text-slate-400" />
+                        <Monitor className={`h-5 w-5 ${s.is_current ? "text-green-600" : "text-slate-400"}`} />
                       )}
                       <div>
                         <div className="flex items-center gap-2">
                           <p className="font-medium text-slate-900 dark:text-white">
-                            {browser} on {device}
+                            {deviceName}
                           </p>
-                          {isCurrentSession && (
+                          {s.is_current && (
                             <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 text-xs">
-                              Current
+                              This Device
+                            </Badge>
+                          )}
+                          {s.aal === 'aal2' && (
+                            <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 text-xs">
+                              2FA Verified
                             </Badge>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                          {s.ip && <span>IP: {s.ip}</span>}
+                        <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
+                          <span>{browser}{os ? ` • ${os}` : ''}</span>
+                          {s.ip && (
+                            <>
+                              <span>•</span>
+                              <span>{s.ip}</span>
+                            </>
+                          )}
                           <span>•</span>
                           <span>
-                            Last active:{" "}
-                            {s.refreshed_at
-                              ? new Date(s.refreshed_at).toLocaleString()
-                              : new Date(s.updated_at).toLocaleString()}
+                            {s.is_current ? "Active now" : (
+                              s.refreshed_at
+                                ? `Last active ${new Date(s.refreshed_at).toLocaleString()}`
+                                : `Since ${new Date(s.created_at).toLocaleDateString()}`
+                            )}
                           </span>
                         </div>
                       </div>
                     </div>
-                    {!isCurrentSession && (
+                    {!s.is_current && (
                       <Button
                         variant="ghost"
                         size="sm"
