@@ -23,7 +23,7 @@ export default function NavigationBar() {
   ];
 
   return (
-    <nav className="sticky top-0 z-[100] w-full border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-sm transition-colors duration-300">
+    <nav className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shadow-sm transition-colors duration-300">
       <div className="mx-auto max-w-container flex h-16 items-center justify-between px-4 md:px-6">
         <div className="flex items-center gap-8">
           <Link className="flex items-center" href="/">
