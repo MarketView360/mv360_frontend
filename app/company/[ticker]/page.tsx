@@ -215,7 +215,7 @@ const api = {
     const res = await fetch(
       `${this.baseUrl}/api/company/${encodeURIComponent(ticker)}`,
       {
-        cache: "no-store",
+        next: { revalidate: 300 }, // Cache for 5 minutes
         headers: { "Content-Type": "application/json" },
       }
     );
@@ -229,7 +229,7 @@ const api = {
     const res = await fetch(
       `${this.baseUrl}/api/prices/${encodeURIComponent(ticker)}`,
       {
-        cache: "no-store",
+        next: { revalidate: 60 }, // Cache for 1 minute (prices update frequently)
         headers: { "Content-Type": "application/json" },
       }
     );
