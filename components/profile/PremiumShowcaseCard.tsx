@@ -40,47 +40,42 @@ export function PremiumShowcaseCard({ user, displayName }: PremiumShowcaseCardPr
         }}
       >
         {/* Inner card with gradient background */}
-        <div className="relative overflow-hidden rounded-[14px] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
-          {/* Gold sparkle particles */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute top-[10%] left-[15%] w-1 h-1 bg-amber-400 rounded-full animate-ping" style={{animationDelay: '0s'}}></div>
-            <div className="absolute top-[25%] right-[20%] w-1.5 h-1.5 bg-yellow-300 rounded-full animate-ping" style={{animationDelay: '0.5s'}}></div>
-            <div className="absolute bottom-[30%] left-[25%] w-1 h-1 bg-amber-300 rounded-full animate-ping" style={{animationDelay: '1s'}}></div>
-            <div className="absolute bottom-[15%] right-[15%] w-1.5 h-1.5 bg-yellow-400 rounded-full animate-ping" style={{animationDelay: '1.5s'}}></div>
-            <div className="absolute top-[40%] right-[10%] w-1 h-1 bg-amber-500 rounded-full animate-ping" style={{animationDelay: '2s'}}></div>
+        <div className="relative overflow-hidden rounded-[14px] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-6">
+          {/* Gold sparkle particles - subtle */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-40">
+            <div className="absolute top-[15%] left-[20%] w-1 h-1 bg-amber-400 rounded-full"></div>
+            <div className="absolute top-[30%] right-[25%] w-1 h-1 bg-yellow-300 rounded-full"></div>
+            <div className="absolute bottom-[35%] left-[30%] w-1 h-1 bg-amber-300 rounded-full"></div>
           </div>
           {/* Brand Logo */}
-          <div className="absolute top-4 left-4 z-10">
-            <div className="flex items-center gap-2 bg-slate-800/80 backdrop-blur-sm px-3 py-1.5 rounded-full border border-amber-500/30">
+          <div className="absolute top-3 left-3 z-10">
+            <div className="flex items-center gap-1.5 bg-slate-800/90 backdrop-blur-sm px-2.5 py-1 rounded-full border border-amber-500/30">
               <Image
                 src="/logo/mv360_logo.png"
                 alt="MarketView360"
-                width={20}
-                height={20}
+                width={16}
+                height={16}
                 className="rounded-sm"
               />
-              <span className="text-xs font-semibold text-amber-400 tracking-wide">MARKETVIEW360</span>
+              <span className="text-[10px] font-semibold text-amber-400 tracking-wide">MARKETVIEW360</span>
             </div>
           </div>
 
-          {/* Animated background stars */}
-          <div className="absolute inset-0 opacity-20">
-            <div className="absolute top-4 left-4 animate-pulse">
-              <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
+          {/* Background stars - subtle */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-6 left-6">
+              <Star className="h-2.5 w-2.5 text-amber-400 fill-amber-400" />
             </div>
-            <div className="absolute top-8 right-8 animate-pulse delay-100">
+            <div className="absolute top-10 right-10">
               <Star className="h-2 w-2 text-yellow-400 fill-yellow-400" />
             </div>
-            <div className="absolute bottom-12 left-12 animate-pulse delay-200">
-              <Star className="h-2.5 w-2.5 text-amber-300 fill-amber-300" />
-            </div>
-            <div className="absolute bottom-6 right-6 animate-pulse delay-300">
-              <Sparkles className="h-3 w-3 text-yellow-300" />
+            <div className="absolute bottom-14 left-14">
+              <Star className="h-2 w-2 text-amber-300 fill-amber-300" />
             </div>
           </div>
 
           {/* Premium header */}
-          <div className="relative z-10 mb-6 text-center">
+          <div className="relative z-10 mb-6 mt-8 text-center">
             <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-500/20 to-yellow-500/20 px-4 py-2 border border-amber-400/30">
               <Crown className="h-4 w-4 text-amber-400" />
               <span className="text-sm font-bold text-amber-400 tracking-wider uppercase">
@@ -93,7 +88,7 @@ export function PremiumShowcaseCard({ user, displayName }: PremiumShowcaseCardPr
           {/* User avatar and info */}
           <div className="relative z-10 flex flex-col items-center mb-6">
             <div className="relative mb-4">
-              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 blur-xl opacity-50 animate-pulse"></div>
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 blur-lg opacity-30"></div>
               <UserAvatar 
                 user={user} 
                 size="lg" 
@@ -157,8 +152,8 @@ export function PremiumShowcaseCard({ user, displayName }: PremiumShowcaseCardPr
           </div>
         </div>
 
-        {/* Animated gradient border glow */}
-        <div className="absolute -inset-[1px] rounded-[16px] bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-500 opacity-75 blur-sm animate-pulse"></div>
+        {/* Subtle gradient border */}
+        <div className="absolute -inset-[1px] rounded-[16px] bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-500 opacity-50 blur-[2px]"></div>
       </div>
     </CometCard>
   );
