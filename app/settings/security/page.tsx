@@ -80,7 +80,7 @@ function parseUserAgent(ua: string | null): { device: string; browser: string } 
 }
 
 export default function SecurityPage() {
-  const { user, session, resetPassword, signOut, enrollMfa, verifyMfa, unenrollMfa, listMfaFactors } = useAuth();
+  const { user, session, resetPassword, signOut, enrollMfa, verifyMfa, unenrollMfa, listMfaFactors, challengeMfa, verifyMfaChallenge, getAalLevel } = useAuth();
   const [resetEmailSent, setResetEmailSent] = useState(false);
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
@@ -103,6 +103,13 @@ export default function SecurityPage() {
   const [loadingRecoveryCodes, setLoadingRecoveryCodes] = useState(false);
   const [showConfirmDisableDialog, setShowConfirmDisableDialog] = useState(false);
   const [factorToDisable, setFactorToDisable] = useState<string | null>(null);
+  
+  // AAL2 verification state for unenrolling
+  const [showAal2Dialog, setShowAal2Dialog] = useState(false);
+  const [aal2VerifyCode, setAal2VerifyCode] = useState("");
+  const [aal2ChallengeId, setAal2ChallengeId] = useState<string | null>(null);
+  const [verifyingAal2, setVerifyingAal2] = useState(false);
+  const [currentAalLevel, setCurrentAalLevel] = useState<'aal1' | 'aal2' | null>(null);
   
   // 2FA method selection state
   const [showMethodSelection, setShowMethodSelection] = useState(false);
@@ -170,12 +177,18 @@ export default function SecurityPage() {
     fetchMfaFactors();
   }, [fetchSessions, fetchMfaFactors]);
 
-  // Fetch recovery codes count when MFA factors change
+  // Fetch recovery codes count and AAL level when MFA factors change
   useEffect(() => {
     if (mfaFactors.length > 0) {
       fetchRecoveryCodesCount();
+      // Check current AAL level
+      getAalLevel().then(result => {
+        if (!('error' in result)) {
+          setCurrentAalLevel(result.currentLevel);
+        }
+      });
     }
-  }, [mfaFactors, fetchRecoveryCodesCount]);
+  }, [mfaFactors, fetchRecoveryCodesCount, getAalLevel]);
 
   const handlePasswordReset = async () => {
     if (!user?.email) return;
@@ -357,6 +370,63 @@ export default function SecurityPage() {
     toast.info("2FA setup cancelled");
   };
 
+  // Initiate AAL2 verification before unenrolling
+  const initiateAal2Verification = async (factorId: string) => {
+    setMfaError(null);
+    try {
+      // Create a challenge for the factor
+      const challengeResult = await challengeMfa(factorId);
+      if ('error' in challengeResult && challengeResult.error) {
+        setMfaError(challengeResult.error.message || "Failed to initiate verification");
+        toast.error("Failed to initiate verification");
+        return;
+      }
+      
+      if ('challengeId' in challengeResult) {
+        setAal2ChallengeId(challengeResult.challengeId || null);
+        setShowAal2Dialog(true);
+        setShowConfirmDisableDialog(false);
+      }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : "Failed to initiate verification";
+      setMfaError(errorMsg);
+      toast.error(errorMsg);
+    }
+  };
+
+  // Verify AAL2 and then unenroll
+  const handleAal2VerifyAndUnenroll = async () => {
+    if (!factorToDisable || !aal2ChallengeId || !aal2VerifyCode) return;
+    
+    setVerifyingAal2(true);
+    setMfaError(null);
+    
+    try {
+      // Verify the MFA challenge to elevate to AAL2
+      const verifyResult = await verifyMfaChallenge(factorToDisable, aal2ChallengeId, aal2VerifyCode);
+      if (verifyResult.error) {
+        const errorMsg = verifyResult.error.message || "Invalid verification code";
+        setMfaError(errorMsg);
+        toast.error("Verification failed: " + errorMsg);
+        setAal2VerifyCode("");
+        setVerifyingAal2(false);
+        return;
+      }
+      
+      // Now we're at AAL2, proceed with unenroll
+      setShowAal2Dialog(false);
+      await handleUnenrollMfa(factorToDisable);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : "Verification failed";
+      setMfaError(errorMsg);
+      toast.error(errorMsg);
+    } finally {
+      setVerifyingAal2(false);
+      setAal2VerifyCode("");
+      setAal2ChallengeId(null);
+    }
+  };
+
   const handleUnenrollMfa = async (factorId: string) => {
     setUnenrollingMfa(factorId);
     setMfaError(null);
@@ -364,6 +434,16 @@ export default function SecurityPage() {
       const result = await unenrollMfa(factorId);
       if (result.error) {
         const errorMsg = result.error.message || "Failed to remove 2FA";
+        
+        // Check if AAL2 is required
+        if (errorMsg.includes("AAL2") || errorMsg.includes("aal2")) {
+          // Need to verify MFA first
+          toast.info("Please verify your authenticator to disable 2FA");
+          await initiateAal2Verification(factorId);
+          setUnenrollingMfa(null);
+          return;
+        }
+        
         if (errorMsg.includes("not found")) {
           setMfaError("This authentication factor was not found. It may have already been removed.");
           toast.error("Factor not found");
@@ -403,15 +483,44 @@ export default function SecurityPage() {
           }
         }
         
+        // Delete recovery codes when MFA is disabled
+        if (session?.access_token && API_BASE) {
+          try {
+            await fetch(`${API_BASE}/profile/mfa/recovery-codes/delete`, {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${session.access_token}` },
+            });
+          } catch {
+            // Ignore - not critical
+          }
+        }
+        
         toast.success("Two-factor authentication removed");
         setShowConfirmDisableDialog(false);
         setFactorToDisable(null);
+        setRecoveryCodesCount(0);
         await fetchMfaFactors();
       }
     } catch {
       toast.error("Failed to remove 2FA");
     } finally {
       setUnenrollingMfa(null);
+    }
+  };
+  
+  // Handle clicking the disable button - check AAL level first
+  const handleDisableClick = async (factorId: string) => {
+    setFactorToDisable(factorId);
+    
+    // Check if we're already at AAL2
+    const aalResult = await getAalLevel();
+    if (!('error' in aalResult) && aalResult.currentLevel === 'aal2') {
+      // Already at AAL2, show confirmation dialog
+      setShowConfirmDisableDialog(true);
+    } else {
+      // Need AAL2 verification first
+      toast.info("Please verify your authenticator to disable 2FA");
+      await initiateAal2Verification(factorId);
     }
   };
 
@@ -810,10 +919,7 @@ export default function SecurityPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      setFactorToDisable(factor.id);
-                      setShowConfirmDisableDialog(true);
-                    }}
+                    onClick={() => handleDisableClick(factor.id)}
                     className="text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50"
                   >
                     <Trash2 className="h-4 w-4 mr-1" />
@@ -1160,6 +1266,89 @@ export default function SecurityPage() {
                 <Trash2 className="h-4 w-4 mr-2" />
               )}
               Disable 2FA
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* AAL2 Verification Dialog - Required before disabling MFA */}
+      <Dialog open={showAal2Dialog} onOpenChange={(open) => {
+        setShowAal2Dialog(open);
+        if (!open) {
+          setAal2VerifyCode("");
+          setAal2ChallengeId(null);
+          setMfaError(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-purple-500" />
+              Verify Your Identity
+            </DialogTitle>
+            <DialogDescription>
+              For security, please enter the 6-digit code from your authenticator app to confirm you want to disable 2FA.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {mfaError && (
+            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+                <p className="text-sm text-red-700 dark:text-red-300">{mfaError}</p>
+              </div>
+            </div>
+          )}
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="aal2-code">Verification Code</Label>
+              <Input
+                id="aal2-code"
+                value={aal2VerifyCode}
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, "");
+                  setAal2VerifyCode(value);
+                  setMfaError(null);
+                }}
+                placeholder="000000"
+                maxLength={6}
+                className="text-center text-lg tracking-widest font-mono"
+                autoComplete="one-time-code"
+                autoFocus
+              />
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Enter the code from your authenticator app
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowAal2Dialog(false);
+                setAal2VerifyCode("");
+                setAal2ChallengeId(null);
+                setFactorToDisable(null);
+                setMfaError(null);
+              }}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleAal2VerifyAndUnenroll}
+              disabled={aal2VerifyCode.length !== 6 || verifyingAal2}
+              className="w-full sm:w-auto"
+            >
+              {verifyingAal2 ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Verify & Disable 2FA
             </Button>
           </DialogFooter>
         </DialogContent>

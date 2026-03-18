@@ -1,9 +1,11 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/providers/AuthProvider";
+import { Loader2 } from "lucide-react";
 import {
   Shield,
   Lock,
@@ -44,6 +46,39 @@ const settingsNav = [
 
 export default function SettingsLayout({ children }: SettingsLayoutProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, loading } = useAuth();
+
+  // Redirect unauthenticated users to sign in
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/auth/signin?redirect=" + encodeURIComponent(pathname));
+    }
+  }, [user, loading, router, pathname]);
+
+  // Show loading state while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-full bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-brand" />
+          <p className="text-slate-500 dark:text-slate-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render settings if not authenticated
+  if (!user) {
+    return (
+      <div className="min-h-full bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Shield className="h-12 w-12 text-slate-400" />
+          <p className="text-slate-500 dark:text-slate-400">Please sign in to access settings</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-full bg-slate-50 dark:bg-slate-950">
