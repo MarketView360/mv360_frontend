@@ -3,7 +3,7 @@
 import { usePortfolio } from "@/providers/PortfolioProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Building2, Shield, Eye, Zap, ArrowRight, Loader2 } from "lucide-react";
+import { Building2, Shield, Eye, Zap, ArrowRight, Loader2, RefreshCw } from "lucide-react";
 import { useState } from "react";
 
 const FEATURES = [
