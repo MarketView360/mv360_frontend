@@ -487,10 +487,14 @@ export default async function CompanyPage({
 // Separate component for async data fetching
 async function CompanyContent({ ticker }: { ticker: string }) {
   try {
-    const [companyData, pricesData, valuationHistory] = await Promise.all([
+    // PERFORMANCE: Fetch ALL data in parallel to minimize latency
+    const [companyData, pricesData, valuationHistory, peersData, newsData] = await Promise.all([
       api.fetchCompany(ticker),
       api.fetchPrices(ticker),
       fetchValuationHistory(ticker),
+      // Non-blocking: these can fail without breaking the page
+      fetchPeers(ticker, null).catch(() => []),
+      fetchNews(ticker).catch(() => []),
     ]);
 
     if (!companyData?.company) {
@@ -498,6 +502,12 @@ async function CompanyContent({ ticker }: { ticker: string }) {
     }
 
     const data = transformData(companyData, pricesData, valuationHistory);
+    
+    // Fetch peers with exchange info if we didn't get it in the first pass
+    // This is a follow-up request only if we have exchange info now
+    const peers = data.exchange && peersData.length === 0 
+      ? await fetchPeers(ticker, data.exchange).catch(() => [])
+      : peersData;
 
     return (
       <div className="min-h-full bg-slate-50 dark:bg-slate-950 pb-20">
@@ -529,7 +539,7 @@ async function CompanyContent({ ticker }: { ticker: string }) {
                   ticker={ticker}
                   sector={data.sector}
                   exchange={data.exchange}
-                  initialData={await fetchPeers(ticker, data.exchange)}
+                  initialData={peers}
                 />
               </div>
 
@@ -538,7 +548,7 @@ async function CompanyContent({ ticker }: { ticker: string }) {
                 <NewsFeed
                   ticker={ticker}
                   limit={6}
-                  initialData={await fetchNews(ticker)}
+                  initialData={newsData}
                   mode="cards"
                 />
               </div>
