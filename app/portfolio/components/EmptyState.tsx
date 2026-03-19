@@ -27,11 +27,17 @@ const FEATURES = [
     title: "Real-Time Sync",
     description: "Automatic updates when your portfolio changes",
   },
+  {
+    icon: RefreshCw,
+    title: "Manual Sync",
+    description: "Sync your portfolio manually",
+  },
 ];
 
 export function EmptyState() {
-  const { connectBrokerage, error } = usePortfolio();
+  const { connectBrokerage, manualSync, error } = usePortfolio();
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const handleConnect = async () => {
     setIsConnecting(true);
@@ -42,6 +48,17 @@ export function EmptyState() {
     } finally {
       // Keep loading for a moment to show popup opened
       setTimeout(() => setIsConnecting(false), 1000);
+    }
+  };
+
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    try {
+      await manualSync();
+    } catch (err) {
+      console.error("Manual sync error:", err);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -81,31 +98,52 @@ export function EmptyState() {
           ))}
         </div>
 
-        <div className="text-center">
-          <Button 
-            size="lg" 
-            onClick={handleConnect} 
-            disabled={isConnecting}
-            className="gap-2"
-          >
-            {isConnecting ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Opening Connection...
-              </>
-            ) : (
-              <>
-                Connect Brokerage
-                <ArrowRight className="h-4 w-4" />
-              </>
-            )}
-          </Button>
+        <div className="text-center space-y-4">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button 
+              size="lg" 
+              onClick={handleConnect} 
+              disabled={isConnecting || isSyncing}
+              className="gap-2"
+            >
+              {isConnecting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Opening Connection...
+                </>
+              ) : (
+                <>
+                  Connect Brokerage
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
+            </Button>
+            <Button 
+              size="lg" 
+              variant="outline"
+              onClick={handleManualSync} 
+              disabled={isConnecting || isSyncing}
+              className="gap-2"
+            >
+              {isSyncing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Syncing Data...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-4 w-4" />
+                  Already Connected? Sync Now
+                </>
+              )}
+            </Button>
+          </div>
           {error && (
-            <p className="text-sm text-red-600 dark:text-red-400 mt-3">
+            <p className="text-sm text-red-600 dark:text-red-400">
               {error}
             </p>
           )}
-          <p className="text-xs text-muted-foreground mt-4">
+          <p className="text-xs text-muted-foreground">
             Secure, encrypted connection to your brokerage account •{" "}
             <a href="/help#portfolio" className="underline hover:text-foreground">
               View FAQ

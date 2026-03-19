@@ -146,6 +146,7 @@ interface PortfolioContextType {
   deleteConnection: (connectionId: string) => Promise<void>;
   loadTransactions: (params?: { accountId?: string; type?: string; ticker?: string }) => Promise<void>;
   loadChartData: (periodDays?: number) => Promise<void>;
+  manualSync: () => Promise<void>;
   
   // Helpers
   getPositionForTicker: (ticker: string) => Position | null;
@@ -285,6 +286,24 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
       console.error("Failed to load chart data:", err);
     }
   }, [apiCall]);
+
+  // Manual sync - bypasses webhooks
+  const manualSync = useCallback(async () => {
+    try {
+      setState("syncing");
+      setError(null);
+      await apiCall("/portfolio/sync", { method: "POST" });
+      
+      // Reload all data
+      await Promise.all([loadHoldings(), loadSummary(), loadSectors()]);
+      setState("active");
+    } catch (err) {
+      console.error("Manual sync failed:", err);
+      setError(err instanceof Error ? err.message : "Sync failed");
+      setState("error");
+      throw err;
+    }
+  }, [apiCall, loadHoldings, loadSummary, loadSectors]);
 
   // Connect brokerage
   const connectBrokerage = useCallback(async () => {
@@ -474,6 +493,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
         deleteConnection,
         loadTransactions,
         loadChartData,
+        manualSync,
         getPositionForTicker,
         userPositionTickers,
       }}
