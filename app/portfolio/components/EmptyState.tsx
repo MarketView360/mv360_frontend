@@ -3,7 +3,8 @@
 import { usePortfolio } from "@/providers/PortfolioProvider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Building2, Shield, Eye, Zap, ArrowRight } from "lucide-react";
+import { Building2, Shield, Eye, Zap, ArrowRight, Loader2 } from "lucide-react";
+import { useState } from "react";
 
 const FEATURES = [
   {
@@ -19,7 +20,7 @@ const FEATURES = [
   {
     icon: Shield,
     title: "Bank-Grade Security",
-    description: "256-bit encryption, powered by SnapTrade",
+    description: "256-bit encryption with industry-standard protocols",
   },
   {
     icon: Zap,
@@ -29,7 +30,20 @@ const FEATURES = [
 ];
 
 export function EmptyState() {
-  const { connectBrokerage } = usePortfolio();
+  const { connectBrokerage, error } = usePortfolio();
+  const [isConnecting, setIsConnecting] = useState(false);
+
+  const handleConnect = async () => {
+    setIsConnecting(true);
+    try {
+      await connectBrokerage();
+    } catch (err) {
+      console.error("Connection error:", err);
+    } finally {
+      // Keep loading for a moment to show popup opened
+      setTimeout(() => setIsConnecting(false), 1000);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -68,19 +82,33 @@ export function EmptyState() {
         </div>
 
         <div className="text-center">
-          <Button size="lg" onClick={connectBrokerage} className="gap-2">
-            Connect Brokerage
-            <ArrowRight className="h-4 w-4" />
+          <Button 
+            size="lg" 
+            onClick={handleConnect} 
+            disabled={isConnecting}
+            className="gap-2"
+          >
+            {isConnecting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Opening Connection...
+              </>
+            ) : (
+              <>
+                Connect Brokerage
+                <ArrowRight className="h-4 w-4" />
+              </>
+            )}
           </Button>
+          {error && (
+            <p className="text-sm text-red-600 dark:text-red-400 mt-3">
+              {error}
+            </p>
+          )}
           <p className="text-xs text-muted-foreground mt-4">
-            Secure connection powered by{" "}
-            <a
-              href="https://snaptrade.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-foreground"
-            >
-              SnapTrade
+            Secure, encrypted connection to your brokerage account •{" "}
+            <a href="/help#portfolio" className="underline hover:text-foreground">
+              View FAQ
             </a>
           </p>
         </div>

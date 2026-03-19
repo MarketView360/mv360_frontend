@@ -52,18 +52,37 @@ function formatNumber(value: number | null | undefined, decimals: number = 2): s
 
 export function HoldingsTable() {
   const { holdings } = usePortfolio();
-  const [search, setSearch] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey>("marketValue");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortConfig, setSortConfig] = useState<{
+    key: keyof Position;
+    direction: "asc" | "desc";
+  }>({ key: "marketValue", direction: "desc" });
 
   const positions = holdings?.positions || [];
+
+  // If no positions, show empty state
+  if (!holdings || positions.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Holdings</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8 text-muted-foreground">
+            <p>No holdings found in your connected accounts.</p>
+            <p className="text-sm mt-2">Holdings will appear here once your accounts sync.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const filteredAndSorted = useMemo(() => {
     let filtered = positions;
 
     // Filter by search
-    if (search) {
-      const searchLower = search.toLowerCase();
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter(
         (p) =>
           p.ticker.toLowerCase().includes(searchLower) ||

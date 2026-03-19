@@ -376,14 +376,19 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     }
 
     let pollInterval: NodeJS.Timeout;
+    let isMounted = true;
 
     const initialize = async () => {
+      if (!isMounted) return;
+      
       setState("loading");
       setError(null);
 
       try {
         // Check premium status
         const hasPremium = await checkPremiumStatus();
+        if (!isMounted) return;
+        
         if (!hasPremium) {
           setState("not_premium");
           return;
@@ -391,6 +396,7 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
 
         // Load sync status
         const status = await loadSyncStatus();
+        if (!isMounted) return;
         
         if (!status || status.connections.length === 0) {
           setState("no_connections");
@@ -403,10 +409,10 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
           // Poll every 3 seconds while syncing
           pollInterval = setInterval(async () => {
             const newStatus = await loadSyncStatus();
-            if (newStatus?.isFullySynced) {
+            if (newStatus?.isFullySynced && isMounted) {
               clearInterval(pollInterval);
               await Promise.all([loadHoldings(), loadSummary(), loadSectors()]);
-              setState("active");
+              if (isMounted) setState("active");
             }
           }, 3000);
           return;
@@ -414,11 +420,13 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
 
         // Load all data
         await Promise.all([loadHoldings(), loadSummary(), loadSectors()]);
-        setState("active");
+        if (isMounted) setState("active");
       } catch (err) {
         console.error("Portfolio initialization failed:", err);
-        setError(err instanceof Error ? err.message : "Failed to initialize portfolio");
-        setState("error");
+        if (isMounted) {
+          setError(err instanceof Error ? err.message : "Failed to initialize portfolio");
+          setState("error");
+        }
       }
     };
 
@@ -441,10 +449,11 @@ export function PortfolioProvider({ children }: { children: ReactNode }) {
     }
 
     return () => {
+      isMounted = false;
       if (pollInterval) clearInterval(pollInterval);
       window.removeEventListener("message", handleMessage);
     };
-  }, [user, session, checkPremiumStatus, loadSyncStatus, loadHoldings, loadSummary, loadSectors]);
+  }, [user?.id, session?.access_token]);
 
   return (
     <PortfolioContext.Provider
