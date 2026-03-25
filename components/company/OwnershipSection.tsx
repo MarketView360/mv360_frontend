@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import {
   Building2,
   Users,
@@ -177,16 +178,25 @@ export function OwnershipSection({ ticker }: Readonly<OwnershipSectionProps>) {
       <h2 className="text-xl font-bold text-slate-900 dark:text-white">Ownership & Management</h2>
 
       <Tabs defaultValue="institutional" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
-          <TabsTrigger value="institutional" className="flex items-center gap-2">
+        <TabsList className="bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg flex gap-1 w-fit border-0">
+          <TabsTrigger 
+            value="institutional" 
+            className="flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 dark:data-[state=active]:bg-slate-700 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-transparent"
+          >
             <Building2 className="w-4 h-4" />
             Institutional
           </TabsTrigger>
-          <TabsTrigger value="insiders" className="flex items-center gap-2">
+          <TabsTrigger 
+            value="insiders" 
+            className="flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 dark:data-[state=active]:bg-slate-700 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-transparent"
+          >
             <TrendingUp className="w-4 h-4" />
             Insider Trades
           </TabsTrigger>
-          <TabsTrigger value="officers" className="flex items-center gap-2">
+          <TabsTrigger 
+            value="officers" 
+            className="flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:text-slate-900 dark:data-[state=active]:bg-slate-700 dark:data-[state=active]:text-slate-100 data-[state=active]:shadow-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-transparent"
+          >
             <Users className="w-4 h-4" />
             Management
           </TabsTrigger>
@@ -227,16 +237,26 @@ function InstitutionalHoldersTab({ holders }: Readonly<{ holders: HoldersRespons
   return (
     <div className="space-y-6">
       {/* Toggle */}
-      <div className="flex items-center gap-2">
+      <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg w-fit">
         <button
           onClick={() => setView("institutional")}
-          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${view === "institutional" ? "bg-brand text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"}`}
+          className={cn(
+            "px-4 py-1.5 text-sm font-medium rounded-md transition-colors",
+            view === "institutional"
+              ? "bg-white text-slate-900 dark:bg-slate-700 dark:text-slate-100 shadow-sm"
+              : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
+          )}
         >
           Institutional ({holders?.institutional.length ?? 0})
         </button>
         <button
           onClick={() => setView("fund")}
-          className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${view === "fund" ? "bg-brand text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"}`}
+          className={cn(
+            "px-4 py-1.5 text-sm font-medium rounded-md transition-colors",
+            view === "fund"
+              ? "bg-white text-slate-900 dark:bg-slate-700 dark:text-slate-100 shadow-sm"
+              : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
+          )}
         >
           Fund Holders ({holders?.fund.length ?? 0})
         </button>
