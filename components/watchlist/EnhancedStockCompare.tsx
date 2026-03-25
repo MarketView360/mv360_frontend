@@ -454,7 +454,7 @@ export function EnhancedStockCompare({
                       onClick={() => setPriceRange(range)}
                       className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
                         priceRange === range
-                          ? 'bg-indigo-600 text-white'
+                          ? 'bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 shadow-sm'
                           : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                       }`}
                     >

@@ -174,16 +174,16 @@ export function TechnicalsSection({ ticker, currentPrice }: TechnicalsSectionPro
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Technical Indicators</CardTitle>
-          <div className="flex gap-1">
+          <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg">
             {(["1M", "3M", "6M", "1Y"] as const).map((r) => (
               <button
                 key={r}
                 onClick={() => setRange(r)}
                 className={cn(
-                  "px-3 py-1 text-xs rounded-md transition-colors",
+                  "px-3 py-1 text-xs font-medium rounded-md transition-all",
                   range === r
-                    ? "bg-brand text-white"
-                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                    ? "bg-white text-slate-900 dark:bg-slate-700 dark:text-slate-100 shadow-sm"
+                    : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 )}
               >
                 {r}

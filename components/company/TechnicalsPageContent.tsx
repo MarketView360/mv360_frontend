@@ -48,6 +48,7 @@ import {
   ArrowDownRight,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 interface TechnicalData {
   date: string;
@@ -163,17 +164,25 @@ export function TechnicalsPageContent({ ticker, currentPrice }: Readonly<Technic
         <h2 className="text-xl font-bold text-slate-900 dark:text-white">
           Technical Analysis
         </h2>
-        <Select value={timeRange} onValueChange={(v) => setTimeRange(v as typeof timeRange)}>
-          <SelectTrigger className="w-36">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="30">30 Days</SelectItem>
-            <SelectItem value="90">90 Days</SelectItem>
-            <SelectItem value="180">6 Months</SelectItem>
-            <SelectItem value="365">1 Year</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg">
+          {(["30", "90", "180", "365"] as const).map((r) => {
+            const labelMap = { "30": "30D", "90": "90D", "180": "6M", "365": "1Y" };
+            return (
+              <button
+                key={r}
+                onClick={() => setTimeRange(r as typeof timeRange)}
+                className={cn(
+                  "px-3 py-1 text-xs font-medium rounded-md transition-all",
+                  timeRange === r
+                    ? "bg-white text-slate-900 dark:bg-slate-700 dark:text-slate-100 shadow-sm"
+                    : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
+                )}
+              >
+                {labelMap[r]}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Signal Summary Cards */}
