@@ -8,6 +8,12 @@ export interface ChatMessage {
   toolCalls?: string[];
   toolStatus?: string;
   isWatchlistAnalysis?: boolean; // Badge indicator for watchlist analysis messages
+  metrics?: {
+    ttft: number; // Time to first token (ms)
+    tps: number; // Tokens per second
+    totalTokens: number; // Estimated tokens
+    totalTime: number; // Total request time (ms)
+  };
 }
 
 export interface SessionSummary {
