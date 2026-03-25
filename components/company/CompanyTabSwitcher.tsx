@@ -61,7 +61,7 @@ export function CompanyTabSwitcher({
   return (
     <div className="space-y-6">
       {/* Tab Bar */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-1 flex gap-1 shadow-sm">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-1 flex gap-1 shadow-sm w-fit mx-auto lg:w-full">
         {TABS.map((tab) => (
           <button
             key={tab.id}
@@ -69,8 +69,8 @@ export function CompanyTabSwitcher({
             className={cn(
               "flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
               activeTab === tab.id
-                ? "bg-brand text-white shadow-sm"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800"
+                ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 shadow-sm"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50"
             )}
           >
             {tab.icon}
