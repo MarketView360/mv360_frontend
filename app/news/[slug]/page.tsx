@@ -319,7 +319,7 @@ export default function NewsArticlePage() {
     // Check quota
     if (!canUse("tokens")) {
       toast.error("Token quota exceeded", {
-        description: `You've used all your AI tokens for this period. Your quota will reset at ${new Date(quota.resetsAt).toLocaleString()}.`,
+        description: `You've used all your AI tokens. Your quota will reset in 12 hours.`,
       });
       return;
     }

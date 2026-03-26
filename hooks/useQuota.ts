@@ -10,7 +10,7 @@ const API_BASE =
 export interface QuotaStatus {
   tokens: { used: number; limit: number; remaining: number };
   reasoning: { used: number; limit: number; remaining: number };
-  resetsAt: string;
+  resetsAt?: string; // Only present when in cooldown (when quota resets)
   tier: "free" | "premium";
 }
 

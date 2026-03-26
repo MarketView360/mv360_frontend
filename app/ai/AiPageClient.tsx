@@ -101,7 +101,7 @@ export default function AiPageClient() {
     }
   }, [isReasoningEnabled, quota]);
 
-  // 20% quota warning - show warning when tokens fall below 20,000 (20% of 100K)
+  // 20% quota warning - show warning when tokens fall below 10,000 (20% of 50K)
   // Only for premium users (free users have 0 limit and shouldn't see warnings)
   useEffect(() => {
     if (!quota || !quota.tokens || quota.tier === "free") return;
@@ -112,7 +112,7 @@ export default function AiPageClient() {
     // Only warn once when crossing the threshold
     if (remaining <= threshold && remaining > threshold - 1000) {
       toast.warning("Low token warning", {
-        description: `You have less than 20% of your AI tokens remaining (${remaining.toLocaleString()} / ${quota.tokens.limit.toLocaleString()}). Your quota will reset at ${new Date(quota.resetsAt).toLocaleString()}.`,
+        description: `You have less than 20% of your AI tokens remaining (${remaining.toLocaleString()} / ${quota.tokens.limit.toLocaleString()}). When exhausted, your quota will reset in 12 hours.`,
         duration: 8000,
       });
     }
@@ -122,7 +122,7 @@ export default function AiPageClient() {
     (enabled: boolean) => {
       if (enabled && quota && quota.reasoning.remaining <= 0) {
         toast.error("Reasoning quota exceeded", {
-          description: `You've used all ${quota.reasoning.limit} reasoning messages for this period. Your quota will reset at ${new Date(quota.resetsAt).toLocaleString()}.`,
+          description: `You've used all ${quota.reasoning.limit} reasoning messages. Your quota will reset in 12 hours.`,
         });
         setIsReasoningEnabled(false);
         return;
@@ -260,7 +260,7 @@ export default function AiPageClient() {
         // Check token quota for standard messages
         if (!isReasoningEnabled && !canUse("tokens")) {
           toast.error("Token quota exceeded", {
-            description: `You've used all ${quota.tokens.limit.toLocaleString()} tokens for this period. Your quota will reset at ${new Date(quota.resetsAt).toLocaleString()}.`,
+            description: `You've used all ${quota.tokens.limit.toLocaleString()} tokens. Your quota will reset in 12 hours.`,
           });
           return;
         }
@@ -268,7 +268,7 @@ export default function AiPageClient() {
         // Check reasoning quota
         if (isReasoningEnabled && !canUse("reasoning")) {
           toast.error("Reasoning quota exceeded", {
-            description: `You've used all ${quota.reasoning.limit} reasoning messages for this period. Your quota will reset at ${new Date(quota.resetsAt).toLocaleString()}.`,
+            description: `You've used all ${quota.reasoning.limit} reasoning messages. Your quota will reset in 12 hours.`,
           });
           return;
         }

@@ -50,7 +50,7 @@ export function UpgradeDialog({ isOpen, onClose }: UpgradeDialogProps) {
             </div>
             <div>
               <h4 className="font-medium text-sm text-slate-900 dark:text-white">10x Higher Usage Quota</h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400">100K tokens and 10 reasoning messages per 12 hours</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">50K tokens and 10 reasoning messages per 12 hours</p>
             </div>
           </div>
 
