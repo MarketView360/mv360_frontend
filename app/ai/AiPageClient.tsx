@@ -8,6 +8,7 @@ import { ChatArea, Message } from "./components/ChatArea";
 import { MessageInput } from "./components/MessageInput";
 import { ModelSelector } from "./components/ModelSelector";
 import { LoginRequired } from "./components/LoginRequired";
+import { PremiumRequired } from "./components/PremiumRequired";
 import { SuggestionSidebar, SuggestionSidebarToggle } from "./components/SuggestionSidebar";
 import { PanelLeftOpen, StopCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,13 +17,12 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useChatSession } from "@/lib/hooks/useChatSession";
 import { useChatStream } from "@/lib/hooks/useChatStream";
 import { useQuota } from "@/hooks/useQuota";
+import { useAIAccess } from "@/hooks/useAIAccess";
 import { useToolsConfig } from "@/hooks/useToolsConfig";
 import { AIApiError } from "@/lib/api/ai";
 
-// Feature flag: Allow anonymous users to access AI chat.
-// Default: true (if unset). Set NEXT_PUBLIC_ALLOW_ANONYMOUS_AI_CHAT=false to require login.
-const ALLOW_ANONYMOUS_CHAT =
-  process.env.NEXT_PUBLIC_ALLOW_ANONYMOUS_AI_CHAT !== "false";
+// AI chat is now PREMIUM ONLY - anonymous access disabled
+const ALLOW_ANONYMOUS_CHAT = false;
 
 // Feature flag: Enable AI suggestions sidebar.
 // Default: true (if unset). Set NEXT_PUBLIC_ENABLE_AI_SUGGESTIONS=false to disable.
@@ -36,6 +36,9 @@ export default function AiPageClient() {
 
   const { session, loading: isAuthLoading } = useAuth();
   const token = session?.access_token ?? null;
+
+  // Premium-only access check
+  const { access: aiAccess, loading: accessLoading, refetch: refetchAccess } = useAIAccess(token);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isSuggestionOpen, setIsSuggestionOpen] = useState(false);
@@ -54,6 +57,12 @@ export default function AiPageClient() {
       setIsReasoningEnabled(false);
     }
   }, [token]);
+
+  // Refetch AI access when token changes
+  useEffect(() => {
+    if (!token) return;
+    void refetchAccess();
+  }, [token, refetchAccess]);
 
   // Use real hooks with URL session ID
   const {
@@ -91,6 +100,22 @@ export default function AiPageClient() {
       setIsReasoningEnabled(false);
     }
   }, [isReasoningEnabled, quota]);
+
+  // 20% quota warning - show warning when tokens fall below 20,000 (20% of 100K)
+  useEffect(() => {
+    if (!quota || !quota.tokens) return;
+
+    const threshold = Math.floor(quota.tokens.limit * 0.2); // 20% of limit
+    const remaining = quota.tokens.remaining;
+
+    // Only warn once when crossing the threshold
+    if (remaining <= threshold && remaining > threshold - 1000) {
+      toast.warning("Low token warning", {
+        description: `You have less than 20% of your AI tokens remaining (${remaining.toLocaleString()} / ${quota.tokens.limit.toLocaleString()}). Your quota will reset at ${new Date(quota.resetsAt).toLocaleString()}.`,
+        duration: 8000,
+      });
+    }
+  }, [quota]);
 
   const handleReasoningChange = useCallback(
     (enabled: boolean) => {
@@ -226,18 +251,16 @@ export default function AiPageClient() {
       if (quota) {
         // Check token quota for standard messages
         if (!isReasoningEnabled && !canUse("tokens")) {
-          const tier = quota.tier === "free" ? "Free" : "Premium";
           toast.error("Token quota exceeded", {
-            description: `You've used all your tokens for this period. ${tier === "Free" ? "Upgrade to Premium for 300K tokens per 12 hours, or wait for the next reset." : "Your quota will reset soon."}`,
+            description: `You've used all ${quota.tokens.limit.toLocaleString()} tokens for this period. Your quota will reset at ${new Date(quota.resetsAt).toLocaleString()}.`,
           });
           return;
         }
 
         // Check reasoning quota
         if (isReasoningEnabled && !canUse("reasoning")) {
-          const tier = quota.tier === "free" ? "Free" : "Premium";
           toast.error("Reasoning quota exceeded", {
-            description: `You've used all ${quota.reasoning.limit} reasoning messages for this period. ${tier === "Free" ? "Upgrade to Premium for 10 reasoning messages per 12 hours, or wait for the next reset." : "Your quota will reset soon."}`,
+            description: `You've used all ${quota.reasoning.limit} reasoning messages for this period. Your quota will reset at ${new Date(quota.resetsAt).toLocaleString()}.`,
           });
           return;
         }
@@ -329,8 +352,8 @@ export default function AiPageClient() {
   }, [watchlistParam, watchlistContextProcessed, token, isStreaming, handleSendMessage]);
 
   // Show login required page if anonymous chat is disabled and user is not logged in
-  // Also show loading spinner while checking auth
-  if (isAuthLoading) {
+  // Also show loading spinner while checking auth and AI access
+  if (isAuthLoading || accessLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-white dark:bg-slate-950">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -338,8 +361,20 @@ export default function AiPageClient() {
     );
   }
 
+  // AI chat is now premium-only - show login for unauthenticated users
   if (!ALLOW_ANONYMOUS_CHAT && !token) {
     return <LoginRequired />;
+  }
+
+  // Check if user has AI access (premium required)
+  if (token && aiAccess && !aiAccess.allowed) {
+    return (
+      <PremiumRequired
+        reason={aiAccess.reason}
+        cooldownUntil={aiAccess.cooldownInfo?.until}
+        resetsAt={aiAccess.cooldownInfo?.resetsAt}
+      />
+    );
   }
 
   return (
