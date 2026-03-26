@@ -254,7 +254,7 @@ export function ModelSelector({
                                 <span aria-hidden="true" className="group-hover:translate-x-0.5 transition-transform">→</span>
                               </p>
                               <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
-                                300K tokens + 10 reasoning / 12h
+                                100K tokens + 10 reasoning / 12h
                               </p>
                             </div>
                           )}

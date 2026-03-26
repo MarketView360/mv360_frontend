@@ -9,6 +9,7 @@ import {
   ArrowLeft,
   Calendar,
   Clock,
+  Crown,
   ExternalLink,
   Share2,
   Tag,
@@ -307,11 +308,18 @@ export default function NewsArticlePage() {
       return;
     }
 
+    // Check if user has premium access
+    if (quota?.tier === "free") {
+      toast.error("Premium required", {
+        description: "AI summarization is exclusively available to Premium subscribers.",
+      });
+      return;
+    }
+
     // Check quota
     if (!canUse("tokens")) {
-      const tier = quota?.tier === "free" ? "Free" : "Premium";
-      toast.error("AI quota exceeded", {
-        description: `You've used all your AI messages for this period. ${tier === "Free" ? "Upgrade to Premium for more messages, or wait for the next reset." : "Your quota will reset soon."}`,
+      toast.error("Token quota exceeded", {
+        description: `You've used all your AI tokens for this period. Your quota will reset at ${new Date(quota.resetsAt).toLocaleString()}.`,
       });
       return;
     }
@@ -402,10 +410,21 @@ Please provide a concise summary of this news article.[/REASONING]`;
   size="sm"
   onClick={handleSummarize}
   disabled={isSummarizing}
-  className="h-8 gap-2 !bg-slate-900 !text-white hover:!bg-slate-700 dark:!bg-brand dark:!text-white dark:hover:!bg-brand/90 disabled:opacity-50"
+  className={cn(
+    "h-8 gap-2 transition-all duration-200",
+    quota?.tier === "free"
+      ? "bg-amber-50 hover:bg-amber-100 text-amber-900 border-2 border-amber-400 dark:bg-amber-900/30 dark:hover:bg-amber-800/40 dark:text-amber-200 dark:border-amber-600"
+      : "!bg-slate-900 !text-white hover:!bg-slate-700 dark:!bg-brand dark:!text-white dark:hover:!bg-brand/90"
+  )}
 >
-  <Sparkles className="h-3.5 w-3.5" />
+  <Sparkles className={cn("h-3.5 w-3.5", quota?.tier === "free" && "text-amber-600 dark:text-amber-400")} />
   {isSummarizing ? "Starting..." : "Summarize with Jovan AI"}
+  {quota?.tier === "free" && (
+    <span className="flex items-center gap-1 text-[9px] font-medium uppercase tracking-wide">
+      <Crown className="h-3 w-3" />
+      Premium
+    </span>
+  )}
 </Button>
             <Button
               size="sm"

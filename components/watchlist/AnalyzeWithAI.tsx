@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, Loader2, ArrowRight, Send } from "lucide-react";
+import { Sparkles, Loader2, ArrowRight, Send, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,7 +11,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import type { WatchlistWithItems } from "@/providers/WatchlistProvider";
+import { useAuth } from "@/providers/AuthProvider";
+import { useQuota } from "@/hooks/useQuota";
+import { toast } from "sonner";
 
 interface StockMetricsForAI {
   code?: string;
@@ -85,6 +90,19 @@ export function AnalyzeWithAI({ watchlist, stockMetrics }: AnalyzeWithAIProps) {
   const [customMessage, setCustomMessage] = useState("");
   const [isDataReady, setIsDataReady] = useState(false);
   const router = useRouter();
+  const { session } = useAuth();
+  const { quota } = useQuota(session?.access_token ?? null);
+  const isFreeUser = quota?.tier === "free";
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (newOpen && isFreeUser) {
+      toast.info("Premium required", {
+        description: "AI analysis is exclusively available to Premium subscribers.",
+      });
+      return;
+    }
+    setOpen(newOpen);
+  };
 
   // Check if we have metrics data for all stocks
   useEffect(() => {
@@ -209,16 +227,27 @@ Respond naturally to the user's question below. Do not mention or repeat the sys
       <Button
         variant="outline"
         size="sm"
-        className="gap-2 bg-gradient-to-r from-violet-500/10 to-purple-500/10 border-violet-200 dark:border-violet-800 hover:from-violet-500/20 hover:to-purple-500/20 text-violet-700 dark:text-violet-300"
-        onClick={() => setOpen(true)}
+        className={cn(
+          "gap-2 transition-all duration-200",
+          isFreeUser
+            ? "bg-amber-50 hover:bg-amber-100 text-amber-900 border-2 border-amber-400 dark:bg-amber-900/30 dark:hover:bg-amber-800/40 dark:text-amber-200 dark:border-amber-600"
+            : "bg-gradient-to-r from-violet-500/10 to-purple-500/10 border-violet-200 dark:border-violet-800 hover:from-violet-500/20 hover:to-purple-500/20 text-violet-700 dark:text-violet-300"
+        )}
+        onClick={() => handleOpenChange(true)}
         disabled={!isDataReady}
       >
         {!isDataReady ? (
           <Loader2 className="w-4 h-4 animate-spin" />
         ) : (
-          <Sparkles className="w-4 h-4" />
+          <Sparkles className={cn("w-4 h-4", isFreeUser && "text-amber-600 dark:text-amber-400")} />
         )}
         Analyze with AI
+        {isFreeUser && (
+          <span className="flex items-center gap-1 text-[9px] font-medium uppercase tracking-wide">
+            <Crown className="h-3 w-3" />
+            Premium
+          </span>
+        )}
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>

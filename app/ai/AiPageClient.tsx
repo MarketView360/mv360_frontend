@@ -102,8 +102,9 @@ export default function AiPageClient() {
   }, [isReasoningEnabled, quota]);
 
   // 20% quota warning - show warning when tokens fall below 20,000 (20% of 100K)
+  // Only for premium users (free users have 0 limit and shouldn't see warnings)
   useEffect(() => {
-    if (!quota || !quota.tokens) return;
+    if (!quota || !quota.tokens || quota.tier === "free") return;
 
     const threshold = Math.floor(quota.tokens.limit * 0.2); // 20% of limit
     const remaining = quota.tokens.remaining;
@@ -120,9 +121,8 @@ export default function AiPageClient() {
   const handleReasoningChange = useCallback(
     (enabled: boolean) => {
       if (enabled && quota && quota.reasoning.remaining <= 0) {
-        const tier = quota.tier === "free" ? "Free" : "Premium";
         toast.error("Reasoning quota exceeded", {
-          description: `You've used all ${quota.reasoning.limit} reasoning messages for this period. ${tier === "Free" ? "Upgrade to Premium for 10 reasoning messages per 12 hours, or wait for the next reset." : "Your quota will reset soon."}`,
+          description: `You've used all ${quota.reasoning.limit} reasoning messages for this period. Your quota will reset at ${new Date(quota.resetsAt).toLocaleString()}.`,
         });
         setIsReasoningEnabled(false);
         return;
@@ -249,6 +249,14 @@ export default function AiPageClient() {
 
       // Authenticated user: Check quota before sending
       if (quota) {
+        // Free users should be blocked by PremiumRequired screen, but double-check here
+        if (quota.tier === "free") {
+          toast.error("Premium required", {
+            description: "AI chat is exclusively available to Premium subscribers.",
+          });
+          return;
+        }
+
         // Check token quota for standard messages
         if (!isReasoningEnabled && !canUse("tokens")) {
           toast.error("Token quota exceeded", {

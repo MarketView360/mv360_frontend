@@ -19,6 +19,7 @@ interface QuotaIndicatorProps {
   loading?: boolean;
   error?: string | null;
   onRefresh?: () => void;
+  reasoningLimit?: number;
 }
 
 export function QuotaIndicator({
@@ -84,7 +85,7 @@ export function QuotaIndicator({
                 ? "text-slate-700 dark:text-slate-300" 
                 : "text-slate-500"
             )}>
-              {remainingReasoning}/3 reasoning
+              {remainingReasoning}/{reasoningLimit ?? 10} reasoning
             </span>
             {!canUseReasoning && (
               <div className="flex items-center gap-1 text-amber-600 dark:text-amber-500">
@@ -108,7 +109,7 @@ export function QuotaIndicator({
               </p>
             )}
             <p className="text-slate-500">
-              Free users get 3 reasoning messages per day
+              Premium users get {reasoningLimit ?? 10} reasoning messages per 12h
             </p>
           </div>
         </TooltipContent>
