@@ -142,6 +142,7 @@ export default function AiPageClient() {
     toolCalls: msg.toolCalls,
     toolStatus: msg.toolStatus,
     isWatchlistAnalysis: msg.isWatchlistAnalysis,
+    metrics: msg.metrics,
   }));
 
   useEffect(() => {

@@ -853,7 +853,7 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
                   className={cn(
                     "px-2 py-1 text-xs font-medium rounded-md transition-colors flex items-center gap-0.5",
                     range === r
-                      ? "bg-brand text-white"
+                      ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 shadow-sm"
                       : isLocked
                         ? "text-slate-400 dark:text-slate-500"
                         : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"

@@ -27,6 +27,7 @@ import { type PriceHistoryPoint } from "@/components/company/CompanyChartsSwitch
 import { CompanyDescriptionModal } from "@/components/company/CompanyDescriptionModal";
 import { CompanyLogo } from "@/components/company/CompanyLogo";
 import { CompanyTabSwitcher } from "@/components/company/CompanyTabSwitcher";
+import { PositionCard } from "@/components/portfolio/PositionCard";
 
 import { FiftyTwoWeekRange } from "@/components/company/FiftyTwoWeekRange";
 import { NewsFeed, type NewsArticle } from "@/components/company/NewsFeed";
@@ -516,6 +517,9 @@ async function CompanyContent({ ticker }: { ticker: string }) {
         <div className="mx-auto max-w-[1600px] py-6 px-4 md:px-8 lg:px-12 space-y-8">
           {/* Hero Section */}
           <CompanyHero data={data} />
+
+          {/* Portfolio Position Card - Only shows if user owns this stock */}
+          <PositionCard ticker={ticker} />
 
           {/* Main Grid */}
           <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">

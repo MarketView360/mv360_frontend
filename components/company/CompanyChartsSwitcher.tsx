@@ -245,10 +245,10 @@ export function CompanyChartsSwitcher({
                     type="button"
                     onClick={() => setRange(r)}
                     className={cn(
-                      "px-2 py-1 rounded-md border transition-all",
+                      "px-2 py-1 rounded-md transition-all font-medium",
                       range === r
-                        ? "bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white font-semibold"
-                        : "bg-white/70 dark:bg-slate-900/70 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800",
+                        ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 shadow-sm"
+                        : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
                     )}
                   >
                     {r}
