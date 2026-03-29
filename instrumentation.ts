@@ -1,4 +1,10 @@
 import * as Sentry from '@sentry/nextjs';
+import { PostHog } from 'posthog-node';
+
+// Singleton PostHog instance for server-side usage
+export const posthog = new PostHog(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
+  host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+});
 
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {

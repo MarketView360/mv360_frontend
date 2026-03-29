@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Suspense } from "react";
 
 import * as Sentry from "@sentry/nextjs";
 import type { Metadata } from "next";
@@ -15,6 +16,7 @@ import RouteChrome from "./RouteChrome";
 import { Toaster } from "@/components/ui/sonner";
 import { MaintenanceWrapper } from "@/components/MaintenanceWrapper";
 import { GlobalStructuredData } from "@/components/seo";
+import { PostHogPageView } from "./PostHogPageView";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -76,6 +78,9 @@ export default function RootLayout({
           }}
         />
         <ThemeProvider>
+          <Suspense fallback={null}>
+            <PostHogPageView />
+          </Suspense>
           <MaintenanceWrapper>
             <RouteChrome>{children}</RouteChrome>
             <Toaster position="top-right" richColors closeButton />

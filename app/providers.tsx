@@ -3,6 +3,19 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { AuthProvider } from "@/providers/AuthProvider";
 import { WatchlistProvider } from "@/providers/WatchlistProvider";
+import posthog from "posthog-js";
+import { PostHogProvider } from "posthog-js/react";
+
+if (typeof window !== "undefined") {
+  posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
+    api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+    person_profiles: "identified_only",
+    capture_pageview: false,
+    defaults: "2026-01-30",
+  });
+  // Expose posthog to window for debugging in console
+  (window as any).posthog = posthog;
+}
 
 type Theme = "light" | "dark";
 
@@ -63,13 +76,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, isDark }}>
-      <AuthProvider>
-        <WatchlistProvider>
-          {children}
-        </WatchlistProvider>
-      </AuthProvider>
-    </ThemeContext.Provider>
+    <PostHogProvider client={posthog}>
+      <ThemeContext.Provider value={{ theme, setTheme, isDark }}>
+        <AuthProvider>
+          <WatchlistProvider>
+            {children}
+          </WatchlistProvider>
+        </AuthProvider>
+      </ThemeContext.Provider>
+    </PostHogProvider>
   );
 }
 
