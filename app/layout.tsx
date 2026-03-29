@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
 
+import * as Sentry from "@sentry/nextjs";
+import type { Metadata } from "next";
+
 import { Inter, Lexend_Mega } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -24,6 +27,17 @@ const lexend = Lexend_Mega({
   variable: "--font-lexend",
   display: "swap",
 });
+
+// ✅ Added for Sentry tracing
+export function generateMetadata(): Metadata {
+  return {
+    title: "MarketView360",
+    description: "Financial analytics platform",
+    other: {
+      ...Sentry.getTraceData(),
+    },
+  };
+}
 
 export default function RootLayout({
   children,

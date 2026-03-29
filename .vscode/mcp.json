@@ -1,8 +1,12 @@
 {
   "servers": {
     "Sentry": {
-      "url": "https://mcp.sentry.dev/mcp/upcheck-1a/javascript-nextjs",
+      "url": "https://mcp.sentry.dev/mcp/marketview360/marketview360-frontend",
       "type": "http"
+    },
+    "sentry": {
+      "type": "http",
+      "url": "https://mcp.sentry.dev/mcp"
     }
   }
 }
