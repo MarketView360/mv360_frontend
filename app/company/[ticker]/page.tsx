@@ -488,15 +488,18 @@ export default async function CompanyPage({
 // Separate component for async data fetching
 async function CompanyContent({ ticker }: { ticker: string }) {
   try {
-    // PERFORMANCE: Fetch ALL data in parallel to minimize latency
-    const [companyData, pricesData, valuationHistory, peersData, newsData] = await Promise.all([
+    // PERFORMANCE: Fetch critical data in parallel - exclude news (slow external API)
+    // News will be loaded separately with its own Suspense boundary
+    const [companyData, pricesData, valuationHistory, peersData] = await Promise.all([
       api.fetchCompany(ticker),
       api.fetchPrices(ticker),
       fetchValuationHistory(ticker),
       // Non-blocking: these can fail without breaking the page
       fetchPeers(ticker, null).catch(() => []),
-      fetchNews(ticker).catch(() => []),
     ]);
+    
+    // News is fetched separately - don't block initial page load
+    const newsData: NewsArticle[] = [];
 
     if (!companyData?.company) {
       notFound();
