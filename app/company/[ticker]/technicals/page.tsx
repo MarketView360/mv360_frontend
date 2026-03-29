@@ -61,9 +61,10 @@ function PageSkeleton() {
 export default async function TechnicalsPage({
   params,
 }: {
-  params: { ticker: string };
+  params: Promise<{ ticker: string }>;
 }) {
-  const ticker = params.ticker?.toUpperCase?.() ?? "";
+  const resolvedParams = await params;
+  const ticker = resolvedParams.ticker?.toUpperCase?.() ?? "";
 
   return (
     <Suspense fallback={<PageSkeleton />}>

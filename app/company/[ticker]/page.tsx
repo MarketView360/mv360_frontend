@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { use } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
@@ -474,9 +475,10 @@ function Skeleton({ className }: { className: string }) {
 export default async function CompanyPage({
   params,
 }: {
-  params: { ticker: string };
+  params: Promise<{ ticker: string }>;
 }) {
-  const ticker = params.ticker?.toUpperCase?.() ?? "";
+  const resolvedParams = await params;
+  const ticker = resolvedParams.ticker?.toUpperCase?.() ?? "";
 
   return (
     <Suspense fallback={<PageSkeleton />}>

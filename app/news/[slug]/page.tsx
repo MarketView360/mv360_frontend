@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, use } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -164,7 +164,8 @@ function formatInlineText(text: string): string {
 }
 
 export default function NewsArticlePage() {
-  const params = useParams();
+  const paramsPromise = useParams();
+  const params = use(paramsPromise as Promise<{ slug: string }>);
   const router = useRouter();
   const slug = params.slug as string;
 

@@ -8,8 +8,9 @@ import { cn } from "@/lib/utils";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Users } from "lucide-react";
 
-export default async function HoldersPage({ params }: { params: { ticker: string } }) {
-    const ticker = params.ticker.toUpperCase();
+export default async function HoldersPage({ params }: { params: Promise<{ ticker: string }> }) {
+    const resolvedParams = await params;
+    const ticker = resolvedParams.ticker.toUpperCase();
 
     // Basic company fetch for header
     const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";

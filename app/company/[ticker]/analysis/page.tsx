@@ -1,5 +1,7 @@
+"use client";
+
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, use } from "react";
 
 import { CompanyLogo } from "@/components/company/CompanyLogo";
 import { UsdValue } from "@/components/company/UsdValue";
@@ -9,8 +11,8 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { ContentGate } from "@/components/company/ContentGate";
 import { Activity } from "lucide-react";
 
-export default function AnalysisPage({ params }: { params: { ticker: string } }) {
-    const ticker = params.ticker.toUpperCase();
+export default function AnalysisPage({ params }: { params: Promise<{ ticker: string }> }) {
+    const { ticker } = use(params);
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20">
