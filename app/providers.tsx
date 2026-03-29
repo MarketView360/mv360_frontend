@@ -7,17 +7,33 @@ import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
 
 if (typeof window !== "undefined") {
-  posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY!, {
-    api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
-    person_profiles: "identified_only",
-    capture_pageview: false,
-    defaults: "2026-01-30",
-    loaded: (posthog) => {
-      console.log("PostHog initialized successfully");
-      // Expose posthog to window for debugging in console
-      (window as any).posthog = posthog;
-    },
-  });
+  const postHogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+  const postHogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST;
+
+  console.log("[PostHog Debug] Env vars on client:");
+  console.log("[PostHog Debug] Key:", postHogKey ? `${postHogKey.substring(0, 8)}...` : "UNDEFINED");
+  console.log("[PostHog Debug] Host:", postHogHost || "UNDEFINED");
+
+  if (!postHogKey || !postHogHost) {
+    console.error("[PostHog Debug] MISSING ENV VARS - PostHog will not initialize");
+  } else {
+    posthog.init(postHogKey, {
+      api_host: postHogHost,
+      person_profiles: "always", // Changed from "identified_only" to allow anonymous events
+      capture_pageview: false,
+      defaults: "2026-01-30",
+      loaded: (posthog) => {
+        console.log("[PostHog Debug] PostHog initialized successfully");
+        console.log("[PostHog Debug] PostHog loaded status:", posthog.__loaded);
+        console.log("[PostHog Debug] PostHog instance:", posthog);
+        // Expose posthog to window for debugging in console
+        (window as any).posthog = posthog;
+      },
+      verbose: true, // Enable verbose logging
+      disable_compression: false,
+      autocapture: true, // Enable autocapture for testing
+    });
+  }
 }
 
 type Theme = "light" | "dark";
