@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sparkles, Zap, Shield, TrendingUp, MessageSquare, Clock, ArrowRight, Crown } from "lucide-react";
@@ -12,12 +13,12 @@ interface PremiumRequiredProps {
   resetsAt?: string;
 }
 
-export function PremiumRequired({ reason, cooldownUntil, resetsAt }: PremiumRequiredProps) {
+export const PremiumRequired = React.memo(function PremiumRequired({ reason, cooldownUntil, resetsAt }: PremiumRequiredProps) {
   const router = useRouter();
 
-  const handleUpgrade = () => {
+  const handleUpgrade = React.useCallback(() => {
     router.push('/pricing');
-  };
+  }, [router]);
 
   // Cooldown / Quota exhausted state - temporary limitation
   if (reason === 'cooldown_active' || reason === 'quota_exceeded') {
@@ -159,4 +160,9 @@ export function PremiumRequired({ reason, cooldownUntil, resetsAt }: PremiumRequ
       </Card>
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison function - only re-render if props actually change
+  return prevProps.reason === nextProps.reason
+    && prevProps.cooldownUntil === nextProps.cooldownUntil
+    && prevProps.resetsAt === nextProps.resetsAt;
+});
