@@ -12,9 +12,12 @@ if (typeof window !== "undefined") {
     person_profiles: "identified_only",
     capture_pageview: false,
     defaults: "2026-01-30",
+    loaded: (posthog) => {
+      console.log("PostHog initialized successfully");
+      // Expose posthog to window for debugging in console
+      (window as any).posthog = posthog;
+    },
   });
-  // Expose posthog to window for debugging in console
-  (window as any).posthog = posthog;
 }
 
 type Theme = "light" | "dark";
