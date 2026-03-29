@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
+import { identifyPostHogUser } from "@/lib/posthog";
 
 interface MfaFactor {
   id: string;
@@ -105,6 +106,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Identify user in PostHog when auth state changes
+        if (session?.user) {
+          identifyPostHogUser(session.user.id, {
+            email: session.user.email,
+            full_name: session.user.user_metadata?.full_name,
+            is_premium: session.user.user_metadata?.is_premium ?? false,
+          });
+          console.log('[PostHog] User identified:', session.user.email);
+        }
       }
     );
 

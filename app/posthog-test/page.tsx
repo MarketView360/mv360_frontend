@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { usePostHogClient, capturePostHogEvent, identifyPostHogUser } from "@/lib/posthog";
 import { toast } from "sonner";
+import { PostHogDebug } from "@/components/PostHogDebug";
 
 export default function PostHogTestPage() {
   const posthog = usePostHogClient();
@@ -50,6 +51,28 @@ export default function PostHogTestPage() {
     const apiKey = process.env.NEXT_PUBLIC_POSTHOG_KEY;
     const host = process.env.NEXT_PUBLIC_POSTHOG_HOST;
 
+    // Test direct API connectivity
+    fetch(`${host}/decide/?v=3`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token: apiKey,
+        distinct_id: 'test-user',
+      }),
+    })
+      .then(res => {
+        console.log('[PostHog Test] Direct API response status:', res.status);
+        return res.json();
+      })
+      .then(data => {
+        console.log('[PostHog Test] Direct API response:', data);
+        toast.success(`Direct API test: SUCCESS`);
+      })
+      .catch(err => {
+        console.error('[PostHog Test] Direct API error:', err);
+        toast.error(`Direct API test failed: ${err.message}`);
+      });
+
     toast.info(
       `PostHog ${isReady ? "READY" : "NOT READY"} | Key: ${apiKey?.substring(0, 8)}... | Host: ${host}`
     );
@@ -58,6 +81,7 @@ export default function PostHogTestPage() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-8">
       <div className="max-w-2xl mx-auto space-y-6">
+        <PostHogDebug />
         <Card>
           <CardHeader>
             <CardTitle>PostHog Integration Test</CardTitle>

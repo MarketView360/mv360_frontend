@@ -17,6 +17,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { MaintenanceWrapper } from "@/components/MaintenanceWrapper";
 import { GlobalStructuredData } from "@/components/seo";
 import { PostHogPageView } from "./PostHogPageView";
+import { PostHogSurveys } from "@/components/PostHogSurveys";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -80,6 +81,7 @@ export default function RootLayout({
         <ThemeProvider>
           <Suspense fallback={null}>
             <PostHogPageView />
+            <PostHogSurveys />
           </Suspense>
           <MaintenanceWrapper>
             <RouteChrome>{children}</RouteChrome>

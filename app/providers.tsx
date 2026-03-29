@@ -32,6 +32,7 @@ if (typeof window !== "undefined") {
       verbose: true, // Enable verbose logging
       disable_compression: false,
       autocapture: true, // Enable autocapture for testing
+      surveys: true, // Enable PostHog surveys
     });
   }
 }
@@ -66,6 +67,29 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(getInitialTheme);
   const [isDark, setIsDark] = useState(theme === "dark");
   const [mounted, setMounted] = useState(false);
+
+  // Debug: Log PostHog status after mount
+  useEffect(() => {
+    setMounted(true);
+    applyTheme(theme);
+
+    // Check PostHog status 1 second after mount
+    const checkPostHog = setTimeout(() => {
+      if (typeof window !== "undefined") {
+        const ph = (window as any).posthog;
+        if (ph) {
+          console.log("[PostHog Debug] PostHog found on window:", {
+            loaded: ph.__loaded,
+            config: ph.config,
+          });
+        } else {
+          console.warn("[PostHog Debug] PostHog NOT found on window!");
+        }
+      }
+    }, 1000);
+
+    return () => clearTimeout(checkPostHog);
+  }, []);
 
   const applyTheme = (themeToApply: Theme) => {
     const htmlElement = document.documentElement;
