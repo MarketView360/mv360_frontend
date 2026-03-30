@@ -65,6 +65,119 @@ export function CompanyChartsSwitcher({
   const [range, setRange] = useState<"1Y" | "3Y" | "5Y" | "Max">("1Y");
   const [normType, setNormType] = useState<"indexed" | "minmax">("indexed");
   const [fullscreen, setFullscreen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [isLoadingPrices, setIsLoadingPrices] = useState(false);
+  const [currentPriceHistory, setCurrentPriceHistory] = useState<PriceHistoryPoint[] | null>(priceHistory);
+
+  // Cache for prefetched price data (stored in memory, survives re-renders)
+  const priceDataCache = React.useRef<Map<string, PriceHistoryPoint[]>>(new Map());
+  // Track which ticker's data has been prefetched
+  const prefetchedTicker = React.useRef<string | null>(null);
+  const isPrefetching = React.useRef(false);
+
+  // Fetch prices for the selected range (with caching)
+  const fetchPricesForRange = React.useCallback(async (selectedRange: typeof range, setLoading = true) => {
+    if (!ticker) return;
+
+    const cacheKey = `${ticker}:${selectedRange}`;
+
+    // Check cache first
+    const cached = priceDataCache.current.get(cacheKey);
+    if (cached) {
+      setCurrentPriceHistory(cached);
+      return;
+    }
+
+    if (setLoading) setIsLoadingPrices(true);
+    try {
+      const rangeParam = selectedRange === "Max" ? "max" : selectedRange.toLowerCase();
+      const res = await fetch(`/api/prices/${encodeURIComponent(ticker)}?range=${rangeParam}`, {
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) throw new Error(`Failed to fetch prices: ${res.statusText}`);
+      const data = await res.json();
+      const mapped: PriceHistoryPoint[] = (data.prices || []).map((p: any) => ({
+        date: p.date,
+        price: p.adj_close ?? p.close ?? 0,
+        open: p.open ?? null,
+        high: p.high ?? null,
+        low: p.low ?? null,
+        close: p.close ?? null,
+        volume: p.volume ?? null,
+      }));
+      priceDataCache.current.set(cacheKey, mapped);
+      setCurrentPriceHistory(mapped);
+    } catch (err) {
+      console.error("Error fetching prices for range:", err);
+    } finally {
+      if (setLoading) setIsLoadingPrices(false);
+    }
+  }, [ticker]);
+
+  const handleRangeChange = React.useCallback((newRange: typeof range) => {
+    setRange(newRange);
+    // Check cache first - if available, set immediately
+    const cacheKey = `${ticker}:${newRange}`;
+    const cached = priceDataCache.current.get(cacheKey);
+    if (cached) {
+      setCurrentPriceHistory(cached);
+    } else {
+      // Not cached, fetch and show loading
+      fetchPricesForRange(newRange);
+    }
+  }, [fetchPricesForRange, ticker]);
+
+  // Prefetch extended ranges in background after initial load
+  useEffect(() => {
+    if (!mounted || !ticker || isPrefetching.current) return;
+
+    // Skip if already prefetched for this ticker
+    if (prefetchedTicker.current === ticker) return;
+
+    isPrefetching.current = true;
+    prefetchedTicker.current = ticker;
+
+    // Prefetch 3Y, 5Y, Max in background (non-blocking, staggered to avoid overwhelming)
+    const prefetchRanges = async () => {
+      const rangesToPrefetch: Array<{ range: typeof range; delay: number }> = [
+        { range: "3Y", delay: 200 },   // Start after 200ms
+        { range: "5Y", delay: 600 },   // Start after 600ms
+        { range: "Max", delay: 1200 }, // Start after 1.2s (largest dataset)
+      ];
+
+      for (const { range: r, delay } of rangesToPrefetch) {
+        // Wait for delay
+        await new Promise(resolve => setTimeout(resolve, delay));
+
+        // Only prefetch if not already cached for this ticker
+        const cacheKey = `${ticker}:${r}`;
+        if (!priceDataCache.current.has(cacheKey)) {
+          const rangeParam = r === "Max" ? "max" : r.toLowerCase();
+          fetch(`/api/prices/${encodeURIComponent(ticker)}?range=${rangeParam}`, {
+            headers: { "Content-Type": "application/json" },
+          })
+            .then(res => res.json())
+            .then(data => {
+              const mapped: PriceHistoryPoint[] = (data.prices || []).map((p: any) => ({
+                date: p.date,
+                price: p.adj_close ?? p.close ?? 0,
+                open: p.open ?? null,
+                high: p.high ?? null,
+                low: p.low ?? null,
+                close: p.close ?? null,
+                volume: p.volume ?? null,
+              }));
+              priceDataCache.current.set(cacheKey, mapped);
+            })
+            .catch(() => {
+              // Silently fail - user can still click and fetch on-demand
+            });
+        }
+      }
+    };
+
+    prefetchRanges();
+  }, [mounted, ticker]);
 
   // ... (rest of the logic remains same until render) ...
   const hasValuations = valuationMetrics.some((m) => m.value != null);
@@ -125,8 +238,6 @@ export function CompanyChartsSwitcher({
     });
   }, [valuationHistory, range, normType]);
 
-  const [mounted, setMounted] = useState(false);
-
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -147,7 +258,13 @@ export function CompanyChartsSwitcher({
       {mode === "price" && (
         <div className={cn(heightClass, "w-full")}>
           <Suspense fallback={<div className="h-full w-full bg-slate-100 dark:bg-slate-800 animate-pulse rounded-lg" />}>
-            <PriceChart data={priceHistory} ticker={ticker} />
+            {isLoadingPrices ? (
+              <div className="h-full w-full flex items-center justify-center">
+                <div className="text-sm text-slate-500 dark:text-slate-400">Loading prices...</div>
+              </div>
+            ) : (
+              <PriceChart data={currentPriceHistory || priceHistory} ticker={ticker} />
+            )}
           </Suspense>
         </div>
       )}
@@ -243,7 +360,7 @@ export function CompanyChartsSwitcher({
                   <button
                     key={r}
                     type="button"
-                    onClick={() => setRange(r)}
+                    onClick={() => handleRangeChange(r)}
                     className={cn(
                       "px-2 py-1 rounded-md transition-all font-medium",
                       range === r
@@ -411,11 +528,11 @@ export function CompanyChartsSwitcher({
       </Card>
 
       {fullscreen && mounted && createPortal(
-        <div className="fixed inset-0 z-[9999] bg-slate-950 text-slate-50 flex flex-col overflow-hidden">
+        <div className="fixed inset-0 z-9999 bg-slate-950 text-slate-50 flex flex-col overflow-hidden">
           <div className="flex-1 flex flex-col min-h-0 px-4 pt-3 pb-0">
             {mode === "price" && (
               <PriceChart
-                data={priceHistory}
+                data={currentPriceHistory || priceHistory}
                 ticker={ticker}
                 fullscreen={fullscreen}
                 onClose={() => setFullscreen(false)}
