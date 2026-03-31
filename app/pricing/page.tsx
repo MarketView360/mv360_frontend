@@ -217,6 +217,8 @@ export default function PricingPage() {
 
     const isAnnual = billingPeriod === "annually";
     const savingsPercent = 17;
+    const showMaxPlan = process.env.NEXT_PUBLIC_ENABLE_MAX_PLAN === "true";
+    const displayedPlans = showMaxPlan ? plans : plans.filter(p => p.tier !== "max");
 
     // Fetch user subscription on mount
     useEffect(() => {
@@ -294,8 +296,8 @@ export default function PricingPage() {
             {/* Pricing Cards */}
             <section className="py-8 md:py-10">
                 <div className="mx-auto max-w-5xl px-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5 items-start">
-                        {plans.map((plan) => (
+                    <div className={`grid grid-cols-1 ${showMaxPlan ? 'md:grid-cols-3' : 'md:grid-cols-2 max-w-3xl mx-auto'} gap-4 lg:gap-5 items-start`}>
+                        {displayedPlans.map((plan) => (
                             <PricingCard
                                 key={plan.tier}
                                 plan={plan}
@@ -335,9 +337,11 @@ export default function PricingPage() {
                                     <th className="text-center py-3 px-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#f59e0b' }}>
                                         Premium
                                     </th>
-                                    <th className="text-center py-3 px-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#8b5cf6' }}>
-                                        Max
-                                    </th>
+                                    {showMaxPlan && (
+                                        <th className="text-center py-3 px-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#8b5cf6' }}>
+                                            Max
+                                        </th>
+                                    )}
                                 </tr>
                             </thead>
                             <tbody>
@@ -347,7 +351,7 @@ export default function PricingPage() {
                                         <React.Fragment key={category.category}>
                                             <tr className="bg-slate-50/50 dark:bg-slate-800/30">
                                                 <td
-                                                    colSpan={4}
+                                                    colSpan={showMaxPlan ? 4 : 3}
                                                     className="py-2 px-4 text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider"
                                                 >
                                                     {category.category}
@@ -367,9 +371,11 @@ export default function PricingPage() {
                                                     <td className="py-2.5 px-3 text-center">
                                                         <FeatureValue value={feature.pro} />
                                                     </td>
-                                                    <td className="py-2.5 px-3 text-center">
-                                                        <FeatureValue value={(feature as any).elite} />
-                                                    </td>
+                                                    {showMaxPlan && (
+                                                        <td className="py-2.5 px-3 text-center">
+                                                            <FeatureValue value={(feature as any).elite} />
+                                                        </td>
+                                                    )}
                                                 </tr>
                                             ))}
                                         </React.Fragment>
