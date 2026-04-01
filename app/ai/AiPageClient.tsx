@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Sidebar } from "./components/Sidebar";
@@ -30,9 +30,25 @@ const ENABLE_SUGGESTIONS =
   process.env.NEXT_PUBLIC_ENABLE_AI_SUGGESTIONS !== "false";
 
 export default function AiPageClient() {
+  // Use useSearchParams safely inside useEffect to avoid Router update during render
   const searchParams = useSearchParams();
-  const urlSessionId = searchParams.get("session");
-  const watchlistParam = searchParams.get("watchlist");
+  const [urlSessionId, setUrlSessionId] = useState<string | null>(null);
+  const [watchlistParam, setWatchlistParam] = useState<string | null>(null);
+
+  // Extract search params in useEffect to avoid triggering Router updates during render
+  useEffect(() => {
+    setUrlSessionId(searchParams.get("session"));
+    setWatchlistParam(searchParams.get("watchlist"));
+  }, [searchParams]);
+
+  // Show loading state while extracting search params
+  if (urlSessionId === null || watchlistParam === null) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-white dark:bg-slate-950">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
 
   const { session, loading: isAuthLoading } = useAuth();
   const token = session?.access_token ?? null;
