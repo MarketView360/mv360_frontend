@@ -29,27 +29,14 @@ const ALLOW_ANONYMOUS_CHAT = false;
 const ENABLE_SUGGESTIONS =
   process.env.NEXT_PUBLIC_ENABLE_AI_SUGGESTIONS !== "false";
 
-export default function AiPageClient() {
-  // Use useSearchParams safely inside useEffect to avoid Router update during render
-  const searchParams = useSearchParams();
-  const [urlSessionId, setUrlSessionId] = useState<string | null>(null);
-  const [watchlistParam, setWatchlistParam] = useState<string | null>(null);
-
-  // Extract search params in useEffect to avoid triggering Router updates during render
-  useEffect(() => {
-    setUrlSessionId(searchParams.get("session"));
-    setWatchlistParam(searchParams.get("watchlist"));
-  }, [searchParams]);
-
-  // Show loading state while extracting search params
-  if (urlSessionId === null || watchlistParam === null) {
-    return (
-      <div className="flex h-full w-full items-center justify-center bg-white dark:bg-slate-950">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-      </div>
-    );
-  }
-
+// Inner component that receives search params as props (no useSearchParams call here)
+function AiPageClientContent({
+  urlSessionId,
+  watchlistParam,
+}: {
+  urlSessionId: string | null;
+  watchlistParam: string | null;
+}) {
   const { session, loading: isAuthLoading } = useAuth();
   const token = session?.access_token ?? null;
 
@@ -527,4 +514,13 @@ export default function AiPageClient() {
       </div>
     </TooltipProvider>
   );
+}
+
+// Wrapper component that handles useSearchParams() - this triggers Suspense
+export default function AiPageClient() {
+  const searchParams = useSearchParams();
+  const urlSessionId = searchParams?.get("session") ?? null;
+  const watchlistParam = searchParams?.get("watchlist") ?? null;
+
+  return <AiPageClientContent urlSessionId={urlSessionId} watchlistParam={watchlistParam} />;
 }
