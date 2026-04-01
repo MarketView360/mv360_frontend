@@ -1,4 +1,5 @@
 import { withSentryConfig } from '@sentry/nextjs';
+import { withPostHogConfig } from '@posthog/nextjs-config';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -7,7 +8,7 @@ const __dirname = path.dirname(__filename);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    productionBrowserSourceMaps: false,
+    productionBrowserSourceMaps: true, // Enable source maps for production
     swcMinify: true,
     typescript: {
         ignoreBuildErrors: true,
@@ -61,40 +62,25 @@ const nextConfig = {
     },
 };
 
-export default withSentryConfig(nextConfig, {
-  // For all available options, see:
-  // https://www.npmjs.com/package/@sentry/webpack-plugin#options
-
+export default withPostHogConfig(withSentryConfig(nextConfig, {
+  // Sentry config
   org: "marketview360",
-
   project: "marketview360-frontend",
-
-  // Only print logs for uploading source maps in CI
   silent: !process.env.CI,
-
-  // For all available options, see:
-  // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
-
-  // Upload a larger set of source maps for prettier stack traces (increases build time)
   widenClientFileUpload: true,
-
-  // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
-  // This can increase your server load as well as your hosting bill.
-  // Note: Check that the configured route will not match with your Next.js middleware, otherwise reporting of client-
-  // side errors will fail.
   tunnelRoute: "/monitoring",
-
   webpack: {
-    // Enables automatic instrumentation of Vercel Cron Monitors. (Does not yet work with App Router route handlers.)
-    // See the following for more information:
-    // https://docs.sentry.io/product/crons/
-    // https://vercel.com/docs/cron-jobs
     automaticVercelMonitors: true,
-
-    // Tree-shaking options for reducing bundle size
-    treeshake: {
-      // Automatically tree-shake Sentry logger statements to reduce bundle size
-      removeDebugLogging: true,
-    },
+    removeDebugLogging: true,
+  },
+}), {
+  // PostHog config for source maps
+  personalApiKey: process.env.POSTHOG_PERSONAL_API_KEY,
+  projectId: process.env.POSTHOG_PROJECT_ID,
+  host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
+  sourcemaps: {
+    enabled: true,
+    releaseName: "marketview360",
+    deleteAfterUpload: false, // Keep sourcemaps for debugging
   },
 });
