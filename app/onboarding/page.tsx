@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { usePostHog } from "posthog-js/react";
 import { useAuth } from "@/providers/AuthProvider";
@@ -24,7 +24,8 @@ const REDIRECT_MAP: Record<string, string> = {
   build_screens: "/screens",
 };
 
-export default function OnboardingPage() {
+// Inner component that uses useSearchParams
+function OnboardingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const posthog = usePostHog();
@@ -427,5 +428,19 @@ export default function OnboardingPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+// Wrapper component with Suspense boundary
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
+        <p className="text-sm text-slate-400">Loading onboarding…</p>
+      </div>
+    }>
+      <OnboardingContent />
+    </Suspense>
   );
 }

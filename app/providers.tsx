@@ -38,7 +38,9 @@ if (typeof window !== "undefined") {
         // Bootstrap feature flags for immediate availability
         // These will be overwritten when flags are loaded from the server
         featureFlags: {
-          'ai-enabled': false, // Default to disabled until loaded
+          'ai-enabled': false,           // Master AI kill switch
+          'ai-enable-free': false,        // Free user AI access (default: disabled)
+          'show-free-ai-promo-msg': false, // Show promo message to free users
         },
       },
     });

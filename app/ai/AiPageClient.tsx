@@ -22,6 +22,8 @@ import { useToolsConfig } from "@/hooks/useToolsConfig";
 import { AIApiError } from "@/lib/api/ai";
 import { useAiFeatureFlag } from "@/hooks/useAiFeatureFlag";
 import { AiUnavailable } from "./AiUnavailable";
+import { useAiEnableFree } from "@/hooks/useAiEnableFree";
+import { FreeAiPromoBanner } from "@/components/ai/FreeAiPromoBanner";
 
 // AI chat is now PREMIUM ONLY - anonymous access disabled
 const ALLOW_ANONYMOUS_CHAT = false;
@@ -42,10 +44,13 @@ function AiPageClientContent({
   const { session, loading: isAuthLoading } = useAuth();
   const token = session?.access_token ?? null;
 
-  // Check PostHog feature flag for AI availability
+  // Check PostHog feature flag for AI availability (master kill switch)
   const { isEnabled: isAiEnabled, isLoading: isFlagLoading } = useAiFeatureFlag();
 
-  // Premium-only access check
+  // Check PostHog feature flag for free user AI access
+  const { isEnabled: isAiFreeEnabled } = useAiEnableFree();
+
+  // Premium-only access check (modified to allow free users when flag is enabled)
   const { access: aiAccess, loading: accessLoading, refetch: refetchAccess } = useAIAccess(token);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -257,12 +262,17 @@ function AiPageClientContent({
 
       // Authenticated user: Check quota before sending
       if (quota) {
-        // Free users should be blocked by PremiumRequired screen, but double-check here
+        // Free users: check if ai-enable-free flag is enabled
         if (quota.tier === "free") {
-          toast.error("Premium required", {
-            description: "AI chat is exclusively available to Premium subscribers.",
-          });
-          return;
+          if (!isAiFreeEnabled) {
+            // Flag disabled - free users cannot access AI
+            toast.error("Premium required", {
+              description: "AI chat is exclusively available to Premium subscribers.",
+            });
+            return;
+          }
+          // Flag enabled - free users can access with 20K token limit
+          // Continue to check token quota below
         }
 
         // Check token quota for standard messages
@@ -322,6 +332,7 @@ function AiPageClientContent({
       isReasoningEnabled,
       quota,
       canUse,
+      isAiFreeEnabled,
       sendMessage,
       addSession,
       refreshQuotaSoon,
@@ -382,25 +393,35 @@ function AiPageClientContent({
   }
 
   // Show login required page if anonymous chat is disabled and user is not logged in
-  // AI chat is now premium-only - show login for unauthenticated users
+  // AI chat is now premium-only (or free when ai-enable-free flag is enabled)
   if (!ALLOW_ANONYMOUS_CHAT && !token) {
     return <LoginRequired />;
   }
 
-  // Check if user has AI access (premium required)
+  // Check if user has AI access
+  // When ai-enable-free flag is enabled, free users can access AI with 20K token limit
   if (token && aiAccess && !aiAccess.allowed) {
-    return (
-      <PremiumRequired
-        reason={aiAccess.reason}
-        cooldownUntil={aiAccess.cooldownInfo?.until}
-        resetsAt={aiAccess.cooldownInfo?.resetsAt}
-      />
-    );
+    // If flag is enabled and user is free, allow access (skip PremiumRequired)
+    const isFreeUser = aiAccess.reason === 'not_premium';
+    if (isFreeUser && isAiFreeEnabled) {
+      // Free user with flag enabled - allow access, skip premium check
+    } else {
+      // Show premium required for other cases (cooldown, quota exceeded, etc.)
+      return (
+        <PremiumRequired
+          reason={aiAccess.reason}
+          cooldownUntil={aiAccess.cooldownInfo?.until}
+          resetsAt={aiAccess.cooldownInfo?.resetsAt}
+        />
+      );
+    }
   }
 
   return (
     <TooltipProvider delayDuration={200} skipDelayDuration={300}>
       <div className="flex h-full w-full bg-white dark:bg-slate-950 overflow-hidden">
+        {/* Promo banner for free users */}
+        <FreeAiPromoBanner />
         {/* Sidebar */}
         <Sidebar
         isOpen={isSidebarOpen}
