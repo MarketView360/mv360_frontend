@@ -9,18 +9,29 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await createClient()
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) {
-      const forwardedHost = request.headers.get('x-forwarded-host') // original origin before load balancer
+    const { error, data } = await supabase.auth.exchangeCodeForSession(code)
+    if (!error && data.session) {
+      const forwardedHost = request.headers.get('x-forwarded-host')
       const isLocalEnv = process.env.NODE_ENV === 'development'
-      if (isLocalEnv) {
-        // we can be sure that there is no load balancer in between, so no need to watch for X-Forwarded-Host
-        return NextResponse.redirect(`${origin}${next}`)
-      } else if (forwardedHost) {
-        return NextResponse.redirect(`https://${forwardedHost}${next}`)
-      } else {
-        return NextResponse.redirect(`${origin}${next}`)
+      const baseUrl = isLocalEnv ? origin : (forwardedHost ? `https://${forwardedHost}` : origin)
+
+      // Check if user needs onboarding
+      try {
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('onboarded_at')
+          .eq('id', data.session.user.id)
+          .maybeSingle()
+
+        // If no profile or not onboarded, redirect to onboarding
+        if (!profile || !profile.onboarded_at) {
+          return NextResponse.redirect(`${baseUrl}/onboarding`)
+        }
+      } catch {
+        // If check fails, continue to normal redirect
       }
+
+      return NextResponse.redirect(`${baseUrl}${next}`)
     }
   }
 

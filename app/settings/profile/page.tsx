@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { User, Mail, Calendar, CheckCircle, Loader2, Crown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { CompleteSetupCard } from "@/components/onboarding/CompleteSetupCard";
 
 export default function ProfilePage() {
   const { session, user } = useAuth();
@@ -59,6 +60,9 @@ export default function ProfilePage() {
 
   if (!profile) return null;
 
+  // Check if user skipped onboarding
+  const showCompleteSetup = profile.onboarded_at && (profile as any).onboarding_skipped === true;
+
   return (
     <div className="space-y-6">
       <div>
@@ -67,6 +71,11 @@ export default function ProfilePage() {
           Manage your personal information and preferences
         </p>
       </div>
+
+      {/* Complete Setup Card for skipped users */}
+      {showCompleteSetup && (
+        <CompleteSetupCard />
+      )}
 
       {/* Profile Information */}
       <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
