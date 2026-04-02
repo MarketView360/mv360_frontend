@@ -189,7 +189,7 @@ export function HoldingsTable() {
               {filteredAndSorted.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="h-24 text-center">
-                    {search ? "No positions match your search." : "No positions found."}
+                    {searchTerm ? "No positions match your search." : "No positions found."}
                   </TableCell>
                 </TableRow>
               ) : (
