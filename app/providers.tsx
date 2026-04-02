@@ -34,7 +34,6 @@ if (typeof window !== "undefined") {
       verbose: true, // Enable verbose logging
       disable_compression: false,
       autocapture: true, // Enable autocapture for testing
-      surveys: true, // Enable PostHog surveys
       bootstrap: {
         // Bootstrap feature flags for immediate availability
         // These will be overwritten when flags are loaded from the server

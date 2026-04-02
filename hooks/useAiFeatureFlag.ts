@@ -40,7 +40,8 @@ export function useAiFeatureFlag() {
     };
 
     // Try immediate check (flags may be bootstrapped)
-    if (posthog.featureFlags.loaded) {
+    const flags = posthog.featureFlags;
+    if (flags && flags.getFlagVariants && Object.keys(flags.getFlagVariants()).length > 0) {
       handleFeatureFlags();
     } else {
       // Wait for flags to load
@@ -76,7 +77,8 @@ export function useAiFeatureFlagPayload() {
       setPayload(flagPayload || null);
     };
 
-    if (posthog.featureFlags.loaded) {
+    const flags = posthog.featureFlags;
+    if (flags && flags.getFlagVariants && Object.keys(flags.getFlagVariants()).length > 0) {
       handleFeatureFlags();
     } else {
       const unsubscribe = posthog.onFeatureFlags(handleFeatureFlags);
