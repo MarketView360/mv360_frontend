@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { usePostHog } from "posthog-js/react";
 import { useAuth } from "@/providers/AuthProvider";
 import { useOnboarding } from "@/hooks/useOnboarding";
@@ -26,6 +26,7 @@ const REDIRECT_MAP: Record<string, string> = {
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const posthog = usePostHog();
   const { session, loading: authLoading } = useAuth();
 
@@ -74,7 +75,9 @@ export default function OnboardingPage() {
       const accessToken = session.access_token;
       const statusData = await fetchStatus(accessToken);
 
-      if (statusData && !statusData.needs_onboarding) {
+      // Redirect to market only if onboarding is completed (not skipped, not needing onboarding)
+      // Skipped users should still be able to access onboarding to complete it
+      if (statusData && !statusData.needs_onboarding && !statusData.skipped) {
         router.replace("/market");
         return;
       }
@@ -82,6 +85,18 @@ export default function OnboardingPage() {
       if ((statusData?.last_completed_step ?? 0) > 0) {
         setShowResumeToast(true);
         setTimeout(() => setShowResumeToast(false), 4500);
+      }
+
+      // Handle ?step= query parameter (e.g., from profile page redirect)
+      const stepParam = searchParams.get("step");
+      if (stepParam) {
+        const stepNum = parseInt(stepParam, 10);
+        if (!isNaN(stepNum) && stepNum >= 1 && stepNum <= 4) {
+          setCurrentStep(stepNum);
+        }
+      } else if (statusData && (statusData.last_completed_step ?? 0) > 0) {
+        // Resume from last completed step + 1 if no step param
+        setCurrentStep(Math.min(statusData.last_completed_step + 1, 4));
       }
 
       // Pre-fill Step 1 from profile

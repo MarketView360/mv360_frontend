@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProfileAvatar, ProfileStats, PersonalInfoForm, AccountInfo } from "@/components/profile";
-import { AlertCircle, Save, Loader2, CheckCircle } from "lucide-react";
+import { AlertCircle, Save, Loader2, CheckCircle, Sparkles } from "lucide-react";
 import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 // Validation schema
 const profileSchema = z.object({
@@ -43,12 +45,20 @@ interface ProfileStats {
   memberSince: string;
 }
 
+interface OnboardingStatus {
+  needs_onboarding: boolean;
+  last_completed_step: number;
+  skipped: boolean;
+  subscription_tier: string;
+}
+
 export default function ProfilePage() {
   const { user, session, loading: authLoading } = useAuth();
   const router = useRouter();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [stats, setStats] = useState<ProfileStats | null>(null);
+  const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -65,11 +75,14 @@ export default function ProfilePage() {
     if (!session?.access_token) return;
 
     try {
-      const [profileRes, statsRes] = await Promise.all([
+      const [profileRes, statsRes, onboardingRes] = await Promise.all([
         fetch(`${apiBase}/profile`, {
           headers: { Authorization: `Bearer ${session.access_token}` },
         }),
         fetch(`${apiBase}/profile/stats`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        }),
+        fetch(`${apiBase}/profile/onboarding-status`, {
           headers: { Authorization: `Bearer ${session.access_token}` },
         }),
       ]);
@@ -84,6 +97,11 @@ export default function ProfilePage() {
       if (statsRes.ok) {
         const statsData = await statsRes.json();
         setStats(statsData);
+      }
+
+      if (onboardingRes.ok) {
+        const onboardingData = await onboardingRes.json();
+        setOnboardingStatus(onboardingData);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load profile");
@@ -167,6 +185,20 @@ export default function ProfilePage() {
     );
   }, [profile, displayName, fullName]);
 
+  // Show complete onboarding card when user needs to complete onboarding
+  const showCompleteOnboarding = useMemo(() => {
+    if (!onboardingStatus) return false;
+    // Show if: needs onboarding (incomplete) OR skipped (can come back to complete)
+    return onboardingStatus.needs_onboarding || onboardingStatus.skipped;
+  }, [onboardingStatus]);
+
+  const handleCompleteOnboarding = () => {
+    const step = onboardingStatus?.last_completed_step ?? 0;
+    // Start from the next step after last completed, or step 1 if none completed
+    const startStep = Math.min(step + 1, 1);
+    router.push(`/onboarding?step=${startStep}`);
+  };
+
   // Memoized member since date
   const memberSince = useMemo(() => {
     if (!stats?.memberSince) return "—";
@@ -233,6 +265,37 @@ export default function ProfilePage() {
             <AlertCircle className="h-5 w-5 text-red-500" />
             <p className="text-red-700 dark:text-red-300 text-sm">{error}</p>
           </div>
+        )}
+
+        {/* Complete Onboarding Card */}
+        {showCompleteOnboarding && (
+          <Card className="border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
+                  <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg text-blue-900 dark:text-blue-100">
+                    Complete Your Profile
+                  </CardTitle>
+                  <CardDescription className="text-blue-700 dark:text-blue-300">
+                    {onboardingStatus?.skipped
+                      ? "Come back to complete your profile setup for a personalized experience."
+                      : onboardingStatus?.last_completed_step
+                        ? `Pick up where you left off at Step ${onboardingStatus.last_completed_step + 1}.`
+                        : "Set up your profile to unlock personalized features."}
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={handleCompleteOnboarding} className="bg-blue-600 hover:bg-blue-500">
+                Continue Setup
+                <Sparkles className="h-4 w-4 ml-2" />
+              </Button>
+            </CardContent>
+          </Card>
         )}
 
         {/* Profile Overview */}
