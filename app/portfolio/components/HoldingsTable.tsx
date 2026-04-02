@@ -53,10 +53,8 @@ function formatNumber(value: number | null | undefined, decimals: number = 2): s
 export function HoldingsTable() {
   const { holdings } = usePortfolio();
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortConfig, setSortConfig] = useState<{
-    key: keyof Position;
-    direction: "asc" | "desc";
-  }>({ key: "marketValue", direction: "desc" });
+  const [sortKey, setSortKey] = useState<SortKey>("marketValue");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const positions = holdings?.positions || [];
 
@@ -125,7 +123,7 @@ export function HoldingsTable() {
 
       return sortDir === "asc" ? aVal - bVal : bVal - aVal;
     });
-  }, [positions, search, sortKey, sortDir]);
+  }, [positions, searchTerm, sortKey, sortDir]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -166,8 +164,8 @@ export function HoldingsTable() {
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search positions..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-8"
           />
         </div>
