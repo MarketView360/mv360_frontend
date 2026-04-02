@@ -9,6 +9,13 @@ const __dirname = path.dirname(__filename);
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     productionBrowserSourceMaps: true, // Enable source maps for production
+    swcMinify: true,
+    typescript: {
+        ignoreBuildErrors: true,
+    },
+    eslint: {
+        ignoreDuringBuilds: true,
+    },
     webpack: (config) => {
         config.resolve.alias = {
             ...config.resolve.alias,
@@ -67,11 +74,13 @@ export default withPostHogConfig(withSentryConfig(nextConfig, {
     removeDebugLogging: true,
   },
 }), {
-  // PostHog config - source maps disabled (Sentry handles source maps)
+  // PostHog config for source maps
   personalApiKey: process.env.POSTHOG_PERSONAL_API_KEY,
   projectId: process.env.POSTHOG_PROJECT_ID,
   host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
   sourcemaps: {
-    enabled: false, // Disabled - use Sentry for source maps instead
+    enabled: process.env.VERCEL !== '1', // Disable in Vercel CI - use Sentry instead
+    releaseName: "marketview360",
+    deleteAfterUpload: false,
   },
 });

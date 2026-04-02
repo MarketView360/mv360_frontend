@@ -58,7 +58,7 @@ export function MaintenancePage({
                       Estimated Timeline
                     </h3>
                     <p className="text-sm text-slate-600 dark:text-slate-400">
-                      {formatMaintenanceTime(scheduledAt, endsAt)}
+                      {formatMaintenanceTime(scheduledAt ?? null, endsAt ?? null)}
                     </p>
                   </div>
                 </div>

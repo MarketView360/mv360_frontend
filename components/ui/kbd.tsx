@@ -17,8 +17,8 @@ const Kbd = React.forwardRef<
 Kbd.displayName = "Kbd";
 
 const KbdGroup = React.forwardRef<
-  HTMLElement,
-  React.HTMLAttributes<HTMLElement>
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
