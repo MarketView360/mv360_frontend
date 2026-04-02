@@ -30,6 +30,7 @@ export function QuotaIndicator({
   loading = false,
   error = null,
   onRefresh,
+  reasoningLimit = 10,
 }: QuotaIndicatorProps) {
   if (loading) {
     return (

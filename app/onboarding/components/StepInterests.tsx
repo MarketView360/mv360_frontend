@@ -139,7 +139,6 @@ export function StepInterests({ data, setData }: StepInterestsProps) {
                     : "border-slate-700/60 bg-slate-800/40 text-slate-400 hover:border-slate-600 hover:text-slate-300"
                 }`}
               >
-                <span className="block text-lg mb-1">{freq.icon}</span>
                 {freq.label}
               </button>
             );

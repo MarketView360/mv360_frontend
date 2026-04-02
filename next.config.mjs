@@ -67,13 +67,11 @@ export default withPostHogConfig(withSentryConfig(nextConfig, {
     removeDebugLogging: true,
   },
 }), {
-  // PostHog config for source maps
+  // PostHog config - source maps disabled (Sentry handles source maps)
   personalApiKey: process.env.POSTHOG_PERSONAL_API_KEY,
   projectId: process.env.POSTHOG_PROJECT_ID,
   host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
   sourcemaps: {
-    enabled: process.env.VERCEL !== '1', // Disable in Vercel CI - use Sentry instead
-    releaseName: "marketview360",
-    deleteAfterUpload: false,
+    enabled: false, // Disabled - use Sentry for source maps instead
   },
 });
