@@ -28,11 +28,20 @@ if (typeof window !== "undefined") {
         console.log("[PostHog Debug] PostHog instance:", posthog);
         // Expose posthog to window for debugging in console
         (window as any).posthog = posthog;
+        // Reload feature flags to ensure they're up to date
+        posthog.reloadFeatureFlags();
       },
       verbose: true, // Enable verbose logging
       disable_compression: false,
       autocapture: true, // Enable autocapture for testing
       surveys: true, // Enable PostHog surveys
+      bootstrap: {
+        // Bootstrap feature flags for immediate availability
+        // These will be overwritten when flags are loaded from the server
+        featureFlags: {
+          'ai-enabled': false, // Default to disabled until loaded
+        },
+      },
     });
   }
 }

@@ -20,6 +20,8 @@ import { useQuota } from "@/hooks/useQuota";
 import { useAIAccess } from "@/hooks/useAIAccess";
 import { useToolsConfig } from "@/hooks/useToolsConfig";
 import { AIApiError } from "@/lib/api/ai";
+import { useAiFeatureFlag } from "@/hooks/useAiFeatureFlag";
+import { AiUnavailable } from "./AiUnavailable";
 
 // AI chat is now PREMIUM ONLY - anonymous access disabled
 const ALLOW_ANONYMOUS_CHAT = false;
@@ -39,6 +41,9 @@ function AiPageClientContent({
 }) {
   const { session, loading: isAuthLoading } = useAuth();
   const token = session?.access_token ?? null;
+
+  // Check PostHog feature flag for AI availability
+  const { isEnabled: isAiEnabled, isLoading: isFlagLoading } = useAiFeatureFlag();
 
   // Premium-only access check
   const { access: aiAccess, loading: accessLoading, refetch: refetchAccess } = useAIAccess(token);
@@ -362,9 +367,8 @@ function AiPageClientContent({
     }
   }, [watchlistParam, watchlistContextProcessed, token, isStreaming, handleSendMessage]);
 
-  // Show login required page if anonymous chat is disabled and user is not logged in
-  // Also show loading spinner while checking auth and AI access
-  if (isAuthLoading || accessLoading) {
+  // Show loading spinner while checking auth, AI access, and feature flag
+  if (isAuthLoading || accessLoading || isFlagLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-white dark:bg-slate-950">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -372,6 +376,12 @@ function AiPageClientContent({
     );
   }
 
+  // Check PostHog feature flag - if AI is disabled, show unavailable message
+  if (!isAiEnabled) {
+    return <AiUnavailable />;
+  }
+
+  // Show login required page if anonymous chat is disabled and user is not logged in
   // AI chat is now premium-only - show login for unauthenticated users
   if (!ALLOW_ANONYMOUS_CHAT && !token) {
     return <LoginRequired />;

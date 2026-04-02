@@ -60,8 +60,8 @@ export default function ProfilePage() {
 
   if (!profile) return null;
 
-  // Check if user skipped onboarding
-  const showCompleteSetup = profile.onboarded_at && (profile as any).onboarding_skipped === true;
+  // Check if user needs to complete onboarding (either skipped or incomplete)
+  const needsOnboarding = !profile.onboarded_at;
 
   return (
     <div className="space-y-6">
@@ -72,8 +72,8 @@ export default function ProfilePage() {
         </p>
       </div>
 
-      {/* Complete Setup Card for skipped users */}
-      {showCompleteSetup && (
+      {/* Complete Setup Card for users who need onboarding */}
+      {needsOnboarding && (
         <CompleteSetupCard />
       )}
 

@@ -8,6 +8,7 @@ import { Footer } from "@/components/Footer";
 import { AiChatWidget } from "@/components/AiChatWidget";
 import NavigationBar from "@/components/NavigationBar";
 import { NetworkStatusWatcher } from "@/components/NetworkStatusWatcher";
+import { OnboardingBanner } from "@/components/onboarding/OnboardingBanner";
 
 export default function RouteChrome({
   children,
@@ -48,6 +49,7 @@ export default function RouteChrome({
         </main>
       ) : (
         <div className="app-scroll custom-scrollbar flex-1 w-full overflow-y-auto">
+          <OnboardingBanner />
           <main className="w-full relative pt-4 md:pt-6">
             {children}
           </main>

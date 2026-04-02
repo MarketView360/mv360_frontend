@@ -279,6 +279,11 @@
   resolved "https://registry.npmjs.org/@dxup/unimport/-/unimport-0.1.2.tgz"
   integrity sha512-/B8YJGPzaYq1NbsQmwgP8EZqg40NpTw4ZB3suuI0TplbxKHeK94jeaawLmVhCv+YwUnOpiWEz9U6SeThku/8JQ==
 
+"@edge-runtime/cookies@^5.0.2":
+  version "5.0.2"
+  resolved "https://registry.npmjs.org/@edge-runtime/cookies/-/cookies-5.0.2.tgz"
+  integrity sha512-Sd8LcWpZk/SWEeKGE8LT6gMm5MGfX/wm+GPnh1eBEtCpya3vYqn37wYknwAHw92ONoyyREl1hJwxV/Qx2DWNOg==
+
 "@emnapi/core@^1.4.3":
   version "1.7.1"
   resolved "https://registry.npmjs.org/@emnapi/core/-/core-1.7.1.tgz"
@@ -2768,6 +2773,14 @@
   version "2.0.0"
   resolved "https://registry.npmjs.org/@vercel/analytics/-/analytics-2.0.0.tgz"
   integrity sha512-fP/ASXXz+1K/C2vWTnocd8RsGnkO9f1qOIDrhgQ3DagJtnea1EsM9AV9fDzjXlPIPb2vBQapxOIMCjtGIW8PZw==
+
+"@vercel/flags@^3.1.1":
+  version "3.1.1"
+  resolved "https://registry.npmjs.org/@vercel/flags/-/flags-3.1.1.tgz"
+  integrity sha512-JM0xXRCHvN5wiSr9C2u6PSbXMnqN/0IXyNEOob6UYWB70vBWVLUKM96wgSuj6orRzRTowItmja2RTYyRvVhuQg==
+  dependencies:
+    "@edge-runtime/cookies" "^5.0.2"
+    jose "^5.2.1"
 
 "@vercel/nft@^1.2.0":
   version "1.3.2"
@@ -6383,6 +6396,11 @@ jiti@*, jiti@^2.1.2, jiti@^2.4.2, jiti@^2.6.1, jiti@>=1.21.0:
   resolved "https://registry.npmjs.org/jiti/-/jiti-2.6.1.tgz"
   integrity sha512-ekilCSN1jwRvIbgeg/57YFh8qQDNbwDb9xT/qu2DAHbFFZUicIl4ygVaAvzveMhMVr3LnpSKTNnwt8PoOfmKhQ==
 
+jose@^5.2.1:
+  version "5.10.0"
+  resolved "https://registry.npmjs.org/jose/-/jose-5.10.0.tgz"
+  integrity sha512-s+3Al/p9g32Iq+oqXxkW//7jk2Vig6FF1CFqzVXoTUXt2qz89YWbL+OwS17NFYEvxC35n0FKeGO2LGYSxeM2Gg==
+
 "js-tokens@^3.0.0 || ^4.0.0", js-tokens@^4.0.0:
   version "4.0.0"
   resolved "https://registry.npmjs.org/js-tokens/-/js-tokens-4.0.0.tgz"
@@ -7484,7 +7502,7 @@ next-themes@^0.4.6:
   resolved "https://registry.npmjs.org/next-themes/-/next-themes-0.4.6.tgz"
   integrity sha512-pZvgD5L0IEvX5/9GWyHMf3m8BKiVQwsCMHfoFosXtXBMnaS0ZnIJ9ST4b4NqLVKDEm8QBxoNNGNaBv2JNF6XNA==
 
-"next@^13.2.0 || ^14.0 || ^15.0.0-rc.0 || ^16.0.0-0", "next@>= 13", next@>12.1.0, next@16.2.1:
+next@*, "next@^13.2.0 || ^14.0 || ^15.0.0-rc.0 || ^16.0.0-0", "next@>= 13", next@>12.1.0, next@16.2.1:
   version "16.2.1"
   resolved "https://registry.npmjs.org/next/-/next-16.2.1.tgz"
   integrity sha512-VaChzNL7o9rbfdt60HUj8tev4m6d7iC1igAy157526+cJlXOQu5LzsBXNT+xaJnTP/k+utSX5vMv7m0G+zKH+Q==

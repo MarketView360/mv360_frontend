@@ -75,6 +75,15 @@ export function useProfile(token: string | null): UseProfileResult {
     void fetchProfile();
   }, [fetchProfile]);
 
+  // Listen for onboarding status changes and refetch
+  useEffect(() => {
+    const handleOnboardingChange = () => {
+      void fetchProfile();
+    };
+    window.addEventListener("onboarding-status-changed", handleOnboardingChange);
+    return () => window.removeEventListener("onboarding-status-changed", handleOnboardingChange);
+  }, [fetchProfile]);
+
   const updateProfile = useCallback(
     async (updates: Partial<UserProfile>): Promise<boolean> => {
       if (!token || !API_BASE) return false;

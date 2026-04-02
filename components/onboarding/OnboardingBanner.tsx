@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { X, ArrowRight } from "lucide-react";
 import { useAuth } from "@/providers/AuthProvider";
@@ -18,55 +18,66 @@ export function OnboardingBanner({ className = "" }: OnboardingBannerProps) {
   const { session } = useAuth();
   const [show, setShow] = useState(false);
   const [isDismissing, setIsDismissing] = useState(false);
+  const [forceRefresh, setForceRefresh] = useState(0);
 
-  useEffect(() => {
-    const checkBannerVisibility = async () => {
-      if (!session) return;
+  const checkBannerVisibility = useCallback(async () => {
+    if (!session) return;
 
-      // Check localStorage first for quick dismissal
-      const dismissed = localStorage.getItem(BANNER_DISMISS_KEY);
-      if (dismissed) {
-        const dismissedAt = new Date(dismissed);
-        const daysSinceDismissed = (Date.now() - dismissedAt.getTime()) / (1000 * 60 * 60 * 24);
-        if (daysSinceDismissed < BANNER_SHOW_DAYS) {
-          return; // Still within dismissal period
-        }
+    // Check localStorage first for quick dismissal
+    const dismissed = localStorage.getItem(BANNER_DISMISS_KEY);
+    if (dismissed) {
+      const dismissedAt = new Date(dismissed);
+      const daysSinceDismissed = (Date.now() - dismissedAt.getTime()) / (1000 * 60 * 60 * 24);
+      if (daysSinceDismissed < BANNER_SHOW_DAYS) {
+        return; // Still within dismissal period
       }
+    }
 
-      try {
-        const response = await fetch(`${API_BASE}/profile/onboarding-status`, {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
+    try {
+      const response = await fetch(`${API_BASE}/profile/onboarding-status`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
 
-        if (response.ok) {
-          const data = await response.json();
-          // Show banner for users who need onboarding (either incomplete or skipped but banner not dismissed)
-          if (data.needs_onboarding) {
-            // For skipped users, also check server-side dismissal
-            if (data.skipped) {
-              const profileRes = await fetch(`${API_BASE}/profile`, {
-                headers: { Authorization: `Bearer ${session.access_token}` },
-              });
-              if (profileRes.ok) {
-                const profile = await profileRes.json();
-                const metadata = profile.onboarding_metadata || {};
-                if (!metadata.skip_banner_dismissed) {
-                  setShow(true);
-                }
-              }
-            } else {
-              // For incomplete onboarding, always show banner
+      if (response.ok) {
+        const data = await response.json();
+
+        // Show banner for users with incomplete onboarding (not skipped, not completed)
+        if (data.needs_onboarding && !data.skipped) {
+          setShow(true);
+          return;
+        }
+
+        // For skipped users, check if they've dismissed the banner
+        if (data.skipped) {
+          const profileRes = await fetch(`${API_BASE}/profile`, {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          });
+          if (profileRes.ok) {
+            const profile = await profileRes.json();
+            const metadata = profile.onboarding_metadata || {};
+            if (!metadata.skip_banner_dismissed) {
               setShow(true);
             }
           }
         }
-      } catch {
-        // Silently fail
       }
-    };
-
-    checkBannerVisibility();
+    } catch {
+      // Silently fail
+    }
   }, [session]);
+
+  useEffect(() => {
+    checkBannerVisibility();
+  }, [session, forceRefresh, checkBannerVisibility]);
+
+  // Listen for refresh events (e.g., after skipping onboarding)
+  useEffect(() => {
+    const handleRefresh = () => {
+      setForceRefresh((prev) => prev + 1);
+    };
+    window.addEventListener("onboarding-status-changed", handleRefresh);
+    return () => window.removeEventListener("onboarding-status-changed", handleRefresh);
+  }, []);
 
   const handleDismiss = async () => {
     setIsDismissing(true);
