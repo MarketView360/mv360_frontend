@@ -33,7 +33,6 @@ export function OnboardingBanner({ className = "" }: OnboardingBannerProps) {
         }
       }
 
-      // Check if user skipped onboarding
       try {
         const response = await fetch(`${API_BASE}/profile/onboarding-status`, {
           headers: { Authorization: `Bearer ${session.access_token}` },
@@ -41,18 +40,23 @@ export function OnboardingBanner({ className = "" }: OnboardingBannerProps) {
 
         if (response.ok) {
           const data = await response.json();
-          // Show banner only if skipped and not already onboarded
-          if (data.skipped && data.needs_onboarding === false) {
-            // Double-check server-side dismissal
-            const profileRes = await fetch(`${API_BASE}/profile`, {
-              headers: { Authorization: `Bearer ${session.access_token}` },
-            });
-            if (profileRes.ok) {
-              const profile = await profileRes.json();
-              const metadata = profile.onboarding_metadata || {};
-              if (!metadata.skip_banner_dismissed) {
-                setShow(true);
+          // Show banner for users who need onboarding (either incomplete or skipped but banner not dismissed)
+          if (data.needs_onboarding) {
+            // For skipped users, also check server-side dismissal
+            if (data.skipped) {
+              const profileRes = await fetch(`${API_BASE}/profile`, {
+                headers: { Authorization: `Bearer ${session.access_token}` },
+              });
+              if (profileRes.ok) {
+                const profile = await profileRes.json();
+                const metadata = profile.onboarding_metadata || {};
+                if (!metadata.skip_banner_dismissed) {
+                  setShow(true);
+                }
               }
+            } else {
+              // For incomplete onboarding, always show banner
+              setShow(true);
             }
           }
         }

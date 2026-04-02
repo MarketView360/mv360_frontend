@@ -34,10 +34,33 @@ function LoginPageContent() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // Redirect if already logged in (but not during active login)
+  // IMPORTANT: Check onboarding status first - don't redirect to already-logged-in if user needs onboarding
   useEffect(() => {
-    if (session && !isLoggingIn) {
-      router.replace("/auth/already-logged-in");
-    }
+    const checkAndRedirect = async () => {
+      if (!session || isLoggingIn) return;
+
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/profile/onboarding-status`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // Redirect to onboarding if needs_onboarding is true
+          if (data.needs_onboarding) {
+            router.replace("/onboarding");
+            return;
+          }
+        }
+        // Default redirect if check fails or user is onboarded
+        router.replace("/auth/already-logged-in");
+      } catch {
+        // If check fails, default to existing behavior
+        router.replace("/auth/already-logged-in");
+      }
+    };
+
+    checkAndRedirect();
   }, [session, router, isLoggingIn]);
 
   const [email, setEmail] = useState("");

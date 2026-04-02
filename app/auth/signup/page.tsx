@@ -33,11 +33,32 @@ export default function SignupPage() {
   const router = useRouter();
   const { session, signUpWithEmail, loading } = useAuth();
 
-  // Redirect if already logged in
+  // Redirect if already logged in - check onboarding status first
   useEffect(() => {
-    if (session) {
-      router.replace("/auth/already-logged-in");
-    }
+    const checkAndRedirect = async () => {
+      if (!session) return;
+
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/profile/onboarding-status`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // Redirect to onboarding if needs_onboarding is true
+          if (data.needs_onboarding) {
+            router.replace("/onboarding");
+            return;
+          }
+        }
+        // Default redirect if check fails or user is onboarded
+        router.replace("/auth/already-logged-in");
+      } catch {
+        router.replace("/auth/already-logged-in");
+      }
+    };
+
+    checkAndRedirect();
   }, [session, router]);
 
   const [fullName, setFullName] = useState("");
@@ -49,6 +70,40 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showVerificationMessage, setShowVerificationMessage] = useState(false);
+  const [isCheckingVerification, setIsCheckingVerification] = useState(false);
+
+  // Auto-check for verified session after showing verification message
+  useEffect(() => {
+    if (!showVerificationMessage || !session || isCheckingVerification) return;
+
+    const checkVerification = async () => {
+      setIsCheckingVerification(true);
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/profile/onboarding-status`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // If user has verified and needs onboarding, redirect
+          if (data.needs_onboarding) {
+            router.replace("/onboarding");
+            return;
+          }
+        }
+        // If already onboarded, go to already-logged-in
+        router.replace("/auth/already-logged-in");
+      } catch {
+        // Keep showing verification message if check fails
+        setIsCheckingVerification(false);
+      }
+    };
+
+    // Check immediately and then every 3 seconds
+    checkVerification();
+    const interval = setInterval(checkVerification, 3000);
+    return () => clearInterval(interval);
+  }, [showVerificationMessage, session, router, isCheckingVerification]);
 
   const passwordStrength = getPasswordStrength(password);
   const passwordsMatch = password === confirmPassword && password.length > 0;
