@@ -188,7 +188,7 @@ export default function OnboardingPage() {
           currentStep === 1 ? step1Data
           : currentStep === 2 ? step2Data
           : step3Data;
-        await saveStep(session.access_token, currentStep, stepData as Record<string, unknown>);
+        await saveStep(session.access_token, currentStep, stepData as unknown as Record<string, unknown>);
       }
       navigateToStep(currentStep + 1, "forward");
     }
