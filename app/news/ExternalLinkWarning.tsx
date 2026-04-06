@@ -128,21 +128,22 @@ export function ExternalLinkWarning({
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 p-6 pt-4 border-t border-slate-100 dark:border-slate-800">
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={() => onOpenChange(false)}
-            className="inline-flex items-center justify-center min-w-[100px] h-9 px-4 rounded-md bg-slate-900 text-white hover:bg-slate-800 transition-colors dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+            className="min-w-[100px]"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={handleConfirm}
-            className="inline-flex items-center justify-center min-w-[100px] h-9 px-4 rounded-md bg-brand text-white hover:bg-brand/90 transition-colors"
+            className="min-w-[100px] bg-[#0087f6] hover:bg-[#0087f6]/90 text-white border-none shadow-sm"
           >
             <ExternalLink className="h-4 w-4 mr-2" />
             Continue
-          </button>
+          </Button>
         </div>
       </div>
     </div>
