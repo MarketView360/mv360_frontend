@@ -528,7 +528,7 @@ export function CompanyChartsSwitcher({
       </Card>
 
       {fullscreen && mounted && createPortal(
-        <div className="fixed inset-0 z-9999 bg-slate-950 text-slate-50 flex flex-col overflow-hidden">
+        <div className="fixed inset-0 z-9999 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50 flex flex-col overflow-hidden">
           <div className="flex-1 flex flex-col min-h-0 px-4 pt-3 pb-0">
             {mode === "price" && (
               <PriceChart

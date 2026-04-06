@@ -741,7 +741,7 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
   const Wrapper = fullscreen ? React.Fragment : Card;
   const wrapperProps = fullscreen ? {} : { className: "w-full border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 transition-colors duration-300" };
   const headerClass = fullscreen
-    ? "flex flex-row items-center justify-between space-y-0 pb-2 border-b border-slate-700 transition-colors duration-300 shrink-0"
+    ? "flex flex-row items-center justify-between space-y-0 pb-2 border-b border-slate-200 dark:border-slate-700 transition-colors duration-300 shrink-0"
     : "flex flex-row items-center justify-between space-y-0 pb-2 border-b border-slate-100 dark:border-slate-800 transition-colors duration-300";
   const contentClass = fullscreen ? "pt-1 flex flex-col flex-1 min-h-0 relative" : "p-4 relative";
 
@@ -939,7 +939,7 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700 text-slate-300 hover:bg-slate-800 ml-1"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 ml-1"
               aria-label="Close fullscreen"
             >
               <X className="h-3.5 w-3.5" />
