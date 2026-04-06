@@ -17,6 +17,7 @@ import {
 import { waitlistApi } from "@/lib/api/waitlist";
 import { toast } from "sonner";
 import { WaitlistDialog, WaitlistFormData } from "./components/WaitlistDialog";
+import { useRouter } from "next/navigation";
 
 type BillingPeriod = "monthly" | "annually";
 
@@ -312,7 +313,7 @@ export default function PricingPage() {
                     <div className="flex flex-wrap items-center justify-center gap-6 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
                         <TrustSignal icon={Shield} text="30-Day Money-Back" />
                         <TrustSignal icon={RefreshCw} text="Cancel Anytime" />
-                        <TrustSignal icon={Lock} text="Secure via Stripe" />
+                        <TrustSignal icon={Lock} text="Secured Payment" />
                     </div>
                 </div>
             </section>
@@ -454,6 +455,7 @@ function PricingCard({
     isAnnual: boolean;
     userSubscription: { tier: string } | null;
 }) {
+    const router = useRouter();
     const isPremium = plan.tier === "premium";
     const isMax = plan.tier === "max";
     const isFree = plan.tier === "free";
@@ -626,6 +628,7 @@ function PricingCard({
                     </button>
                 ) : isFree ? (
                     <button
+                        onClick={() => router.push("/auth/signup")}
                         className="w-full py-2.5 rounded-lg text-sm font-semibold border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                     >
                         Get Started Free
