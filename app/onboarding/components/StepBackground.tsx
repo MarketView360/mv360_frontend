@@ -29,12 +29,7 @@ export function StepBackground({ data, setData }: StepBackgroundProps) {
   return (
     <div className="space-y-7">
       {/* Header */}
-      <div className="mb-8">
-        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1">
-          <span className="text-xs font-semibold uppercase tracking-widest text-blue-600 dark:text-blue-400">
-            Step 2 of 4
-          </span>
-        </div>
+      <div className="mb-6">
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
           Tell us about yourself.
         </h2>
@@ -45,9 +40,9 @@ export function StepBackground({ data, setData }: StepBackgroundProps) {
 
       {/* Professional Role */}
       <fieldset>
-        <legend className="mb-3 text-sm font-medium text-slate-700 dark:text-slate-300">
+        <legend className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">
           I am a…
-          <span className="ml-1.5 text-xs font-normal text-slate-400 dark:text-slate-500">required</span>
+          <span className="ml-1.5 text-[10px] font-normal text-slate-400 dark:text-slate-500">required</span>
         </legend>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {PROFESSIONAL_ROLES.map((role) => {
@@ -61,7 +56,7 @@ export function StepBackground({ data, setData }: StepBackgroundProps) {
                 onClick={() =>
                   setData((prev) => ({ ...prev, professional_role: role.value }))
                 }
-                className={`group relative flex flex-col items-start gap-1.5 rounded-xl border p-3.5 text-left transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
+                className={`group relative flex flex-col items-start gap-1 rounded-xl border p-3 text-left transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
                   selected
                     ? "border-blue-500/60 bg-blue-600/15 shadow-[0_0_16px_rgba(59,130,246,0.15)]"
                     : "border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-800/40 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800/70"
@@ -75,7 +70,7 @@ export function StepBackground({ data, setData }: StepBackgroundProps) {
                   </span>
                 )}
                 <span className="text-xl leading-none">{role.icon}</span>
-                <span className={`text-sm font-medium leading-tight ${selected ? "text-blue-300" : "text-slate-200"}`}>
+                <span className={`text-sm font-medium leading-tight ${selected ? "text-blue-600 dark:text-blue-300" : "text-slate-700 dark:text-slate-200"}`}>
                   {role.label}
                 </span>
               </button>

@@ -84,12 +84,7 @@ export function StepPreferences({
   return (
     <div className="space-y-7">
       {/* Header */}
-      <div className="mb-8">
-        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1">
-          <span className="text-xs font-semibold uppercase tracking-widest text-blue-600 dark:text-blue-400">
-            Step 4 of 4
-          </span>
-        </div>
+      <div className="mb-6">
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
           Almost there — stay in the loop.
         </h2>
@@ -171,7 +166,7 @@ export function StepPreferences({
           {showReferralDropdown && (
             <div
               role="listbox"
-              className="absolute z-30 mt-1.5 w-full overflow-hidden rounded-xl border border-slate-700/60 bg-slate-900/95 shadow-2xl shadow-black/50 backdrop-blur-xl"
+              className="absolute z-30 mt-1.5 w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/95 shadow-xl dark:shadow-2xl shadow-black/5 dark:shadow-black/50 backdrop-blur-xl"
             >
               <div className="max-h-48 overflow-y-auto py-1">
                 {REFERRAL_SOURCES.map((source) => {

@@ -301,35 +301,26 @@ function OnboardingContent() {
 
   // ─── Main wizard ──────────────────────────────────────────────────────────
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
-      {/* Header - Fixed/Sticky or Simple scroll */}
-      <header className="flex items-center justify-end px-5 py-4 sm:px-8 sm:py-5">
-        {/* Subtle step counter */}
-        <div className="flex items-center gap-2 rounded-full bg-slate-200/50 dark:bg-slate-800/50 px-3 py-1 border border-slate-300/50 dark:border-slate-700/50">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Step {currentStep} of 4
-          </span>
-        </div>
-      </header>
-
-      {/* Content */}
-      <main className="flex flex-1 items-center justify-center px-4 py-6 sm:py-10">
-        <div className="w-full max-w-xl">
+    <div className="flex flex-1 flex-col min-h-0 bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
+      {/* Scrollable Content Container */}
+      <main className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-24 pt-4 sm:pb-32 sm:pt-6 custom-scrollbar">
+        <div className="mx-auto w-full max-w-lg">
           {/* Resume toast */}
           <div
-            className={`mb-5 overflow-hidden rounded-xl border border-blue-500/20 bg-blue-500/10 transition-all duration-500 ${
-              showResumeToast ? "max-h-16 opacity-100 py-3 px-4" : "max-h-0 opacity-0 py-0 px-4"
+            className={`mb-4 overflow-hidden rounded-xl border border-blue-500/20 bg-blue-500/10 transition-all duration-500 ${
+              showResumeToast ? "max-h-16 opacity-100 py-2.5 px-4" : "max-h-0 opacity-0 py-0 px-4"
             }`}
             aria-live="polite"
           >
-            <p className="text-center text-sm text-blue-300">
+            <p className="text-center text-xs text-blue-300">
               Welcome back — picking up where you left off.
             </p>
           </div>
 
-          {/* Progress */}
-          <OnboardingProgress currentStep={currentStep} totalSteps={4} />
-
+          {/* Progress dots */}
+          <div className="mb-2">
+            <OnboardingProgress currentStep={currentStep} totalSteps={4} />
+          </div>
           {/* Error */}
           {error && (
             <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3">
@@ -344,11 +335,16 @@ function OnboardingContent() {
           )}
 
           {/* Card */}
-          <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700/50 bg-white dark:bg-slate-900/80 shadow-xl dark:shadow-2xl dark:shadow-black/40 backdrop-blur-xl">
+          <div className="relative rounded-2xl border border-slate-200 dark:border-slate-700/50 bg-white dark:bg-slate-900/80 shadow-xl dark:shadow-2xl dark:shadow-black/40 backdrop-blur-xl">
+            {/* Floating Save Indicator */}
+            <div className="absolute right-4 top-4 z-10">
+              <AutoSaveIndicator show={showSaveIndicator} saving={isSaving} />
+            </div>
+
             {/* Step content — slide transition */}
             <div
               key={currentStep}
-              className={`p-6 sm:p-8 transition-all duration-220 ${
+              className={`p-4 sm:px-6 sm:py-5 transition-all duration-220 ${
                 isAnimating
                   ? slideDirection === "forward"
                     ? "-translate-x-4 opacity-0"
@@ -360,7 +356,7 @@ function OnboardingContent() {
               {currentStep > 1 && (
                 <button
                   onClick={handleBack}
-                  className="mb-5 flex items-center gap-1.5 text-sm text-slate-500 transition-colors hover:text-slate-300 focus:outline-none focus:text-slate-300"
+                  className="mb-3 flex items-center gap-1.5 text-sm text-slate-500 transition-colors hover:text-slate-300 focus:outline-none"
                   aria-label="Go back to previous step"
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -369,7 +365,7 @@ function OnboardingContent() {
               )}
 
               {/* Step components */}
-              <div className="min-h-[380px] sm:min-h-[420px]">
+              <div className="min-h-[240px] sm:min-h-[260px]">
                 {currentStep === 1 && (
                   <StepIdentity data={step1Data} setData={setStep1Data} />
                 )}
@@ -389,14 +385,13 @@ function OnboardingContent() {
               </div>
 
               {/* Footer */}
-              <div className="mt-8 space-y-3">
-                <AutoSaveIndicator show={showSaveIndicator} saving={isSaving} />
+              <div className="mt-2 space-y-2">
 
                 {/* Primary CTA */}
                   <button
                   onClick={handleNext}
                   disabled={!isCurrentStepValid() || isLoading || isAnimating}
-                  className={`relative w-full overflow-hidden rounded-xl py-3.5 px-5 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-900 disabled:cursor-not-allowed disabled:opacity-40 ${
+                  className={`relative w-full overflow-hidden rounded-xl py-2.5 px-5 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-900 disabled:cursor-not-allowed disabled:opacity-40 ${
                     isCurrentStepValid()
                       ? "bg-blue-600 text-white shadow-[0_0_20px_rgba(59,130,246,0.25)] hover:bg-blue-500 hover:shadow-[0_0_28px_rgba(59,130,246,0.35)] active:scale-[0.99]"
                       : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-400"
@@ -423,8 +418,8 @@ function OnboardingContent() {
           </div>
 
           {/* Bottom reassurance */}
-          <p className="mt-5 text-center text-xs text-slate-600">
-            Your answers are private and help us personalise your experience.
+          <p className="mt-4 text-center text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-600">
+            Your answers are private & secure
           </p>
         </div>
       </main>

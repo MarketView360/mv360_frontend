@@ -26,12 +26,7 @@ export function StepInterests({ data, setData }: StepInterestsProps) {
   return (
     <div className="space-y-7">
       {/* Header */}
-      <div className="mb-8">
-        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1">
-          <span className="text-xs font-semibold uppercase tracking-widest text-blue-600 dark:text-blue-400">
-            Step 3 of 4
-          </span>
-        </div>
+      <div className="mb-6">
         <h2 className="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
           What will you use most?
         </h2>

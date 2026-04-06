@@ -66,28 +66,23 @@ export function StepIdentity({ data, setData }: StepIdentityProps) {
     data.timezone;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="mb-8">
-        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1">
-          <span className="text-xs font-semibold uppercase tracking-widest text-blue-600 dark:text-blue-400">
-            Step 1 of 4
-          </span>
-        </div>
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
+      <div className="mb-4">
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
           Welcome — let&apos;s set up your workspace.
         </h2>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
           This takes under 3 minutes. We use this to personalise your experience.
         </p>
       </div>
 
-      <div className="space-y-5">
+      <div className="space-y-3">
         {/* Full Name */}
         <div>
           <label
             htmlFor="fullName"
-            className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+            className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300"
           >
             Full name
           </label>
@@ -100,7 +95,7 @@ export function StepIdentity({ data, setData }: StepIdentityProps) {
             }
             placeholder="Jane Smith"
             autoComplete="name"
-            className="w-full rounded-xl border border-slate-300 dark:border-slate-700/60 bg-white dark:bg-slate-800/60 px-4 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 backdrop-blur-sm transition-all focus:border-blue-500/60 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className="w-full rounded-xl border border-slate-300 dark:border-slate-700/60 bg-white dark:bg-slate-800/60 px-3 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 backdrop-blur-sm transition-all focus:border-blue-500/60 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           />
         </div>
 
@@ -108,7 +103,7 @@ export function StepIdentity({ data, setData }: StepIdentityProps) {
         <div>
           <label
             htmlFor="displayName"
-            className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
+            className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300"
           >
             Display name
             <span className="ml-1.5 text-xs font-normal text-slate-500">
@@ -125,16 +120,16 @@ export function StepIdentity({ data, setData }: StepIdentityProps) {
             }}
             placeholder="Jane"
             autoComplete="nickname"
-            className="w-full rounded-xl border border-slate-300 dark:border-slate-700/60 bg-white dark:bg-slate-800/60 px-4 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 backdrop-blur-sm transition-all focus:border-blue-500/60 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className="w-full rounded-xl border border-slate-300 dark:border-slate-700/60 bg-white dark:bg-slate-800/60 px-3 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 backdrop-blur-sm transition-all focus:border-blue-500/60 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           />
-          <p className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">
+          <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
             Auto-filled from your name — edit freely
           </p>
         </div>
 
         {/* Timezone */}
         <div ref={dropdownRef}>
-          <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+          <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
             Your timezone
             <span className="ml-1.5 text-xs font-normal text-slate-500">
               used for alerts &amp; market hours
@@ -146,10 +141,10 @@ export function StepIdentity({ data, setData }: StepIdentityProps) {
               onClick={() => setTzOpen((v) => !v)}
               aria-haspopup="listbox"
               aria-expanded={tzOpen}
-              className="flex w-full items-center gap-3 rounded-xl border border-slate-700/60 bg-slate-800/60 px-4 py-3 text-left text-sm backdrop-blur-sm transition-all focus:border-blue-500/60 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="flex w-full items-center gap-2 rounded-xl border border-slate-300 dark:border-slate-700/60 bg-white dark:bg-slate-800/60 px-3 py-2.5 text-left text-sm backdrop-blur-sm transition-all focus:border-blue-500/60 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
             >
-              <Globe className="h-4 w-4 shrink-0 text-slate-400" />
-              <span className="flex-1 text-white">{currentTimezoneLabel}</span>
+              <Globe className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" />
+              <span className="flex-1 text-slate-900 dark:text-white">{currentTimezoneLabel}</span>
               {data.timezone === detectedTimezone && (
                 <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-400">
                   Auto-detected
@@ -166,7 +161,7 @@ export function StepIdentity({ data, setData }: StepIdentityProps) {
               <div
                 role="listbox"
                 aria-label="Select timezone"
-                className="absolute z-30 mt-1.5 w-full overflow-hidden rounded-xl border border-slate-700/60 bg-slate-900/95 shadow-2xl shadow-black/50 backdrop-blur-xl"
+                className="absolute z-30 mt-1.5 w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/95 shadow-xl dark:shadow-2xl shadow-black/5 dark:shadow-black/50 backdrop-blur-xl"
               >
                 <div className="max-h-56 overflow-y-auto py-1">
                   {COMMON_TIMEZONES.map((tz) => {
