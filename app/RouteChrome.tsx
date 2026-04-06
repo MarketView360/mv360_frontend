@@ -45,7 +45,7 @@ export default function RouteChrome({
       {pathname === "/ai" && <NavigationBar />}
 
       {isFullScreen || isOnboarding ? (
-        <main className="flex-1 w-full relative flex flex-col overflow-hidden">
+        <main className="flex-1 w-full relative flex flex-col min-h-0 overflow-hidden">
           {children}
         </main>
       ) : (

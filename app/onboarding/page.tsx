@@ -303,22 +303,24 @@ function OnboardingContent() {
   return (
     <div className="flex flex-1 flex-col min-h-0 bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
       {/* Scrollable Content Container */}
-      <main className="flex-1 overflow-y-auto overflow-x-hidden px-4 pb-24 pt-4 sm:pb-32 sm:pt-6 custom-scrollbar">
-        <div className="mx-auto w-full max-w-lg">
-          {/* Resume toast */}
-          <div
-            className={`mb-4 overflow-hidden rounded-xl border border-blue-500/20 bg-blue-500/10 transition-all duration-500 ${
-              showResumeToast ? "max-h-16 opacity-100 py-2.5 px-4" : "max-h-0 opacity-0 py-0 px-4"
-            }`}
-            aria-live="polite"
-          >
-            <p className="text-center text-xs text-blue-300">
-              Welcome back — picking up where you left off.
-            </p>
+      <main className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-2 sm:py-4 custom-scrollbar">
+        <div className="mx-auto w-full max-w-4xl relative mt-8">
+          {/* Resume toast - now absolute to save height */}
+          <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-20 w-max">
+            <div
+              className={`overflow-hidden rounded-xl border border-blue-500/20 bg-blue-500/10 transition-all duration-500 ${
+                showResumeToast ? "max-h-16 opacity-100 py-1.5 px-4 shadow-sm backdrop-blur-md" : "max-h-0 opacity-0 py-0 px-4"
+              }`}
+              aria-live="polite"
+            >
+              <p className="text-center text-xs text-blue-600 dark:text-blue-300">
+                Welcome back — picking up where you left off.
+              </p>
+            </div>
           </div>
 
           {/* Progress dots */}
-          <div className="mb-2">
+          <div className="mb-2 mt-2">
             <OnboardingProgress currentStep={currentStep} totalSteps={4} />
           </div>
           {/* Error */}
@@ -344,7 +346,7 @@ function OnboardingContent() {
             {/* Step content — slide transition */}
             <div
               key={currentStep}
-              className={`p-4 sm:px-6 sm:py-5 transition-all duration-220 ${
+              className={`p-3 sm:px-5 sm:py-4 transition-all duration-220 ${
                 isAnimating
                   ? slideDirection === "forward"
                     ? "-translate-x-4 opacity-0"
@@ -356,7 +358,7 @@ function OnboardingContent() {
               {currentStep > 1 && (
                 <button
                   onClick={handleBack}
-                  className="mb-3 flex items-center gap-1.5 text-sm text-slate-500 transition-colors hover:text-slate-300 focus:outline-none"
+                  className="mb-2 flex items-center gap-1.5 text-sm text-slate-500 transition-colors hover:text-slate-300 focus:outline-none"
                   aria-label="Go back to previous step"
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -365,7 +367,7 @@ function OnboardingContent() {
               )}
 
               {/* Step components */}
-              <div className="min-h-[240px] sm:min-h-[260px]">
+              <div className="min-h-[140px] sm:min-h-[180px]">
                 {currentStep === 1 && (
                   <StepIdentity data={step1Data} setData={setStep1Data} />
                 )}

@@ -82,20 +82,20 @@ export function StepPreferences({
     "Select an option";
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
+      <div className="mb-3">
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white sm:text-2xl">
           Almost there — stay in the loop.
         </h2>
-        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
           Control what we send you. You can change these anytime in settings.
         </p>
       </div>
 
       {/* Email Preferences */}
       <fieldset>
-        <legend className="mb-3 text-sm font-medium text-slate-700 dark:text-slate-300">
+        <legend className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">
           Email preferences
         </legend>
         <div className="space-y-2">
@@ -104,7 +104,7 @@ export function StepPreferences({
             return (
               <label
                 key={key}
-                className={`flex cursor-pointer items-center gap-4 rounded-xl border px-4 py-3.5 transition-all duration-200 ${
+                className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 transition-all duration-200 ${
                   checked
                     ? "border-slate-300 dark:border-slate-600/60 bg-slate-50 dark:bg-slate-800/60 shadow-sm"
                     : "border-slate-200 dark:border-slate-700/40 bg-white dark:bg-slate-800/30 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800/50"
@@ -141,9 +141,9 @@ export function StepPreferences({
 
       {/* Referral Source */}
       <div ref={dropdownRef}>
-        <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+        <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
           How did you find us?
-          <span className="ml-1.5 text-xs font-normal text-slate-400 dark:text-slate-500">optional</span>
+          <span className="ml-1.5 text-[10px] font-normal text-slate-400 dark:text-slate-500">optional</span>
         </label>
         <div className="relative">
           <button
@@ -151,7 +151,7 @@ export function StepPreferences({
             onClick={() => setShowReferralDropdown((v) => !v)}
             aria-haspopup="listbox"
             aria-expanded={showReferralDropdown}
-            className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-300 dark:border-slate-700/60 bg-white dark:bg-slate-800/60 px-4 py-3 text-left text-sm backdrop-blur-sm transition-all focus:border-blue-500/60 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-300 dark:border-slate-700/60 bg-white dark:bg-slate-800/60 px-3 py-2 text-left text-sm backdrop-blur-sm transition-all focus:border-blue-500/60 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           >
             <span className={data.referral_source ? "text-slate-900 dark:text-white" : "text-slate-400 dark:text-slate-500"}>
               {selectedReferralLabel}

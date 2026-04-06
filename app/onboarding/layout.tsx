@@ -12,14 +12,14 @@ export default function OnboardingLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-slate-950">
+    <div className="relative min-h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
       {/* Ambient background layers */}
       <div
         className="pointer-events-none absolute inset-0"
         aria-hidden="true"
       >
         {/* Deep gradient base */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950" />
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950" />
 
         {/* Radial glow — top left */}
         <div className="absolute -left-40 -top-40 h-[600px] w-[600px] rounded-full bg-blue-600/10 blur-[120px]" />
@@ -29,7 +29,7 @@ export default function OnboardingLayout({
 
         {/* Subtle grid */}
         <div
-          className="absolute inset-0 opacity-[0.03]"
+          className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]"
           style={{
             backgroundImage:
               "linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)",
@@ -38,8 +38,8 @@ export default function OnboardingLayout({
         />
       </div>
 
-      {/* Content */}
-      <div className="relative z-10">{children}</div>
+      {/* Content wrapper - now flex to let children stretch */}
+      <div className="relative z-10 flex flex-col min-h-screen">{children}</div>
     </div>
   );
 }
