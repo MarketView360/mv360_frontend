@@ -161,7 +161,7 @@ export function StepIdentity({ data, setData }: StepIdentityProps) {
               <div
                 role="listbox"
                 aria-label="Select timezone"
-                className="absolute z-30 mt-1.5 w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/95 shadow-xl dark:shadow-2xl shadow-black/5 dark:shadow-black/50 backdrop-blur-xl"
+                className="absolute z-30 bottom-full mb-1 w-full overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/95 shadow-xl dark:shadow-2xl shadow-black/5 dark:shadow-black/50 backdrop-blur-xl"
               >
                 <div className="max-h-56 overflow-y-auto py-1">
                   {COMMON_TIMEZONES.map((tz) => {
