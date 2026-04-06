@@ -20,7 +20,7 @@ export interface OnboardingStep1Data {
 export interface OnboardingStep2Data {
   professional_role: string;
   experience_level: string;
-  primary_goal: string;
+  primary_goal: string[];
   investment_style?: string[];
 }
 
@@ -126,7 +126,7 @@ export function useOnboarding() {
   const [step2Data, setStep2Data] = useState<OnboardingStep2Data>({
     professional_role: "",
     experience_level: "",
-    primary_goal: "",
+    primary_goal: [],
     investment_style: [],
   });
   

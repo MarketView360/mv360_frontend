@@ -14,6 +14,18 @@ interface StepBackgroundProps {
 }
 
 export function StepBackground({ data, setData }: StepBackgroundProps) {
+  const togglePrimaryGoal = (goal: string) => {
+    setData((prev) => {
+      const current = prev.primary_goal || [];
+      return {
+        ...prev,
+        primary_goal: current.includes(goal)
+          ? current.filter((g) => g !== goal)
+          : [...current, goal],
+      };
+    });
+  };
+
   const toggleInvestmentStyle = (style: string) => {
     setData((prev) => {
       const current = prev.investment_style || [];
@@ -108,16 +120,14 @@ export function StepBackground({ data, setData }: StepBackgroundProps) {
         </legend>
         <div className="flex flex-wrap gap-2">
           {PRIMARY_GOALS.map((goal) => {
-            const selected = data.primary_goal === goal.value;
+            const selected = data.primary_goal?.includes(goal.value);
             return (
               <button
                 key={goal.value}
                 type="button"
-                role="radio"
+                role="checkbox"
                 aria-checked={selected}
-                onClick={() =>
-                  setData((prev) => ({ ...prev, primary_goal: goal.value }))
-                }
+                onClick={() => togglePrimaryGoal(goal.value)}
                 className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
                   selected
                     ? "border-blue-500/60 bg-blue-600 text-white shadow-[0_0_12px_rgba(59,130,246,0.3)]"

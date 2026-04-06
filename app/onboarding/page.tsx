@@ -190,12 +190,12 @@ function OnboardingContent() {
           interests_count: step3Data.interests.length,
           subscription_tier: status?.subscription_tier ?? "free",
           redirect_destination:
-            REDIRECT_MAP[step2Data.primary_goal ?? ""] ?? "/market",
+            REDIRECT_MAP[step2Data.primary_goal?.[0] ?? ""] ?? "/market",
         });
         setIsComplete(true);
         // Brief success moment before redirect
         setTimeout(() => {
-          router.replace(REDIRECT_MAP[step2Data.primary_goal ?? ""] ?? "/market");
+          router.replace(REDIRECT_MAP[step2Data.primary_goal?.[0] ?? ""] ?? "/market");
         }, 1800);
       }
     } else {
