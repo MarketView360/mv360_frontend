@@ -591,14 +591,14 @@ export function MarketHeatmapNew() {
   ];
 
   return (
-    <div className="bg-gray-950 rounded-xl border border-gray-800 overflow-hidden">
+    <div className="bg-white dark:bg-gray-950 rounded-xl border border-slate-200 dark:border-gray-800 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-gray-900/50">
+      <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-gray-800 bg-slate-50 dark:bg-gray-900/50">
         <div className="flex items-center gap-4">
-          <h2 className="text-lg font-semibold text-white">Market Heatmap</h2>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Market Heatmap</h2>
 
           {/* Index selector */}
-          <div className="flex items-center gap-1 bg-gray-800 rounded-lg p-1">
+          <div className="flex items-center gap-1 bg-slate-200 dark:bg-gray-800 rounded-lg p-1">
             {indexOptions.map((opt) => (
               <button
                 key={opt.id}
@@ -607,7 +607,7 @@ export function MarketHeatmapNew() {
                   "px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
                   selectedIndex === opt.id
                     ? "bg-blue-600 text-white"
-                    : "text-gray-400 hover:text-white hover:bg-gray-700"
+                    : "text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-300 dark:hover:bg-gray-700"
                 )}
               >
                 {opt.name}
@@ -616,7 +616,7 @@ export function MarketHeatmapNew() {
           </div>
 
           {/* Cap selector */}
-          <div className="flex items-center gap-1 bg-gray-800 rounded-lg p-1">
+          <div className="flex items-center gap-1 bg-slate-200 dark:bg-gray-800 rounded-lg p-1">
             {capOptions.map((opt) => (
               <button
                 key={opt.id}
@@ -625,7 +625,7 @@ export function MarketHeatmapNew() {
                   "px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
                   selectedCap === opt.id
                     ? "bg-emerald-600 text-white"
-                    : "text-gray-400 hover:text-white hover:bg-gray-700"
+                    : "text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-300 dark:hover:bg-gray-700"
                 )}
               >
                 {opt.name}
@@ -638,7 +638,7 @@ export function MarketHeatmapNew() {
             <select
               value={selectedSector}
               onChange={(e) => setSelectedSector(e.target.value || "all")}
-              className="bg-gray-800 text-xs text-gray-200 rounded-md px-2 py-1 border border-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="bg-slate-100 dark:bg-gray-800 text-xs text-slate-700 dark:text-gray-200 rounded-md px-2 py-1 border border-slate-300 dark:border-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               <option value="all">All Sectors</option>
               {sectors.map((sector) => (
@@ -651,7 +651,7 @@ export function MarketHeatmapNew() {
               <button
                 type="button"
                 onClick={() => setSelectedSector("all")}
-                className="text-[11px] text-gray-400 hover:text-white underline underline-offset-2"
+                className="text-[11px] text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white underline underline-offset-2"
               >
                 Clear
               </button>
@@ -664,7 +664,7 @@ export function MarketHeatmapNew() {
           size="sm"
           onClick={fetchData}
           disabled={loading}
-          className="text-gray-400 hover:text-white"
+          className="text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
         >
           <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
         </Button>
@@ -672,29 +672,29 @@ export function MarketHeatmapNew() {
 
       {/* Summary bar */}
       {data?.summary && (
-        <div className="flex items-center gap-6 px-4 py-2 bg-gray-900/30 border-b border-gray-800 text-sm">
+        <div className="flex items-center gap-6 px-4 py-2 bg-slate-50 dark:bg-gray-900/30 border-b border-slate-200 dark:border-gray-800 text-sm">
           <div className="flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-green-500" />
             <span className="text-green-500 font-medium">{data.summary.advancers}</span>
-            <span className="text-gray-500">advancing</span>
+            <span className="text-slate-500 dark:text-gray-500">advancing</span>
           </div>
           <div className="flex items-center gap-2">
             <TrendingDown className="w-4 h-4 text-red-500" />
             <span className="text-red-500 font-medium">{data.summary.decliners}</span>
-            <span className="text-gray-500">declining</span>
+            <span className="text-slate-500 dark:text-gray-500">declining</span>
           </div>
           <div className="flex items-center gap-2">
-            <Minus className="w-4 h-4 text-gray-500" />
-            <span className="text-gray-400 font-medium">{data.summary.unchanged}</span>
-            <span className="text-gray-500">unchanged</span>
+            <Minus className="w-4 h-4 text-slate-400 dark:text-gray-500" />
+            <span className="text-slate-600 dark:text-gray-400 font-medium">{data.summary.unchanged}</span>
+            <span className="text-slate-500 dark:text-gray-500">unchanged</span>
           </div>
-          <div className="h-4 w-px bg-gray-700" />
-          <div className="text-gray-400">
+          <div className="h-4 w-px bg-slate-300 dark:bg-gray-700" />
+          <div className="text-slate-500 dark:text-gray-400">
             Avg:{" "}
             <span
               className={cn(
                 "font-mono font-medium",
-                data.summary.avgChange >= 0 ? "text-green-400" : "text-red-400"
+                data.summary.avgChange >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
               )}
             >
               {data.summary.avgChange >= 0 ? "+" : ""}
@@ -703,19 +703,19 @@ export function MarketHeatmapNew() {
           </div>
           {data.summary.topSector && (
             <>
-              <div className="h-4 w-px bg-gray-700" />
-              <div className="text-gray-400">
+              <div className="h-4 w-px bg-slate-300 dark:bg-gray-700" />
+              <div className="text-slate-500 dark:text-gray-400">
                 Top:{" "}
-                <span className="text-green-400 font-medium">
+                <span className="text-green-600 dark:text-green-400 font-medium">
                   {data.summary.topSector.name}
                 </span>
               </div>
             </>
           )}
           {data.summary.weakestSector && (
-            <div className="text-gray-400">
+            <div className="text-slate-500 dark:text-gray-400">
               Weak:{" "}
-              <span className="text-red-400 font-medium">
+              <span className="text-red-600 dark:text-red-400 font-medium">
                 {data.summary.weakestSector.name}
               </span>
             </div>
@@ -732,19 +732,19 @@ export function MarketHeatmapNew() {
       {/* Heatmap area */}
       <div className="relative" style={{ height: 650 }}>
         {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-950/80 z-50">
+          <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-gray-950/80 z-50">
             <div className="flex flex-col items-center gap-2">
               <RefreshCw className="w-8 h-8 text-blue-500 animate-spin" />
-              <span className="text-gray-400 text-sm">Loading heatmap...</span>
+              <span className="text-slate-500 dark:text-gray-400 text-sm">Loading heatmap...</span>
             </div>
           </div>
         )}
 
         {error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-950">
+          <div className="absolute inset-0 flex items-center justify-center bg-white dark:bg-gray-950">
             <div className="text-center">
               <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-2" />
-              <p className="text-red-400">{error}</p>
+              <p className="text-red-500 dark:text-red-400">{error}</p>
               <Button onClick={fetchData} variant="outline" size="sm" className="mt-4">
                 Retry
               </Button>
@@ -754,10 +754,10 @@ export function MarketHeatmapNew() {
 
         {/* Empty state when no stocks for current filters */}
         {!loading && !error && data && data.summary.totalStocks === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-950">
+          <div className="absolute inset-0 flex items-center justify-center bg-white dark:bg-gray-950">
             <div className="text-center max-w-md px-4">
-              <div className="text-gray-200 font-medium text-lg mb-2">No stocks match the current filters</div>
-              <div className="text-sm text-gray-400">
+              <div className="text-slate-800 dark:text-gray-200 font-medium text-lg mb-2">No stocks match the current filters</div>
+              <div className="text-sm text-slate-500 dark:text-gray-400">
                 Try a different index (for example <span className="text-emerald-400 font-semibold">Russell 2000</span>)
                 or change the market cap / sector filters.
               </div>
@@ -780,7 +780,7 @@ export function MarketHeatmapNew() {
                   <Button
                     variant="secondary"
                     size="icon"
-                    className="w-8 h-8 bg-gray-800 hover:bg-gray-700"
+                    className="w-8 h-8 bg-slate-200 dark:bg-gray-800 hover:bg-slate-300 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-200"
                     onClick={() => zoomIn()}
                   >
                     <ZoomIn className="w-4 h-4" />
@@ -788,7 +788,7 @@ export function MarketHeatmapNew() {
                   <Button
                     variant="secondary"
                     size="icon"
-                    className="w-8 h-8 bg-gray-800 hover:bg-gray-700"
+                    className="w-8 h-8 bg-slate-200 dark:bg-gray-800 hover:bg-slate-300 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-200"
                     onClick={() => zoomOut()}
                   >
                     <ZoomOut className="w-4 h-4" />
@@ -796,7 +796,7 @@ export function MarketHeatmapNew() {
                   <Button
                     variant="secondary"
                     size="icon"
-                    className="w-8 h-8 bg-gray-800 hover:bg-gray-700"
+                    className="w-8 h-8 bg-slate-200 dark:bg-gray-800 hover:bg-slate-300 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-200"
                     onClick={() => resetTransform()}
                   >
                     <Maximize2 className="w-4 h-4" />
@@ -808,8 +808,8 @@ export function MarketHeatmapNew() {
                   contentStyle={{ width: 1200, height: 650 }}
                 >
                   <div
-                    className="relative bg-gray-950"
-                    style={{ width: 1200, height: 650 }}
+                    className="relative"
+                    style={{ width: 1200, height: 650, backgroundColor: "#030712" }}
                   >
                     {/* Sector labels */}
                     {sectorRects.map((rect, i) => (
@@ -833,8 +833,8 @@ export function MarketHeatmapNew() {
       </div>
 
       {/* Color legend */}
-      <div className="flex items-center justify-center gap-4 px-4 py-3 bg-gray-900/30 border-t border-gray-800">
-        <div className="flex items-center gap-2 text-xs text-gray-400">
+      <div className="flex items-center justify-center gap-4 px-4 py-3 bg-slate-50 dark:bg-gray-900/30 border-t border-slate-200 dark:border-gray-800">
+        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-gray-400">
           <span>-5%+</span>
           <div className="flex">
             <div className="w-6 h-4" style={{ backgroundColor: "#991b1b" }} />
@@ -851,8 +851,8 @@ export function MarketHeatmapNew() {
           </div>
           <span>+5%+</span>
         </div>
-        <div className="h-4 w-px bg-gray-700" />
-        <div className="text-xs text-gray-500">
+        <div className="h-4 w-px bg-slate-300 dark:bg-gray-700" />
+        <div className="text-xs text-slate-400 dark:text-gray-500">
           Tile size = Market Cap • Click to view company • Scroll to zoom • Drag to pan
         </div>
       </div>
