@@ -12,7 +12,7 @@ export default function OnboardingLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
+    <div className="relative h-full overflow-hidden bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
       {/* Ambient background layers */}
       <div
         className="pointer-events-none absolute inset-0"
@@ -39,7 +39,7 @@ export default function OnboardingLayout({
       </div>
 
       {/* Content wrapper - now flex to let children stretch */}
-      <div className="relative z-10 flex flex-col min-h-screen">{children}</div>
+      <div className="relative z-10 flex h-full flex-col">{children}</div>
     </div>
   );
 }

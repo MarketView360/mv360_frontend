@@ -301,9 +301,9 @@ function OnboardingContent() {
 
   // ─── Main wizard ──────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-1 flex-col min-h-0 bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
+    <div className="flex h-full flex-col bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
       {/* Scrollable Content Container */}
-      <main className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-2 sm:py-4 custom-scrollbar">
+      <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 py-4 sm:py-6 custom-scrollbar">
         <div className="mx-auto w-full max-w-5xl relative">
           {/* Resume toast - now relative so it pushes content down and is fully visible */}
           <div className={`transition-all duration-500 w-full flex justify-center ${showResumeToast ? "mb-6 mt-2 h-auto opacity-100" : "h-0 opacity-0 overflow-hidden"}`}>
@@ -344,7 +344,7 @@ function OnboardingContent() {
             {/* Step content — slide transition */}
             <div
               key={currentStep}
-              className={`p-3 sm:px-5 sm:py-4 transition-all duration-220 ${
+              className={`p-4 sm:px-10 sm:pt-5 sm:pb-6 transition-all duration-220 ${
                 isAnimating
                   ? slideDirection === "forward"
                     ? "-translate-x-4 opacity-0"
@@ -385,7 +385,7 @@ function OnboardingContent() {
               </div>
 
               {/* Footer */}
-              <div className="mt-2 space-y-2">
+              <div className="mt-6 space-y-3">
 
                 {/* Primary CTA */}
                   <button
