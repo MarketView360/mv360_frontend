@@ -31,23 +31,23 @@ export function StepBackground({ data, setData }: StepBackgroundProps) {
       {/* Header */}
       <div className="mb-8">
         <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1">
-          <span className="text-xs font-semibold uppercase tracking-widest text-blue-400">
+          <span className="text-xs font-semibold uppercase tracking-widest text-blue-600 dark:text-blue-400">
             Step 2 of 4
           </span>
         </div>
-        <h2 className="text-2xl font-bold text-white sm:text-3xl">
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
           Tell us about yourself.
         </h2>
-        <p className="mt-2 text-sm text-slate-400">
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
           We&apos;ll surface what&apos;s most relevant to your goals.
         </p>
       </div>
 
       {/* Professional Role */}
       <fieldset>
-        <legend className="mb-3 text-sm font-medium text-slate-300">
+        <legend className="mb-3 text-sm font-medium text-slate-700 dark:text-slate-300">
           I am a…
-          <span className="ml-1.5 text-xs font-normal text-slate-500">required</span>
+          <span className="ml-1.5 text-xs font-normal text-slate-400 dark:text-slate-500">required</span>
         </legend>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {PROFESSIONAL_ROLES.map((role) => {
@@ -64,7 +64,7 @@ export function StepBackground({ data, setData }: StepBackgroundProps) {
                 className={`group relative flex flex-col items-start gap-1.5 rounded-xl border p-3.5 text-left transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
                   selected
                     ? "border-blue-500/60 bg-blue-600/15 shadow-[0_0_16px_rgba(59,130,246,0.15)]"
-                    : "border-slate-700/60 bg-slate-800/40 hover:border-slate-600 hover:bg-slate-800/70"
+                    : "border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-800/40 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800/70"
                 }`}
               >
                 {selected && (
@@ -86,9 +86,9 @@ export function StepBackground({ data, setData }: StepBackgroundProps) {
 
       {/* Experience Level */}
       <fieldset>
-        <legend className="mb-3 text-sm font-medium text-slate-300">
+        <legend className="mb-3 text-sm font-medium text-slate-700 dark:text-slate-300">
           Experience level
-          <span className="ml-1.5 text-xs font-normal text-slate-500">required</span>
+          <span className="ml-1.5 text-xs font-normal text-slate-400 dark:text-slate-500">required</span>
         </legend>
         <div className="flex flex-wrap gap-2" role="radiogroup">
           {EXPERIENCE_LEVELS.map((level) => {
@@ -105,7 +105,7 @@ export function StepBackground({ data, setData }: StepBackgroundProps) {
                 className={`rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
                   selected
                     ? "bg-blue-600 text-white shadow-[0_0_12px_rgba(59,130,246,0.3)]"
-                    : "border border-slate-700/60 bg-slate-800/60 text-slate-300 hover:border-slate-600 hover:text-white"
+                    : "border border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 {level.label}
@@ -117,9 +117,9 @@ export function StepBackground({ data, setData }: StepBackgroundProps) {
 
       {/* Primary Goal */}
       <fieldset>
-        <legend className="mb-3 text-sm font-medium text-slate-300">
+        <legend className="mb-3 text-sm font-medium text-slate-700 dark:text-slate-300">
           My primary goal
-          <span className="ml-1.5 text-xs font-normal text-slate-500">required</span>
+          <span className="ml-1.5 text-xs font-normal text-slate-400 dark:text-slate-500">required</span>
         </legend>
         <div className="space-y-2">
           {PRIMARY_GOALS.map((goal) => {
@@ -136,12 +136,12 @@ export function StepBackground({ data, setData }: StepBackgroundProps) {
                 className={`flex w-full items-center gap-4 rounded-xl border px-4 py-3.5 text-left transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
                   selected
                     ? "border-blue-500/60 bg-blue-600/15 shadow-[0_0_16px_rgba(59,130,246,0.12)]"
-                    : "border-slate-700/60 bg-slate-800/40 hover:border-slate-600 hover:bg-slate-800/70"
+                    : "border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-800/40 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800/70"
                 }`}
               >
                 <span className="text-xl leading-none">{goal.icon}</span>
                 <div className="flex-1">
-                  <span className={`text-sm font-medium ${selected ? "text-blue-300" : "text-slate-200"}`}>
+                  <span className={`text-sm font-medium ${selected ? "text-blue-600 dark:text-blue-300" : "text-slate-700 dark:text-slate-200"}`}>
                     {goal.label}
                   </span>
                 </div>
@@ -149,7 +149,7 @@ export function StepBackground({ data, setData }: StepBackgroundProps) {
                   className={`h-4 w-4 shrink-0 rounded-full border-2 transition-all ${
                     selected
                       ? "border-blue-500 bg-blue-500"
-                      : "border-slate-600"
+                      : "border-slate-300 dark:border-slate-600"
                   }`}
                 >
                   {selected && (
@@ -164,9 +164,9 @@ export function StepBackground({ data, setData }: StepBackgroundProps) {
 
       {/* Investment Style */}
       <fieldset>
-        <legend className="mb-1 text-sm font-medium text-slate-300">
+        <legend className="mb-1 text-sm font-medium text-slate-700 dark:text-slate-300">
           Investment style
-          <span className="ml-1.5 text-xs font-normal text-slate-500">optional</span>
+          <span className="ml-1.5 text-xs font-normal text-slate-400 dark:text-slate-500">optional</span>
         </legend>
         <p className="mb-3 text-xs text-slate-500">
           Skip if you&apos;re still figuring this out — you can set this later.
@@ -183,8 +183,8 @@ export function StepBackground({ data, setData }: StepBackgroundProps) {
                 onClick={() => toggleInvestmentStyle(style.value)}
                 className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
                   selected
-                    ? "border-blue-500/60 bg-blue-600/20 text-blue-300"
-                    : "border-slate-700/60 bg-slate-800/60 text-slate-400 hover:border-slate-600 hover:text-slate-300"
+                    ? "border-blue-500/60 bg-blue-600/20 text-blue-600 dark:text-blue-300"
+                    : "border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-700 dark:hover:text-slate-200"
                 }`}
               >
                 {style.label}

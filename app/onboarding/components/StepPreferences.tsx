@@ -86,21 +86,21 @@ export function StepPreferences({
       {/* Header */}
       <div className="mb-8">
         <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1">
-          <span className="text-xs font-semibold uppercase tracking-widest text-blue-400">
+          <span className="text-xs font-semibold uppercase tracking-widest text-blue-600 dark:text-blue-400">
             Step 4 of 4
           </span>
         </div>
-        <h2 className="text-2xl font-bold text-white sm:text-3xl">
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
           Almost there — stay in the loop.
         </h2>
-        <p className="mt-2 text-sm text-slate-400">
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
           Control what we send you. You can change these anytime in settings.
         </p>
       </div>
 
       {/* Email Preferences */}
       <fieldset>
-        <legend className="mb-3 text-sm font-medium text-slate-300">
+        <legend className="mb-3 text-sm font-medium text-slate-700 dark:text-slate-300">
           Email preferences
         </legend>
         <div className="space-y-2">
@@ -111,8 +111,8 @@ export function StepPreferences({
                 key={key}
                 className={`flex cursor-pointer items-center gap-4 rounded-xl border px-4 py-3.5 transition-all duration-200 ${
                   checked
-                    ? "border-slate-600/60 bg-slate-800/60"
-                    : "border-slate-700/40 bg-slate-800/30 hover:border-slate-700 hover:bg-slate-800/50"
+                    ? "border-slate-300 dark:border-slate-600/60 bg-slate-50 dark:bg-slate-800/60 shadow-sm"
+                    : "border-slate-200 dark:border-slate-700/40 bg-white dark:bg-slate-800/30 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800/50"
                 }`}
               >
                 <div
@@ -121,8 +121,8 @@ export function StepPreferences({
                   <Icon className={`h-4 w-4 ${iconColor}`} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-white">{title}</p>
-                  <p className="text-xs text-slate-400">{description}</p>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white">{title}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{description}</p>
                 </div>
                 {/* Toggle */}
                 <div className="relative shrink-0">
@@ -135,7 +135,7 @@ export function StepPreferences({
                     className="peer sr-only"
                     aria-label={title}
                   />
-                  <div className="h-6 w-11 rounded-full border border-slate-600 bg-slate-700 transition-all duration-200 peer-checked:border-blue-500 peer-checked:bg-blue-600 peer-focus:ring-2 peer-focus:ring-blue-500/30" />
+                  <div className="h-6 w-11 rounded-full border border-slate-300 dark:border-slate-600 bg-slate-200 dark:bg-slate-700 transition-all duration-200 peer-checked:border-blue-500 peer-checked:bg-blue-600 peer-focus:ring-2 peer-focus:ring-blue-500/30" />
                   <div className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-all duration-200 peer-checked:translate-x-5" />
                 </div>
               </label>
@@ -146,9 +146,9 @@ export function StepPreferences({
 
       {/* Referral Source */}
       <div ref={dropdownRef}>
-        <label className="mb-2 block text-sm font-medium text-slate-300">
+        <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
           How did you find us?
-          <span className="ml-1.5 text-xs font-normal text-slate-500">optional</span>
+          <span className="ml-1.5 text-xs font-normal text-slate-400 dark:text-slate-500">optional</span>
         </label>
         <div className="relative">
           <button
@@ -156,9 +156,9 @@ export function StepPreferences({
             onClick={() => setShowReferralDropdown((v) => !v)}
             aria-haspopup="listbox"
             aria-expanded={showReferralDropdown}
-            className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-700/60 bg-slate-800/60 px-4 py-3 text-left text-sm backdrop-blur-sm transition-all focus:border-blue-500/60 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className="flex w-full items-center justify-between gap-3 rounded-xl border border-slate-300 dark:border-slate-700/60 bg-white dark:bg-slate-800/60 px-4 py-3 text-left text-sm backdrop-blur-sm transition-all focus:border-blue-500/60 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           >
-            <span className={data.referral_source ? "text-white" : "text-slate-500"}>
+            <span className={data.referral_source ? "text-slate-900 dark:text-white" : "text-slate-400 dark:text-slate-500"}>
               {selectedReferralLabel}
             </span>
             <ChevronDown
@@ -191,8 +191,8 @@ export function StepPreferences({
                       }}
                       className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition-colors ${
                         selected
-                          ? "bg-blue-600/20 text-blue-300"
-                          : "text-slate-300 hover:bg-slate-800"
+                          ? "bg-blue-600/20 text-blue-600 dark:text-blue-300"
+                          : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                       }`}
                     >
                       {source.label}
@@ -210,18 +210,18 @@ export function StepPreferences({
 
       {/* Plan-aware banner */}
       {subscriptionTier === "free" && (
-        <div className="rounded-xl border border-blue-500/20 bg-gradient-to-br from-blue-600/10 to-indigo-600/10 p-4">
+        <div className="rounded-xl border border-blue-500/20 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-600/10 dark:to-indigo-600/10 p-4">
           <div className="flex items-start gap-3">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/20">
-              <Zap className="h-4 w-4 text-blue-400" />
+              <Zap className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-white">
+              <p className="text-sm font-semibold text-slate-900 dark:text-white">
                 You&apos;re on the Free plan
               </p>
-              <p className="mt-0.5 text-xs text-slate-400">
+              <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400">
                 Upgrade to{" "}
-                <span className="font-semibold text-blue-400">Premium ($9.99/mo)</span>{" "}
+                <span className="font-semibold text-blue-600 dark:text-blue-400">Premium ($9.99/mo)</span>{" "}
                 for real-time data, unlimited AI questions, advanced screeners, and more.
               </p>
             </div>

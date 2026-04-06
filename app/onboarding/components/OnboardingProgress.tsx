@@ -35,7 +35,7 @@ export function OnboardingProgress({
                       ? "bg-blue-500 ring-blue-500 text-white shadow-[0_0_12px_rgba(59,130,246,0.4)]"
                       : isCurrent
                       ? "bg-blue-600 ring-blue-500/60 text-white shadow-[0_0_18px_rgba(59,130,246,0.5)] scale-110"
-                      : "bg-slate-800 ring-slate-700 text-slate-500"
+                      : "bg-slate-200 dark:bg-slate-800 ring-slate-300 dark:ring-slate-700 text-slate-500 dark:text-slate-500"
                   }
                 `}
               >
@@ -63,10 +63,10 @@ export function OnboardingProgress({
               <span
                 className={`hidden sm:block text-[10px] font-medium uppercase tracking-widest transition-colors duration-300 ${
                   isCurrent
-                    ? "text-blue-400"
+                    ? "text-blue-600 dark:text-blue-400"
                     : isCompleted
-                    ? "text-slate-400"
-                    : "text-slate-600"
+                    ? "text-slate-500 dark:text-slate-400"
+                    : "text-slate-400 dark:text-slate-600"
                 }`}
               >
                 {STEP_LABELS[idx]}
@@ -75,7 +75,7 @@ export function OnboardingProgress({
 
             {/* Connector line */}
             {idx < totalSteps - 1 && (
-              <div className="relative mx-2 mb-5 h-px w-12 sm:w-16 overflow-hidden rounded-full bg-slate-800">
+              <div className="relative mx-2 mb-5 h-px w-12 sm:w-16 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
                 <div
                   className="absolute inset-y-0 left-0 bg-blue-500 transition-all duration-700 ease-out"
                   style={{ width: isCompleted ? "100%" : "0%" }}

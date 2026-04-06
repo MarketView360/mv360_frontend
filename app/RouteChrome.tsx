@@ -1,4 +1,4 @@
-"use client";
+  "use client";
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
@@ -18,9 +18,10 @@ export default function RouteChrome({
   const pathname = usePathname();
 
   const isFullScreen = pathname === "/jovan-chat" || pathname === "/ai";
+  const isOnboarding = pathname === "/onboarding";
 
   useEffect(() => {
-    if (isFullScreen) {
+    if (isFullScreen || isOnboarding) {
       document.documentElement.style.overflow = "hidden";
       document.body.style.overflow = "hidden";
     } else {
@@ -31,7 +32,7 @@ export default function RouteChrome({
       document.documentElement.style.overflow = "";
       document.body.style.overflow = "";
     };
-  }, [isFullScreen]);
+  }, [isFullScreen, isOnboarding]);
 
   return (
     <div
@@ -43,7 +44,7 @@ export default function RouteChrome({
       {!isFullScreen && pathname !== "/ai" && <NavigationBar />}
       {pathname === "/ai" && <NavigationBar />}
 
-      {isFullScreen ? (
+      {isFullScreen || isOnboarding ? (
         <main className="flex-1 w-full relative flex flex-col overflow-hidden">
           {children}
         </main>

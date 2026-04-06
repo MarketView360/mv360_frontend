@@ -301,14 +301,15 @@ function OnboardingContent() {
 
   // ─── Main wizard ──────────────────────────────────────────────────────────
   return (
-    <div className="flex min-h-screen flex-col">
-      {/* Header */}
-      <header className="flex items-center justify-between px-5 py-4 sm:px-8 sm:py-5">
-        <Logo width={160} height={32} className="h-7 sm:h-8 opacity-90" />
-        {/* Subtle step counter for screen-reader-unfriendly contexts */}
-        <span className="text-xs text-slate-600" aria-hidden="true">
-          {currentStep} / 4
-        </span>
+    <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
+      {/* Header - Fixed/Sticky or Simple scroll */}
+      <header className="flex items-center justify-end px-5 py-4 sm:px-8 sm:py-5">
+        {/* Subtle step counter */}
+        <div className="flex items-center gap-2 rounded-full bg-slate-200/50 dark:bg-slate-800/50 px-3 py-1 border border-slate-300/50 dark:border-slate-700/50">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            Step {currentStep} of 4
+          </span>
+        </div>
       </header>
 
       {/* Content */}
@@ -343,7 +344,7 @@ function OnboardingContent() {
           )}
 
           {/* Card */}
-          <div className="overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-900/80 shadow-2xl shadow-black/40 backdrop-blur-xl">
+          <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700/50 bg-white dark:bg-slate-900/80 shadow-xl dark:shadow-2xl dark:shadow-black/40 backdrop-blur-xl">
             {/* Step content — slide transition */}
             <div
               key={currentStep}
@@ -392,13 +393,13 @@ function OnboardingContent() {
                 <AutoSaveIndicator show={showSaveIndicator} saving={isSaving} />
 
                 {/* Primary CTA */}
-                <button
+                  <button
                   onClick={handleNext}
                   disabled={!isCurrentStepValid() || isLoading || isAnimating}
-                  className={`relative w-full overflow-hidden rounded-xl py-3.5 px-5 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:cursor-not-allowed disabled:opacity-40 ${
+                  className={`relative w-full overflow-hidden rounded-xl py-3.5 px-5 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-900 disabled:cursor-not-allowed disabled:opacity-40 ${
                     isCurrentStepValid()
                       ? "bg-blue-600 text-white shadow-[0_0_20px_rgba(59,130,246,0.25)] hover:bg-blue-500 hover:shadow-[0_0_28px_rgba(59,130,246,0.35)] active:scale-[0.99]"
-                      : "bg-slate-700 text-slate-400"
+                      : "bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-400"
                   }`}
                 >
                   {isLoading ? (

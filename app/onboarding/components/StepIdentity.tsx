@@ -70,14 +70,14 @@ export function StepIdentity({ data, setData }: StepIdentityProps) {
       {/* Header */}
       <div className="mb-8">
         <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1">
-          <span className="text-xs font-semibold uppercase tracking-widest text-blue-400">
+          <span className="text-xs font-semibold uppercase tracking-widest text-blue-600 dark:text-blue-400">
             Step 1 of 4
           </span>
         </div>
-        <h2 className="text-2xl font-bold text-white sm:text-3xl">
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
           Welcome — let&apos;s set up your workspace.
         </h2>
-        <p className="mt-2 text-sm text-slate-400">
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
           This takes under 3 minutes. We use this to personalise your experience.
         </p>
       </div>
@@ -87,7 +87,7 @@ export function StepIdentity({ data, setData }: StepIdentityProps) {
         <div>
           <label
             htmlFor="fullName"
-            className="mb-1.5 block text-sm font-medium text-slate-300"
+            className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
           >
             Full name
           </label>
@@ -100,7 +100,7 @@ export function StepIdentity({ data, setData }: StepIdentityProps) {
             }
             placeholder="Jane Smith"
             autoComplete="name"
-            className="w-full rounded-xl border border-slate-700/60 bg-slate-800/60 px-4 py-3 text-sm text-white placeholder-slate-500 backdrop-blur-sm transition-all focus:border-blue-500/60 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className="w-full rounded-xl border border-slate-300 dark:border-slate-700/60 bg-white dark:bg-slate-800/60 px-4 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 backdrop-blur-sm transition-all focus:border-blue-500/60 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           />
         </div>
 
@@ -108,7 +108,7 @@ export function StepIdentity({ data, setData }: StepIdentityProps) {
         <div>
           <label
             htmlFor="displayName"
-            className="mb-1.5 block text-sm font-medium text-slate-300"
+            className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300"
           >
             Display name
             <span className="ml-1.5 text-xs font-normal text-slate-500">
@@ -125,16 +125,16 @@ export function StepIdentity({ data, setData }: StepIdentityProps) {
             }}
             placeholder="Jane"
             autoComplete="nickname"
-            className="w-full rounded-xl border border-slate-700/60 bg-slate-800/60 px-4 py-3 text-sm text-white placeholder-slate-500 backdrop-blur-sm transition-all focus:border-blue-500/60 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className="w-full rounded-xl border border-slate-300 dark:border-slate-700/60 bg-white dark:bg-slate-800/60 px-4 py-3 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 backdrop-blur-sm transition-all focus:border-blue-500/60 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           />
-          <p className="mt-1.5 text-xs text-slate-500">
+          <p className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">
             Auto-filled from your name — edit freely
           </p>
         </div>
 
         {/* Timezone */}
         <div ref={dropdownRef}>
-          <label className="mb-1.5 block text-sm font-medium text-slate-300">
+          <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
             Your timezone
             <span className="ml-1.5 text-xs font-normal text-slate-500">
               used for alerts &amp; market hours
@@ -184,8 +184,8 @@ export function StepIdentity({ data, setData }: StepIdentityProps) {
                         }}
                         className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors ${
                           isSelected
-                            ? "bg-blue-600/20 text-blue-300"
-                            : "text-slate-300 hover:bg-slate-800"
+                            ? "bg-blue-600/20 text-blue-600 dark:text-blue-300"
+                            : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
                         }`}
                       >
                         <span className="flex-1">{tz.label}</span>

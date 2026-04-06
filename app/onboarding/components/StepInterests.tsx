@@ -28,14 +28,14 @@ export function StepInterests({ data, setData }: StepInterestsProps) {
       {/* Header */}
       <div className="mb-8">
         <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1">
-          <span className="text-xs font-semibold uppercase tracking-widest text-blue-400">
+          <span className="text-xs font-semibold uppercase tracking-widest text-blue-600 dark:text-blue-400">
             Step 3 of 4
           </span>
         </div>
-        <h2 className="text-2xl font-bold text-white sm:text-3xl">
+        <h2 className="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
           What will you use most?
         </h2>
-        <p className="mt-2 text-sm text-slate-400">
+        <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
           We&apos;ll surface the right features first based on your interests.
         </p>
       </div>
@@ -43,14 +43,14 @@ export function StepInterests({ data, setData }: StepInterestsProps) {
       {/* Feature Interests */}
       <fieldset>
         <div className="mb-3 flex items-center justify-between">
-          <legend className="text-sm font-medium text-slate-300">
+          <legend className="text-sm font-medium text-slate-700 dark:text-slate-300">
             I want to…
-            <span className="ml-1.5 text-xs font-normal text-slate-500">
+            <span className="ml-1.5 text-xs font-normal text-slate-400 dark:text-slate-500">
               select at least one
             </span>
           </legend>
           {selectedCount > 0 && (
-            <span className="rounded-full bg-blue-600/20 px-2.5 py-0.5 text-xs font-semibold text-blue-400">
+            <span className="rounded-full bg-blue-600/20 px-2.5 py-0.5 text-xs font-semibold text-blue-600 dark:text-blue-400">
               {selectedCount} selected
             </span>
           )}
@@ -68,13 +68,13 @@ export function StepInterests({ data, setData }: StepInterestsProps) {
                 className={`group relative flex items-center gap-3.5 rounded-xl border px-4 py-3.5 text-left transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
                   selected
                     ? "border-blue-500/60 bg-blue-600/15 shadow-[0_0_14px_rgba(59,130,246,0.1)]"
-                    : "border-slate-700/60 bg-slate-800/40 hover:border-slate-600 hover:bg-slate-800/70"
+                    : "border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-800/40 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800/70"
                 }`}
               >
                 <span className="text-xl leading-none">{interest.icon}</span>
                 <span
                   className={`flex-1 text-sm font-medium ${
-                    selected ? "text-blue-300" : "text-slate-200"
+                    selected ? "text-blue-600 dark:text-blue-300" : "text-slate-700 dark:text-slate-200"
                   }`}
                 >
                   {interest.label}
@@ -89,7 +89,7 @@ export function StepInterests({ data, setData }: StepInterestsProps) {
                   className={`h-4 w-4 shrink-0 rounded border-2 transition-all ${
                     selected
                       ? "border-blue-500 bg-blue-500"
-                      : "border-slate-600 group-hover:border-slate-500"
+                      : "border-slate-300 dark:border-slate-600 group-hover:border-slate-400 dark:group-hover:border-slate-500"
                   }`}
                 >
                   {selected && (
@@ -117,9 +117,9 @@ export function StepInterests({ data, setData }: StepInterestsProps) {
 
       {/* Usage Frequency */}
       <fieldset>
-        <legend className="mb-3 text-sm font-medium text-slate-300">
+        <legend className="mb-3 text-sm font-medium text-slate-700 dark:text-slate-300">
           How often will you use MarketView360?
-          <span className="ml-1.5 text-xs font-normal text-slate-500">required</span>
+          <span className="ml-1.5 text-xs font-normal text-slate-400 dark:text-slate-500">required</span>
         </legend>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {USAGE_FREQUENCIES.map((freq) => {
@@ -135,8 +135,8 @@ export function StepInterests({ data, setData }: StepInterestsProps) {
                 }
                 className={`rounded-xl border px-4 py-3 text-center text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
                   selected
-                    ? "border-blue-500/60 bg-blue-600/20 text-blue-300 shadow-[0_0_12px_rgba(59,130,246,0.2)]"
-                    : "border-slate-700/60 bg-slate-800/40 text-slate-400 hover:border-slate-600 hover:text-slate-300"
+                    ? "border-blue-500/60 bg-blue-600/20 text-blue-600 dark:text-blue-300 shadow-[0_0_12px_rgba(59,130,246,0.2)]"
+                    : "border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
                 {freq.label}
