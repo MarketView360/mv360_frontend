@@ -40,7 +40,7 @@ export function StepInterests({ data, setData }: StepInterestsProps) {
         <div className="mb-3 flex items-center justify-between">
           <legend className="text-sm font-medium text-slate-700 dark:text-slate-300">
             I want to…
-            <span className="ml-1.5 text-xs font-normal text-slate-400 dark:text-slate-500">
+            <span className="ml-2.5 text-xs font-normal text-slate-400 dark:text-slate-500">
               select at least one
             </span>
           </legend>
@@ -50,7 +50,7 @@ export function StepInterests({ data, setData }: StepInterestsProps) {
             </span>
           )}
         </div>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="flex flex-wrap gap-2">
           {FEATURE_INTERESTS.map((interest) => {
             const selected = data.interests?.includes(interest.value);
             return (
@@ -60,44 +60,18 @@ export function StepInterests({ data, setData }: StepInterestsProps) {
                 role="checkbox"
                 aria-checked={!!selected}
                 onClick={() => toggleInterest(interest.value)}
-                className={`group relative flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40 ${
+                className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/40 relative flex items-center gap-2 ${
                   selected
-                    ? "border-blue-500/60 bg-blue-600/15 shadow-[0_0_14px_rgba(59,130,246,0.1)]"
-                    : "border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-800/40 hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800/70"
+                    ? "border-blue-500/60 bg-blue-600 text-white shadow-[0_0_12px_rgba(59,130,246,0.3)]"
+                    : "border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
-                <span
-                  className={`flex-1 text-sm font-medium ${
-                    selected ? "text-blue-600 dark:text-blue-300" : "text-slate-700 dark:text-slate-200"
-                  }`}
-                >
-                  {interest.label}
-                </span>
+                {interest.label}
                 {interest.value === "screener" && (
-                  <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-400">
+                  <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${selected ? "bg-emerald-400/20 text-emerald-100" : "bg-emerald-500/15 text-emerald-500 dark:text-emerald-400"}`}>
                     Popular
                   </span>
                 )}
-                {/* Checkbox indicator */}
-                <div
-                  className={`h-4 w-4 shrink-0 rounded border-2 transition-all ${
-                    selected
-                      ? "border-blue-500 bg-blue-500"
-                      : "border-slate-300 dark:border-slate-600 group-hover:border-slate-400 dark:group-hover:border-slate-500"
-                  }`}
-                >
-                  {selected && (
-                    <svg className="h-full w-full text-white" viewBox="0 0 16 16" fill="none">
-                      <path
-                        d="M3.5 8l3 3L12.5 5"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  )}
-                </div>
               </button>
             );
           })}
@@ -113,7 +87,7 @@ export function StepInterests({ data, setData }: StepInterestsProps) {
       <fieldset>
         <legend className="mb-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
           How often will you use MarketView360?
-          <span className="ml-1.5 text-[10px] font-normal text-slate-400 dark:text-slate-500">required</span>
+          <span className="ml-2.5 text-[10px] font-normal text-slate-400 dark:text-slate-500">required</span>
         </legend>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {USAGE_FREQUENCIES.map((freq) => {

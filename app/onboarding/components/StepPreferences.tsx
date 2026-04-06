@@ -143,7 +143,7 @@ export function StepPreferences({
       <div ref={dropdownRef}>
         <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
           How did you find us?
-          <span className="ml-1.5 text-[10px] font-normal text-slate-400 dark:text-slate-500">optional</span>
+          <span className="ml-2.5 text-[10px] font-normal text-slate-400 dark:text-slate-500">optional</span>
         </label>
         <div className="relative">
           <button

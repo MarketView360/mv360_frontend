@@ -42,7 +42,7 @@ export function StepBackground({ data, setData }: StepBackgroundProps) {
       <fieldset>
         <legend className="mb-1 text-sm font-medium text-slate-700 dark:text-slate-300">
           I am a…
-          <span className="ml-1.5 text-[10px] font-normal text-slate-400 dark:text-slate-500">required</span>
+          <span className="ml-2.5 text-[10px] font-normal text-slate-400 dark:text-slate-500">required</span>
         </legend>
         <div className="flex flex-wrap gap-2">
           {PROFESSIONAL_ROLES.map((role) => {
@@ -73,7 +73,7 @@ export function StepBackground({ data, setData }: StepBackgroundProps) {
       <fieldset>
         <legend className="mb-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
           Experience level
-          <span className="ml-1.5 text-[10px] font-normal text-slate-400 dark:text-slate-500">required</span>
+          <span className="ml-2.5 text-[10px] font-normal text-slate-400 dark:text-slate-500">required</span>
         </legend>
         <div className="flex flex-wrap gap-2" role="radiogroup">
           {EXPERIENCE_LEVELS.map((level) => {
@@ -104,7 +104,7 @@ export function StepBackground({ data, setData }: StepBackgroundProps) {
       <fieldset>
         <legend className="mb-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
           My primary goal
-          <span className="ml-1.5 text-[10px] font-normal text-slate-400 dark:text-slate-500">required</span>
+          <span className="ml-2.5 text-[10px] font-normal text-slate-400 dark:text-slate-500">required</span>
         </legend>
         <div className="flex flex-wrap gap-2">
           {PRIMARY_GOALS.map((goal) => {
@@ -133,9 +133,9 @@ export function StepBackground({ data, setData }: StepBackgroundProps) {
 
       {/* Investment Style */}
       <fieldset>
-        <legend className="mb-1 text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center justify-between">
-          <span>Investment style</span>
-          <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500">optional</span>
+        <legend className="mb-1 text-sm font-medium text-slate-700 dark:text-slate-300">
+          Investment style
+          <span className="ml-2.5 text-[10px] font-normal text-slate-400 dark:text-slate-500">optional</span>
         </legend>
         <div className="flex flex-wrap gap-2 mt-1.5">
           {INVESTMENT_STYLES.map((style) => {

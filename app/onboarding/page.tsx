@@ -304,16 +304,14 @@ function OnboardingContent() {
     <div className="flex flex-1 flex-col min-h-0 bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
       {/* Scrollable Content Container */}
       <main className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-2 sm:py-4 custom-scrollbar">
-        <div className="mx-auto w-full max-w-4xl relative mt-8">
-          {/* Resume toast - now absolute to save height */}
-          <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-20 w-max">
+        <div className="mx-auto w-full max-w-5xl relative">
+          {/* Resume toast - now relative so it pushes content down and is fully visible */}
+          <div className={`transition-all duration-500 w-full flex justify-center ${showResumeToast ? "mb-6 mt-2 h-auto opacity-100" : "h-0 opacity-0 overflow-hidden"}`}>
             <div
-              className={`overflow-hidden rounded-xl border border-blue-500/20 bg-blue-500/10 transition-all duration-500 ${
-                showResumeToast ? "max-h-16 opacity-100 py-1.5 px-4 shadow-sm backdrop-blur-md" : "max-h-0 opacity-0 py-0 px-4"
-              }`}
+              className="overflow-hidden rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-2 shadow-sm backdrop-blur-md"
               aria-live="polite"
             >
-              <p className="text-center text-xs text-blue-600 dark:text-blue-300">
+              <p className="text-center text-xs font-medium text-blue-600 dark:text-blue-300">
                 Welcome back — picking up where you left off.
               </p>
             </div>

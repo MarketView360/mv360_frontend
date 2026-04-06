@@ -106,7 +106,7 @@ export function StepIdentity({ data, setData }: StepIdentityProps) {
             className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300"
           >
             Display name
-            <span className="ml-1.5 text-xs font-normal text-slate-500">
+            <span className="ml-2.5 text-xs font-normal text-slate-500">
               shown throughout the app
             </span>
           </label>
@@ -131,7 +131,7 @@ export function StepIdentity({ data, setData }: StepIdentityProps) {
         <div ref={dropdownRef}>
           <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
             Your timezone
-            <span className="ml-1.5 text-xs font-normal text-slate-500">
+            <span className="ml-2.5 text-xs font-normal text-slate-500">
               used for alerts &amp; market hours
             </span>
           </label>
