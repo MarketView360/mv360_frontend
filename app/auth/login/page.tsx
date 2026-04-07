@@ -53,10 +53,10 @@ function LoginPageContent() {
           }
         }
         // Default redirect if check fails or user is onboarded
-        router.replace("/auth/already-logged-in");
+        router.replace("/");
       } catch {
-        // If check fails, default to existing behavior
-        router.replace("/auth/already-logged-in");
+        // If check fails, default to homepage
+        router.replace("/");
       }
     };
 
@@ -70,6 +70,12 @@ function LoginPageContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [showMagicLinkSent, setShowMagicLinkSent] = useState(false);
   const [magicLinkMode, setMagicLinkMode] = useState(false);
+
+  // Show skeleton while loading auth state or if session exists (meaning we're about to redirect)
+  // IMPORTANT: Hooks must be defined before any early returns.
+  if (loading || (session && !isLoggingIn)) {
+    return <LoginPageSkeleton />;
+  }
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -29,6 +29,14 @@ function getPasswordStrength(password: string): PasswordStrength {
   return { score, label: "Very Strong", color: "bg-emerald-500" };
 }
 
+function SignupPageSkeleton() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
+    </div>
+  );
+}
+
 export default function SignupPage() {
   const router = useRouter();
   const { session, signUpWithEmail, loading } = useAuth();
@@ -52,9 +60,9 @@ export default function SignupPage() {
           }
         }
         // Default redirect if check fails or user is onboarded
-        router.replace("/auth/already-logged-in");
+        router.replace("/");
       } catch {
-        router.replace("/auth/already-logged-in");
+        router.replace("/");
       }
     };
 
@@ -91,8 +99,8 @@ export default function SignupPage() {
             return;
           }
         }
-        // If already onboarded, go to already-logged-in
-        router.replace("/auth/already-logged-in");
+        // If already onboarded, go home
+        router.replace("/");
       } catch {
         // Keep showing verification message if check fails
         setIsCheckingVerification(false);
@@ -104,6 +112,12 @@ export default function SignupPage() {
     const interval = setInterval(checkVerification, 3000);
     return () => clearInterval(interval);
   }, [showVerificationMessage, session, router, isCheckingVerification]);
+
+  // Show skeleton while loading auth state or if session exists (meaning we're about to redirect)
+  // IMPORTANT: Hooks must be defined before any early returns.
+  if (loading || session) {
+    return <SignupPageSkeleton />;
+  }
 
   const passwordStrength = getPasswordStrength(password);
   const passwordsMatch = password === confirmPassword && password.length > 0;
