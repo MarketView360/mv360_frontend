@@ -35,6 +35,7 @@ export interface OnboardingStep4Data {
   alerts_opt_in: boolean;
   events_and_promotions_opt_in: boolean;
   referral_source?: string;
+  referral_source_other?: string;
 }
 
 export interface OnboardingData extends 
@@ -140,7 +141,8 @@ export function useOnboarding() {
     newsletter_opt_in: false,
     alerts_opt_in: false,
     events_and_promotions_opt_in: false,
-    referral_source: "",
+     referral_source: "",
+    referral_source_other: "",
   });
 
   // Fetch onboarding status

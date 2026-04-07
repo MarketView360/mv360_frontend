@@ -203,6 +203,24 @@ export function StepPreferences({
               </div>
             )}
           </div>
+
+          {/* Conditional "Other" input */}
+          {data.referral_source === "other" && (
+            <div className="mt-3 animate-in fade-in slide-in-from-top-1 duration-200">
+              <input
+                type="text"
+                placeholder="Please specify..."
+                value={data.referral_source_other || ""}
+                onChange={(e) =>
+                  setData((prev) => ({
+                    ...prev,
+                    referral_source_other: e.target.value,
+                  }))
+                }
+                className="w-full rounded-xl border border-slate-300 dark:border-slate-700/60 bg-white dark:bg-slate-800/60 px-3 py-2 text-sm backdrop-blur-sm transition-all focus:border-blue-500/60 focus:outline-none focus:ring-2 focus:ring-blue-500/20 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500"
+              />
+            </div>
+          )}
         </div>
 
         {/* Plan-aware banner */}
