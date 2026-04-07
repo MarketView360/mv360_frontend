@@ -194,6 +194,17 @@ interface PriceChartProps {
 // Enterprise-only ranges
 const ENTERPRISE_RANGES = ["Max"];
 
+// Ranges that require extended history (more than the default 1Y fetch)
+const EXTENDED_RANGES = ["3Y", "5Y", "10Y", "Max"];
+
+// Map range label → backend range param
+const RANGE_PARAM: Record<string, string> = {
+  "3Y": "3y",
+  "5Y": "5y",
+  "10Y": "10y",
+  "Max": "max",
+};
+
 export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceChartProps) {
   const chartContainerRef = React.useRef<HTMLDivElement>(null);
   const {
@@ -216,6 +227,12 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
   const [range, setRange] = React.useState("1Y");
   const [view, setView] = React.useState<"price" | "risk" | "candlestick">("price");
   const [showVolume, setShowVolumeLocal] = React.useState(true);
+
+  // ── Extended range data fetching ────────────────────────────────────────────
+  // Cache fetched extended data keyed by "ticker:range" to avoid redundant fetches
+  const rangeDataCache = React.useRef<Map<string, PriceData[]>>(new Map());
+  const [extendedData, setExtendedData] = React.useState<PriceData[] | null>(null);
+  const [isLoadingRange, setIsLoadingRange] = React.useState(false);
   const [isDark, setIsDark] = React.useState(false);
   const [showEnterpriseGate, setShowEnterpriseGate] = React.useState(false);
   const [whatIfIndex, setWhatIfIndex] = React.useState<number | null>(null);
@@ -293,6 +310,49 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
       .finally(() => setIndicatorLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [indicatorKey, ticker]);
+
+  // ── Fetch extended price data when range > 1Y ───────────────────────────────
+  React.useEffect(() => {
+    if (!EXTENDED_RANGES.includes(range) || !ticker) return;
+
+    const cacheKey = `${ticker}:${range}`;
+    const cached = rangeDataCache.current.get(cacheKey);
+    if (cached) {
+      setExtendedData(cached);
+      return;
+    }
+
+    const rangeParam = RANGE_PARAM[range];
+    if (!rangeParam) return;
+
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+    setIsLoadingRange(true);
+    fetch(`${backendUrl}/api/prices/${encodeURIComponent(ticker)}?range=${rangeParam}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (!json?.prices) return;
+        const mapped: PriceData[] = (json.prices as Array<Record<string, unknown>>).map((p) => ({
+          date: p.date as string,
+          price: ((p.adj_close ?? p.close) as number | null) ?? 0,
+          open: (p.open as number | null) ?? null,
+          high: (p.high as number | null) ?? null,
+          low: (p.low as number | null) ?? null,
+          close: (p.close as number | null) ?? null,
+          volume: (p.volume as number | null) ?? null,
+        }));
+        rangeDataCache.current.set(cacheKey, mapped);
+        setExtendedData(mapped);
+      })
+      .catch(() => { /* silent fail */ })
+      .finally(() => setIsLoadingRange(false));
+  }, [range, ticker]);
+
+  // Reset extended data when switching back to short ranges
+  React.useEffect(() => {
+    if (!EXTENDED_RANGES.includes(range)) {
+      setExtendedData(null);
+    }
+  }, [range]);
 
   // Sync with preferences and detect dark mode
   React.useEffect(() => {
@@ -379,12 +439,20 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
     }
   }, []);
 
+  // Use extended data when available (for 3Y/5Y/10Y/Max ranges), else fall back to the prop
+  const activeData = React.useMemo(() => {
+    if (EXTENDED_RANGES.includes(range) && extendedData && extendedData.length > 0) {
+      return extendedData;
+    }
+    return data;
+  }, [data, extendedData, range]);
+
   const enriched = React.useMemo(() => {
-    if (!data || data.length === 0) return data;
+    if (!activeData || activeData.length === 0) return activeData;
 
-    let peak = data[0]?.price ?? 0;
+    let peak = activeData[0]?.price ?? 0;
 
-    return data.map((point) => {
+    return activeData.map((point) => {
       if (point.price > peak) {
         peak = point.price;
       }
@@ -395,11 +463,14 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
         drawdown, // negative numbers for drawdown from peak
       };
     }) as (PriceData & { drawdown: number })[];
-  }, [data]);
+  }, [activeData]);
 
   const filteredData = React.useMemo(() => {
     if (!enriched || enriched.length === 0) return enriched;
     if (range === "Max") return enriched;
+
+    // For extended ranges that are still loading, return all data (will update once loaded)
+    if (EXTENDED_RANGES.includes(range) && isLoadingRange) return enriched;
 
     // Get the latest date from the data as our anchor
     const lastPoint = enriched[enriched.length - 1];
@@ -431,22 +502,9 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
         return enriched;
     }
 
-    // Filter points on or after cutoff date
-    // Note: data.date is a string, so we compare timestamp or string ISO
     const cutoffTime = cutoffDate.getTime();
-
-    // Debug logging
-    console.log('[PriceChart] Debug:', {
-      range,
-      enrichedLen: enriched.length,
-      firstEnrichedDate: enriched[0]?.date,
-      lastEnrichedDate: lastPoint.date,
-      latestDateObj: latestDate.toISOString(),
-      cutoffDateObj: cutoffDate.toISOString()
-    });
-
     return enriched.filter(p => new Date(p.date).getTime() >= cutoffTime);
-  }, [enriched, range]);
+  }, [enriched, range, isLoadingRange]);
 
   const overlays: ChartOverlay[] = React.useMemo(() => {
     // Clamp indicator data to the currently visible date range so the chart
@@ -843,13 +901,15 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
             </div>
           )}
 
-          <div className="flex space-x-1">
+          <div className="flex items-center space-x-1">
             {["1M", "6M", "1Y", "3Y", "5Y", "10Y", "Max"].map((r) => {
               const isLocked = ENTERPRISE_RANGES.includes(r) && !isEnterprise;
+              const isCurrentLoading = isLoadingRange && range === r;
               return (
                 <button
                   key={r}
                   onClick={() => handleRangeSelect(r)}
+                  disabled={isCurrentLoading}
                   className={cn(
                     "px-2 py-1 text-xs font-medium rounded-md transition-colors flex items-center gap-0.5",
                     range === r
@@ -859,8 +919,17 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
                         : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
                   )}
                 >
-                  {r}
-                  {isLocked && <Lock className="h-2.5 w-2.5 ml-0.5" />}
+                  {isCurrentLoading ? (
+                    <span className="inline-flex items-center gap-0.5">
+                      {r}
+                      <span className="ml-0.5 inline-block h-2 w-2 animate-spin rounded-full border border-current border-t-transparent" />
+                    </span>
+                  ) : (
+                    <>
+                      {r}
+                      {isLocked && <Lock className="h-2.5 w-2.5 ml-0.5" />}
+                    </>
+                  )}
                 </button>
               );
             })}
