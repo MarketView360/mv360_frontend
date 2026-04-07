@@ -433,7 +433,7 @@ function AiPageClientContent({
         onNewChat={handleNewChatClick}
         onDeleteSession={handleDeleteSession}
         onRenameSession={handleRenameSession}
-        tier={(session as any)?.tier}
+        tier={quota?.tier || "free"}
         quota={quota}
       />
 
