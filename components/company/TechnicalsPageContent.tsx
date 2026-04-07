@@ -104,9 +104,21 @@ export function TechnicalsPageContent({ ticker, currentPrice }: Readonly<Technic
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<"30" | "90" | "180" | "365">("90");
+  
+  // Cache fetched data by timeRange and ticker
+  const cacheRef = React.useRef<Map<string, TechnicalData[]>>(new Map());
 
   useEffect(() => {
     const fetchTechnicals = async () => {
+      const cacheKey = `${ticker}:${timeRange}`;
+      const cachedData = cacheRef.current.get(cacheKey);
+      
+      if (cachedData) {
+        setTechnicals(cachedData);
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setError(null);
       try {
@@ -116,7 +128,10 @@ export function TechnicalsPageContent({ ticker, currentPrice }: Readonly<Technic
         );
         if (!res.ok) throw new Error("Failed to fetch technicals");
         const data = await res.json();
-        setTechnicals(data.technicals || []);
+        
+        const fetchedTechnicals = data.technicals || [];
+        cacheRef.current.set(cacheKey, fetchedTechnicals);
+        setTechnicals(fetchedTechnicals);
       } catch (err) {
         setError((err as Error).message);
       } finally {

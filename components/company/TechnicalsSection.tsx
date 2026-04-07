@@ -96,7 +96,7 @@ export function TechnicalsSection({ ticker, currentPrice }: TechnicalsSectionPro
       try {
         const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
         const res = await fetch(
-          `${baseUrl}/api/company/${encodeURIComponent(ticker)}/technicals`
+          `${baseUrl}/api/company/${encodeURIComponent(ticker)}/technicals?limit=252`
         );
         if (!res.ok) {
           throw new Error("Failed to fetch technicals");
