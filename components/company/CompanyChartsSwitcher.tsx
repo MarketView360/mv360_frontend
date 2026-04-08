@@ -24,6 +24,7 @@ import {
   Line,
 } from "recharts";
 import { Maximize2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 export interface PriceHistoryPoint {
   date: string;
@@ -68,6 +69,7 @@ export function CompanyChartsSwitcher({
   const [mounted, setMounted] = useState(false);
   const [isLoadingPrices, setIsLoadingPrices] = useState(false);
   const [currentPriceHistory, setCurrentPriceHistory] = useState<PriceHistoryPoint[] | null>(priceHistory);
+  const [showComingSoon, setShowComingSoon] = useState(false);
 
   // Cache for prefetched price data (stored in memory, survives re-renders)
   const priceDataCache = React.useRef<Map<string, PriceHistoryPoint[]>>(new Map());
@@ -486,12 +488,12 @@ export function CompanyChartsSwitcher({
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "h-6 px-3 rounded-full text-[11px] gap-1 opacity-60 cursor-not-allowed",
+                  "h-6 px-3 rounded-full text-[11px] gap-1 opacity-80 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors",
                   mode === "price_pe"
                     ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
                     : "text-slate-500 dark:text-slate-400"
                 )}
-                disabled
+                onClick={() => setShowComingSoon(true)}
               >
                 Price & P/E
                 <span className="text-[9px] bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300">Coming Soon</span>
@@ -501,12 +503,12 @@ export function CompanyChartsSwitcher({
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "h-6 px-3 rounded-full text-[11px] gap-1 opacity-60 cursor-not-allowed",
+                  "h-6 px-3 rounded-full text-[11px] gap-1 opacity-80 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors",
                   mode === "valuations"
                     ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
                     : "text-slate-500 dark:text-slate-400"
                 )}
-                disabled
+                onClick={() => setShowComingSoon(true)}
               >
                 Valuation
                 <span className="text-[9px] bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300">Coming Soon</span>
@@ -542,6 +544,20 @@ export function CompanyChartsSwitcher({
         </div>,
         document.body
       )}
+
+      <Dialog open={showComingSoon} onOpenChange={setShowComingSoon}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Coming Soon</DialogTitle>
+            <DialogDescription>
+              We're currently developing the advanced valuation tools and Price-to-Earnings charts. Stay tuned!
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end mt-4">
+            <Button onClick={() => setShowComingSoon(false)}>Got it</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
