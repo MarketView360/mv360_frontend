@@ -63,7 +63,7 @@ export function CompanyChartsSwitcher({
   const [mode, setMode] = useState<"price" | "valuations" | "price_pe">(
     "price",
   );
-  const [range, setRange] = useState<"1Y" | "3Y" | "5Y" | "Max">("1Y");
+  const [range, setRange] = useState<"1Y" | "3Y" | "5Y">("1Y");
   const [normType, setNormType] = useState<"indexed" | "minmax">("indexed");
   const [fullscreen, setFullscreen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -92,7 +92,7 @@ export function CompanyChartsSwitcher({
 
     if (setLoading) setIsLoadingPrices(true);
     try {
-      const rangeParam = selectedRange === "Max" ? "max" : selectedRange.toLowerCase();
+      const rangeParam = selectedRange.toLowerCase();
       const res = await fetch(`/api/prices/${encodeURIComponent(ticker)}?range=${rangeParam}`, {
         headers: { "Content-Type": "application/json" },
       });
@@ -139,12 +139,11 @@ export function CompanyChartsSwitcher({
     isPrefetching.current = true;
     prefetchedTicker.current = ticker;
 
-    // Prefetch 3Y, 5Y, Max in background (non-blocking, staggered to avoid overwhelming)
+    // Prefetch 3Y, 5Y in background (non-blocking, staggered to avoid overwhelming)
     const prefetchRanges = async () => {
       const rangesToPrefetch: Array<{ range: typeof range; delay: number }> = [
         { range: "3Y", delay: 200 },   // Start after 200ms
         { range: "5Y", delay: 600 },   // Start after 600ms
-        { range: "Max", delay: 1200 }, // Start after 1.2s (largest dataset)
       ];
 
       for (const { range: r, delay } of rangesToPrefetch) {
@@ -154,7 +153,7 @@ export function CompanyChartsSwitcher({
         // Only prefetch if not already cached for this ticker
         const cacheKey = `${ticker}:${r}`;
         if (!priceDataCache.current.has(cacheKey)) {
-          const rangeParam = r === "Max" ? "max" : r.toLowerCase();
+          const rangeParam = r.toLowerCase();
           fetch(`/api/prices/${encodeURIComponent(ticker)}?range=${rangeParam}`, {
             headers: { "Content-Type": "application/json" },
           })
@@ -192,15 +191,14 @@ export function CompanyChartsSwitcher({
   const filteredValuationHistory = useMemo(() => {
     // ... logic ...
     if (!valuationHistory || valuationHistory.length === 0) return [];
-    const map: Record<typeof range, number | "max"> = {
+    const map: Record<typeof range, number> = {
       "1Y": 252,
       "3Y": 252 * 3,
       "5Y": 252 * 5,
-      Max: "max",
     };
     const windowSize = map[range];
     let filtered = valuationHistory;
-    if (windowSize !== "max" && valuationHistory.length > windowSize) {
+    if (valuationHistory.length > windowSize) {
       filtered = valuationHistory.slice(-windowSize);
     }
 
@@ -358,7 +356,7 @@ export function CompanyChartsSwitcher({
                 </button>
               </div>
               <div className="flex gap-1 text-[11px]">
-                {(["1Y", "3Y", "5Y", "Max"] as const).map((r) => (
+                {(["1Y", "3Y", "5Y"] as const).map((r) => (
                   <button
                     key={r}
                     type="button"

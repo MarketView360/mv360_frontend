@@ -192,17 +192,16 @@ interface PriceChartProps {
 }
 
 // Enterprise-only ranges
-const ENTERPRISE_RANGES = ["Max"];
+const ENTERPRISE_RANGES: string[] = [];
 
 // Ranges that require extended history (more than the default 1Y fetch)
-const EXTENDED_RANGES = ["3Y", "5Y", "10Y", "Max"];
+const EXTENDED_RANGES = ["3Y", "5Y", "10Y"];
 
 // Map range label → backend range param
 const RANGE_PARAM: Record<string, string> = {
   "3Y": "3y",
   "5Y": "5y",
   "10Y": "10y",
-  "Max": "max",
 };
 
 export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceChartProps) {
@@ -902,7 +901,7 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
           )}
 
           <div className="flex items-center space-x-1">
-            {["1M", "6M", "1Y", "3Y", "5Y", "10Y", "Max"].map((r) => {
+            {["1M", "6M", "1Y", "3Y", "5Y", "10Y"].map((r) => {
               const isLocked = ENTERPRISE_RANGES.includes(r) && !isEnterprise;
               const isCurrentLoading = isLoadingRange && range === r;
               return (
