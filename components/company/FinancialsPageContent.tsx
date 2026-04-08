@@ -343,7 +343,7 @@ function KeyHighlights({
       value: formatCurrency(latestIncome?.total_revenue ?? null),
       change: calcChange(latestIncome?.total_revenue ?? null, previousIncome?.total_revenue ?? null),
       icon: DollarSign,
-      color: "text-blue-500",
+      color: "text-primary",
       bgColor: "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800",
     },
     {
@@ -351,7 +351,7 @@ function KeyHighlights({
       value: formatCurrency(latestIncome?.net_income ?? null),
       change: calcChange(latestIncome?.net_income ?? null, previousIncome?.net_income ?? null),
       icon: BarChart3,
-      color: "text-emerald-500",
+      color: "text-primary",
       bgColor: "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800",
     },
     {
@@ -359,7 +359,7 @@ function KeyHighlights({
       value: formatCurrency(latestCashflow?.free_cash_flow ?? null),
       change: null,
       icon: Wallet,
-      color: "text-purple-500",
+      color: "text-primary",
       bgColor: "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800",
     },
     {
@@ -367,7 +367,7 @@ function KeyHighlights({
       value: formatCurrency(latestBalance?.total_assets ?? null),
       change: null,
       icon: Building2,
-      color: "text-amber-500",
+      color: "text-primary",
       bgColor: "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800",
     },
   ];
