@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useAuth } from "@/providers/AuthProvider";
 import { SocialAuthButtons, OrDivider } from "@/components/auth/SocialAuthButtons";
 import { Logo } from "@/components/common/Logo";
-import { Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, User, Check, X, Newspaper, Megaphone, PartyPopper } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, AlertCircle, ArrowLeft, User, Check, X } from "lucide-react";
 
 interface PasswordStrength {
   score: number;
@@ -29,15 +29,44 @@ function getPasswordStrength(password: string): PasswordStrength {
   return { score, label: "Very Strong", color: "bg-emerald-500" };
 }
 
+function SignupPageSkeleton() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
+    </div>
+  );
+}
+
 export default function SignupPage() {
   const router = useRouter();
   const { session, signUpWithEmail, loading } = useAuth();
 
-  // Redirect if already logged in
+  // Redirect if already logged in - check onboarding status first
   useEffect(() => {
-    if (session) {
-      router.replace("/auth/already-logged-in");
-    }
+    const checkAndRedirect = async () => {
+      if (!session) return;
+
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/profile/onboarding-status`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // Redirect to onboarding if needs_onboarding is true
+          if (data.needs_onboarding) {
+            router.replace("/onboarding");
+            return;
+          }
+        }
+        // Default redirect if check fails or user is onboarded
+        router.replace("/");
+      } catch {
+        router.replace("/");
+      }
+    };
+
+    checkAndRedirect();
   }, [session, router]);
 
   const [fullName, setFullName] = useState("");
@@ -49,11 +78,46 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showVerificationMessage, setShowVerificationMessage] = useState(false);
+  const [isCheckingVerification, setIsCheckingVerification] = useState(false);
 
-  // Email subscription preferences (set during signup)
-  const [subAnnouncements, setSubAnnouncements] = useState(true); // default checked
-  const [subNewsletter, setSubNewsletter] = useState(false);
-  const [subEvents, setSubEvents] = useState(false);
+  // Auto-check for verified session after showing verification message
+  useEffect(() => {
+    if (!showVerificationMessage || !session || isCheckingVerification) return;
+
+    const checkVerification = async () => {
+      setIsCheckingVerification(true);
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/profile/onboarding-status`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // If user has verified and needs onboarding, redirect
+          if (data.needs_onboarding) {
+            router.replace("/onboarding");
+            return;
+          }
+        }
+        // If already onboarded, go home
+        router.replace("/");
+      } catch {
+        // Keep showing verification message if check fails
+        setIsCheckingVerification(false);
+      }
+    };
+
+    // Check immediately and then every 3 seconds
+    checkVerification();
+    const interval = setInterval(checkVerification, 3000);
+    return () => clearInterval(interval);
+  }, [showVerificationMessage, session, router, isCheckingVerification]);
+
+  // Show skeleton while loading auth state or if session exists (meaning we're about to redirect)
+  // IMPORTANT: Hooks must be defined before any early returns.
+  if (loading || session) {
+    return <SignupPageSkeleton />;
+  }
 
   const passwordStrength = getPasswordStrength(password);
   const passwordsMatch = password === confirmPassword && password.length > 0;
@@ -87,20 +151,7 @@ export default function SignupPage() {
       setError(error.message);
       setIsLoading(false);
     } else {
-      // Fire-and-forget: save subscription preferences after signup
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-      fetch(`${apiBase}/subscriptions/signup`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          full_name: fullName,
-          newsletter: subNewsletter,
-          announcements: subAnnouncements,
-          events_promotions: subEvents,
-        }),
-      }).catch(() => {}); // Best-effort, don't block verification flow
-
+      // Email preferences will be collected during onboarding
       setShowVerificationMessage(true);
       setIsLoading(false);
     }
@@ -270,47 +321,6 @@ export default function SignupPage() {
                 {confirmPassword.length > 0 && !passwordsMatch && (
                   <p className="mt-1 text-xs text-red-500">Passwords do not match</p>
                 )}
-              </div>
-
-              {/* Email Subscription Preferences */}
-              <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-2.5">
-                <p className="text-xs font-medium text-slate-700 dark:text-slate-300">Email preferences</p>
-                <label className="flex items-start gap-2.5 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={subAnnouncements}
-                    onChange={(e) => setSubAnnouncements(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <div className="flex items-center gap-1.5">
-                    <Megaphone className="h-3.5 w-3.5 text-blue-500 shrink-0" />
-                    <span className="text-xs text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">Product announcements &amp; updates</span>
-                  </div>
-                </label>
-                <label className="flex items-start gap-2.5 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={subNewsletter}
-                    onChange={(e) => setSubNewsletter(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <div className="flex items-center gap-1.5">
-                    <Newspaper className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                    <span className="text-xs text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">Weekly newsletter &amp; market insights</span>
-                  </div>
-                </label>
-                <label className="flex items-start gap-2.5 cursor-pointer group">
-                  <input
-                    type="checkbox"
-                    checked={subEvents}
-                    onChange={(e) => setSubEvents(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <div className="flex items-center gap-1.5">
-                    <PartyPopper className="h-3.5 w-3.5 text-purple-500 shrink-0" />
-                    <span className="text-xs text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">Events &amp; promotions</span>
-                  </div>
-                </label>
               </div>
 
               <p className="text-xs text-slate-500 dark:text-slate-400">

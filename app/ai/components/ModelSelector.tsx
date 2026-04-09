@@ -70,7 +70,7 @@ interface ModelSelectorProps {
   disabled?: boolean;
 }
 
-export function ModelSelector({
+export const ModelSelector = React.memo(function ModelSelector({
   selectedModelId,
   onModelChange,
   isReasoningEnabled,
@@ -87,7 +87,7 @@ export function ModelSelector({
   const { quota, loading, timeUntilReset } = useQuota(session?.access_token ?? null);
   const [toolsPopupOpen, setToolsPopupOpen] = useState(false);
   const toolsPopupRef = useRef<HTMLDivElement>(null);
-  
+
   // Hide quota UI for non-logged-in users
   const isAuthenticated = !!session;
 
@@ -103,9 +103,9 @@ export function ModelSelector({
     return () => document.removeEventListener("mousedown", handler);
   }, [toolsPopupOpen]);
 
-  const getQuotaDisplay = () => {
+  const getQuotaDisplay = React.useCallback(() => {
     if (!quota) return "Loading...";
-    
+
     if (isReasoningEnabled) {
       // Show reasoning message count
       const q = quota.reasoning;
@@ -117,7 +117,7 @@ export function ModelSelector({
       const limitInK = (q.limit / 1000).toFixed(0);
       return `${tokensInK}K of ${limitInK}K tokens`;
     }
-  };
+  }, [quota, isReasoningEnabled]);
 
   return (
     <div className={cn("flex items-center gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1.5 shadow-sm", className)}>
@@ -240,13 +240,17 @@ export function ModelSelector({
                               {quota.reasoning.remaining} / {quota.reasoning.limit}
                             </span>
                           </div>
-                          <div className="flex justify-between items-center text-slate-600 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800">
-                            <span className="text-xs">Next reset in</span>
-                            <span className="font-semibold text-sm text-slate-900 dark:text-slate-200 tabular-nums">{timeUntilReset()}</span>
-                          </div>
-                          <div className="text-[10px] text-slate-500 dark:text-slate-400">
-                            Resets every 12h (00:00 / 12:00 UTC)
-                          </div>
+                          {quota.resetsAt && (
+                            <>
+                              <div className="flex justify-between items-center text-slate-600 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800">
+                                <span className="text-xs">Next reset in</span>
+                                <span className="font-semibold text-sm text-slate-900 dark:text-slate-200 tabular-nums">{timeUntilReset()}</span>
+                              </div>
+                              <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                                Quota resets 12 hours from exhaustion
+                              </div>
+                            </>
+                          )}
                           {quota.tier === "free" && (
                             <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
                               <p className="text-indigo-600 dark:text-indigo-400 font-semibold text-xs flex items-center justify-between group cursor-pointer hover:underline decoration-indigo-600/30 underline-offset-2">
@@ -254,7 +258,7 @@ export function ModelSelector({
                                 <span aria-hidden="true" className="group-hover:translate-x-0.5 transition-transform">→</span>
                               </p>
                               <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
-                                300K tokens + 10 reasoning / 12h
+                                50K tokens + 10 reasoning / 12h
                               </p>
                             </div>
                           )}
@@ -372,4 +376,11 @@ export function ModelSelector({
       )}
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison - only re-render if props actually change
+  return prevProps.selectedModelId === nextProps.selectedModelId
+    && prevProps.isReasoningEnabled === nextProps.isReasoningEnabled
+    && prevProps.className === nextProps.className
+    && prevProps.disabled === nextProps.disabled
+    && prevProps.reasoningLabel === nextProps.reasoningLabel;
+});

@@ -41,7 +41,7 @@ interface SidebarProps {
   onDeleteSession?: (id: string) => Promise<boolean>;
   onRenameSession?: (id: string, title: string) => Promise<boolean>;
   className?: string;
-  tier?: "free" | "pro" | "elite";
+  tier?: "free" | "pro" | "elite" | "premium";
   quota?: {
     tokens: { used: number; limit: number };
     reasoning: { used: number; limit: number };

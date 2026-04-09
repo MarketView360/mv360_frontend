@@ -77,8 +77,8 @@ export function WaitlistDialog({ isOpen, onClose, onSubmit }: WaitlistDialogProp
         {/* Header */}
         <div className="p-6 pb-4 border-b border-slate-200 dark:border-slate-700">
           <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600">
-              <Bell className="w-5 h-5 text-white" />
+            <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
+              <Bell className="w-5 h-5 text-amber-600 dark:text-amber-400" />
             </div>
             <h2 className="text-xl font-bold text-slate-900 dark:text-white">
               Join Premium Waitlist
@@ -106,7 +106,7 @@ export function WaitlistDialog({ isOpen, onClose, onSubmit }: WaitlistDialogProp
                   errors.name
                     ? "border-red-500 dark:border-red-500"
                     : "border-slate-300 dark:border-slate-600"
-                } bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                } bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500`}
                 placeholder="John Doe"
               />
             </div>
@@ -130,7 +130,7 @@ export function WaitlistDialog({ isOpen, onClose, onSubmit }: WaitlistDialogProp
                   errors.email
                     ? "border-red-500 dark:border-red-500"
                     : "border-slate-300 dark:border-slate-600"
-                } bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                } bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500`}
                 placeholder="john@example.com"
               />
             </div>
@@ -150,7 +150,7 @@ export function WaitlistDialog({ isOpen, onClose, onSubmit }: WaitlistDialogProp
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                className="w-full pl-10 pr-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 placeholder="+1 (555) 000-0000"
               />
             </div>
@@ -167,7 +167,7 @@ export function WaitlistDialog({ isOpen, onClose, onSubmit }: WaitlistDialogProp
                 type="text"
                 value={formData.country}
                 onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                className="w-full pl-10 pr-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 placeholder="United States"
               />
             </div>
@@ -177,7 +177,7 @@ export function WaitlistDialog({ isOpen, onClose, onSubmit }: WaitlistDialogProp
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-2.5 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20"
           >
             {loading ? (
               <>
@@ -211,7 +211,7 @@ export function WaitlistDialog({ isOpen, onClose, onSubmit }: WaitlistDialogProp
             </p>
             <a
               href="/auth/login"
-              className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+              className="inline-flex items-center gap-2 text-sm font-medium text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors"
             >
               Sign in or Create Free Account →
             </a>

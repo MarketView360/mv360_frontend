@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
+import { cn } from "@/lib/utils";
 import {
     createChart,
     ColorType,
@@ -149,8 +150,8 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
                 textColor,
                 attributionLogo: false,
             },
-            width: chartContainerRef.current.clientWidth,
-            height: height,
+            width: chartContainerRef.current?.clientWidth || 800,
+            height: height === 0 ? (chartContainerRef.current?.clientHeight || 300) : height,
             grid: {
                 vertLines: { color: isDark ? "#334155" : "#e2e8f0" },
                 horzLines: { color: isDark ? "#334155" : "#e2e8f0" },
@@ -251,14 +252,15 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
         }
 
         // Keep the ref updated when the user pans/zooms manually.
-        chart.timeScale().subscribeVisibleTimeRangeChange((range) => {
+        const handleVisibleTimeRangeChange = (range: any) => {
             if (range) {
                 visibleRangeRef.current = {
                     from: range.from as UTCTimestamp,
                     to: range.to as UTCTimestamp,
                 };
             }
-        });
+        };
+        chart.timeScale().subscribeVisibleTimeRangeChange(handleVisibleTimeRangeChange);
 
         // Risk zone markers (feature-detected for safety)
         if (showRiskZones && riskZones.length > 0 && mainSeries && (mainSeries as any).setMarkers) {
@@ -306,73 +308,96 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
         }
 
         // Click handler for What-If simulation
-        if (onPointClick) {
-            chart.subscribeClick((param) => {
-                if (!param.time || !chartContainerRef.current) return;
-                const clickedTime = param.time as number;
-                const index = uniqueData.findIndex((d) => d.time === clickedTime);
-                if (index !== -1) {
-                    onPointClick(index, uniqueData[index]);
-                }
-            });
-        }
-
-        if (showDetailedTooltip && mainSeries) {
-            chart.subscribeCrosshairMove((param) => {
-                if (!param.time || !param.point || !chartContainerRef.current) {
-                    setHoverInfo(null);
-                    return;
-                }
-
-                const hoveredTime = (param.time as UTCTimestamp) as number;
-                const index = uniqueData.findIndex((d) => d.time === hoveredTime);
-                if (index === -1) {
-                    setHoverInfo(null);
-                    return;
-                }
-
-                const current = uniqueData[index];
-                const prev = index > 0 ? uniqueData[index - 1] : undefined;
-
-                let changeFromPrevPct: number | null = null;
-                if (prev && prev.close && current.close) {
-                    changeFromPrevPct = ((current.close - prev.close) / prev.close) * 100;
-                }
-
-                setHoverInfo({
-                    time: current.time as UTCTimestamp,
-                    open: current.open,
-                    high: current.high,
-                    low: current.low,
-                    close: current.close,
-                    volume: current.volume,
-                    changeFromPrevPct,
-                });
-            });
-        }
-
-        const handleResize = () => {
-            if (chartContainerRef.current && chartRef.current) {
-                chartRef.current.applyOptions({ width: chartContainerRef.current.clientWidth });
-            }
-            if (rsiContainerRef.current && rsiChartRef.current) {
-                rsiChartRef.current.applyOptions({ width: rsiContainerRef.current.clientWidth });
+        const handleChartClick = (param: any) => {
+            if (!param.time || !chartContainerRef.current) return;
+            const clickedTime = param.time as number;
+            const index = uniqueData.findIndex((d) => d.time === clickedTime);
+            if (index !== -1 && onPointClick) {
+                onPointClick(index, uniqueData[index]);
             }
         };
+        if (onPointClick) {
+            chart.subscribeClick(handleChartClick);
+        }
 
-        window.addEventListener("resize", handleResize);
+        const handleCrosshairMove = (param: any) => {
+            if (!param.time || !param.point || !chartContainerRef.current) {
+                setHoverInfo(null);
+                return;
+            }
+
+            const hoveredTime = (param.time as UTCTimestamp) as number;
+            const index = uniqueData.findIndex((d) => d.time === hoveredTime);
+            if (index === -1) {
+                setHoverInfo(null);
+                return;
+            }
+
+            const current = uniqueData[index];
+            const prev = index > 0 ? uniqueData[index - 1] : undefined;
+
+            let changeFromPrevPct: number | null = null;
+            if (prev && prev.close && current.close) {
+                changeFromPrevPct = ((current.close - prev.close) / prev.close) * 100;
+            }
+
+            setHoverInfo({
+                time: current.time as UTCTimestamp,
+                open: current.open,
+                high: current.high,
+                low: current.low,
+                close: current.close,
+                volume: current.volume,
+                changeFromPrevPct,
+            });
+        };
+        if (showDetailedTooltip && mainSeries) {
+            chart.subscribeCrosshairMove(handleCrosshairMove);
+        }
+
+        let isDisposed = false;
+        // Remove nested useEffect
+        const observer = new ResizeObserver((entries) => {
+            if (isDisposed) return;
+            for (const entry of entries) {
+                const { width, height: rectHeight } = entry.contentRect;
+                if (width > 0) {
+                    if (chartRef.current) {
+                        try {
+                            chartRef.current.applyOptions({
+                                width,
+                                ...(height === 0 && rectHeight > 0 ? { height: rectHeight } : {})
+                            });
+                        } catch (e) { /* ignore disposed */ }
+                    }
+                    if (rsiChartRef.current && rsiContainerRef.current) {
+                        try {
+                            const width = rsiContainerRef.current.clientWidth;
+                            rsiChartRef.current.applyOptions({ width });
+                        } catch (e) { /* ignore disposed */ }
+                    }
+                }
+            }
+        });
+
+        observer.observe(chartContainerRef.current);
 
         return () => {
-            window.removeEventListener("resize", handleResize);
+            isDisposed = true;
+            observer.disconnect();
+            chart.timeScale().unsubscribeVisibleTimeRangeChange(handleVisibleTimeRangeChange);
+            if (onPointClick) chart.unsubscribeClick(handleChartClick);
+            if (showDetailedTooltip && mainSeries) chart.unsubscribeCrosshairMove(handleCrosshairMove);
             // Null refs BEFORE remove() so any in-flight RAF paint bails out
             overlaySeriesRef.current = [];
-            const rsiToRemove = rsiChartRef.current;
-            rsiChartRef.current = null;
-            if (rsiToRemove) {
-                try { rsiToRemove.remove(); } catch { /* already disposed */ }
-            }
+            const c = chartRef.current;
             chartRef.current = null;
-            try { chart.remove(); } catch { /* already disposed */ }
+            if (c) {
+                // Delay remove slightly to allow any pending ResizeObserver/RAF callbacks to gracefully exit
+                setTimeout(() => {
+                    try { c.remove(); } catch { /* already disposed */ }
+                }, 0);
+            }
         };
     }, [
         data,
@@ -443,11 +468,15 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
 
     // --- Generic oscillator pane (synced sub-chart below the main chart) ---
     useEffect(() => {
+        let handleMainRangeChange: ((range: any) => void) | undefined;
+        let handleOscRangeChange: ((range: any) => void) | undefined;
+        
         const hasData = oscillatorPane && oscillatorPane.lines.some((l) => l.data.length > 0);
         if (hasData && rsiContainerRef.current) {
             if (rsiChartRef.current) {
-                rsiChartRef.current.remove();
+                const oldChart = rsiChartRef.current;
                 rsiChartRef.current = null;
+                setTimeout(() => { try { oldChart.remove(); } catch {} }, 0);
             }
             const oscChart = createChart(rsiContainerRef.current, {
                 layout: {
@@ -456,8 +485,8 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
                     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                     attributionLogo: false,
                 },
-                width: rsiContainerRef.current.clientWidth || chartContainerRef.current?.clientWidth || 800,
-                height: 110,
+                width: rsiContainerRef.current?.clientWidth || chartContainerRef.current?.clientWidth || 800,
+                height: 131,
                 grid: {
                     vertLines: { color: isDark ? "#334155" : "#e2e8f0" },
                     horzLines: { color: isDark ? "#334155" : "#e2e8f0" },
@@ -554,30 +583,43 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
             // Sync time scale with main chart
             let syncing = false;
             const mainChart = chartRef.current;
+            
+            handleMainRangeChange = (range: any) => {
+                if (syncing || !range || !rsiChartRef.current) return;
+                syncing = true;
+                rsiChartRef.current.timeScale().setVisibleLogicalRange(range);
+                syncing = false;
+            };
+
+            handleOscRangeChange = (range: any) => {
+                if (syncing || !range || !chartRef.current) return;
+                syncing = true;
+                chartRef.current.timeScale().setVisibleLogicalRange(range);
+                syncing = false;
+            };
+
             if (mainChart) {
-                mainChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-                    if (syncing || !range) return;
-                    syncing = true;
-                    oscChart.timeScale().setVisibleLogicalRange(range);
-                    syncing = false;
-                });
-                oscChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-                    if (syncing || !range) return;
-                    syncing = true;
-                    mainChart.timeScale().setVisibleLogicalRange(range);
-                    syncing = false;
-                });
+                mainChart.timeScale().subscribeVisibleLogicalRangeChange(handleMainRangeChange);
+                oscChart.timeScale().subscribeVisibleLogicalRangeChange(handleOscRangeChange);
             }
         } else if (!hasData && rsiChartRef.current) {
             const c = rsiChartRef.current;
             rsiChartRef.current = null;
-            try { c.remove(); } catch { /* already disposed */ }
+            setTimeout(() => { try { c.remove(); } catch {} }, 0);
         }
         return () => {
+            const mainChart = chartRef.current;
             const c = rsiChartRef.current;
+            
+            // Clean up sync listeners before destroying
+            if (mainChart && c && handleMainRangeChange && handleOscRangeChange) {
+                try { mainChart.timeScale().unsubscribeVisibleLogicalRangeChange(handleMainRangeChange); } catch {}
+                try { c.timeScale().unsubscribeVisibleLogicalRangeChange(handleOscRangeChange); } catch {}
+            }
+            
             if (c) {
                 rsiChartRef.current = null;
-                try { c.remove(); } catch { /* already disposed */ }
+                setTimeout(() => { try { c.remove(); } catch {} }, 0);
             }
         };
     }, [oscillatorPane, isDark]);
@@ -628,8 +670,8 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
     const hasOscillator = oscillatorPane && oscillatorPane.lines.some((l) => l.data.length > 0);
 
     return (
-        <div className="w-full flex flex-col">
-            <div ref={chartContainerRef} className="w-full relative">
+        <div className={cn("w-full flex flex-col", height === 0 ? "flex-1 min-h-0" : "")}>
+            <div ref={chartContainerRef} className={cn("w-full relative", height === 0 ? "flex-1 min-h-0" : "")}>
                 {showDetailedTooltip && hoverInfo && (
                     <div className="pointer-events-none absolute top-3 left-3 z-10 rounded-lg border border-slate-200/80 dark:border-slate-700/80 bg-white/75 dark:bg-slate-900/75 backdrop-blur-sm shadow-lg px-3 py-2 text-[11px] space-y-1 min-w-[180px]">
                         <div className="font-semibold text-slate-800 dark:text-slate-100 border-b border-slate-100 dark:border-slate-800 pb-1 mb-1">
@@ -681,8 +723,8 @@ export const TradingViewChart: React.FC<TradingViewChartProps> = ({
                 <div className="border-t border-slate-200 dark:border-slate-700 shrink-0" style={{ height: 155 }}>
                     {hasOscillator ? (
                         <>
-                            <div className="text-[10px] text-slate-400 dark:text-slate-500 px-2 pt-1 font-medium tracking-wide">{oscillatorPane!.label}</div>
-                            <div ref={rsiContainerRef} className="w-full" style={{ height: 125 }} />
+                            <div className="text-[10px] text-slate-400 dark:text-slate-500 px-2 pt-1 font-medium tracking-wide h-[24px]">{oscillatorPane!.label}</div>
+                            <div ref={rsiContainerRef} className="w-full" style={{ height: 131 }} />
                         </>
                     ) : (
                         <div className="h-full flex items-center justify-center text-[11px] text-slate-500 dark:text-slate-600 gap-2">

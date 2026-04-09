@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, Suspense, useMemo } from "react";
+import React, { useState, useMemo, Suspense, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   Card,
   CardHeader,
@@ -23,6 +24,7 @@ import {
   Line,
 } from "recharts";
 import { Maximize2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 export interface PriceHistoryPoint {
   date: string;
@@ -61,9 +63,122 @@ export function CompanyChartsSwitcher({
   const [mode, setMode] = useState<"price" | "valuations" | "price_pe">(
     "price",
   );
-  const [range, setRange] = useState<"1Y" | "3Y" | "5Y" | "Max">("1Y");
+  const [range, setRange] = useState<"1Y" | "3Y" | "5Y">("1Y");
   const [normType, setNormType] = useState<"indexed" | "minmax">("indexed");
   const [fullscreen, setFullscreen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [isLoadingPrices, setIsLoadingPrices] = useState(false);
+  const [currentPriceHistory, setCurrentPriceHistory] = useState<PriceHistoryPoint[] | null>(priceHistory);
+  const [showComingSoon, setShowComingSoon] = useState(false);
+
+  // Cache for prefetched price data (stored in memory, survives re-renders)
+  const priceDataCache = React.useRef<Map<string, PriceHistoryPoint[]>>(new Map());
+  // Track which ticker's data has been prefetched
+  const prefetchedTicker = React.useRef<string | null>(null);
+  const isPrefetching = React.useRef(false);
+
+  // Fetch prices for the selected range (with caching)
+  const fetchPricesForRange = React.useCallback(async (selectedRange: typeof range, setLoading = true) => {
+    if (!ticker) return;
+
+    const cacheKey = `${ticker}:${selectedRange}`;
+
+    // Check cache first
+    const cached = priceDataCache.current.get(cacheKey);
+    if (cached) {
+      setCurrentPriceHistory(cached);
+      return;
+    }
+
+    if (setLoading) setIsLoadingPrices(true);
+    try {
+      const rangeParam = selectedRange.toLowerCase();
+      const res = await fetch(`/api/prices/${encodeURIComponent(ticker)}?range=${rangeParam}`, {
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) throw new Error(`Failed to fetch prices: ${res.statusText}`);
+      const data = await res.json();
+      const mapped: PriceHistoryPoint[] = (data.prices || []).map((p: any) => ({
+        date: p.date,
+        price: p.adj_close ?? p.close ?? 0,
+        open: p.open ?? null,
+        high: p.high ?? null,
+        low: p.low ?? null,
+        close: p.close ?? null,
+        volume: p.volume ?? null,
+      }));
+      priceDataCache.current.set(cacheKey, mapped);
+      setCurrentPriceHistory(mapped);
+    } catch (err) {
+      console.error("Error fetching prices for range:", err);
+    } finally {
+      if (setLoading) setIsLoadingPrices(false);
+    }
+  }, [ticker]);
+
+  const handleRangeChange = React.useCallback((newRange: typeof range) => {
+    setRange(newRange);
+    // Check cache first - if available, set immediately
+    const cacheKey = `${ticker}:${newRange}`;
+    const cached = priceDataCache.current.get(cacheKey);
+    if (cached) {
+      setCurrentPriceHistory(cached);
+    } else {
+      // Not cached, fetch and show loading
+      fetchPricesForRange(newRange);
+    }
+  }, [fetchPricesForRange, ticker]);
+
+  // Prefetch extended ranges in background after initial load
+  useEffect(() => {
+    if (!mounted || !ticker || isPrefetching.current) return;
+
+    // Skip if already prefetched for this ticker
+    if (prefetchedTicker.current === ticker) return;
+
+    isPrefetching.current = true;
+    prefetchedTicker.current = ticker;
+
+    // Prefetch 3Y, 5Y in background (non-blocking, staggered to avoid overwhelming)
+    const prefetchRanges = async () => {
+      const rangesToPrefetch: Array<{ range: typeof range; delay: number }> = [
+        { range: "3Y", delay: 200 },   // Start after 200ms
+        { range: "5Y", delay: 600 },   // Start after 600ms
+      ];
+
+      for (const { range: r, delay } of rangesToPrefetch) {
+        // Wait for delay
+        await new Promise(resolve => setTimeout(resolve, delay));
+
+        // Only prefetch if not already cached for this ticker
+        const cacheKey = `${ticker}:${r}`;
+        if (!priceDataCache.current.has(cacheKey)) {
+          const rangeParam = r.toLowerCase();
+          fetch(`/api/prices/${encodeURIComponent(ticker)}?range=${rangeParam}`, {
+            headers: { "Content-Type": "application/json" },
+          })
+            .then(res => res.json())
+            .then(data => {
+              const mapped: PriceHistoryPoint[] = (data.prices || []).map((p: any) => ({
+                date: p.date,
+                price: p.adj_close ?? p.close ?? 0,
+                open: p.open ?? null,
+                high: p.high ?? null,
+                low: p.low ?? null,
+                close: p.close ?? null,
+                volume: p.volume ?? null,
+              }));
+              priceDataCache.current.set(cacheKey, mapped);
+            })
+            .catch(() => {
+              // Silently fail - user can still click and fetch on-demand
+            });
+        }
+      }
+    };
+
+    prefetchRanges();
+  }, [mounted, ticker]);
 
   // ... (rest of the logic remains same until render) ...
   const hasValuations = valuationMetrics.some((m) => m.value != null);
@@ -76,15 +191,14 @@ export function CompanyChartsSwitcher({
   const filteredValuationHistory = useMemo(() => {
     // ... logic ...
     if (!valuationHistory || valuationHistory.length === 0) return [];
-    const map: Record<typeof range, number | "max"> = {
+    const map: Record<typeof range, number> = {
       "1Y": 252,
       "3Y": 252 * 3,
       "5Y": 252 * 5,
-      Max: "max",
     };
     const windowSize = map[range];
     let filtered = valuationHistory;
-    if (windowSize !== "max" && valuationHistory.length > windowSize) {
+    if (valuationHistory.length > windowSize) {
       filtered = valuationHistory.slice(-windowSize);
     }
 
@@ -124,6 +238,10 @@ export function CompanyChartsSwitcher({
     });
   }, [valuationHistory, range, normType]);
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const isDark =
     typeof window !== "undefined" &&
     document.documentElement.classList.contains("dark");
@@ -140,7 +258,13 @@ export function CompanyChartsSwitcher({
       {mode === "price" && (
         <div className={cn(heightClass, "w-full")}>
           <Suspense fallback={<div className="h-full w-full bg-slate-100 dark:bg-slate-800 animate-pulse rounded-lg" />}>
-            <PriceChart data={priceHistory} ticker={ticker} />
+            {isLoadingPrices ? (
+              <div className="h-full w-full flex items-center justify-center">
+                <div className="text-sm text-slate-500 dark:text-slate-400">Loading prices...</div>
+              </div>
+            ) : (
+              <PriceChart data={currentPriceHistory || priceHistory} ticker={ticker} />
+            )}
           </Suspense>
         </div>
       )}
@@ -232,16 +356,16 @@ export function CompanyChartsSwitcher({
                 </button>
               </div>
               <div className="flex gap-1 text-[11px]">
-                {(["1Y", "3Y", "5Y", "Max"] as const).map((r) => (
+                {(["1Y", "3Y", "5Y"] as const).map((r) => (
                   <button
                     key={r}
                     type="button"
-                    onClick={() => setRange(r)}
+                    onClick={() => handleRangeChange(r)}
                     className={cn(
-                      "px-2 py-1 rounded-md border transition-all",
+                      "px-2 py-1 rounded-md transition-all font-medium",
                       range === r
-                        ? "bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white font-semibold"
-                        : "bg-white/70 dark:bg-slate-900/70 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800",
+                        ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 shadow-sm"
+                        : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
                     )}
                   >
                     {r}
@@ -362,12 +486,12 @@ export function CompanyChartsSwitcher({
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "h-6 px-3 rounded-full text-[11px] gap-1 opacity-60 cursor-not-allowed",
+                  "h-6 px-3 rounded-full text-[11px] gap-1 opacity-80 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors",
                   mode === "price_pe"
                     ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
                     : "text-slate-500 dark:text-slate-400"
                 )}
-                disabled
+                onClick={() => setShowComingSoon(true)}
               >
                 Price & P/E
                 <span className="text-[9px] bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300">Coming Soon</span>
@@ -377,12 +501,12 @@ export function CompanyChartsSwitcher({
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  "h-6 px-3 rounded-full text-[11px] gap-1 opacity-60 cursor-not-allowed",
+                  "h-6 px-3 rounded-full text-[11px] gap-1 opacity-80 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors",
                   mode === "valuations"
                     ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
                     : "text-slate-500 dark:text-slate-400"
                 )}
-                disabled
+                onClick={() => setShowComingSoon(true)}
               >
                 Valuation
                 <span className="text-[9px] bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300">Coming Soon</span>
@@ -403,22 +527,35 @@ export function CompanyChartsSwitcher({
         </CardContent>
       </Card>
 
-      {fullscreen && (
-        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-2">
-          <div className="w-full max-w-[98vw] bg-slate-950 text-slate-50 rounded-xl shadow-2xl border border-slate-800 flex flex-col h-[97vh] overflow-hidden">
-            <div className="flex-1 flex flex-col min-h-0 px-3 pt-2 pb-0">
-              {mode === "price" && (
-                <PriceChart
-                  data={priceHistory}
-                  ticker={ticker}
-                  fullscreen={fullscreen}
-                  onClose={() => setFullscreen(false)}
-                />
-              )}
-            </div>
+      {fullscreen && mounted && createPortal(
+        <div className="fixed inset-0 z-9999 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-50 flex flex-col overflow-hidden">
+          <div className="flex-1 flex flex-col min-h-0 px-4 pt-3 pb-0">
+            {mode === "price" && (
+              <PriceChart
+                data={currentPriceHistory || priceHistory}
+                ticker={ticker}
+                fullscreen={fullscreen}
+                onClose={() => setFullscreen(false)}
+              />
+            )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
+
+      <Dialog open={showComingSoon} onOpenChange={setShowComingSoon}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Coming Soon</DialogTitle>
+            <DialogDescription>
+              We're currently developing the advanced valuation tools and Price-to-Earnings charts. Stay tuned!
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end mt-4">
+            <Button onClick={() => setShowComingSoon(false)}>Got it</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

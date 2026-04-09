@@ -3,8 +3,21 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { TrendingUp, TrendingDown, ArrowUp, ArrowDown, Activity } from "lucide-react";
-import { AreaChart, Area, ResponsiveContainer } from "recharts";
 import { CompanyLogo } from "@/components/company/CompanyLogo";
+import dynamic from "next/dynamic";
+
+const ResponsiveContainer = dynamic(
+  () => import("recharts").then((mod) => mod.ResponsiveContainer),
+  { ssr: false }
+);
+const AreaChart = dynamic(
+  () => import("recharts").then((mod) => mod.AreaChart),
+  { ssr: false }
+);
+const Area = dynamic(
+  () => import("recharts").then((mod) => mod.Area),
+  { ssr: false }
+);
 
 interface Stock {
     ticker: string;

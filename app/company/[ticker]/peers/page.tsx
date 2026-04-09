@@ -7,8 +7,9 @@ import { PeerComparison } from "@/components/company/PeerComparison";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-export default async function PeersPage({ params }: { params: { ticker: string } }) {
-    const ticker = params.ticker.toUpperCase();
+export default async function PeersPage({ params }: { params: Promise<{ ticker: string }> }) {
+    const resolvedParams = await params;
+    const ticker = resolvedParams.ticker.toUpperCase();
 
     // Basic company fetch for header
     const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";

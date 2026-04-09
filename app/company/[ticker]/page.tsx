@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { use } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
@@ -27,6 +28,7 @@ import { type PriceHistoryPoint } from "@/components/company/CompanyChartsSwitch
 import { CompanyDescriptionModal } from "@/components/company/CompanyDescriptionModal";
 import { CompanyLogo } from "@/components/company/CompanyLogo";
 import { CompanyTabSwitcher } from "@/components/company/CompanyTabSwitcher";
+import { PositionCard } from "@/components/portfolio/PositionCard";
 
 import { FiftyTwoWeekRange } from "@/components/company/FiftyTwoWeekRange";
 import { NewsFeed, type NewsArticle } from "@/components/company/NewsFeed";
@@ -215,7 +217,7 @@ const api = {
     const res = await fetch(
       `${this.baseUrl}/api/company/${encodeURIComponent(ticker)}`,
       {
-        cache: "no-store",
+        next: { revalidate: 300 }, // Cache for 5 minutes
         headers: { "Content-Type": "application/json" },
       }
     );
@@ -229,7 +231,7 @@ const api = {
     const res = await fetch(
       `${this.baseUrl}/api/prices/${encodeURIComponent(ticker)}`,
       {
-        cache: "no-store",
+        next: { revalidate: 60 }, // Cache for 1 minute (prices update frequently)
         headers: { "Content-Type": "application/json" },
       }
     );
@@ -473,9 +475,10 @@ function Skeleton({ className }: { className: string }) {
 export default async function CompanyPage({
   params,
 }: {
-  params: { ticker: string };
+  params: Promise<{ ticker: string }>;
 }) {
-  const ticker = params.ticker?.toUpperCase?.() ?? "";
+  const resolvedParams = await params;
+  const ticker = resolvedParams.ticker?.toUpperCase?.() ?? "";
 
   return (
     <Suspense fallback={<PageSkeleton />}>
@@ -487,17 +490,30 @@ export default async function CompanyPage({
 // Separate component for async data fetching
 async function CompanyContent({ ticker }: { ticker: string }) {
   try {
-    const [companyData, pricesData, valuationHistory] = await Promise.all([
+    // PERFORMANCE: Fetch critical data in parallel - exclude news (slow external API)
+    // News will be loaded separately with its own Suspense boundary
+    const [companyData, pricesData, valuationHistory, peersData] = await Promise.all([
       api.fetchCompany(ticker),
       api.fetchPrices(ticker),
       fetchValuationHistory(ticker),
+      // Non-blocking: these can fail without breaking the page
+      fetchPeers(ticker, null).catch(() => []),
     ]);
+    
+    // News is fetched separately - don't block initial page load
+    const newsData: NewsArticle[] = [];
 
     if (!companyData?.company) {
       notFound();
     }
 
     const data = transformData(companyData, pricesData, valuationHistory);
+    
+    // Fetch peers with exchange info if we didn't get it in the first pass
+    // This is a follow-up request only if we have exchange info now
+    const peers = data.exchange && peersData.length === 0 
+      ? await fetchPeers(ticker, data.exchange).catch(() => [])
+      : peersData;
 
     return (
       <div className="min-h-full bg-slate-50 dark:bg-slate-950 pb-20">
@@ -506,6 +522,9 @@ async function CompanyContent({ ticker }: { ticker: string }) {
         <div className="mx-auto max-w-[1600px] py-6 px-4 md:px-8 lg:px-12 space-y-8">
           {/* Hero Section */}
           <CompanyHero data={data} />
+
+          {/* Portfolio Position Card - Only shows if user owns this stock */}
+          <PositionCard ticker={ticker} />
 
           {/* Main Grid */}
           <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
@@ -529,7 +548,7 @@ async function CompanyContent({ ticker }: { ticker: string }) {
                   ticker={ticker}
                   sector={data.sector}
                   exchange={data.exchange}
-                  initialData={await fetchPeers(ticker, data.exchange)}
+                  initialData={peers}
                 />
               </div>
 
@@ -538,7 +557,7 @@ async function CompanyContent({ ticker }: { ticker: string }) {
                 <NewsFeed
                   ticker={ticker}
                   limit={6}
-                  initialData={await fetchNews(ticker)}
+                  initialData={newsData}
                   mode="cards"
                 />
               </div>
@@ -627,7 +646,7 @@ function CompanyHero({ data }: { data: CompanyViewModel }) {
 
 function PageHeader({ ticker }: { ticker: string }) {
   return (
-    <div className="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-slate-200 dark:border-slate-800">
+    <div className="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-slate-200 dark:border-slate-800">
       <div className="mx-auto max-w-[1600px] py-3 px-4 md:px-8 lg:px-12">
         <div className="flex items-center justify-between">
           <Breadcrumb ticker={ticker} />

@@ -3,10 +3,15 @@
 import * as Sentry from "@sentry/nextjs";
 import NextError from "next/error";
 import { useEffect } from "react";
+import posthog from "posthog-js";
 
 export default function GlobalError({ error }: { error: Error & { digest?: string } }) {
   useEffect(() => {
     Sentry.captureException(error);
+    // Also capture in PostHog for error tracking
+    if (typeof window !== "undefined") {
+      posthog.captureException(error);
+    }
   }, [error]);
 
   return (

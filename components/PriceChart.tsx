@@ -29,7 +29,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { UTCTimestamp } from "lightweight-charts";
-import { TradingViewChart, ChartDataPoint, RiskZone, ChartOverlay, OscillatorPaneConfig } from "./TradingViewChart";
+import { ChartDataPoint, RiskZone, ChartOverlay, OscillatorPaneConfig } from "./TradingViewChart";
+import dynamic from "next/dynamic";
+
+const TradingViewChart = dynamic(
+  () => import("./TradingViewChart").then((mod) => mod.TradingViewChart),
+  { ssr: false, loading: () => <div className="w-full h-full min-h-[300px] flex items-center justify-center bg-slate-50 dark:bg-slate-900 rounded-lg animate-pulse" /> }
+);
 import { Camera, Settings2, BarChart3, TrendingUp, CandlestickChart, ChevronDown, Lock, Building2, MousePointerClick, ShieldAlert, X } from "lucide-react";
 import { useChartPreferences } from "@/hooks/useChartPreferences";
 import { useAuth } from "@/providers/AuthProvider";
@@ -186,7 +192,17 @@ interface PriceChartProps {
 }
 
 // Enterprise-only ranges
-const ENTERPRISE_RANGES = ["Max"];
+const ENTERPRISE_RANGES: string[] = [];
+
+// Ranges that require extended history (more than the default 1Y fetch)
+const EXTENDED_RANGES = ["3Y", "5Y", "10Y"];
+
+// Map range label → backend range param
+const RANGE_PARAM: Record<string, string> = {
+  "3Y": "3y",
+  "5Y": "5y",
+  "10Y": "10y",
+};
 
 export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceChartProps) {
   const chartContainerRef = React.useRef<HTMLDivElement>(null);
@@ -210,6 +226,12 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
   const [range, setRange] = React.useState("1Y");
   const [view, setView] = React.useState<"price" | "risk" | "candlestick">("price");
   const [showVolume, setShowVolumeLocal] = React.useState(true);
+
+  // ── Extended range data fetching ────────────────────────────────────────────
+  // Cache fetched extended data keyed by "ticker:range" to avoid redundant fetches
+  const rangeDataCache = React.useRef<Map<string, PriceData[]>>(new Map());
+  const [extendedData, setExtendedData] = React.useState<PriceData[] | null>(null);
+  const [isLoadingRange, setIsLoadingRange] = React.useState(false);
   const [isDark, setIsDark] = React.useState(false);
   const [showEnterpriseGate, setShowEnterpriseGate] = React.useState(false);
   const [whatIfIndex, setWhatIfIndex] = React.useState<number | null>(null);
@@ -233,7 +255,7 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
     setActiveIndicators((prev) =>
       cols.every((k) => prev.includes(k))
         ? prev.filter((k2) => !(cols as readonly string[]).includes(k2))
-        : [...new Set([...prev.filter((k2) => !(cols as readonly string[]).includes(k2)), ...cols])]
+        : Array.from(new Set([...prev.filter((k2) => !(cols as readonly string[]).includes(k2)), ...cols]))
     );
   };
 
@@ -287,6 +309,49 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
       .finally(() => setIndicatorLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [indicatorKey, ticker]);
+
+  // ── Fetch extended price data when range > 1Y ───────────────────────────────
+  React.useEffect(() => {
+    if (!EXTENDED_RANGES.includes(range) || !ticker) return;
+
+    const cacheKey = `${ticker}:${range}`;
+    const cached = rangeDataCache.current.get(cacheKey);
+    if (cached) {
+      setExtendedData(cached);
+      return;
+    }
+
+    const rangeParam = RANGE_PARAM[range];
+    if (!rangeParam) return;
+
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000';
+    setIsLoadingRange(true);
+    fetch(`${backendUrl}/api/prices/${encodeURIComponent(ticker)}?range=${rangeParam}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (!json?.prices) return;
+        const mapped: PriceData[] = (json.prices as Array<Record<string, unknown>>).map((p) => ({
+          date: p.date as string,
+          price: ((p.adj_close ?? p.close) as number | null) ?? 0,
+          open: (p.open as number | null) ?? null,
+          high: (p.high as number | null) ?? null,
+          low: (p.low as number | null) ?? null,
+          close: (p.close as number | null) ?? null,
+          volume: (p.volume as number | null) ?? null,
+        }));
+        rangeDataCache.current.set(cacheKey, mapped);
+        setExtendedData(mapped);
+      })
+      .catch(() => { /* silent fail */ })
+      .finally(() => setIsLoadingRange(false));
+  }, [range, ticker]);
+
+  // Reset extended data when switching back to short ranges
+  React.useEffect(() => {
+    if (!EXTENDED_RANGES.includes(range)) {
+      setExtendedData(null);
+    }
+  }, [range]);
 
   // Sync with preferences and detect dark mode
   React.useEffect(() => {
@@ -373,12 +438,20 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
     }
   }, []);
 
+  // Use extended data when available (for 3Y/5Y/10Y/Max ranges), else fall back to the prop
+  const activeData = React.useMemo(() => {
+    if (EXTENDED_RANGES.includes(range) && extendedData && extendedData.length > 0) {
+      return extendedData;
+    }
+    return data;
+  }, [data, extendedData, range]);
+
   const enriched = React.useMemo(() => {
-    if (!data || data.length === 0) return data;
+    if (!activeData || activeData.length === 0) return activeData;
 
-    let peak = data[0]?.price ?? 0;
+    let peak = activeData[0]?.price ?? 0;
 
-    return data.map((point) => {
+    return activeData.map((point) => {
       if (point.price > peak) {
         peak = point.price;
       }
@@ -389,11 +462,14 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
         drawdown, // negative numbers for drawdown from peak
       };
     }) as (PriceData & { drawdown: number })[];
-  }, [data]);
+  }, [activeData]);
 
   const filteredData = React.useMemo(() => {
     if (!enriched || enriched.length === 0) return enriched;
     if (range === "Max") return enriched;
+
+    // For extended ranges that are still loading, return all data (will update once loaded)
+    if (EXTENDED_RANGES.includes(range) && isLoadingRange) return enriched;
 
     // Get the latest date from the data as our anchor
     const lastPoint = enriched[enriched.length - 1];
@@ -425,22 +501,9 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
         return enriched;
     }
 
-    // Filter points on or after cutoff date
-    // Note: data.date is a string, so we compare timestamp or string ISO
     const cutoffTime = cutoffDate.getTime();
-
-    // Debug logging
-    console.log('[PriceChart] Debug:', {
-      range,
-      enrichedLen: enriched.length,
-      firstEnrichedDate: enriched[0]?.date,
-      lastEnrichedDate: lastPoint.date,
-      latestDateObj: latestDate.toISOString(),
-      cutoffDateObj: cutoffDate.toISOString()
-    });
-
     return enriched.filter(p => new Date(p.date).getTime() >= cutoffTime);
-  }, [enriched, range]);
+  }, [enriched, range, isLoadingRange]);
 
   const overlays: ChartOverlay[] = React.useMemo(() => {
     // Clamp indicator data to the currently visible date range so the chart
@@ -729,15 +792,15 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
   };
 
   const [fsChartHeight] = React.useState(() =>
-    Math.round(Math.max(300, (typeof window !== "undefined" ? window.innerHeight : 800) * 0.97 - 205))
+    typeof window !== "undefined" ? Math.round(Math.max(300, window.innerHeight * 0.97 - 205)) : 600
   );
 
   const Wrapper = fullscreen ? React.Fragment : Card;
   const wrapperProps = fullscreen ? {} : { className: "w-full border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 transition-colors duration-300" };
   const headerClass = fullscreen
-    ? "flex flex-row items-center justify-between space-y-0 pb-2 border-b border-slate-700 transition-colors duration-300"
+    ? "flex flex-row items-center justify-between space-y-0 pb-2 border-b border-slate-200 dark:border-slate-700 transition-colors duration-300 shrink-0"
     : "flex flex-row items-center justify-between space-y-0 pb-2 border-b border-slate-100 dark:border-slate-800 transition-colors duration-300";
-  const contentClass = fullscreen ? "pt-1 relative" : "p-4 relative";
+  const contentClass = fullscreen ? "pt-1 flex flex-col flex-1 min-h-0 relative" : "p-4 relative";
 
   return (
     <Wrapper {...(wrapperProps as any)}>
@@ -762,7 +825,7 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
                     <TrendingUp className="h-4 w-4" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent>Area Chart</TooltipContent>
+                <TooltipContent className="z-[10000]">Area Chart</TooltipContent>
               </UITooltip>
             </TooltipProvider>
             <TooltipProvider>
@@ -780,7 +843,7 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
                     <CandlestickChart className="h-4 w-4" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent>Candlestick Chart</TooltipContent>
+                <TooltipContent className="z-[10000]">Candlestick Chart</TooltipContent>
               </UITooltip>
             </TooltipProvider>
             <TooltipProvider>
@@ -798,7 +861,7 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
                     <ShieldAlert className="h-4 w-4" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent>Risk Chart</TooltipContent>
+                <TooltipContent className="z-[10000]">Risk Chart</TooltipContent>
               </UITooltip>
             </TooltipProvider>
           </div>
@@ -837,24 +900,35 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
             </div>
           )}
 
-          <div className="flex space-x-1">
-            {["1M", "6M", "1Y", "3Y", "5Y", "10Y", "Max"].map((r) => {
+          <div className="flex items-center space-x-1">
+            {["1M", "6M", "1Y", "3Y", "5Y", "10Y"].map((r) => {
               const isLocked = ENTERPRISE_RANGES.includes(r) && !isEnterprise;
+              const isCurrentLoading = isLoadingRange && range === r;
               return (
                 <button
                   key={r}
                   onClick={() => handleRangeSelect(r)}
+                  disabled={isCurrentLoading}
                   className={cn(
                     "px-2 py-1 text-xs font-medium rounded-md transition-colors flex items-center gap-0.5",
                     range === r
-                      ? "bg-brand text-white"
+                      ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 shadow-sm"
                       : isLocked
                         ? "text-slate-400 dark:text-slate-500"
                         : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
                   )}
                 >
-                  {r}
-                  {isLocked && <Lock className="h-2.5 w-2.5 ml-0.5" />}
+                  {isCurrentLoading ? (
+                    <span className="inline-flex items-center gap-0.5">
+                      {r}
+                      <span className="ml-0.5 inline-block h-2 w-2 animate-spin rounded-full border border-current border-t-transparent" />
+                    </span>
+                  ) : (
+                    <>
+                      {r}
+                      {isLocked && <Lock className="h-2.5 w-2.5 ml-0.5" />}
+                    </>
+                  )}
                 </button>
               );
             })}
@@ -908,7 +982,7 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
                 <Camera className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 z-[70]">
+            <DropdownMenuContent align="end" className="w-48 z-[10000]">
               <DropdownMenuLabel>Snapshot Options</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => handleSnapshot("default")}>
@@ -933,7 +1007,7 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-700 text-slate-300 hover:bg-slate-800 ml-1"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 ml-1"
               aria-label="Close fullscreen"
             >
               <X className="h-3.5 w-3.5" />
@@ -1003,7 +1077,7 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
           </div>
         )}
 
-        <div ref={chartContainerRef} className={cn("w-full", !fullscreen && "pb-6", view === "risk" && !fullscreen ? "h-80" : undefined)}>
+        <div ref={chartContainerRef} className={cn("w-full", fullscreen ? "flex-1 min-h-0 flex flex-col" : !fullscreen ? "pb-6" : undefined, view === "risk" && !fullscreen ? "h-80" : undefined)}>
           {view === "risk" ? (
             riskMode === "volatility" && (!filteredData || filteredData.length < 25) ? (
               <div className="flex h-full items-center justify-center text-xs text-slate-500 dark:text-slate-400">
@@ -1101,7 +1175,7 @@ export function PriceChart({ data, ticker, fullscreen = false, onClose }: PriceC
                 wickUpColor: isDark ? "#22c55e" : "#16a34a",
                 wickDownColor: isDark ? "#ef4444" : "#dc2626",
               }}
-              height={fullscreen ? fsChartHeight : 320}
+              height={fullscreen ? 0 : 320}
             />
           )}
         </div>

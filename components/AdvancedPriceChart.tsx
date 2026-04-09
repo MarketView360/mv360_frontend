@@ -79,6 +79,8 @@ const RANGE_OPTIONS = [
 export function AdvancedPriceChart({ data, ticker }: AdvancedPriceChartProps) {
   const chartContainerRef = React.useRef<HTMLDivElement>(null);
   const chartRef = React.useRef<IChartApi | null>(null);
+  const mainSeriesRef = React.useRef<any>(null);
+  const volumeSeriesRef = React.useRef<any>(null);
 
   const { preferences, setShowVolume, setShowAnimations, isLoaded } = useChartPreferences();
 
@@ -170,7 +172,7 @@ export function AdvancedPriceChart({ data, ticker }: AdvancedPriceChartProps) {
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
         attributionLogo: false,
       },
-      width: chartContainerRef.current.clientWidth,
+      width: chartContainerRef.current?.clientWidth || 800,
       height: containerHeight,
       grid: {
         vertLines: { color: colors.grid, style: 1 },
@@ -299,7 +301,7 @@ export function AdvancedPriceChart({ data, ticker }: AdvancedPriceChartProps) {
           ? window.innerHeight - 140
           : 380;
         chartRef.current.applyOptions({
-          width: chartContainerRef.current.clientWidth,
+          width: chartContainerRef.current?.clientWidth || 800,
           height: containerHeight,
         });
       }
@@ -418,8 +420,8 @@ export function AdvancedPriceChart({ data, ticker }: AdvancedPriceChartProps) {
                   className={cn(
                     "px-2 py-1 text-xs font-medium rounded-md transition-colors",
                     range === r.label
-                      ? "bg-brand text-white shadow-sm"
-                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                      ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 shadow-sm"
+                      : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
                   )}
                 >
                   {r.label}

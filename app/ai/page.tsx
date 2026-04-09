@@ -1,9 +1,6 @@
 import React, { Suspense } from "react";
 import AiPageClient from "./AiPageClient";
 
-// Feature flag: Allow anonymous users to access AI chat.
-// Default: true (if unset). Set NEXT_PUBLIC_ALLOW_ANONYMOUS_AI_CHAT=false to require login.
-
 export default function AiPage() {
   return (
     <Suspense

@@ -3,20 +3,43 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
+import { identifyPostHogUser } from "@/lib/posthog";
+
+interface MfaFactor {
+  id: string;
+  friendly_name?: string;
+  factor_type: 'totp' | 'phone';
+  status: 'verified' | 'unverified';
+}
+
+interface AalLevel {
+  currentLevel: 'aal1' | 'aal2' | null;
+  nextLevel: 'aal1' | 'aal2' | null;
+  currentAuthenticationMethods: { method: string; timestamp: number }[];
+}
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signInWithEmail: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signInWithEmail: (email: string, password: string) => Promise<{ error: Error | null; mfaRequired?: boolean }>;
   signUpWithEmail: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
   signInWithOAuth: (provider: 'google' | 'github') => Promise<{ error: Error | null }>;
   signInWithMagicLink: (email: string) => Promise<{ error: Error | null }>;
-  signOut: () => Promise<void>;
+  signOut: (scope?: 'global' | 'local' | 'others') => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
   updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
   verifyOtp: (email: string, token: string, type: 'email' | 'recovery') => Promise<{ error: Error | null }>;
   resendVerificationEmail: (email: string) => Promise<{ error: Error | null }>;
+  // MFA methods
+  enrollMfa: (friendlyName?: string) => Promise<{ qrCode: string; secret: string; factorId: string } | { error: Error }>;
+  verifyMfa: (factorId: string, code: string) => Promise<{ error: Error | null }>;
+  unenrollMfa: (factorId: string) => Promise<{ error: Error | null }>;
+  listMfaFactors: () => Promise<{ factors: MfaFactor[]; error: Error | null }>;
+  challengeMfa: (factorId: string) => Promise<{ challengeId: string } | { error: Error }>;
+  verifyMfaChallenge: (factorId: string, challengeId: string, code: string) => Promise<{ error: Error | null }>;
+  getAalLevel: () => Promise<AalLevel | { error: Error }>;
+  requiresMfaVerification: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -83,6 +106,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Identify user in PostHog when auth state changes
+        if (session?.user) {
+          identifyPostHogUser(session.user.id, {
+            email: session.user.email,
+            full_name: session.user.user_metadata?.full_name,
+            is_premium: session.user.user_metadata?.is_premium ?? false,
+          });
+          console.log('[PostHog] User identified:', session.user.email);
+        }
       }
     );
 
@@ -94,12 +127,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithEmail = useCallback(async (email: string, password: string) => {
     if (!supabase) return { error: new Error('Auth not available') };
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
+    
+    if (error) {
+      setLoading(false);
+      return { error: error as Error };
+    }
+
+    // Check if MFA verification is required
+    if (data.session) {
+      console.log('Sign in successful, checking MFA status...');
+      const { data: aalData, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      
+      console.log('AAL Data:', aalData);
+      console.log('AAL Error:', aalError);
+      
+      if (aalError) {
+        console.error('Error getting AAL level:', aalError);
+      }
+      
+      if (!aalError && aalData) {
+        console.log('Current AAL:', aalData.currentLevel);
+        console.log('Next AAL:', aalData.nextLevel);
+        console.log('Current AAL ID:', aalData.currentAuthenticationMethods);
+        
+        // User has MFA enrolled and needs to verify
+        if (aalData.nextLevel === 'aal2' && aalData.currentLevel === 'aal1') {
+          console.log('MFA verification required - redirecting to MFA page');
+          setLoading(false);
+          return { error: null, mfaRequired: true };
+        } else {
+          console.log('No MFA verification needed - user already at AAL2 or MFA not enrolled');
+        }
+      }
+    }
+    
     setLoading(false);
-    return { error: error as Error | null };
+    return { error: null, mfaRequired: false };
   }, [supabase]);
 
   const signUpWithEmail = useCallback(async (email: string, password: string, fullName?: string) => {
@@ -141,10 +208,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error as Error | null };
   }, [supabase]);
 
-  const signOut = useCallback(async () => {
-    if (supabase) await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
+  const signOut = useCallback(async (scope: 'global' | 'local' | 'others' = 'local') => {
+    if (supabase) await supabase.auth.signOut({ scope });
+    if (scope !== 'others') {
+      setUser(null);
+      setSession(null);
+    }
   }, [supabase]);
 
   const resetPassword = useCallback(async (email: string) => {
@@ -185,6 +254,98 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error: error as Error | null };
   }, [supabase]);
 
+  // MFA Methods
+  const enrollMfa = useCallback(async (friendlyName?: string) => {
+    if (!supabase) return { error: new Error('Auth not available') };
+    const { data, error } = await supabase.auth.mfa.enroll({
+      factorType: 'totp',
+      friendlyName: friendlyName || 'Authenticator App',
+    });
+    if (error) return { error: error as Error };
+    return {
+      qrCode: data.totp.qr_code,
+      secret: data.totp.secret,
+      factorId: data.id,
+    };
+  }, [supabase]);
+
+  const verifyMfa = useCallback(async (factorId: string, code: string) => {
+    if (!supabase) return { error: new Error('Auth not available') };
+    const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId });
+    if (challengeError) return { error: challengeError as Error };
+    
+    const { error } = await supabase.auth.mfa.verify({
+      factorId,
+      challengeId: challenge.id,
+      code,
+    });
+    return { error: error as Error | null };
+  }, [supabase]);
+
+  const unenrollMfa = useCallback(async (factorId: string) => {
+    if (!supabase) return { error: new Error('Auth not available') };
+    const { error } = await supabase.auth.mfa.unenroll({ factorId });
+    return { error: error as Error | null };
+  }, [supabase]);
+
+  const listMfaFactors = useCallback(async () => {
+    if (!supabase) return { factors: [], error: new Error('Auth not available') };
+    const { data, error } = await supabase.auth.mfa.listFactors();
+    if (error) return { factors: [], error: error as Error };
+    return {
+      factors: [...(data.totp || []), ...(data.phone || [])].map(f => ({
+        id: f.id,
+        friendly_name: f.friendly_name,
+        factor_type: f.factor_type as 'totp' | 'phone',
+        status: f.status as 'verified' | 'unverified',
+      })),
+      error: null,
+    };
+  }, [supabase]);
+
+  const challengeMfa = useCallback(async (factorId: string) => {
+    if (!supabase) return { error: new Error('Auth not available') };
+    const { data, error } = await supabase.auth.mfa.challenge({ factorId });
+    if (error) return { error: error as Error };
+    return { challengeId: data.id };
+  }, [supabase]);
+
+  const verifyMfaChallenge = useCallback(async (factorId: string, challengeId: string, code: string) => {
+    if (!supabase) return { error: new Error('Auth not available') };
+    const { error } = await supabase.auth.mfa.verify({
+      factorId,
+      challengeId,
+      code,
+    });
+    return { error: error as Error | null };
+  }, [supabase]);
+
+  const getAalLevel = useCallback(async () => {
+    if (!supabase) return { error: new Error('Auth not available') };
+    const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (error) return { error: error as Error };
+    return {
+      currentLevel: data.currentLevel as 'aal1' | 'aal2' | null,
+      nextLevel: data.nextLevel as 'aal1' | 'aal2' | null,
+      currentAuthenticationMethods: data.currentAuthenticationMethods.map(m => ({
+        method: m.method,
+        timestamp: m.timestamp,
+      })),
+    };
+  }, [supabase]);
+
+  const requiresMfaVerification = useCallback(async () => {
+    if (!supabase) return false;
+    try {
+      const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (error) return false;
+      // User needs MFA if they have aal2 available but are currently at aal1
+      return data.nextLevel === 'aal2' && data.currentLevel === 'aal1';
+    } catch {
+      return false;
+    }
+  }, [supabase]);
+
   const value: AuthContextType = {
     user,
     session,
@@ -198,6 +359,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     updatePassword,
     verifyOtp,
     resendVerificationEmail,
+    enrollMfa,
+    verifyMfa,
+    unenrollMfa,
+    listMfaFactors,
+    challengeMfa,
+    verifyMfaChallenge,
+    getAalLevel,
+    requiresMfaVerification,
   };
 
   return (

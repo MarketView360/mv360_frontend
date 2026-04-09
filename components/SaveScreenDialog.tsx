@@ -85,12 +85,12 @@ export function SaveScreenDialog({
           <div className={cn(
             "flex items-center gap-3 p-4 rounded-xl border text-sm transition-colors",
             isQuotaReached
-              ? "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800"
+              ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
               : isQuotaWarning
-                ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800"
+                ? "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
                 : isPremium
-                  ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800"
-                  : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700"
+                  ? "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800"
+                  : "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800"
           )}>
             {isQuotaReached ? (
               <div className="p-2 rounded-full bg-red-100 dark:bg-red-900/50">
@@ -197,14 +197,15 @@ export function SaveScreenDialog({
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={saving}
-            className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900"
           >
             Cancel
           </Button>
           <Button
             onClick={handleSave}
             disabled={!name.trim() || !canSave || saving}
-            className="bg-brand hover:bg-brand/90 text-white font-medium shadow-sm"
+            style={{ backgroundColor: '#0087f6' }}
+            className="hover:opacity-90 text-white font-medium shadow-sm transition-opacity"
           >
             {saving ? (
               <>

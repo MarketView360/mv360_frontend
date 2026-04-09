@@ -102,13 +102,19 @@ export function SavedScreensList({
         </p>
         <div className="flex flex-col gap-3 w-full max-w-[200px]">
           <Link href="/auth?mode=login">
-            <Button className="w-full bg-brand hover:bg-brand/90 text-white">
+            <Button
+              style={{ backgroundColor: '#0087f6' }}
+              className="w-full hover:opacity-90 text-white transition-opacity"
+            >
               <LogIn className="h-4 w-4 mr-2" />
               Sign In
             </Button>
           </Link>
           <Link href="/auth?mode=register">
-            <Button variant="outline" className="w-full border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800">
+            <Button
+              variant="outline"
+              className="w-full border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
               <UserPlus className="h-4 w-4 mr-2" />
               Create Account
             </Button>
@@ -155,8 +161,8 @@ export function SavedScreensList({
               key={screen.id}
               className={cn(
                 "group p-4 rounded-lg border transition-all",
-                "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700",
-                "hover:border-brand dark:hover:border-brand hover:shadow-md"
+                "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800",
+                "hover:border-brand/50 dark:hover:border-brand/50 hover:shadow-sm"
               )}
             >
               <div className="flex items-start justify-between gap-3 mb-2">
@@ -173,10 +179,10 @@ export function SavedScreensList({
               </div>
 
               <div className="flex items-center gap-2 mb-3">
-                <Badge variant="secondary" className="text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
-                  {screen.exchange.toUpperCase()}
+                <Badge variant="secondary" className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-transparent">
+                  {screen.exchange}
                 </Badge>
-                <Badge variant="outline" className="text-xs border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400">
+                <Badge variant="outline" className="text-[10px] font-medium px-1.5 py-0 border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400">
                   {screen.limit_count} results
                 </Badge>
                 <div className="flex items-center gap-1 text-xs text-slate-400">
@@ -188,7 +194,8 @@ export function SavedScreensList({
               <div className="flex items-center gap-2">
                 <Button
                   size="sm"
-                  className="flex-1 bg-brand hover:bg-brand/90 h-8"
+                  style={{ backgroundColor: '#0087f6' }}
+                  className="flex-1 hover:opacity-90 text-white h-8 transition-opacity"
                   onClick={() => onRun(screen)}
                 >
                   <Play className="h-3.5 w-3.5 mr-1" />
@@ -245,7 +252,11 @@ export function SavedScreensList({
             <Button variant="outline" onClick={() => setEditingScreen(null)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveEdit} className="bg-brand hover:bg-brand/90">
+            <Button
+              onClick={handleSaveEdit}
+              style={{ backgroundColor: '#0087f6' }}
+              className="hover:opacity-90 text-white transition-opacity"
+            >
               Save Changes
             </Button>
           </DialogFooter>

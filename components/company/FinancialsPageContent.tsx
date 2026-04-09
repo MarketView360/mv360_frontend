@@ -342,49 +342,41 @@ function KeyHighlights({
       label: "Revenue",
       value: formatCurrency(latestIncome?.total_revenue ?? null),
       change: calcChange(latestIncome?.total_revenue ?? null, previousIncome?.total_revenue ?? null),
-      icon: DollarSign,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50 dark:bg-blue-950/30",
+      bgColor: "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800",
     },
     {
       label: "Net Income",
       value: formatCurrency(latestIncome?.net_income ?? null),
       change: calcChange(latestIncome?.net_income ?? null, previousIncome?.net_income ?? null),
-      icon: BarChart3,
-      color: "text-green-600",
-      bgColor: "bg-green-50 dark:bg-green-950/30",
+      bgColor: "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800",
     },
     {
       label: "Free Cash Flow",
       value: formatCurrency(latestCashflow?.free_cash_flow ?? null),
       change: null,
-      icon: Wallet,
-      color: "text-purple-600",
-      bgColor: "bg-purple-50 dark:bg-purple-950/30",
+      bgColor: "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800",
     },
     {
       label: "Total Assets",
       value: formatCurrency(latestBalance?.total_assets ?? null),
       change: null,
-      icon: Building2,
-      color: "text-amber-600",
-      bgColor: "bg-amber-50 dark:bg-amber-950/30",
+      bgColor: "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800",
     },
   ];
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {highlights.map((h) => (
-        <Card key={h.label} className={`${h.bgColor} border-0`}>
+        <Card key={h.label} className={`${h.bgColor} backdrop-blur-sm`}>
           <CardContent className="pt-4">
             <div className="flex items-center justify-between mb-2">
-              <h.icon className={`w-5 h-5 ${h.color}`} />
+              <span className="text-sm font-medium text-slate-600 dark:text-slate-300">{h.label}</span>
               {h.change !== null && (
                 <Badge
                   variant="outline"
                   className={`text-xs ${h.change >= 0
-                    ? "bg-green-100 text-green-700 border-green-200"
-                    : "bg-red-100 text-red-700 border-red-200"
+                    ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                    : "bg-red-500/10 text-red-500 border-red-500/20"
                     }`}
                 >
                   {h.change >= 0 ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <ArrowDownRight className="w-3 h-3 mr-1" />}
@@ -392,8 +384,7 @@ function KeyHighlights({
                 </Badge>
               )}
             </div>
-            <div className="text-2xl font-bold font-mono text-slate-900 dark:text-white">{h.value}</div>
-            <div className="text-xs text-slate-500 mt-1">{h.label}</div>
+            <div className="text-2xl font-bold font-mono text-slate-900 dark:text-white mt-1">{h.value}</div>
           </CardContent>
         </Card>
       ))}

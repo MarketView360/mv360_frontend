@@ -6,9 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 export interface Article {
-  title: string;
-  content: string;
-  date: string;
+  title?: string;
+  content?: string;
+  date?: string;
   link: string;
   symbols?: string[];
   [key: string]: any;
@@ -31,13 +31,15 @@ export function NewsCard({ article }: { article: Article }) {
     }
   }, [link]);
 
-  const formatDate = (d: string) =>
-    new Date(d).toLocaleDateString(undefined, { 
-      month: "short", 
+  const formatDate = (d: string | undefined) => {
+    if (!d) return "";
+    return new Date(d).toLocaleDateString(undefined, {
+      month: "short",
       day: "numeric",
       hour: "numeric",
       minute: "2-digit"
     });
+  };
 
   return (
     <a

@@ -15,6 +15,7 @@ import {
   CartesianGrid,
   Cell,
 } from "recharts";
+import { useTheme } from "@/app/providers";
 
 interface CompanyMetrics {
   code: string;
@@ -42,6 +43,7 @@ const CHART_METRICS = [
 ];
 
 export function ComparisonCharts({ tickers, onClear }: ComparisonChartsProps) {
+  const { isDark } = useTheme();
   const [metricsData, setMetricsData] = useState<Map<string, CompanyMetrics>>(new Map());
   const [loading, setLoading] = useState(false);
   const supabaseRef = useRef(createClient());
@@ -194,12 +196,18 @@ export function ComparisonCharts({ tickers, onClear }: ComparisonChartsProps) {
                             width={60}
                           />
                           <Tooltip
+                            cursor={{ fill: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }}
                             contentStyle={{
-                              backgroundColor: '#fff',
-                              border: '1px solid #e2e8f0',
-                              borderRadius: '8px',
-                              fontSize: '12px',
+                              backgroundColor: isDark ? "rgba(15, 23, 42, 0.7)" : "rgba(255, 255, 255, 0.7)",
+                              backdropFilter: "blur(12px)",
+                              WebkitBackdropFilter: "blur(12px)",
+                              border: isDark ? "1px solid rgba(51, 65, 85, 0.5)" : "1px solid rgba(226, 232, 240, 0.5)",
+                              borderRadius: "8px",
+                              boxShadow: isDark ? "0 4px 6px -1px rgba(0, 0, 0, 0.3)" : "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                              color: isDark ? "#f8fafc" : "#0f172a",
                             }}
+                            itemStyle={{ color: isDark ? "#f8fafc" : "#0f172a", fontSize: "12px", fontWeight: "500" }}
+                            labelStyle={{ color: isDark ? "#e2e8f0" : "#475569", marginBottom: "4px", fontSize: "12px", fontWeight: "600" }}
                             formatter={(value: number) => [metric.format(value), metric.label]}
                           />
                           <Bar dataKey="value" radius={[6, 6, 0, 0]}>

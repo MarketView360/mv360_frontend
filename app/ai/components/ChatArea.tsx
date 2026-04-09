@@ -47,6 +47,12 @@ export interface Message {
   toolCalls?: string[];
   toolStatus?: string;
   isWatchlistAnalysis?: boolean;
+  metrics?: {
+    ttft: number;
+    tps: number;
+    totalTokens: number;
+    totalTime: number;
+  };
 }
 
 interface ChatAreaProps {
@@ -409,6 +415,25 @@ export function ChatArea({ messages }: ChatAreaProps) {
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
+
+                  {message.metrics && !message.content.startsWith('I encountered an error') && !message.content.startsWith('AI is busy') && (
+                    <>
+                      <div className="h-3 w-px bg-slate-200 dark:bg-slate-700 mx-1" />
+                      <div className="flex items-center gap-2 px-1 text-[10px] text-slate-400 dark:text-slate-500 font-mono">
+                        <span title="Tokens per second">
+                          {message.metrics.tps} TPS
+                        </span>
+                        <span>·</span>
+                        <span title="Total tokens generated">
+                          {message.metrics.totalTokens} Tokens
+                        </span>
+                        <span>·</span>
+                        <span title="Time to first token">
+                          TTFT: {(message.metrics.ttft / 1000).toFixed(2)}s
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>

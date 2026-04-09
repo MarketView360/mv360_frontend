@@ -5,12 +5,10 @@
 import * as Sentry from "@sentry/nextjs";
 
 Sentry.init({
-  dsn: "https://fc2d1c67fe908745f6c0eb9e84f797d6@o4510471929921536.ingest.us.sentry.io/4510471931494400",
+  dsn: "https://640b04a03e2350f064d6ef17461397f1@o4510493335617536.ingest.us.sentry.io/4511127885119488",
 
   // Add optional integrations for additional features
-  integrations: [
-    Sentry.replayIntegration(),
-  ],
+  integrations: [Sentry.replayIntegration()],
 
   // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
   tracesSampleRate: 1,

@@ -15,7 +15,7 @@ export default function DashboardLayout({
     const userName = user?.user_metadata?.name || user?.email?.split("@")[0] || "User";
 
     return (
-        <div className="flex h-[calc(100vh-64px)]">
+        <div className="flex h-[calc(100vh-5rem)] md:h-[calc(100vh-5.5rem)]">
             {/* Sidebar - hidden on mobile */}
             <div className="hidden md:block">
                 <DashboardSidebar userTier={userTier} userName={userName} />

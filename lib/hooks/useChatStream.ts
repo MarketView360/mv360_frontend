@@ -122,6 +122,9 @@ export function useChatStream(token: string | null, sessionId: string | null) {
         let resolvedSessionId: string | undefined = sessionId || undefined;
         let resolvedTitle: string | undefined;
 
+        const startTime = Date.now();
+        let firstTokenTime: number | null = null;
+
         for await (const chunk of aiApi.streamMessage(
           {
             messages: allMessages,
@@ -131,6 +134,10 @@ export function useChatStream(token: string | null, sessionId: string | null) {
           },
           abortControllerRef.current.signal
         )) {
+          if (!firstTokenTime && (chunk.text || chunk.reasoning)) {
+            firstTokenTime = Date.now();
+          }
+
           fullContent += chunk.text;
           
           // Accumulate reasoning content
@@ -184,10 +191,31 @@ export function useChatStream(token: string | null, sessionId: string | null) {
           );
         }
 
+        const endTime = Date.now();
+        const ttft = firstTokenTime ? firstTokenTime - startTime : endTime - startTime;
+        const totalTime = endTime - startTime;
+        
+        // Estimate tokens: roughly 4 chars per token for English text
+        const totalChars = fullContent.length + fullReasoning.length;
+        const estimatedTokens = Math.max(1, Math.ceil(totalChars / 4));
+        
+        // Calculate TPS (from first token to end)
+        const generateTimeMs = endTime - (firstTokenTime || startTime);
+        const tps = generateTimeMs > 0 ? (estimatedTokens / (generateTimeMs / 1000)) : 0;
+
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantMessageId
-              ? { ...m, isStreaming: false }
+              ? { 
+                  ...m, 
+                  isStreaming: false,
+                  metrics: {
+                    ttft,
+                    tps: Number(tps.toFixed(1)),
+                    totalTokens: estimatedTokens,
+                    totalTime
+                  }
+                }
               : m
           )
         );

@@ -34,10 +34,33 @@ function LoginPageContent() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // Redirect if already logged in (but not during active login)
+  // IMPORTANT: Check onboarding status first - don't redirect to already-logged-in if user needs onboarding
   useEffect(() => {
-    if (session && !isLoggingIn) {
-      router.replace("/auth/already-logged-in");
-    }
+    const checkAndRedirect = async () => {
+      if (!session || isLoggingIn) return;
+
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/profile/onboarding-status`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // Redirect to onboarding if needs_onboarding is true
+          if (data.needs_onboarding) {
+            router.replace("/onboarding");
+            return;
+          }
+        }
+        // Default redirect if check fails or user is onboarded
+        router.replace("/");
+      } catch {
+        // If check fails, default to homepage
+        router.replace("/");
+      }
+    };
+
+    checkAndRedirect();
   }, [session, router, isLoggingIn]);
 
   const [email, setEmail] = useState("");
@@ -48,18 +71,28 @@ function LoginPageContent() {
   const [showMagicLinkSent, setShowMagicLinkSent] = useState(false);
   const [magicLinkMode, setMagicLinkMode] = useState(false);
 
+  // Show skeleton while loading auth state or if session exists (meaning we're about to redirect)
+  // IMPORTANT: Hooks must be defined before any early returns.
+  if (loading || (session && !isLoggingIn)) {
+    return <LoginPageSkeleton />;
+  }
+
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
     setIsLoggingIn(true);
 
-    const { error } = await signInWithEmail(email, password);
+    const result = await signInWithEmail(email, password);
 
-    if (error) {
-      setError(error.message);
+    if (result.error) {
+      setError(result.error.message);
       setIsLoading(false);
       setIsLoggingIn(false);
+    } else if (result.mfaRequired) {
+      // User has MFA enabled, redirect to MFA verification page
+      const mfaRedirect = `/auth/mfa-verify?redirectTo=${encodeURIComponent(redirectTo)}`;
+      router.push(mfaRedirect);
     } else {
       router.push(redirectTo);
       router.refresh();

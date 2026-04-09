@@ -12,6 +12,9 @@ const PAGE_SIZE = 20;
 
 interface Article {
   link: string;
+  title?: string;
+  content?: string;
+  date?: string;
   [key: string]: any;
 }
 

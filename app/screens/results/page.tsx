@@ -50,6 +50,7 @@ import { jsPDF } from "jspdf";
 
 // Import screener types aligned with backend
 import type { ScreenerRow } from "@/lib/types/screener";
+import { stripOuterParentheses } from "@/lib/queryBuilder";
 
 // Re-export for local usage (backward compatibility)
 export type { ScreenerRow };
@@ -443,6 +444,10 @@ function ResultsPageContent() {
       setRawRows([]);
       setTotalCount(0);
 
+      // Strip redundant outer parentheses to prevent backend parsing issues
+      // E.g., "(PE < 25)" -> "PE < 25" (prevents arithmetic node wrapping)
+      const cleanedQuery = stripOuterParentheses(query);
+
       try {
         // Build headers with JWT token if available
         const headers: HeadersInit = { "Content-Type": "application/json" };
@@ -453,7 +458,7 @@ function ResultsPageContent() {
         const resp = await fetch(`${backendUrl}/api/stream-query`, {
           method: "POST",
           headers,
-          body: JSON.stringify({ query, sort, limit, offset, exchange }),
+          body: JSON.stringify({ query: cleanedQuery, sort, limit, offset, exchange }),
           signal: controller.signal,
         });
 
@@ -1698,6 +1703,46 @@ function ResultsPageContent() {
                               </div>
                             </th>
                           )}
+                          {visibleColumns.has("return_on_equity_ttm") && (
+                            <th
+                              className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                              onClick={() => toggleSort("return_on_equity_ttm")}
+                            >
+                              <div className="flex items-center justify-end">
+                                ROE <SortIcon column="return_on_equity_ttm" />
+                              </div>
+                            </th>
+                          )}
+                          {visibleColumns.has("return_on_assets_ttm") && (
+                            <th
+                              className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                              onClick={() => toggleSort("return_on_assets_ttm")}
+                            >
+                              <div className="flex items-center justify-end">
+                                ROA <SortIcon column="return_on_assets_ttm" />
+                              </div>
+                            </th>
+                          )}
+                          {visibleColumns.has("operating_margin_ttm") && (
+                            <th
+                              className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                              onClick={() => toggleSort("operating_margin_ttm")}
+                            >
+                              <div className="flex items-center justify-end">
+                                OPM <SortIcon column="operating_margin_ttm" />
+                              </div>
+                            </th>
+                          )}
+                          {visibleColumns.has("profit_margin") && (
+                            <th
+                              className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
+                              onClick={() => toggleSort("profit_margin")}
+                            >
+                              <div className="flex items-center justify-end">
+                                Margin <SortIcon column="profit_margin" />
+                              </div>
+                            </th>
+                          )}
                           {visibleColumns.has("revenue_per_share") && (
                             <th
                               className="text-right px-4 py-3.5 font-semibold cursor-pointer hover:bg-slate-200/50 dark:hover:bg-slate-700 transition-colors select-none text-xs uppercase tracking-wider"
@@ -1971,7 +2016,7 @@ function ResultsPageContent() {
                               {/* P/E Ratio */}
                               {visibleColumns.has("pe_ratio") && (
                                 <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 tabular-nums">
-                                  {r.pe_ratio != null
+                                  {r.pe_ratio != null && Number(r.pe_ratio) > 0
                                     ? r.pe_ratio.toFixed(2)
                                     : "—"}
                                 </td>
@@ -2038,6 +2083,30 @@ function ResultsPageContent() {
                                   {r.payout_ratio != null
                                     ? `${(Number(r.payout_ratio) * 100).toFixed(2)}%`
                                     : "—"}
+                                </td>
+                              )}
+                              {/* ROE */}
+                              {visibleColumns.has("return_on_equity_ttm") && (
+                                <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                  {fmtPct(r.return_on_equity_ttm)}
+                                </td>
+                              )}
+                              {/* ROA */}
+                              {visibleColumns.has("return_on_assets_ttm") && (
+                                <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                  {fmtPct(r.return_on_assets_ttm)}
+                                </td>
+                              )}
+                              {/* OPM */}
+                              {visibleColumns.has("operating_margin_ttm") && (
+                                <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                  {fmtPct(r.operating_margin_ttm)}
+                                </td>
+                              )}
+                              {/* Profit Margin */}
+                              {visibleColumns.has("profit_margin") && (
+                                <td className="px-4 py-3 text-right text-slate-700 dark:text-slate-300 tabular-nums font-mono">
+                                  {fmtPct(r.profit_margin)}
                                 </td>
                               )}
                               {/* Rev/Share */}

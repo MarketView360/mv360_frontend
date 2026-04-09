@@ -2,23 +2,26 @@
 
 import { useState, useEffect, useCallback } from "react";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 
 export interface UserProfile {
   id: string;
   email: string | null;
   full_name: string | null;
   display_name: string | null;
-  subscription_tier: "free" | "premium";
+  subscription_tier: "free" | "premium" | "max";
   role: string;
   preferences: Record<string, unknown>;
   metadata: Record<string, unknown>;
   newsletter_opt_in: boolean;
   announcements_opt_in: boolean;
   alerts_opt_in: boolean;
+  events_and_promotions_opt_in: boolean;
   notification_prefs: Record<string, unknown>;
   onboarded_at: string | null;
   billing_customer_id: string | null;
+  temp_suspend?: boolean;
+  perm_suspend?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -37,8 +40,11 @@ export function useProfile(token: string | null): UseProfileResult {
   const [error, setError] = useState<string | null>(null);
 
   const fetchProfile = useCallback(async () => {
-    if (!token) {
+    if (!token || !API_BASE) {
       setLoading(false);
+      if (!API_BASE) {
+        setError("API URL not configured");
+      }
       return;
     }
 
@@ -69,9 +75,18 @@ export function useProfile(token: string | null): UseProfileResult {
     void fetchProfile();
   }, [fetchProfile]);
 
+  // Listen for onboarding status changes and refetch
+  useEffect(() => {
+    const handleOnboardingChange = () => {
+      void fetchProfile();
+    };
+    window.addEventListener("onboarding-status-changed", handleOnboardingChange);
+    return () => window.removeEventListener("onboarding-status-changed", handleOnboardingChange);
+  }, [fetchProfile]);
+
   const updateProfile = useCallback(
     async (updates: Partial<UserProfile>): Promise<boolean> => {
-      if (!token) return false;
+      if (!token || !API_BASE) return false;
 
       try {
         const response = await fetch(`${API_BASE}/profile`, {

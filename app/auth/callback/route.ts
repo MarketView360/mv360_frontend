@@ -2,28 +2,58 @@ import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url)
-  const code = searchParams.get('code')
-  // if "next" is in param, use it as the redirect URL
-  const next = searchParams.get('next') ?? '/'
+  const requestUrl = new URL(request.url)
+  const code = requestUrl.searchParams.get('code')
+  const error = requestUrl.searchParams.get('error')
+  const errorDescription = requestUrl.searchParams.get('error_description')
+
+  // Handle OAuth/PKCE errors
+  if (error) {
+    console.error('Auth callback error:', error, errorDescription)
+    return NextResponse.redirect(new URL('/auth/auth-code-error', requestUrl.origin))
+  }
+
+  const origin = requestUrl.origin
+  const next = requestUrl.searchParams.get('next') ?? '/'
 
   if (code) {
     const supabase = await createClient()
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) {
-      const forwardedHost = request.headers.get('x-forwarded-host') // original origin before load balancer
+
+    // Exchange the code for a session
+    const { error: exchangeError, data } = await supabase.auth.exchangeCodeForSession(code)
+
+    if (exchangeError) {
+      console.error('Failed to exchange code for session:', exchangeError.message)
+      // If exchange fails, redirect to error page
+      return NextResponse.redirect(new URL('/auth/auth-code-error', origin))
+    }
+
+    if (data.session) {
+      const forwardedHost = request.headers.get('x-forwarded-host')
       const isLocalEnv = process.env.NODE_ENV === 'development'
-      if (isLocalEnv) {
-        // we can be sure that there is no load balancer in between, so no need to watch for X-Forwarded-Host
-        return NextResponse.redirect(`${origin}${next}`)
-      } else if (forwardedHost) {
-        return NextResponse.redirect(`https://${forwardedHost}${next}`)
-      } else {
-        return NextResponse.redirect(`${origin}${next}`)
+      const baseUrl = isLocalEnv ? origin : (forwardedHost ? `https://${forwardedHost}` : origin)
+
+      // Check if user needs onboarding
+      try {
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('onboarded_at')
+          .eq('id', data.session.user.id)
+          .maybeSingle()
+
+        // If no profile or not onboarded, redirect to onboarding
+        if (!profile || !profile.onboarded_at) {
+          return NextResponse.redirect(`${baseUrl}/onboarding`)
+        }
+      } catch (profileError) {
+        console.error('Error checking onboarding status:', profileError)
+        // Continue to normal redirect if check fails
       }
+
+      return NextResponse.redirect(`${baseUrl}${next}`)
     }
   }
 
-  // return the user to an error page with instructions
-  return NextResponse.redirect(`${origin}/auth/auth-code-error`)
+  // No valid code - redirect to error page
+  return NextResponse.redirect(new URL('/auth/auth-code-error', origin))
 }

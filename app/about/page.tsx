@@ -233,7 +233,7 @@ export default function AboutPage() {
               </div>
               <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Premium</h3>
               <p className="text-3xl font-bold text-slate-900 dark:text-white mb-1">
-                $19.99<span className="text-lg text-slate-500">/mo</span>
+                $9.99<span className="text-lg text-slate-500">/mo</span>
               </p>
               <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">For serious investors</p>
               <ul className="space-y-2 mb-6">

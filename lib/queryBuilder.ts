@@ -1755,16 +1755,36 @@ export const searchSuggestions = (
 
 // Detect if left side of a condition is an arithmetic expression (contains +, -, *, /)
 // Also handles expressions wrapped in parentheses
-const isArithmeticExpression = (text: string): boolean => {
+const isArithmeticExpression = (text: string, allValidFields?: string[]): boolean => {
   // Strip leading/trailing parentheses for checking
   const stripped = text.replace(/^\(+/, "").replace(/\)+$/, "").trim();
+
+  // IMPORTANT: If the entire string (case-insensitive) matches a known field,
+  // it's NOT an arithmetic expression, even if it contains operators like /
+  if (allValidFields) {
+    const isKnownField = allValidFields.some(
+      (field) => field.toLowerCase() === stripped.toLowerCase()
+    );
+    if (isKnownField) return false;
+  }
+
   return /[+\-*/]/.test(stripped);
 };
 
 // Extract field names from an arithmetic expression for validation
-const extractFieldsFromArithmetic = (text: string): string[] => {
+const extractFieldsFromArithmetic = (text: string, allValidFields?: string[]): string[] => {
   // Remove parentheses
   const stripped = text.replace(/[()]/g, " ");
+  
+  // If normalized stripped is a known field, return it as the only part
+  if (allValidFields) {
+    const normalized = stripped.trim();
+    const isKnownField = allValidFields.some(
+      (field) => field.toLowerCase() === normalized.toLowerCase()
+    );
+    if (isKnownField) return [normalized];
+  }
+
   // Split by arithmetic operators
   const parts = stripped.split(/[+\-*/]/);
   // Filter and clean field names (exclude pure numbers)
@@ -1807,10 +1827,10 @@ const splitByLogicalOperators = (query: string): string[] => {
       }
 
       // Check for AND/OR only when NOT inside parentheses and NOT inside a BETWEEN clause
-      const andMatch = remaining.match(/^(\s*AND\s+)/i);
-      const orMatch = remaining.match(/^(\s*OR\s+)/i);
+      const andMatch = remaining.match(/^(\s*AND(\s+|$))/i);
+      const orMatch = remaining.match(/^(\s*OR(\s+|$))/i);
 
-      if (andMatch && (i === 0 || /\s$/.test(current))) {
+      if (andMatch && (i === 0 || /\s$/.test(current) || /\)$/.test(current.trim()))) {
         if (betweenDepth > 0) {
           // This AND is likely part of BETWEEN x AND y
           betweenDepth--; // Finish one BETWEEN clause
@@ -1822,7 +1842,7 @@ const splitByLogicalOperators = (query: string): string[] => {
           current = "";
           i += andMatch[1].length;
         }
-      } else if (orMatch && (i === 0 || /\s$/.test(current))) {
+      } else if (orMatch && (i === 0 || /\s$/.test(current) || /\)$/.test(current.trim()))) {
         if (current.trim()) results.push(current.trim());
         results.push("OR");
         current = "";
@@ -1839,6 +1859,201 @@ const splitByLogicalOperators = (query: string): string[] => {
 
   if (current.trim()) results.push(current.trim());
   return results;
+};
+
+/**
+ * Strip redundant outer parentheses from a query condition
+ * E.g., "(PE < 25)" -> "PE < 25", but "(PE < 25) AND (ROE > 15)" stays as is
+ * This prevents the backend parser from wrapping simple fields in arithmetic nodes
+ */
+export const stripOuterParentheses = (query: string): string => {
+  if (!query || typeof query !== 'string') return query;
+
+  const trimmed = query.trim();
+
+  // Check if the entire string is wrapped in a single pair of parentheses
+  if (trimmed.startsWith('(') && trimmed.endsWith(')')) {
+    // Count parentheses to ensure it's a single wrapped expression
+    let depth = 0;
+    let isSingleWrap = true;
+
+    for (let i = 0; i < trimmed.length; i++) {
+      if (trimmed[i] === '(') depth++;
+      else if (trimmed[i] === ')') depth--;
+
+      // If we reach depth 0 before the end, it's not a single wrap
+      if (depth === 0 && i < trimmed.length - 1) {
+        isSingleWrap = false;
+        break;
+      }
+    }
+
+    if (isSingleWrap) {
+      // Recursively strip nested outer parentheses
+      const inner = trimmed.substring(1, trimmed.length - 1).trim();
+      return stripOuterParentheses(inner);
+    }
+  }
+
+  return query;
+};
+
+/**
+ * Validates a single condition part (e.g., "PE > 15" or "Sector = 'Tech'")
+ * Used by validateQuery for both top-level and parenthesized conditions.
+ */
+const validateConditionPart = (
+  conditionTrimmed: string,
+  lineIndex: number,
+  trimmedLine: string,
+  allValidFields: string[],
+  errors: QueryValidationError[]
+): void => {
+  if (!conditionTrimmed) return;
+
+  // Find operator in this condition
+  const operatorMatch = conditionTrimmed.match(
+    /(>=|<=|!=|>|<|=|\bIN\b|\bBETWEEN\b|\bLIKE\b|\bIS\s+NOT\s+NULL\b|\bIS\s+NULL\b)/i
+  );
+
+  if (!operatorMatch) {
+    // No operator found - check if this is a known field or an expression
+    const isArithmetic = isArithmeticExpression(conditionTrimmed, allValidFields);
+    const isKnownField = allValidFields.some(
+      (field) => field.toLowerCase() === conditionTrimmed.toLowerCase()
+    );
+
+    if (isKnownField) {
+      // Only flag as error if this is a complete condition (no more content on line)
+      // This is a soft check because we might be in the middle of typing
+      errors.push({
+        line: lineIndex + 1,
+        column: trimmedLine.indexOf(conditionTrimmed) + 1,
+        message: `Field "${conditionTrimmed}" needs an operator and value`,
+        severity: "error",
+      });
+    } else if (isArithmetic) {
+      // It's a math expression without a comparison operator yet
+      const subFields = extractFieldsFromArithmetic(conditionTrimmed, allValidFields);
+      subFields.forEach((subField) => {
+        const isSubFieldValid = allValidFields.some(
+          (field) => field.toLowerCase() === subField.toLowerCase()
+        );
+        if (!isSubFieldValid) {
+          errors.push({
+            line: lineIndex + 1,
+            column: Math.max(1, trimmedLine.indexOf(subField) + 1),
+            message: `Unknown field "${subField}" in expression`,
+            severity: "error",
+          });
+        }
+      });
+    } else if (conditionTrimmed.length > 0) {
+      // Unknown field fragment
+      errors.push({
+        line: lineIndex + 1,
+        column: Math.max(1, trimmedLine.indexOf(conditionTrimmed) + 1),
+        message: `Unknown field "${conditionTrimmed}"`,
+        severity: "error",
+      });
+    }
+    return;
+  }
+
+  const operator = operatorMatch[0];
+  const operatorIndex = conditionTrimmed.indexOf(operator);
+  const fieldPart = conditionTrimmed.substring(0, operatorIndex).trim();
+  const valuePart = conditionTrimmed.substring(operatorIndex + operator.length).trim();
+
+  // Validate field name or expression
+  if (fieldPart) {
+    const isArithmetic = isArithmeticExpression(fieldPart, allValidFields);
+    const isValidField = allValidFields.some(
+      (field) => field.toLowerCase() === fieldPart.toLowerCase()
+    );
+
+    if (isValidField) {
+      // Valid single field, nothing to do
+    } else if (isArithmetic) {
+      // Validate individual fields in arithmetic expression
+      const subFields = extractFieldsFromArithmetic(fieldPart, allValidFields);
+      subFields.forEach((subField) => {
+        const isSubFieldValid = allValidFields.some(
+          (field) => field.toLowerCase() === subField.toLowerCase()
+        );
+        if (!isSubFieldValid) {
+          errors.push({
+            line: lineIndex + 1,
+            column: Math.max(1, trimmedLine.indexOf(subField) + 1),
+            message: `Unknown field "${subField}" in expression`,
+            severity: "error",
+          });
+        }
+      });
+    } else {
+      // Try to find a close match
+      const closeMatch = allValidFields.find((field) => {
+        const fieldLower = field.toLowerCase();
+        const fieldPartLower = fieldPart.toLowerCase();
+
+        if (fieldLower === fieldPartLower) return true;
+
+        const lenRatio =
+          Math.min(fieldLower.length, fieldPartLower.length) /
+          Math.max(fieldLower.length, fieldPartLower.length);
+        if (lenRatio > 0.5) {
+          if (fieldLower.includes(fieldPartLower) || fieldPartLower.includes(fieldLower))
+            return true;
+        }
+
+        const fieldWords = fieldLower.split(/\s+/);
+        const inputWords = fieldPartLower.split(/\s+/);
+
+        if (Math.abs(fieldWords.length - inputWords.length) > 1) return false;
+
+        return inputWords.every((inputWord: string) =>
+          fieldWords.some(
+            (fieldWord: string) =>
+              fieldWord.includes(inputWord) || inputWord.includes(fieldWord)
+          )
+        );
+      });
+
+      if (closeMatch) {
+        errors.push({
+          line: lineIndex + 1,
+          column: Math.max(1, trimmedLine.indexOf(fieldPart) + 1),
+          message: `Unknown field "${fieldPart}". Did you mean "${closeMatch}"?`,
+          severity: "warning",
+        });
+      } else {
+        errors.push({
+          line: lineIndex + 1,
+          column: Math.max(1, trimmedLine.indexOf(fieldPart) + 1),
+          message: `Unknown field "${fieldPart}"`,
+          severity: "error",
+        });
+      }
+    }
+  } else {
+    // Missing field before operator
+    errors.push({
+      line: lineIndex + 1,
+      column: Math.max(1, trimmedLine.indexOf(operator) + 1),
+      message: `Operator "${operator}" needs a field before it`,
+      severity: "error",
+    });
+  }
+
+  // Validate value existence (except for IS NULL / IS NOT NULL)
+  if (!valuePart && !/(IS\s+NULL|IS\s+NOT\s+NULL)$/i.test(operator)) {
+    errors.push({
+      line: lineIndex + 1,
+      column: Math.max(1, trimmedLine.indexOf(operator) + operator.length + 1),
+      message: `Operator "${operator}" needs a value after it`,
+      severity: "error",
+    });
+  }
 };
 
 // Enhanced query validation that properly handles multi-word field names and multi-line queries
@@ -1926,287 +2141,15 @@ export const validateQuery = (query: string): QueryValidationError[] => {
             return;
           }
 
-          // Validate this inner condition
-          const operatorMatch = innerTrimmed.match(
-            /(>=|<=|!=|>|<|=|\bIN\b|\bBETWEEN\b|\bLIKE\b|\bIS\s+NOT\s+NULL\b|\bIS\s+NULL\b)/i
-          );
-
-          if (!operatorMatch) {
-            const isKnownField = allValidFields.some(
-              (field) => field.toLowerCase() === innerTrimmed.toLowerCase()
-            );
-
-            if (isKnownField) {
-              errors.push({
-                line: lineIndex + 1,
-                column: trimmedLine.indexOf(innerTrimmed) + 1,
-                message: `Field "${innerTrimmed}" needs an operator and value`,
-                severity: "error",
-              });
-            } else if (innerTrimmed.length > 0) {
-              errors.push({
-                line: lineIndex + 1,
-                column: Math.max(1, trimmedLine.indexOf(innerTrimmed) + 1),
-                message: `Unknown field "${innerTrimmed}"`,
-                severity: "error",
-              });
-            }
-            return;
-          }
-
-          const operator = operatorMatch[0];
-          const operatorIndex = innerTrimmed.indexOf(operator);
-          const fieldPart = innerTrimmed.substring(0, operatorIndex).trim();
-          const valuePart = innerTrimmed.substring(operatorIndex + operator.length).trim();
-
-          // Validate field in parenthesized expression
-          if (fieldPart) {
-            const isValidField = allValidFields.some(
-              (field) => field.toLowerCase() === fieldPart.toLowerCase()
-            );
-
-            if (!isValidField) {
-              const closeMatch = allValidFields.find((field) => {
-                const fieldLower = field.toLowerCase();
-                const fieldPartLower = fieldPart.toLowerCase();
-                if (fieldLower === fieldPartLower) return true;
-                const lenRatio = Math.min(fieldLower.length, fieldPartLower.length) / Math.max(fieldLower.length, fieldPartLower.length);
-                if (lenRatio > 0.5) {
-                  if (fieldLower.includes(fieldPartLower) || fieldPartLower.includes(fieldLower)) return true;
-                }
-                const fieldWords = fieldLower.split(/\s+/);
-                const inputWords = fieldPartLower.split(/\s+/);
-                if (Math.abs(fieldWords.length - inputWords.length) > 1) return false;
-                return inputWords.every((w: string) => fieldWords.some((fw: string) => fw.includes(w) || w.includes(fw)));
-              });
-
-              if (closeMatch) {
-                errors.push({
-                  line: lineIndex + 1,
-                  column: trimmedLine.indexOf(fieldPart) + 1,
-                  message: `Did you mean "${closeMatch}"?`,
-                  severity: "warning",
-                });
-              } else {
-                errors.push({
-                  line: lineIndex + 1,
-                  column: trimmedLine.indexOf(fieldPart) + 1,
-                  message: `Unknown field "${fieldPart}"`,
-                  severity: "error",
-                });
-              }
-            }
-          }
-
-          // Validate value for IS NULL/IS NOT NULL - no value needed
-          if (!valuePart && !/(IS\s+NULL|IS\s+NOT\s+NULL)$/i.test(operator)) {
-            errors.push({
-              line: lineIndex + 1,
-              column: trimmedLine.indexOf(operator) + operator.length + 1,
-              message: `Operator "${operator}" needs a value after it`,
-              severity: "error",
-            });
-          }
+          // Validate this inner condition using our helper
+          validateConditionPart(innerTrimmed, lineIndex, trimmedLine, allValidFields, errors);
         });
 
         return; // Skip further processing for parenthesized expressions
       }
 
-      // Find operator in this condition - now supports more operators
-      const operatorMatch = conditionTrimmed.match(
-        /(>=|<=|!=|>|<|=|\bIN\b|\bBETWEEN\b|\bLIKE\b|\bIS\s+NOT\s+NULL\b|\bIS\s+NULL\b)/i
-      );
-
-      if (!operatorMatch) {
-        // No operator found - decide if this is a known or unknown field fragment
-        if (conditionTrimmed.length > 0) {
-          const isKnownField = allValidFields.some(
-            (field) => field.toLowerCase() === conditionTrimmed.toLowerCase()
-          );
-
-          if (isKnownField) {
-            // Only flag as error if this is a complete line or the last condition
-            const hasMoreContent =
-              trimmedLine.indexOf(conditionTrimmed) + conditionTrimmed.length <
-              trimmedLine.length;
-            if (!hasMoreContent) {
-              errors.push({
-                line: lineIndex + 1,
-                column:
-                  trimmedLine.indexOf(conditionTrimmed) +
-                  conditionTrimmed.length +
-                  1,
-                message: `Field "${conditionTrimmed}" needs an operator and value`,
-                severity: "error",
-              });
-            }
-          } else {
-            // Unknown field without operator – still report so users see immediate feedback
-            errors.push({
-              line: lineIndex + 1,
-              column: Math.max(1, trimmedLine.indexOf(conditionTrimmed) + 1),
-              message: `Unknown field "${conditionTrimmed}"`,
-              severity: "error",
-            });
-          }
-        }
-        return;
-      }
-
-      const operator = operatorMatch[0];
-      const operatorIndex = conditionTrimmed.indexOf(operator);
-      const fieldPart = conditionTrimmed.substring(0, operatorIndex).trim();
-      const valuePart = conditionTrimmed
-        .substring(operatorIndex + operator.length)
-        .trim();
-
-      // Validate field name
-      if (fieldPart) {
-        const isArithmetic = isArithmeticExpression(fieldPart);
-        const isValidField = allValidFields.some(
-          (field) => field.toLowerCase() === fieldPart.toLowerCase()
-        );
-
-        if (isValidField) {
-          // Valid single field, nothing to do
-        } else if (isArithmetic) {
-          // Validate individual fields in arithmetic expression
-          const subFields = extractFieldsFromArithmetic(fieldPart);
-          subFields.forEach(subField => {
-            const isSubFieldValid = allValidFields.some(
-              (field) => field.toLowerCase() === subField.toLowerCase()
-            );
-            if (!isSubFieldValid) {
-              // Check for close match for subfield ? (Optional improvement)
-              errors.push({
-                line: lineIndex + 1,
-                column: trimmedLine.indexOf(subField) + 1,
-                message: `Unknown field "${subField}" in expression`,
-                severity: "error",
-              });
-            }
-          });
-        } else {
-          // Try to find a close match
-          const closeMatch = allValidFields.find((field) => {
-            const fieldLower = field.toLowerCase();
-            const fieldPartLower = fieldPart.toLowerCase();
-
-            // Exact match
-            if (fieldLower === fieldPartLower) return true;
-
-            // Contains match - but only when lengths are similar to avoid
-            // short fields like "Price" matching long inputs like "price to Cash Flow"
-            const lenRatio = Math.min(fieldLower.length, fieldPartLower.length) / Math.max(fieldLower.length, fieldPartLower.length);
-            if (lenRatio > 0.5) {
-              if (
-                fieldLower.includes(fieldPartLower) ||
-                fieldPartLower.includes(fieldLower)
-              )
-                return true;
-            }
-
-            // Word-based match for multi-word fields
-            const fieldWords = fieldLower.split(/\s+/);
-            const inputWords = fieldPartLower.split(/\s+/);
-
-            // Require that the word counts are similar (within 1) to avoid
-            // single-word fields matching multi-word inputs
-            if (Math.abs(fieldWords.length - inputWords.length) > 1) return false;
-
-            return inputWords.every((inputWord: string) =>
-              fieldWords.some(
-                (fieldWord: string) =>
-                  fieldWord.includes(inputWord) || inputWord.includes(fieldWord)
-              )
-            );
-          });
-
-          if (closeMatch) {
-            errors.push({
-              line: lineIndex + 1,
-              column: trimmedLine.indexOf(fieldPart) + 1,
-              message: `Did you mean "${closeMatch}"?`,
-              severity: "warning",
-            });
-          } else {
-            errors.push({
-              line: lineIndex + 1,
-              column: trimmedLine.indexOf(fieldPart) + 1,
-              message: `Unknown field "${fieldPart}"`,
-              severity: "error",
-            });
-          }
-        }
-      } else {
-        errors.push({
-          line: lineIndex + 1,
-          column: trimmedLine.indexOf(operator) + 1,
-          message: `Operator "${operator}" needs a field before it`,
-          severity: "error",
-        });
-      }
-
-      // Validate value - IS NULL and IS NOT NULL don't need values
-      const isNullOperator = /^IS\s+(NOT\s+)?NULL$/i.test(operator);
-
-      if (!valuePart && !isNullOperator) {
-        errors.push({
-          line: lineIndex + 1,
-          column: trimmedLine.indexOf(operator) + operator.length + 1,
-          message: `Operator "${operator}" needs a value after it`,
-          severity: "error",
-        });
-      } else if (valuePart) {
-        // Detect missing logical operator between adjacent conditions
-        // Strategy: search for any known field name inside valuePart (case-insensitive),
-        // and if immediately followed (after optional spaces) by an operator OR any token (number/word), report error.
-        const lowerValue = valuePart.toLowerCase();
-        let offendingField: string | null = null;
-        let offendingPosInValue = -1;
-        for (const fname of fieldNames) {
-          const lname = fname.toLowerCase();
-          const pos = lowerValue.indexOf(lname);
-          if (pos >= 0) {
-            const beforeChar = pos === 0 ? "" : lowerValue[pos - 1];
-            // Ensure boundary before field (start or whitespace or '(')
-            if (pos === 0 || /\s|\(/.test(beforeChar)) {
-              const rest = lowerValue.slice(pos + lname.length);
-              const afterTrim = rest.trimStart();
-              // Case 1: immediately followed by comparison operator => clearly a second condition
-              if (/^(>=|<=|!=|>|<|=)/.test(afterTrim)) {
-                offendingField = fname;
-                offendingPosInValue = pos;
-                break;
-              }
-              // Case 2: appears to start a condition but missing operator, e.g., "ROCE 200" or just "ROCE" at end
-              if (afterTrim.length === 0 || /^\d|^[a-zA-Z(]/.test(afterTrim)) {
-                offendingField = fname;
-                offendingPosInValue = pos;
-                break;
-              }
-            }
-          }
-        }
-        if (offendingField) {
-          // Compute column relative to full trimmed line
-          const baseIndex = trimmedLine.indexOf(operator) + operator.length;
-          const secondIndexInLine = trimmedLine
-            .toLowerCase()
-            .indexOf(offendingField.toLowerCase(), baseIndex);
-          errors.push({
-            line: lineIndex + 1,
-            column: Math.max(
-              1,
-              (secondIndexInLine >= 0
-                ? secondIndexInLine
-                : baseIndex + offendingPosInValue) + 1
-            ),
-            message: `Missing logical operator (AND/OR) before "${offendingField}"`,
-            severity: "error",
-          });
-        }
-      }
+      // No parentheses? Just validate the condition normally
+      validateConditionPart(conditionTrimmed, lineIndex, trimmedLine, allValidFields, errors);
     });
   });
 
@@ -2227,7 +2170,7 @@ export const tokenizeQuery = (query: string) => {
 
   // Better tokenization that preserves spacing and handles multi-character operators
   const regex =
-    /(\s+|>=|<=|!=|AND|OR|NOT|IN|BETWEEN|LIKE|IS\s+NOT\s+NULL|IS\s+NULL|[()><=]|\w+(?:\s+\w+)*|\d+(?:\.\d+)?|[^\w\s()><=])/gi;
+    /(\s+|>=|<=|!=|AND|OR|NOT|IN|BETWEEN|LIKE|IS\s+NOT\s+NULL|IS\s+NULL|[()><=]|\w+(?:[\s\/]\w+)*|\d+(?:\.\d+)?|[^\w\s()><=])/gi;
   let match;
   let lastIndex = 0;
 

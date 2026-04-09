@@ -34,6 +34,7 @@ import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { cleanTicker, LINE_COLORS } from "@/lib/watchlist-utils";
 import { useTheme } from "@/app/providers";
+import { cn } from "@/lib/utils";
 
 type Period = "1D" | "1M" | "6M" | "YTD" | "1Y" | "5Y";
 type ChartMode = "line" | "candlestick";
@@ -248,7 +249,7 @@ export function StockCompare({ tickers, onAddTicker, onRemoveTicker, onClear }: 
     const container = candlestickContainerRef.current;
     const chart = createChart(container, {
       layout: { background: { type: ColorType.Solid, color: "transparent" }, textColor: isDark ? "#94a3b8" : "#64748b", attributionLogo: false },
-      width: container.clientWidth, height: 260,
+      width: container?.clientWidth || 800, height: 260,
       grid: { vertLines: { color: isDark ? "#1e293b" : "#f1f5f9" }, horzLines: { color: isDark ? "#1e293b" : "#f1f5f9" } },
       crosshair: { mode: CrosshairMode.Normal },
       rightPriceScale: { borderColor: isDark ? "#334155" : "#e2e8f0" },
@@ -270,7 +271,12 @@ export function StockCompare({ tickers, onAddTicker, onRemoveTicker, onClear }: 
       }
     }
     chart.timeScale().fitContent();
-    const handleResize = () => { if (candlestickContainerRef.current) chart.applyOptions({ width: candlestickContainerRef.current.clientWidth }); };
+    const handleResize = () => { 
+      if (candlestickContainerRef.current) {
+        const width = candlestickContainerRef.current.clientWidth;
+        chart.applyOptions({ width }); 
+      } 
+    };
     window.addEventListener("resize", handleResize);
     return () => { window.removeEventListener("resize", handleResize); chart.remove(); candlestickChartRef.current = null; };
   }, [chartMode, selectedStock, candlestickDataByCode, stockCodes, colorMap, loading, isDark]);
@@ -382,12 +388,17 @@ export function StockCompare({ tickers, onAddTicker, onRemoveTicker, onClear }: 
                 </select>
               )}
             </div>
-            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-700/50 rounded-lg p-0.5">
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
               {PERIODS.map((p) => (
                 <button
                   key={p.key}
                   onClick={() => setPeriod(p.key)}
-                  className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${period === p.key ? "bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"}`}
+                  className={cn(
+                    "px-2.5 py-1 text-xs font-medium rounded-md transition-colors",
+                    period === p.key
+                      ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 shadow-sm bg-white"
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+                  )}
                 >
                   {p.label}
                 </button>

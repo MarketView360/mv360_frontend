@@ -138,6 +138,62 @@ const faqCategories: FAQCategory[] = [
     ]
   },
   {
+    id: "portfolio",
+    title: "Connected Portfolio",
+    iconName: "Briefcase",
+    description: "Track your real investment accounts.",
+    faqs: [
+      {
+        question: "What is the Connected Portfolio feature?",
+        answer: "Connected Portfolio allows Premium and Max subscribers to securely link their brokerage accounts to MarketView360. Once connected, you can view all your holdings, track performance, see transaction history, and get insights across all your accounts in one place."
+      },
+      {
+        question: "Which brokerages are supported?",
+        answer: "We support 20+ major US brokerages including Fidelity, Charles Schwab, TD Ameritrade, Robinhood, E*TRADE, Interactive Brokers, Vanguard, Webull, Ally Invest, and Firstrade. The connection is read-only, meaning we can only view your data—no trading capability."
+      },
+      {
+        question: "Is my brokerage connection secure?",
+        answer: "Yes! Your connection uses bank-grade 256-bit encryption and industry-standard security protocols. Your brokerage credentials are never stored on our servers. The connection is read-only, so we cannot execute trades or move funds. All data is encrypted both in transit and at rest."
+      },
+      {
+        question: "How do I connect my brokerage account?",
+        answer: "Go to the Portfolio page (Premium/Max only) and click 'Connect Brokerage'. You'll be guided through a secure connection flow where you authenticate directly with your brokerage. The process takes less than a minute. Your holdings will sync automatically after connection."
+      },
+      {
+        question: "How often does my portfolio data sync?",
+        answer: "Your portfolio syncs automatically when holdings change at your brokerage. You can also manually refresh your data from the Portfolio page (rate limited to once every 15 minutes). We also perform nightly safety-net syncs to ensure data accuracy."
+      },
+      {
+        question: "What if my connection breaks?",
+        answer: "If your brokerage connection breaks (e.g., password change, security update), you'll see a warning banner on your Portfolio page. Simply click 'Reconnect' and re-authenticate with your brokerage to restore the connection."
+      },
+      {
+        question: "Can I connect multiple brokerage accounts?",
+        answer: "Yes! You can connect as many brokerage accounts as you have. All accounts will be displayed together, and our Portfolio Summary shows your aggregated holdings, performance, and allocation across all accounts."
+      },
+      {
+        question: "How do I disconnect a brokerage account?",
+        answer: "On the Portfolio page, find the account you want to remove and click the disconnect option. This will revoke our access to that brokerage and remove all associated data from MarketView360. You can reconnect anytime."
+      },
+      {
+        question: "Does this work with retirement accounts (401k, IRA)?",
+        answer: "Yes! If your brokerage provides access to these accounts through their API, they can be connected. Most major brokerages support connecting IRAs, Roth IRAs, and some 401(k) accounts."
+      },
+      {
+        question: "Will I see my positions on company pages?",
+        answer: "Yes! When viewing a company page, if you own that stock in your connected portfolio, you'll see a 'Your Position' card showing your shares, average cost, market value, and unrealized P&L. This helps contextualize your research with your actual holdings."
+      },
+      {
+        question: "What happens if I downgrade from Premium?",
+        answer: "If you downgrade to Free, you'll lose access to the Portfolio feature. Your connections will remain dormant but won't sync. If you resubscribe to Premium or Max later, your connections will reactivate automatically."
+      },
+      {
+        question: "Need help with Portfolio issues?",
+        answer: "For portfolio-related questions or issues, contact our support team at support@marketview360.io. Include details about your brokerage and the specific issue you're experiencing. We typically respond within 24 hours."
+      }
+    ]
+  },
+  {
     id: "billing",
     title: "Billing & Subscriptions",
     iconName: "CreditCard",

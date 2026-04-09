@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Sidebar } from "./components/Sidebar";
@@ -8,6 +8,7 @@ import { ChatArea, Message } from "./components/ChatArea";
 import { MessageInput } from "./components/MessageInput";
 import { ModelSelector } from "./components/ModelSelector";
 import { LoginRequired } from "./components/LoginRequired";
+import { PremiumRequired } from "./components/PremiumRequired";
 import { SuggestionSidebar, SuggestionSidebarToggle } from "./components/SuggestionSidebar";
 import { PanelLeftOpen, StopCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,26 +17,41 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useChatSession } from "@/lib/hooks/useChatSession";
 import { useChatStream } from "@/lib/hooks/useChatStream";
 import { useQuota } from "@/hooks/useQuota";
+import { useAIAccess } from "@/hooks/useAIAccess";
 import { useToolsConfig } from "@/hooks/useToolsConfig";
 import { AIApiError } from "@/lib/api/ai";
+import { useAiFeatureFlag } from "@/hooks/useAiFeatureFlag";
+import { AiUnavailable } from "./AiUnavailable";
+import { useAiEnableFree } from "@/hooks/useAiEnableFree";
+import { FreeAiPromoBanner } from "@/components/ai/FreeAiPromoBanner";
 
-// Feature flag: Allow anonymous users to access AI chat.
-// Default: true (if unset). Set NEXT_PUBLIC_ALLOW_ANONYMOUS_AI_CHAT=false to require login.
-const ALLOW_ANONYMOUS_CHAT =
-  process.env.NEXT_PUBLIC_ALLOW_ANONYMOUS_AI_CHAT !== "false";
+// AI chat is now PREMIUM ONLY - anonymous access disabled
+const ALLOW_ANONYMOUS_CHAT = false;
 
 // Feature flag: Enable AI suggestions sidebar.
 // Default: true (if unset). Set NEXT_PUBLIC_ENABLE_AI_SUGGESTIONS=false to disable.
 const ENABLE_SUGGESTIONS =
   process.env.NEXT_PUBLIC_ENABLE_AI_SUGGESTIONS !== "false";
 
-export default function AiPageClient() {
-  const searchParams = useSearchParams();
-  const urlSessionId = searchParams.get("session");
-  const watchlistParam = searchParams.get("watchlist");
-
+// Inner component that receives search params as props (no useSearchParams call here)
+function AiPageClientContent({
+  urlSessionId,
+  watchlistParam,
+}: {
+  urlSessionId: string | null;
+  watchlistParam: string | null;
+}) {
   const { session, loading: isAuthLoading } = useAuth();
   const token = session?.access_token ?? null;
+
+  // Check PostHog feature flag for AI availability (master kill switch)
+  const { isEnabled: isAiEnabled, isLoading: isFlagLoading } = useAiFeatureFlag();
+
+  // Check PostHog feature flag for free user AI access
+  const { isEnabled: isAiFreeEnabled } = useAiEnableFree();
+
+  // Premium-only access check (modified to allow free users when flag is enabled)
+  const { access: aiAccess, loading: accessLoading, refetch: refetchAccess } = useAIAccess(token);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isSuggestionOpen, setIsSuggestionOpen] = useState(false);
@@ -54,6 +70,12 @@ export default function AiPageClient() {
       setIsReasoningEnabled(false);
     }
   }, [token]);
+
+  // Refetch AI access when token changes
+  useEffect(() => {
+    if (!token) return;
+    void refetchAccess();
+  }, [token, refetchAccess]);
 
   // Use real hooks with URL session ID
   const {
@@ -92,12 +114,28 @@ export default function AiPageClient() {
     }
   }, [isReasoningEnabled, quota]);
 
+  // 20% quota warning - show warning when tokens fall below 10,000 (20% of 50K)
+  // Only for premium users (free users have 0 limit and shouldn't see warnings)
+  useEffect(() => {
+    if (!quota || !quota.tokens || quota.tier === "free") return;
+
+    const threshold = Math.floor(quota.tokens.limit * 0.2); // 20% of limit
+    const remaining = quota.tokens.remaining;
+
+    // Only warn once when crossing the threshold
+    if (remaining <= threshold && remaining > threshold - 1000) {
+      toast.warning("Low token warning", {
+        description: `You have less than 20% of your AI tokens remaining (${remaining.toLocaleString()} / ${quota.tokens.limit.toLocaleString()}). When exhausted, your quota will reset in 12 hours.`,
+        duration: 8000,
+      });
+    }
+  }, [quota]);
+
   const handleReasoningChange = useCallback(
     (enabled: boolean) => {
       if (enabled && quota && quota.reasoning.remaining <= 0) {
-        const tier = quota.tier === "free" ? "Free" : "Premium";
         toast.error("Reasoning quota exceeded", {
-          description: `You've used all ${quota.reasoning.limit} reasoning messages for this period. ${tier === "Free" ? "Upgrade to Premium for 10 reasoning messages per 12 hours, or wait for the next reset." : "Your quota will reset soon."}`,
+          description: `You've used all ${quota.reasoning.limit} reasoning messages. Your quota will reset in 12 hours.`,
         });
         setIsReasoningEnabled(false);
         return;
@@ -142,6 +180,7 @@ export default function AiPageClient() {
     toolCalls: msg.toolCalls,
     toolStatus: msg.toolStatus,
     isWatchlistAnalysis: msg.isWatchlistAnalysis,
+    metrics: msg.metrics,
   }));
 
   useEffect(() => {
@@ -223,20 +262,31 @@ export default function AiPageClient() {
 
       // Authenticated user: Check quota before sending
       if (quota) {
+        // Free users: check if ai-enable-free flag is enabled
+        if (quota.tier === "free") {
+          if (!isAiFreeEnabled) {
+            // Flag disabled - free users cannot access AI
+            toast.error("Premium required", {
+              description: "AI chat is exclusively available to Premium subscribers.",
+            });
+            return;
+          }
+          // Flag enabled - free users can access with 20K token limit
+          // Continue to check token quota below
+        }
+
         // Check token quota for standard messages
         if (!isReasoningEnabled && !canUse("tokens")) {
-          const tier = quota.tier === "free" ? "Free" : "Premium";
           toast.error("Token quota exceeded", {
-            description: `You've used all your tokens for this period. ${tier === "Free" ? "Upgrade to Premium for 300K tokens per 12 hours, or wait for the next reset." : "Your quota will reset soon."}`,
+            description: `You've used all ${quota.tokens.limit.toLocaleString()} tokens. Your quota will reset in 12 hours.`,
           });
           return;
         }
 
         // Check reasoning quota
         if (isReasoningEnabled && !canUse("reasoning")) {
-          const tier = quota.tier === "free" ? "Free" : "Premium";
           toast.error("Reasoning quota exceeded", {
-            description: `You've used all ${quota.reasoning.limit} reasoning messages for this period. ${tier === "Free" ? "Upgrade to Premium for 10 reasoning messages per 12 hours, or wait for the next reset." : "Your quota will reset soon."}`,
+            description: `You've used all ${quota.reasoning.limit} reasoning messages. Your quota will reset in 12 hours.`,
           });
           return;
         }
@@ -282,6 +332,7 @@ export default function AiPageClient() {
       isReasoningEnabled,
       quota,
       canUse,
+      isAiFreeEnabled,
       sendMessage,
       addSession,
       refreshQuotaSoon,
@@ -327,9 +378,8 @@ export default function AiPageClient() {
     }
   }, [watchlistParam, watchlistContextProcessed, token, isStreaming, handleSendMessage]);
 
-  // Show login required page if anonymous chat is disabled and user is not logged in
-  // Also show loading spinner while checking auth
-  if (isAuthLoading) {
+  // Show loading spinner while checking auth, AI access, and feature flag
+  if (isAuthLoading || accessLoading || isFlagLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-white dark:bg-slate-950">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -337,13 +387,41 @@ export default function AiPageClient() {
     );
   }
 
+  // Check PostHog feature flag - if AI is disabled, show unavailable message
+  if (!isAiEnabled) {
+    return <AiUnavailable />;
+  }
+
+  // Show login required page if anonymous chat is disabled and user is not logged in
+  // AI chat is now premium-only (or free when ai-enable-free flag is enabled)
   if (!ALLOW_ANONYMOUS_CHAT && !token) {
     return <LoginRequired />;
+  }
+
+  // Check if user has AI access
+  // When ai-enable-free flag is enabled, free users can access AI with 20K token limit
+  if (token && aiAccess && !aiAccess.allowed) {
+    // If flag is enabled and user is free, allow access (skip PremiumRequired)
+    const isFreeUser = aiAccess.reason === 'not_premium';
+    if (isFreeUser && isAiFreeEnabled) {
+      // Free user with flag enabled - allow access, skip premium check
+    } else {
+      // Show premium required for other cases (cooldown, quota exceeded, etc.)
+      return (
+        <PremiumRequired
+          reason={aiAccess.reason}
+          cooldownUntil={aiAccess.cooldownInfo?.until}
+          resetsAt={aiAccess.cooldownInfo?.resetsAt}
+        />
+      );
+    }
   }
 
   return (
     <TooltipProvider delayDuration={200} skipDelayDuration={300}>
       <div className="flex h-full w-full bg-white dark:bg-slate-950 overflow-hidden">
+        {/* Promo banner for free users */}
+        <FreeAiPromoBanner />
         {/* Sidebar */}
         <Sidebar
         isOpen={isSidebarOpen}
@@ -355,7 +433,7 @@ export default function AiPageClient() {
         onNewChat={handleNewChatClick}
         onDeleteSession={handleDeleteSession}
         onRenameSession={handleRenameSession}
-        tier={(session as any)?.tier}
+        tier={quota?.tier || "free"}
         quota={quota}
       />
 
@@ -467,4 +545,13 @@ export default function AiPageClient() {
       </div>
     </TooltipProvider>
   );
+}
+
+// Wrapper component that handles useSearchParams() - this triggers Suspense
+export default function AiPageClient() {
+  const searchParams = useSearchParams();
+  const urlSessionId = searchParams?.get("session") ?? null;
+  const watchlistParam = searchParams?.get("watchlist") ?? null;
+
+  return <AiPageClientContent urlSessionId={urlSessionId} watchlistParam={watchlistParam} />;
 }

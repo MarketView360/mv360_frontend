@@ -1,4 +1,4 @@
-"use client";
+  "use client";
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
@@ -8,6 +8,7 @@ import { Footer } from "@/components/Footer";
 import { AiChatWidget } from "@/components/AiChatWidget";
 import NavigationBar from "@/components/NavigationBar";
 import { NetworkStatusWatcher } from "@/components/NetworkStatusWatcher";
+import { OnboardingBanner } from "@/components/onboarding/OnboardingBanner";
 
 export default function RouteChrome({
   children,
@@ -17,9 +18,10 @@ export default function RouteChrome({
   const pathname = usePathname();
 
   const isFullScreen = pathname === "/jovan-chat" || pathname === "/ai";
+  const isOnboarding = pathname === "/onboarding";
 
   useEffect(() => {
-    if (isFullScreen) {
+    if (isFullScreen || isOnboarding) {
       document.documentElement.style.overflow = "hidden";
       document.body.style.overflow = "hidden";
     } else {
@@ -30,7 +32,7 @@ export default function RouteChrome({
       document.documentElement.style.overflow = "";
       document.body.style.overflow = "";
     };
-  }, [isFullScreen]);
+  }, [isFullScreen, isOnboarding]);
 
   return (
     <div
@@ -42,13 +44,14 @@ export default function RouteChrome({
       {!isFullScreen && pathname !== "/ai" && <NavigationBar />}
       {pathname === "/ai" && <NavigationBar />}
 
-      {isFullScreen ? (
-        <main className="flex-1 w-full relative flex flex-col overflow-hidden">
+      {isFullScreen || isOnboarding ? (
+        <main className="flex-1 w-full relative flex flex-col min-h-0 overflow-hidden">
           {children}
         </main>
       ) : (
         <div className="app-scroll custom-scrollbar flex-1 w-full overflow-y-auto">
-          <main className="w-full relative">
+          <OnboardingBanner />
+          <main className="w-full relative pt-4 md:pt-6">
             {children}
           </main>
           <Footer />

@@ -101,7 +101,7 @@ export function WebApplicationSchema() {
       {
         "@type": "Offer",
         name: "Premium",
-        price: "19.99",
+        price: "9.99",
         priceCurrency: "USD",
         priceValidUntil: "2026-12-31",
         description:

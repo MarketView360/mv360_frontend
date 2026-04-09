@@ -17,6 +17,7 @@ import {
 import { waitlistApi } from "@/lib/api/waitlist";
 import { toast } from "sonner";
 import { WaitlistDialog, WaitlistFormData } from "./components/WaitlistDialog";
+import { useRouter } from "next/navigation";
 
 type BillingPeriod = "monthly" | "annually";
 
@@ -33,53 +34,46 @@ interface PricingPlan {
 
 const plans: PricingPlan[] = [
     {
-        name: "Free Forever",
+        name: "Free Plan",
         tier: "free",
         monthlyPrice: 0,
         annualPrice: 0,
-        description: "Perfect for getting started",
+        description: "Marketview 360 Features",
         features: [
-            "Basic stock screener (10 filters)",
-            "View up to 100 results",
-            "Real-time quotes (15-min delay)",
-            "Basic charts (3 timeframes)",
-            "7 days of news",
-            "3 watchlists (25 stocks each)",
-            "Save 3 custom screeners",
-            "5 AI questions per day",
-            "Basic statistics",
-            "Annual financials (2 years)",
-            "Market overview",
-            "Mobile responsive",
+            "Unlimited stock lookup (US stocks – beta)",
+            "Basic charts & indicators",
+            "Financials: Annual data only",
+            "Up to 2 static watchlists (manual add/remove)",
+            "Up to 10 stocks total across watchlists",
+            "Up to 10 years historical price data",
+            "Basic query builder (single-condition filters only)",
+            "Read-only access to community (view posts & discussions)",
         ],
     },
     {
         name: "Premium",
         tier: "premium",
-        monthlyPrice: 19.99,
-        annualPrice: 199.99,
-        description: "For serious individual investors",
+        monthlyPrice: 9.90,
+        annualPrice: 99.00,
+        description: "MarketView 360 Premium Features",
         highlighted: true,
         badge: "Most Popular",
         features: [
-            "Everything in Free, plus:",
-            "Advanced screener (unlimited filters)",
-            "Unlimited results",
-            "Real-time quotes",
-            "Advanced charts (all timeframes, indicators)",
-            "Full news archive with sentiment",
-            "Unlimited watchlists (100 stocks each)",
-            "Save unlimited screeners",
-            "Screener alerts",
-            "100 AI questions per day",
-            "AI conversation history",
-            "Full statistics with trends",
-            "Quarterly financials (10 years)",
-            "Analyst ratings & price targets",
-            "Export to CSV/Excel",
-            "Portfolio tracking (1 portfolio)",
-            "Email alerts",
-            "Priority support",
+            "Unlimited stock analysis",
+            "Unlimited watchlists",
+            "Smart watchlists: Change highlights",
+            "Smart watchlists: Alerts (price / metric-based)",
+            "Advanced charts & indicators",
+            "Financials: Quarterly + Annual data access",
+            "Multi-stock comparison (5–20 stocks)",
+            "Sector & peer benchmarking",
+            "Advanced query builder (multi-condition)",
+            "Save screeners & views",
+            "Export to CSV / Excel",
+            "Full community access: Post insights",
+            "Full community access: Comment",
+            "Full community access: Follow users",
+            "AI summarisation (Jovan Ai Beta)",
         ],
     },
     {
@@ -90,7 +84,7 @@ const plans: PricingPlan[] = [
         description: "For professional traders & analysts",
         badge: "Best Value",
         features: [
-            "Everything in Pro, plus:",
+            "Everything in Premium, plus:",
             "Real-time data (true real-time)",
             "Pre-market & after-hours data",
             "Unlimited AI questions",
@@ -113,84 +107,62 @@ const plans: PricingPlan[] = [
 
 const comparisonFeatures = [
     {
-        category: "Screening & Analysis",
+        category: "Stock Lookup & Core Analysis",
         features: [
-            { name: "Number of filters", free: "10", pro: "Unlimited", elite: "Unlimited" },
-            { name: "Results limit", free: "100", pro: "Unlimited", elite: "Unlimited" },
-            { name: "Saved screeners", free: "3", pro: "Unlimited", elite: "Unlimited" },
-            { name: "Screener alerts", free: false, pro: true, elite: true },
-            { name: "Backtesting", free: false, pro: false, elite: true },
-            { name: "Export results", free: false, pro: true, elite: true },
+            { name: "US stock lookup (beta)", free: "Unlimited", pro: "Unlimited", elite: "Unlimited" },
+            { name: "Stock analysis depth", free: "Basic", pro: "Advanced", elite: "Advanced" },
+            { name: "Charts", free: "Basic", pro: "Advanced", elite: "Advanced" },
+            { name: "Indicators", free: "Basic", pro: "Advanced", elite: "Advanced" },
+            { name: "Historical price data", free: "Up to 10 years", pro: "Up to 10+ years (same, premium tools unlocked)", elite: "Up to 10+ years" },
+            { name: "Data refresh priority", free: "Standard", pro: "Faster / priority refresh", elite: "Real-time" },
         ],
     },
     {
-        category: "Data & Charts",
+        category: "Financial Statements",
         features: [
-            { name: "Data delay", free: "15 min", pro: "Real-time", elite: "Real-time" },
-            { name: "Chart timeframes", free: "3", pro: "All", elite: "All" },
-            { name: "Technical indicators", free: "Basic", pro: "Advanced", elite: "Advanced" },
-            { name: "Drawing tools", free: false, pro: true, elite: true },
-            { name: "Comparison charts", free: false, pro: true, elite: true },
-            { name: "Extended hours data", free: false, pro: false, elite: true },
+            { name: "Financials access", free: "Annual only", pro: "Quarterly + Annual", elite: "Quarterly + Annual" },
+            { name: "Fundamental insight views (derived metrics)", free: "Limited", pro: "Full / expanded", elite: "Full / expanded" },
         ],
     },
     {
-        category: "Financials & Metrics",
+        category: "Screening & Query Builder",
         features: [
-            { name: "Financial history", free: "2 years", pro: "10 years", elite: "10 years" },
-            { name: "Quarterly data", free: false, pro: true, elite: true },
-            { name: "Advanced metrics", free: false, pro: true, elite: true },
-            { name: "Analyst ratings", free: false, pro: true, elite: true },
-            { name: "Fair value calculator", free: false, pro: true, elite: true },
+            { name: "Query builder", free: "Basic (single-condition)", pro: "Advanced (multi-condition)", elite: "Advanced (multi-condition)" },
+            { name: "Saved screeners / saved views", free: false, pro: true, elite: true },
+            { name: "Screener results export", free: false, pro: "CSV / Excel", elite: "CSV / Excel / API" },
         ],
     },
     {
-        category: "News & Insights",
+        category: "Watchlists & Alerts",
         features: [
-            { name: "News archive", free: "7 days", pro: "Full", elite: "Full" },
-            { name: "Sentiment analysis", free: false, pro: true, elite: true },
-            { name: "News alerts", free: false, pro: true, elite: true },
-            { name: "Economic calendar", free: false, pro: true, elite: true },
-            { name: "Earnings calendar", free: false, pro: true, elite: true },
+            { name: "Watchlists", free: "Up to 2 static watchlists", pro: "Unlimited watchlists", elite: "Unlimited watchlists" },
+            { name: "Total stocks in watchlists", free: "Up to 10 total", pro: "Unlimited", elite: "Unlimited" },
+            { name: "Smart watchlist change highlights", free: false, pro: true, elite: true },
+            { name: "Alerts (price / metric based)", free: false, pro: true, elite: true },
         ],
     },
     {
-        category: "AI Assistant",
+        category: "Comparison & Benchmarking",
         features: [
-            { name: "Questions per day", free: "5", pro: "100", elite: "Unlimited" },
-            { name: "Conversation history", free: "5 chats", pro: "Unlimited", elite: "Unlimited" },
-            { name: "Context attachment", free: false, pro: true, elite: true },
-            { name: "Voice input", free: false, pro: false, elite: true },
-            { name: "Document upload", free: false, pro: false, elite: true },
+            { name: "Multi-stock comparison", free: "Limited / basic", pro: "5–20 stocks", elite: "Unlimited stocks" },
+            { name: "Sector benchmarking", free: false, pro: true, elite: true },
+            { name: "Peer benchmarking", free: false, pro: true, elite: true },
         ],
     },
     {
-        category: "Watchlists & Portfolio",
+        category: "Community",
         features: [
-            { name: "Watchlists", free: "3", pro: "Unlimited", elite: "Unlimited" },
-            { name: "Stocks per list", free: "25", pro: "100", elite: "Unlimited" },
-            { name: "Portfolio tracking", free: false, pro: "1 portfolio", elite: "Unlimited" },
-            { name: "Performance analytics", free: false, pro: true, elite: true },
-            { name: "Rebalancing tools", free: false, pro: false, elite: true },
+            { name: "View community posts & discussions", free: "Read-only", pro: "Full access", elite: "Full access" },
+            { name: "Post insights", free: false, pro: true, elite: true },
+            { name: "Comment", free: false, pro: true, elite: true },
+            { name: "Follow users", free: false, pro: true, elite: true },
         ],
     },
     {
-        category: "Alerts & Notifications",
+        category: "AI (Jovan AI Beta)",
         features: [
-            { name: "Price alerts", free: false, pro: true, elite: true },
-            { name: "Screener alerts", free: false, pro: true, elite: true },
-            { name: "News alerts", free: false, pro: true, elite: true },
-            { name: "Email alerts", free: false, pro: true, elite: true },
-            { name: "SMS alerts", free: false, pro: false, elite: true },
-        ],
-    },
-    {
-        category: "Export & API",
-        features: [
-            { name: "CSV/Excel export", free: false, pro: true, elite: true },
-            { name: "API access", free: false, pro: false, elite: true },
-            { name: "API calls per month", free: "-", pro: "-", elite: "10,000" },
-            { name: "Webhooks", free: false, pro: false, elite: true },
+            { name: "AI summarisation", free: false, pro: "Yes (Coming soon)", elite: "Yes (Coming soon)" },
+            { name: "AI use cases", free: "-", pro: "Summarise stock analysis / comparisons / screeners (Coming Soon)", elite: "Summarise stock analysis / comparisons / screeners (Coming Soon)" },
         ],
     },
 ];
@@ -246,6 +218,8 @@ export default function PricingPage() {
 
     const isAnnual = billingPeriod === "annually";
     const savingsPercent = 17;
+    const showMaxPlan = process.env.NEXT_PUBLIC_ENABLE_MAX_PLAN === "true";
+    const displayedPlans = showMaxPlan ? plans : plans.filter(p => p.tier !== "max");
 
     // Fetch user subscription on mount
     useEffect(() => {
@@ -323,8 +297,8 @@ export default function PricingPage() {
             {/* Pricing Cards */}
             <section className="py-8 md:py-10">
                 <div className="mx-auto max-w-5xl px-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5 items-start">
-                        {plans.map((plan) => (
+                    <div className={`grid grid-cols-1 ${showMaxPlan ? 'md:grid-cols-3' : 'md:grid-cols-2 max-w-3xl mx-auto'} gap-4 lg:gap-5 items-start`}>
+                        {displayedPlans.map((plan) => (
                             <PricingCard
                                 key={plan.tier}
                                 plan={plan}
@@ -339,7 +313,7 @@ export default function PricingPage() {
                     <div className="flex flex-wrap items-center justify-center gap-6 mt-8 pt-6 border-t border-slate-200 dark:border-slate-800">
                         <TrustSignal icon={Shield} text="30-Day Money-Back" />
                         <TrustSignal icon={RefreshCw} text="Cancel Anytime" />
-                        <TrustSignal icon={Lock} text="Secure via Stripe" />
+                        <TrustSignal icon={Lock} text="Secured Payment" />
                     </div>
                 </div>
             </section>
@@ -364,9 +338,11 @@ export default function PricingPage() {
                                     <th className="text-center py-3 px-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#f59e0b' }}>
                                         Premium
                                     </th>
-                                    <th className="text-center py-3 px-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#8b5cf6' }}>
-                                        Max
-                                    </th>
+                                    {showMaxPlan && (
+                                        <th className="text-center py-3 px-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#8b5cf6' }}>
+                                            Max
+                                        </th>
+                                    )}
                                 </tr>
                             </thead>
                             <tbody>
@@ -376,7 +352,7 @@ export default function PricingPage() {
                                         <React.Fragment key={category.category}>
                                             <tr className="bg-slate-50/50 dark:bg-slate-800/30">
                                                 <td
-                                                    colSpan={4}
+                                                    colSpan={showMaxPlan ? 4 : 3}
                                                     className="py-2 px-4 text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider"
                                                 >
                                                     {category.category}
@@ -396,9 +372,11 @@ export default function PricingPage() {
                                                     <td className="py-2.5 px-3 text-center">
                                                         <FeatureValue value={feature.pro} />
                                                     </td>
-                                                    <td className="py-2.5 px-3 text-center">
-                                                        <FeatureValue value={feature.elite} />
-                                                    </td>
+                                                    {showMaxPlan && (
+                                                        <td className="py-2.5 px-3 text-center">
+                                                            <FeatureValue value={(feature as any).elite} />
+                                                        </td>
+                                                    )}
                                                 </tr>
                                             ))}
                                         </React.Fragment>
@@ -477,6 +455,7 @@ function PricingCard({
     isAnnual: boolean;
     userSubscription: { tier: string } | null;
 }) {
+    const router = useRouter();
     const isPremium = plan.tier === "premium";
     const isMax = plan.tier === "max";
     const isFree = plan.tier === "free";
@@ -649,6 +628,7 @@ function PricingCard({
                     </button>
                 ) : isFree ? (
                     <button
+                        onClick={() => router.push("/auth/signup")}
                         className="w-full py-2.5 rounded-lg text-sm font-semibold border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                     >
                         Get Started Free

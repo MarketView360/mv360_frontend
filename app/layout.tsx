@@ -1,4 +1,8 @@
 import type { ReactNode } from "react";
+import { Suspense } from "react";
+
+import * as Sentry from "@sentry/nextjs";
+import type { Metadata } from "next";
 
 import { Inter, Lexend_Mega } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
@@ -12,6 +16,8 @@ import RouteChrome from "./RouteChrome";
 import { Toaster } from "@/components/ui/sonner";
 import { MaintenanceWrapper } from "@/components/MaintenanceWrapper";
 import { GlobalStructuredData } from "@/components/seo";
+import { PostHogPageView } from "./PostHogPageView";
+import { PostHogSurveys } from "@/components/PostHogSurveys";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -24,6 +30,17 @@ const lexend = Lexend_Mega({
   variable: "--font-lexend",
   display: "swap",
 });
+
+// ✅ Added for Sentry tracing
+export function generateMetadata(): Metadata {
+  return {
+    title: "MarketView360",
+    description: "Financial analytics platform",
+    other: {
+      ...Sentry.getTraceData(),
+    },
+  };
+}
 
 export default function RootLayout({
   children,
@@ -62,6 +79,10 @@ export default function RootLayout({
           }}
         />
         <ThemeProvider>
+          <Suspense fallback={null}>
+            <PostHogPageView />
+            <PostHogSurveys />
+          </Suspense>
           <MaintenanceWrapper>
             <RouteChrome>{children}</RouteChrome>
             <Toaster position="top-right" richColors closeButton />
