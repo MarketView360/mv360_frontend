@@ -342,32 +342,24 @@ function KeyHighlights({
       label: "Revenue",
       value: formatCurrency(latestIncome?.total_revenue ?? null),
       change: calcChange(latestIncome?.total_revenue ?? null, previousIncome?.total_revenue ?? null),
-      icon: DollarSign,
-      color: "text-primary",
       bgColor: "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800",
     },
     {
       label: "Net Income",
       value: formatCurrency(latestIncome?.net_income ?? null),
       change: calcChange(latestIncome?.net_income ?? null, previousIncome?.net_income ?? null),
-      icon: BarChart3,
-      color: "text-primary",
       bgColor: "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800",
     },
     {
       label: "Free Cash Flow",
       value: formatCurrency(latestCashflow?.free_cash_flow ?? null),
       change: null,
-      icon: Wallet,
-      color: "text-primary",
       bgColor: "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800",
     },
     {
       label: "Total Assets",
       value: formatCurrency(latestBalance?.total_assets ?? null),
       change: null,
-      icon: Building2,
-      color: "text-primary",
       bgColor: "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800",
     },
   ];
@@ -378,7 +370,7 @@ function KeyHighlights({
         <Card key={h.label} className={`${h.bgColor} backdrop-blur-sm`}>
           <CardContent className="pt-4">
             <div className="flex items-center justify-between mb-2">
-              <h.icon className={`w-5 h-5 ${h.color}`} />
+              <span className="text-sm font-medium text-slate-600 dark:text-slate-300">{h.label}</span>
               {h.change !== null && (
                 <Badge
                   variant="outline"
@@ -392,8 +384,7 @@ function KeyHighlights({
                 </Badge>
               )}
             </div>
-            <div className="text-2xl font-bold font-mono text-slate-900 dark:text-white">{h.value}</div>
-            <div className="text-xs text-slate-500 mt-1">{h.label}</div>
+            <div className="text-2xl font-bold font-mono text-slate-900 dark:text-white mt-1">{h.value}</div>
           </CardContent>
         </Card>
       ))}
