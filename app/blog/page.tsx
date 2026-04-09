@@ -7,19 +7,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Calendar, 
-  Sparkles, 
-  Bug, 
-  Wrench, 
-  Zap, 
-  AlertCircle, 
-  X, 
+  Calendar,
+  Sparkles,
+  Bug,
+  Wrench,
+  Zap,
+  AlertCircle,
+  X,
   Search,
   Filter,
   ChevronRight,
   Clock
 } from "lucide-react";
 import { ExternalLinkWarning, useExternalLinkWarning } from "../news/ExternalLinkWarning";
+import { NewsletterSubscribe } from "./components/NewsletterSubscribe";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -312,7 +313,7 @@ export default function BlogPage() {
           onConfirm={confirmNavigation}
         />
         {/* Header */}
-        <div className="mb-12">
+        <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-3 bg-brand/10 rounded-xl">
               <Sparkles className="h-8 w-8 text-brand" />
@@ -324,6 +325,11 @@ export default function BlogPage() {
           <p className="text-lg md:text-xl text-slate-600 dark:text-slate-400 max-w-3xl mt-2">
             Stay up to date with the latest features, improvements, and bug fixes. We&apos;re constantly improving to serve you better.
           </p>
+        </div>
+
+        {/* Newsletter Subscription */}
+        <div className="mb-12">
+          <NewsletterSubscribe />
         </div>
 
         {/* Search and Filter Bar */}
