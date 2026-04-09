@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Play } from "lucide-react";
+import { GitGraphIcon, Play } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import MarketOverview from "@/components/MarketOverview";
 import SearchBar from "@/components/SearchBar";
@@ -17,12 +17,9 @@ export default async function Home() {
         </div>
 
         <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-12 flex flex-col items-center text-center space-y-8 relative z-10">
-          <Badge
-            variant="outline"
-            className="px-4 py-1.5 text-sm font-medium border-brand/20 text-brand bg-brand/5 rounded-full animate-fade-in"
-          >
-            v2.0 is now live
-          </Badge>
+          <div className="inline-flex items-center gap-2 mb-5 px-3.5 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 text-blue-700 dark:text-blue-400 text-xs font-semibold uppercase tracking-wider">
+            <GitGraphIcon className="h-3 w-3" /> Version 1.0 [Beta]
+          </div>
 
           <div className="space-y-4 max-w-4xl">
             <h1 className="text-5xl md:text-7xl font-bold font-heading tracking-tight text-slate-900 dark:text-white leading-[1.1]">

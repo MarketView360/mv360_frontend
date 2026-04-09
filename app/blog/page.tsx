@@ -1,23 +1,13 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
-  Calendar,
-  Sparkles,
-  Bug,
-  Wrench,
-  Zap,
-  AlertCircle,
-  X,
-  Search,
-  Filter,
-  ChevronRight,
-  Clock
+  Search, X, Clock, ChevronRight, BookOpen, Megaphone,
+  TrendingUp, BarChart2, BookMarked, LayoutGrid, Calendar,
+  Star, ArrowUpRight, Sparkles,
+  Speaker,
+  GitGraphIcon,
 } from "lucide-react";
 import { ExternalLinkWarning, useExternalLinkWarning } from "../news/ExternalLinkWarning";
 import { NewsletterSubscribe } from "./components/NewsletterSubscribe";
@@ -31,588 +21,526 @@ interface Blog {
   description: string;
   date: string;
   type: string;
-  image_url?: string;
-  thumbnail_url?: string;
+  content?: string;
+  read_time?: number;
+  is_featured?: boolean;
+  published?: boolean;
+  status?: string;
+  thumbnail?: string;
 }
 
-type MarkdownPart =
-  | { type: "text"; text: string }
-  | { type: "link"; text: string; url: string };
+type Tab = "blog" | "announcements";
+
+// ─── Markdown link parser ────────────────────────────────────────────────────
+type MarkdownPart = { type: "text"; text: string } | { type: "link"; text: string; url: string };
 
 function parseMarkdownLinks(text: string): MarkdownPart[] {
   const parts: MarkdownPart[] = [];
   if (!text) return parts;
-
-  // Support standard markdown `[Label](url)` and a common variant `[Label] (url)`
   const regex = /\[([^\]]+)\]\s*\(([^)]+)\)/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
-
   while ((match = regex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push({ type: "text", text: text.slice(lastIndex, match.index) });
-    }
-
-    const label = match[1];
-    const url = match[2];
-    parts.push({ type: "link", text: label, url });
+    if (match.index > lastIndex) parts.push({ type: "text", text: text.slice(lastIndex, match.index) });
+    parts.push({ type: "link", text: match[1], url: match[2] });
     lastIndex = regex.lastIndex;
   }
-
-  if (lastIndex < text.length) {
-    parts.push({ type: "text", text: text.slice(lastIndex) });
-  }
-
+  if (lastIndex < text.length) parts.push({ type: "text", text: text.slice(lastIndex) });
   return parts;
 }
 
 function isInternalUrl(rawUrl: string): boolean {
-  if (!rawUrl) return false;
-  // Treat relative URLs as internal
-  if (rawUrl.startsWith("/")) return true;
+  if (!rawUrl || rawUrl.startsWith("/")) return true;
   try {
-    const url = new URL(rawUrl, "https://www.marketview360.io");
-    return url.hostname.endsWith("marketview360.io");
-  } catch {
-    return false;
-  }
+    return new URL(rawUrl, "https://www.marketview360.io").hostname.endsWith("marketview360.io");
+  } catch { return false; }
 }
 
-function BlogDescription({
-  text,
-  onExternalClick,
-}: {
-  text: string;
-  onExternalClick: (url: string) => void;
-}) {
+function RichText({ text, onExternalClick }: { text: string; onExternalClick: (url: string) => void }) {
   const parts = useMemo(() => parseMarkdownLinks(text), [text]);
-
   if (!parts.length) return <>{text}</>;
-
   return (
     <>
-      {parts.map((part, idx) => {
-        if (part.type === "text") {
-          return <span key={idx}>{part.text}</span>;
-        }
-
-        const { url, text: label } = part;
-        if (isInternalUrl(url)) {
-          return (
-            <a
-              key={idx}
-              href={url}
-              className="text-brand hover:underline"
-            >
-              {label}
-            </a>
-          );
-        }
-
-        return (
-          <button
-            key={idx}
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              onExternalClick(url);
-            }}
-            className="inline-flex items-center gap-1 text-brand hover:underline"
-          >
-            {label}
-          </button>
-        );
-      })}
+      {parts.map((p, i) =>
+        p.type === "text" ? <span key={i}>{p.text}</span> :
+          isInternalUrl(p.url)
+            ? <a key={i} href={p.url} className="text-blue-600 hover:underline">{p.text}</a>
+            : <button key={i} type="button"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onExternalClick(p.url); }}
+                className="text-blue-600 hover:underline">{p.text}</button>
+      )}
     </>
   );
 }
 
-const getTypeIcon = (type: string) => {
-  switch (type.toLowerCase()) {
-    case "feature":
-      return <Sparkles className="h-4 w-4" />;
-    case "fix":
-      return <Bug className="h-4 w-4" />;
-    case "improvement":
-      return <Wrench className="h-4 w-4" />;
-    case "performance":
-      return <Zap className="h-4 w-4" />;
-    default:
-      return <Calendar className="h-4 w-4" />;
-  }
-};
+// ─── Category config ─────────────────────────────────────────────────────────
+const BLOG_CATEGORIES = [
+  { label: "All", icon: <LayoutGrid className="h-3.5 w-3.5" /> },
+  { label: "Investing Tips", icon: <TrendingUp className="h-3.5 w-3.5" /> },
+  { label: "Market Analysis", icon: <BarChart2 className="h-3.5 w-3.5" /> },
+  { label: "Guides", icon: <BookMarked className="h-3.5 w-3.5" /> },
+];
+const ANNOUNCEMENT_CATEGORIES = [
+  { label: "All", icon: <LayoutGrid className="h-3.5 w-3.5" /> },
+  { label: "Feature", icon: <Sparkles className="h-3.5 w-3.5" /> },
+  { label: "Fix", icon: <LayoutGrid className="h-3.5 w-3.5" /> },
+  { label: "Improvement", icon: <TrendingUp className="h-3.5 w-3.5" /> },
+  { label: "Performance", icon: <BarChart2 className="h-3.5 w-3.5" /> },
+];
+const ANNOUNCEMENT_TYPES = ["feature", "fix", "improvement", "performance"];
 
-const getTypeBadgeColor = (type: string) => {
-  switch (type.toLowerCase()) {
-    case "feature":
-      return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800";
-    case "fix":
-      return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 border-red-200 dark:border-red-800";
-    case "improvement":
-      return "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800";
-    case "performance":
-      return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800";
-    default:
-      return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700";
-  }
+// ─── Badge colours ────────────────────────────────────────────────────────────
+const TYPE_BADGE: Record<string, string> = {
+  "investing tips": "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800",
+  "market analysis": "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-900/20 dark:text-sky-400 dark:border-sky-800",
+  "guides": "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-900/20 dark:text-violet-400 dark:border-violet-800",
+  "feature": "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800",
+  "fix": "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800",
+  "improvement": "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800",
+  "performance": "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800",
 };
+const getBadgeCls = (t: string) =>
+  TYPE_BADGE[t?.toLowerCase()] ??
+  "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700";
 
+function TypeBadge({ type }: { type: string }) {
+  return (
+    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${getBadgeCls(type)}`}>
+      {type}
+    </span>
+  );
+}
+
+// ─── Placeholder gradient thumbnails ─────────────────────────────────────────
+const GRADIENTS = [
+  "from-blue-500 to-indigo-600",
+  "from-emerald-500 to-teal-600",
+  "from-violet-500 to-purple-600",
+  "from-amber-500 to-orange-600",
+  "from-sky-500 to-cyan-600",
+  "from-rose-500 to-pink-600",
+];
+const getGradient = (id: number) => GRADIENTS[id % GRADIENTS.length];
+
+// ─── Featured Hero Card ───────────────────────────────────────────────────────
+function FeaturedCard({ blog, onSelect, onExternalClick }: {
+  blog: Blog;
+  onSelect: () => void;
+  onExternalClick: (u: string) => void;
+}) {
+  const date = new Date(blog.date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  return (
+    <button onClick={onSelect}
+      className="group w-full text-left rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm hover:shadow-xl hover:border-blue-200 dark:hover:border-blue-900 transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+      <div className="flex flex-col lg:flex-row">
+        {/* Thumbnail */}
+        <div className="relative lg:w-[52%] h-52 sm:h-64 lg:h-auto overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0">
+          {blog.thumbnail
+            ? <img src={blog.thumbnail} alt={blog.title}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+            : <div className={`w-full h-full min-h-[220px] bg-gradient-to-br ${getGradient(blog.id)} flex items-center justify-center`}>
+                <BarChart2 className="h-16 w-16 text-white/25" />
+              </div>
+          }
+          <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full shadow-sm">
+            <Star className="h-3 w-3 fill-amber-500 text-amber-500" /> Featured
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 flex flex-col justify-between p-6 sm:p-8">
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              {blog.type && <TypeBadge type={blog.type} />}
+              <span className="flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500">
+                <Calendar className="h-3 w-3" />{date}
+              </span>
+              {blog.read_time && (
+                <span className="flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500">
+                  <Clock className="h-3 w-3" />{blog.read_time} min
+                </span>
+              )}
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors leading-snug line-clamp-3">
+              {blog.title}
+            </h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-3">
+              <RichText text={blog.description} onExternalClick={onExternalClick} />
+            </p>
+          </div>
+          <div className="mt-6 flex items-center gap-2 text-sm font-semibold text-blue-600 dark:text-blue-400 group-hover:gap-3 transition-all">
+            Read article <ArrowUpRight className="h-4 w-4" />
+          </div>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+// ─── Standard Article Card ────────────────────────────────────────────────────
+function ArticleCard({ blog, onSelect, onExternalClick, index }: {
+  blog: Blog;
+  onSelect: () => void;
+  onExternalClick: (u: string) => void;
+  index: number;
+}) {
+  const date = new Date(blog.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return (
+    <button onClick={onSelect}
+      style={{ animationDelay: `${index * 60}ms` }}
+      className="group w-full text-left rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden hover:shadow-lg hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 animate-fadeUp">
+      {/* Thumbnail */}
+      <div className="relative h-44 overflow-hidden bg-slate-100 dark:bg-slate-800">
+        {blog.thumbnail
+          ? <img src={blog.thumbnail} alt={blog.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+          : <div className={`w-full h-full bg-gradient-to-br ${getGradient(blog.id)} flex items-center justify-center`}>
+              <TrendingUp className="h-10 w-10 text-white/25" />
+            </div>
+        }
+        {blog.type && (
+          <div className="absolute top-3 left-3">
+            <TypeBadge type={blog.type} />
+          </div>
+        )}
+      </div>
+
+      {/* Body */}
+      <div className="p-4 space-y-2.5">
+        <div className="flex items-center gap-2 text-[11px] text-slate-400 dark:text-slate-500">
+          <Calendar className="h-3 w-3 shrink-0" />{date}
+          {blog.read_time && <><span className="opacity-50">·</span><Clock className="h-3 w-3 shrink-0" />{blog.read_time} min read</>}
+        </div>
+        <h3 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors leading-snug line-clamp-2">
+          {blog.title}
+        </h3>
+        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
+          <RichText text={blog.description} onExternalClick={onExternalClick} />
+        </p>
+        <div className="pt-1 flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 group-hover:gap-2 transition-all">
+          Read more <ChevronRight className="h-3.5 w-3.5" />
+        </div>
+      </div>
+    </button>
+  );
+}
+
+// ─── Skeletons ────────────────────────────────────────────────────────────────
+function FeaturedSkeleton() {
+  return (
+    <div className="rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col lg:flex-row">
+      <Skeleton className="lg:w-[52%] h-56 lg:h-72" />
+      <div className="flex-1 p-8 space-y-4">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-7 w-full" />
+        <Skeleton className="h-7 w-3/4" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-5/6" />
+      </div>
+    </div>
+  );
+}
+function CardSkeleton() {
+  return (
+    <div className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800">
+      <Skeleton className="h-44 w-full" />
+      <div className="p-4 space-y-2">
+        <Skeleton className="h-3 w-28" />
+        <Skeleton className="h-5 w-full" />
+        <Skeleton className="h-4 w-4/5" />
+      </div>
+    </div>
+  );
+}
+
+// ─── Article Modal ────────────────────────────────────────────────────────────
+function ArticleModal({ blog, onClose, onExternalClick }: {
+  blog: Blog;
+  onClose: () => void;
+  onExternalClick: (u: string) => void;
+}) {
+  const date = new Date(blog.date).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-6 animate-fadeIn"
+      onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl animate-slideUp"
+        onClick={(e) => e.stopPropagation()}>
+
+        {/* Header image / gradient */}
+        <div className="relative shrink-0">
+          {blog.thumbnail
+            ? <div className="h-48 sm:h-60 overflow-hidden rounded-t-2xl bg-slate-100 dark:bg-slate-800">
+                <img src={blog.thumbnail} alt={blog.title} className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-transparent rounded-t-2xl" />
+              </div>
+            : <div className={`h-24 rounded-t-2xl bg-gradient-to-br ${getGradient(blog.id)}`} />
+          }
+          <button onClick={onClose} aria-label="Close"
+            className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors shadow-sm">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Meta */}
+        <div className="px-6 sm:px-8 pt-5 pb-4 border-b border-slate-100 dark:border-slate-800 space-y-3 shrink-0">
+          <div className="flex flex-wrap items-center gap-2">
+            {blog.type && <TypeBadge type={blog.type} />}
+            {blog.is_featured && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-400">
+                <Star className="h-3 w-3 fill-current" /> Featured
+              </span>
+            )}
+            <span className="flex items-center gap-1 text-xs text-slate-400"><Calendar className="h-3.5 w-3.5" />{date}</span>
+            {blog.read_time && <span className="flex items-center gap-1 text-xs text-slate-400"><Clock className="h-3.5 w-3.5" />{blog.read_time} min read</span>}
+          </div>
+          <h2 id="modal-title" className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white leading-snug">
+            {blog.title}
+          </h2>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 sm:px-8 py-6 overflow-y-auto flex-1 text-sm sm:text-base text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+          <RichText text={blog.content || blog.description} onExternalClick={onExternalClick} />
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 sm:px-8 py-4 border-t border-slate-100 dark:border-slate-800 flex justify-end bg-slate-50 dark:bg-slate-800/40 rounded-b-2xl shrink-0">
+          <button onClick={onClose}
+            className="px-5 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SectionLabel({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 mb-5">
+      <h2 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest whitespace-nowrap">{label}</h2>
+      <div className="flex-1 h-px bg-slate-200 dark:bg-slate-800" />
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function BlogPage() {
   const [blogs, setBlogs] = useState<Blog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedBlog, setSelectedBlog] = useState<Blog | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedType, setSelectedType] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState<Tab>("blog");
+  const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const {
-    warningState,
-    showWarning,
-    confirmNavigation,
-    setWarningOpen,
-  } = useExternalLinkWarning();
+  const { warningState, showWarning, confirmNavigation, setWarningOpen } = useExternalLinkWarning();
 
   useEffect(() => {
-    const fetchBlogs = async () => {
-      try {
-        const response = await fetch(`${API_BASE}/blog`);
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch blogs: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        setBlogs(data || []);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load blogs");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchBlogs();
+    fetch(`${API_BASE}/blog`)
+      .then((r) => { if (!r.ok) throw new Error(r.statusText); return r.json(); })
+      .then((d) => setBlogs(d || []))
+      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load"))
+      .finally(() => setLoading(false));
   }, []);
 
-  // Close modal on Escape key
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && selectedBlog) {
-        setSelectedBlog(null);
-      }
-    };
-    window.addEventListener("keydown", handleEscape);
-    return () => window.removeEventListener("keydown", handleEscape);
-  }, [selectedBlog]);
+    const h = (e: KeyboardEvent) => { if (e.key === "Escape") setSelectedBlog(null); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, []);
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+  const handleTabChange = (tab: Tab) => {
+    setActiveTab(tab);
+    setSelectedCategory("All");
+    setSearchQuery("");
   };
 
-  const getRelativeTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInMs = now.getTime() - date.getTime();
-    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+  const tabBlogs = useMemo(() =>
+    blogs.filter((b) => {
+      const t = b.type?.toLowerCase() ?? "";
+      return activeTab === "announcements" ? ANNOUNCEMENT_TYPES.includes(t) : !ANNOUNCEMENT_TYPES.includes(t);
+    }),
+    [blogs, activeTab]
+  );
 
-    if (diffInDays === 0) return "Today";
-    if (diffInDays === 1) return "Yesterday";
-    if (diffInDays < 7) return `${diffInDays} days ago`;
-    if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} weeks ago`;
-    if (diffInDays < 365) return `${Math.floor(diffInDays / 30)} months ago`;
-    return `${Math.floor(diffInDays / 365)} years ago`;
-  };
+  const filteredBlogs = useMemo(() =>
+    tabBlogs.filter((b) => {
+      const q = searchQuery.toLowerCase();
+      const matchSearch = !q || b.title.toLowerCase().includes(q) || b.description.toLowerCase().includes(q);
+      const matchCat = selectedCategory === "All" || b.type?.toLowerCase() === selectedCategory.toLowerCase();
+      return matchSearch && matchCat;
+    }),
+    [tabBlogs, searchQuery, selectedCategory]
+  );
 
-  const filterBlogs = (logs: Blog[]) => {
-    return logs.filter((log) => {
-      const matchesSearch =
-        searchQuery === "" ||
-        log.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        log.description.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchesType =
-        selectedType === "all" ||
-        log.type.toLowerCase() === selectedType.toLowerCase();
-
-      return matchesSearch && matchesType;
-    });
-  };
-
-  const groupByMonth = (logs: Blog[]) => {
-    const grouped: Record<string, Blog[]> = {};
-    
-    logs.forEach((log) => {
-      const date = new Date(log.date);
-      const monthYear = date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-      });
-      
-      if (!grouped[monthYear]) {
-        grouped[monthYear] = [];
-      }
-      grouped[monthYear].push(log);
-    });
-    
-    return grouped;
-  };
-
-  const filteredBlogs = filterBlogs(blogs);
-  const groupedBlogs = groupByMonth(filteredBlogs);
-  const types = ["all", "feature", "fix", "improvement", "performance"];
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-        <div className="mx-auto max-w-[1200px] px-4 md:px-8 lg:px-12 py-12 md:py-20">
-          <Skeleton className="h-16 w-80 mb-4" />
-          <Skeleton className="h-8 w-full max-w-2xl mb-12" />
-          <div className="space-y-6">
-            <Skeleton className="h-48 w-full" />
-            <Skeleton className="h-48 w-full" />
-            <Skeleton className="h-48 w-full" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex items-center justify-center p-4">
-        <Card className="max-w-md border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-3">
-              <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
-                <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-red-900 dark:text-red-300 mb-1">
-                  Error loading blog
-                </h3>
-                <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const featured = filteredBlogs.find((b) => b.is_featured);
+  const rest = filteredBlogs.filter((b) => b.id !== featured?.id);
+  const categories = activeTab === "blog" ? BLOG_CATEGORIES : ANNOUNCEMENT_CATEGORIES;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      <div className="mx-auto max-w-[1200px] px-4 md:px-8 lg:px-12 py-12 md:py-20">
-        <ExternalLinkWarning
-          open={warningState.open}
-          onOpenChange={setWarningOpen}
-          url={warningState.url}
-          onConfirm={confirmNavigation}
-        />
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-3 bg-brand/10 rounded-xl">
-              <Sparkles className="h-8 w-8 text-brand" />
-            </div>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold font-heading bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 dark:from-white dark:via-slate-200 dark:to-white bg-clip-text text-transparent">
-              Blog
-            </h1>
-          </div>
-          <p className="text-lg md:text-xl text-slate-600 dark:text-slate-400 max-w-3xl mt-2">
-            Stay up to date with the latest features, improvements, and bug fixes. We&apos;re constantly improving to serve you better.
-          </p>
-        </div>
+    <div className="min-h-screen bg-[#f9fafb] dark:bg-[#0b0f1a]">
+      <ExternalLinkWarning open={warningState.open} onOpenChange={setWarningOpen} url={warningState.url} onConfirm={confirmNavigation} />
 
-        {/* Newsletter Subscription */}
-        <div className="mb-12">
-          <NewsletterSubscribe />
-        </div>
+      {/* ── Hero ── */}
+      <div className="relative overflow-hidden bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+        {/* Subtle dot grid */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle,#cbd5e1_1px,transparent_1px)] dark:bg-[radial-gradient(circle,#1e293b_1px,transparent_1px)] bg-[size:28px_28px] opacity-60" />
+        {/* Blue glow */}
+        <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[700px] h-40 bg-blue-500/8 dark:bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Search and Filter Bar */}
-        <div className="mb-8 space-y-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            {/* Search */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-              <Input
-                type="text"
-                placeholder="Search blogs..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-12 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 focus:border-brand focus:ring-brand"
-              />
-            </div>
-
-            {/* Type Filter */}
-            <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-hide">
-              {types.map((type) => (
-                <Button
-                  key={type}
-                  variant={selectedType === type ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedType(type)}
-                  className={`shrink-0 h-12 px-6 rounded-xl transition-all duration-200 ${
-                    selectedType === type
-                      ? "bg-brand hover:bg-brand/90 text-white border-transparent shadow-lg shadow-brand/20"
-                      : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-brand/50 hover:text-brand dark:hover:text-brand"
-                  }`}
-                >
-                  {type === "all" ? (
-                    <Filter className="h-4 w-4 mr-2" />
-                  ) : (
-                    <span className="mr-2 opacity-80">{getTypeIcon(type)}</span>
-                  )}
-                  <span className="capitalize font-medium">{type}</span>
-                </Button>
-              ))}
-            </div>
+        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 pb-10 text-center">
+          {/* Eyebrow */}
+          <div className="inline-flex items-center gap-2 mb-5 px-3.5 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 text-blue-700 dark:text-blue-400 text-xs font-semibold uppercase tracking-wider">
+            <GitGraphIcon className="h-3 w-3" /> Version 1.0 [Beta]
           </div>
 
-          {/* Results count */}
-          <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-            <Clock className="h-4 w-4" />
-            <span>
-              {filteredBlogs.length} {filteredBlogs.length === 1 ? "post" : "posts"} found
+          <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-extrabold text-slate-900 dark:text-white tracking-tight mb-4 leading-tight">
+            Insights &amp;{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">
+              Updates
             </span>
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400 text-base sm:text-lg max-w-xl mx-auto mb-9 leading-relaxed">
+            Expert analysis, investing guides, and product updates from the MarketView360 team
+          </p>
+
+          {/* Search */}
+          <div className="relative max-w-md mx-auto">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search articles..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-11 pr-10 h-12 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-400 shadow-sm transition"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery("")}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Blog Entries */}
-        {Object.keys(groupedBlogs).length === 0 ? (
-          <div className="text-center py-20">
-            <div className="inline-flex p-6 bg-slate-100 dark:bg-slate-800/50 rounded-2xl mb-6">
-              <Calendar className="h-16 w-16 text-slate-400 dark:text-slate-600" />
+        {/* Tabs */}
+        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex">
+            {(["blog", "announcements"] as Tab[]).map((tab) => (
+              <button key={tab} onClick={() => handleTabChange(tab)}
+                className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold border-b-2 transition-all duration-150 ${
+                  activeTab === tab
+                    ? "border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400"
+                    : "border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                }`}>
+                {tab === "blog" ? <BookOpen className="h-4 w-4" /> : <Megaphone className="h-4 w-4" />}
+                {tab === "blog" ? "Blog Posts" : "Announcements"}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Sticky category filter ── */}
+      <div className="sticky top-0 z-20 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 shadow-sm">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center gap-2 overflow-x-auto scrollbar-hide">
+          {categories.map(({ label, icon }) => (
+            <button key={label} onClick={() => setSelectedCategory(label)}
+              className={`shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ${
+                selectedCategory === label
+                  ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-200 dark:shadow-blue-900/30"
+                  : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700 hover:text-blue-600 dark:hover:text-blue-400"
+              }`}>
+              {icon}{label}
+            </button>
+          ))}
+          {!loading && filteredBlogs.length > 0 && (
+            <span className="ml-auto shrink-0 text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap">
+              {filteredBlogs.length} {filteredBlogs.length === 1 ? "article" : "articles"}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* ── Main content ── */}
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
+
+        {loading ? (
+          <div className="space-y-8">
+            <FeaturedSkeleton />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {[1, 2, 3].map((i) => <CardSkeleton key={i} />)}
             </div>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">
-              {searchQuery || selectedType !== "all" ? "No results found" : "No posts yet"}
-            </h3>
-            <p className="text-slate-600 dark:text-slate-400 max-w-md mx-auto">
-              {searchQuery || selectedType !== "all"
-                ? "Try adjusting your search or filter to find what you're looking for."
-                : "Check back soon for the latest updates and improvements."}
+          </div>
+        ) : error ? (
+          <div className="text-center py-20">
+            <p className="text-sm text-red-500 dark:text-red-400">{error}</p>
+          </div>
+        ) : filteredBlogs.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-5 border border-slate-200 dark:border-slate-700">
+              <Search className="h-7 w-7 text-slate-400 dark:text-slate-500" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">No articles found</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs">
+              We couldn&apos;t find any articles matching your search criteria. Try adjusting your filters.
             </p>
-            {(searchQuery || selectedType !== "all") && (
-              <Button
-                onClick={() => {
-                  setSearchQuery("");
-                  setSelectedType("all");
-                }}
-                className="mt-6 bg-brand hover:bg-brand/90"
-              >
+            {(searchQuery || selectedCategory !== "All") && (
+              <button onClick={() => { setSearchQuery(""); setSelectedCategory("All"); }}
+                className="mt-5 px-4 py-2 rounded-full bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors">
                 Clear filters
-              </Button>
+              </button>
             )}
           </div>
         ) : (
-          <div className="space-y-16">
-            {Object.entries(groupedBlogs).map(([monthYear, logs]) => (
-              <div key={monthYear} className="relative">
-                {/* Month Header with decorative line */}
-                <div className="flex items-center gap-6 mb-8">
-                  <div className="relative">
-                    <h2 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">
-                      {monthYear}
-                    </h2>
-                    <div className="absolute -bottom-2 left-0 right-0 h-1 bg-gradient-to-r from-brand to-transparent rounded-full" />
-                  </div>
-                  <div className="flex-1 h-px bg-gradient-to-r from-slate-200 via-slate-200 to-transparent dark:from-slate-800 dark:via-slate-800 dark:to-transparent" />
-                </div>
+          <>
+            {/* Featured */}
+            {featured && (
+              <section>
+                <SectionLabel label="Featured" />
+                <FeaturedCard blog={featured} onSelect={() => setSelectedBlog(featured)} onExternalClick={showWarning} />
+              </section>
+            )}
 
-                {/* Entries for this month */}
-                <div className="space-y-6">
-                  {logs.map((log, index) => (
-                    <Card
-                      key={log.id}
-                      className="group border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm hover:shadow-xl hover:border-brand/50 dark:hover:border-brand/50 transition-all duration-300 overflow-hidden"
-                      style={{
-                        animation: `fadeInUp 0.5s ease-out ${index * 0.1}s both`,
-                      }}
-                    >
-                      <CardContent className="p-0">
-                        <button
-                          onClick={() => setSelectedBlog(log)}
-                          className="w-full text-left"
-                        >
-                          <div className="flex flex-col sm:flex-row gap-6 p-6 sm:p-8">
-                            {/* Date Badge */}
-                            <div className="flex sm:flex-col items-center sm:items-center gap-3 sm:gap-0 shrink-0">
-                              <div className="flex flex-col items-center p-4 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm group-hover:border-brand/50 dark:group-hover:border-brand/50 transition-colors min-w-[80px]">
-                                <span className="text-3xl font-bold bg-gradient-to-br from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-                                  {new Date(log.date).getDate()}
-                                </span>
-                                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-1">
-                                  {new Date(log.date).toLocaleDateString("en-US", { month: "short" })}
-                                </span>
-                              </div>
-                              <span className="text-sm text-slate-500 dark:text-slate-400 sm:mt-3">
-                                {getRelativeTime(log.date)}
-                              </span>
-                            </div>
-
-                            {/* Content */}
-                            <div className="flex-1 min-w-0 space-y-4">
-                              <div className="flex flex-wrap items-start gap-3">
-                                {log.type && (
-                                  <Badge
-                                    variant="outline"
-                                    className={`shrink-0 ${getTypeBadgeColor(log.type)} font-semibold`}
-                                  >
-                                    <span className="flex items-center gap-1.5">
-                                      {getTypeIcon(log.type)}
-                                      <span className="capitalize">{log.type}</span>
-                                    </span>
-                                  </Badge>
-                                )}
-                                <h3 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white group-hover:text-brand dark:group-hover:text-brand transition-colors leading-tight">
-                                  {log.title}
-                                </h3>
-                              </div>
-
-                              <BlogDescription
-                                text={log.description}
-                                onExternalClick={showWarning}
-                              />
-
-                              <div className="flex items-center gap-2 text-sm font-medium text-brand group-hover:gap-3 transition-all">
-                                <span>Read more</span>
-                                <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                              </div>
-                            </div>
-                          </div>
-                        </button>
-                      </CardContent>
-                    </Card>
+            {/* Article grid */}
+            {rest.length > 0 && (
+              <section>
+                {featured && <SectionLabel label="Latest Articles" />}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {rest.map((b, i) => (
+                    <ArticleCard key={b.id} blog={b} onSelect={() => setSelectedBlog(b)} onExternalClick={showWarning} index={i} />
                   ))}
                 </div>
-              </div>
-            ))}
-          </div>
+              </section>
+            )}
+          </>
         )}
 
-        {/* Modal for full blog view */}
-        {selectedBlog && (
-          <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn"
-            onClick={() => setSelectedBlog(null)}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="blog-title"
-          >
-            <div
-              className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl animate-slideUp"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Modal Header */}
-              <div className="flex items-start justify-between gap-6 p-6 md:p-8 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-br from-slate-50 to-white dark:from-slate-800 dark:to-slate-900">
-                <div className="flex-1 space-y-4">
-                  <div className="flex flex-wrap items-center gap-3">
-                    {selectedBlog.type && (
-                      <Badge
-                        variant="outline"
-                        className={`${getTypeBadgeColor(selectedBlog.type)} font-semibold`}
-                      >
-                        <span className="flex items-center gap-1.5">
-                          {getTypeIcon(selectedBlog.type)}
-                          <span className="capitalize">{selectedBlog.type}</span>
-                        </span>
-                      </Badge>
-                    )}
-                    <span className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      {formatDate(selectedBlog.date)}
-                    </span>
-                  </div>
-                  <h2
-                    id="blog-title"
-                    className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white leading-tight"
-                  >
-                    {selectedBlog.title}
-                  </h2>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedBlog(null)}
-                  className="shrink-0 h-10 w-10 p-0 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-                >
-                  <X className="h-5 w-5" />
-                </Button>
-              </div>
-
-              {/* Modal Content */}
-              <div className="p-6 md:p-8 overflow-y-auto max-h-[calc(90vh-180px)]">
-                <div className="prose prose-slate dark:prose-invert max-w-none">
-                  <div className="text-base md:text-lg text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
-                    <BlogDescription
-                      text={selectedBlog.description}
-                      onExternalClick={showWarning}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Modal Footer */}
-              <div className="flex items-center justify-between p-6 md:p-8 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
-                <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-                  <Clock className="h-4 w-4" />
-                  <span>{getRelativeTime(selectedBlog.date)}</span>
-                </div>
-                <Button
-                  onClick={() => setSelectedBlog(null)}
-                  variant="outline"
-                  className="border-slate-200 dark:border-slate-700"
-                >
-                  Close
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Newsletter */}
+        <NewsletterSubscribe />
       </div>
 
+      {/* Modal */}
+      {selectedBlog && (
+        <ArticleModal blog={selectedBlog} onClose={() => setSelectedBlog(null)} onExternalClick={showWarning} />
+      )}
+
       <style jsx>{`
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(16px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
-
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
-
+        @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideUp {
-          from {
-            opacity: 0;
-            transform: translateY(40px) scale(0.95);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
+          from { opacity: 0; transform: translateY(32px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0)    scale(1); }
         }
-
-        .animate-fadeIn {
-          animation: fadeIn 0.2s ease-out;
-        }
-
-        .animate-slideUp {
-          animation: slideUp 0.3s ease-out;
-        }
+        .animate-fadeUp  { animation: fadeUp  0.45s ease-out both; }
+        .animate-fadeIn  { animation: fadeIn  0.2s  ease-out; }
+        .animate-slideUp { animation: slideUp 0.3s  cubic-bezier(0.16,1,0.3,1); }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
     </div>
   );

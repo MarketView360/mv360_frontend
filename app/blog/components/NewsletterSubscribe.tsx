@@ -1,217 +1,283 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mail, Check, Loader2, Sparkles, X } from "lucide-react";
-import { useAuth } from "@/providers/AuthProvider";
-import { toast } from "sonner";
+import { useState, useEffect } from "react";
+import { Mail, Zap, CheckCircle2, Loader2, ChevronDown, ChevronUp, AlertCircle } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
-export function NewsletterSubscribe() {
-  const { session } = useAuth();
-  const [isSubscribing, setIsSubscribing] = useState(false);
-  const [isSubscribed, setIsSubscribed] = useState(false);
-  const [useDifferentEmail, setUseDifferentEmail] = useState(false);
-  const [customEmail, setCustomEmail] = useState("");
+type SubscribeStatus = "idle" | "loading" | "success" | "error";
 
-  const userEmail = session?.user?.email || "";
-
-  const handleSubscribe = async () => {
-    const emailToSubscribe = useDifferentEmail ? customEmail : userEmail;
-
-    if (!emailToSubscribe) {
-      toast.error("Please sign in to subscribe");
-      return;
-    }
-
-    if (useDifferentEmail && !emailToSubscribe.includes("@")) {
-      toast.error("Please enter a valid email address");
-      return;
-    }
-
-    setIsSubscribing(true);
-
-    try {
-      const response = await fetch(`${API_BASE}/blog/newsletter/subscribe`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: useDifferentEmail ? customEmail : undefined,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to subscribe");
-      }
-
-      setIsSubscribed(true);
-      toast.success("Successfully subscribed to newsletter!");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to subscribe");
-    } finally {
-      setIsSubscribing(false);
-    }
-  };
-
-  const handleCancel = () => {
-    setUseDifferentEmail(false);
-    setCustomEmail("");
-  };
-
-  if (isSubscribed) {
-    return (
-      <Card className="border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/20">
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-full">
-              <Check className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-emerald-900 dark:text-emerald-300">
-                You&apos;re subscribed!
-              </p>
-              <p className="text-xs text-emerald-700 dark:text-emerald-400">
-                You&apos;ll receive our latest updates at {useDifferentEmail ? customEmail : userEmail}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
+async function callSubscribe(email: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/newsletter/subscribe`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    let msg = "Subscription failed. Please try again.";
+    try { const b = await res.json(); if (b?.message) msg = b.message; } catch { /* ignore */ }
+    throw new Error(msg);
   }
+}
 
-  if (!session) {
+export function NewsletterSubscribe() {
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
+
+  // 1-click state
+  const [oneClickStatus, setOneClickStatus] = useState<SubscribeStatus>("idle");
+  const [oneClickError, setOneClickError] = useState("");
+
+  // custom email state
+  const [showCustom, setShowCustom] = useState(false);
+  const [customEmail, setCustomEmail] = useState("");
+  const [customStatus, setCustomStatus] = useState<SubscribeStatus>("idle");
+  const [customError, setCustomError] = useState("");
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser()
+      .then(({ data }) => { setUserEmail(data?.user?.email ?? null); })
+      .catch(() => { setUserEmail(null); })
+      .finally(() => setLoadingUser(false));
+  }, []);
+
+  const handleOneClick = async () => {
+    if (!userEmail || oneClickStatus === "loading" || oneClickStatus === "success") return;
+    setOneClickStatus("loading");
+    setOneClickError("");
+    try {
+      await callSubscribe(userEmail);
+      setOneClickStatus("success");
+    } catch (e) {
+      setOneClickStatus("error");
+      setOneClickError(e instanceof Error ? e.message : "Something went wrong.");
+    }
+  };
+
+  const handleCustomSubmit = async () => {
+    if (customStatus === "loading" || customStatus === "success") return;
+    const trimmed = customEmail.trim();
+    if (!trimmed) { setCustomError("Please enter an email address."); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) { setCustomError("Please enter a valid email address."); return; }
+    setCustomStatus("loading");
+    setCustomError("");
+    try {
+      await callSubscribe(trimmed);
+      setCustomStatus("success");
+    } catch (e) {
+      setCustomStatus("error");
+      setCustomError(e instanceof Error ? e.message : "Something went wrong.");
+    }
+  };
+
+  // ── Loading user skeleton ──
+  if (loadingUser) {
     return (
-      <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-brand/10 rounded-xl">
-              <Mail className="h-5 w-5 text-brand" />
-            </div>
-            <div>
-              <CardTitle className="text-lg">Subscribe to our newsletter</CardTitle>
-              <CardDescription>Get the latest updates delivered to your inbox</CardDescription>
-            </div>
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 animate-pulse">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 shrink-0" />
+          <div className="flex-1 space-y-2">
+            <div className="h-4 w-40 bg-slate-200 dark:bg-slate-800 rounded" />
+            <div className="h-3 w-64 bg-slate-100 dark:bg-slate-700 rounded" />
           </div>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-            Sign in to subscribe with your email address
-          </p>
-          <Button className="w-full bg-brand hover:bg-brand/90">
-            Sign in to subscribe
-          </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className="border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg shadow-brand/5">
-      <CardHeader className="pb-3">
-        <div className="flex items-center gap-2">
-          <div className="p-2 bg-brand/10 rounded-xl">
-            <Mail className="h-5 w-5 text-brand" />
+    <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+      <div className="p-6 sm:p-7">
+        <div className="flex flex-col sm:flex-row sm:items-start gap-5">
+
+          {/* Left: icon + text */}
+          <div className="flex items-start gap-3.5 flex-1">
+            <div className="shrink-0 w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center border border-blue-100 dark:border-blue-800 mt-0.5">
+              <Mail className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900 dark:text-white">Stay Ahead of the Market</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+                Get the latest insights and product updates delivered to your inbox.
+              </p>
+            </div>
           </div>
-          <div>
-            <CardTitle className="text-lg">Subscribe to our newsletter</CardTitle>
-            <CardDescription>Stay updated with the latest features and insights</CardDescription>
+
+          {/* Right: actions */}
+          <div className="flex flex-col gap-3 sm:items-end sm:min-w-[300px]">
+
+            {/* ── 1-click subscribe (only shown when user is logged in & not yet subscribed) ── */}
+            {userEmail && oneClickStatus !== "success" && (
+              <div className="flex flex-col gap-1.5 w-full sm:w-auto">
+                <button
+                  onClick={handleOneClick}
+                  disabled={oneClickStatus === "loading"}
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-70 text-white text-sm font-semibold transition-colors w-full sm:w-auto"
+                >
+                  {oneClickStatus === "loading"
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <Zap className="h-4 w-4" />}
+                  1-Click Subscribe
+                </button>
+                {oneClickStatus === "error" && (
+                  <div className="flex items-center gap-1.5 text-xs text-red-500 dark:text-red-400">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                    {oneClickError}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── 1-click success ── */}
+            {oneClickStatus === "success" && (
+              <div className="flex items-center gap-2 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 className="h-4 w-4" />
+                Subscribed successfully!
+              </div>
+            )}
+
+            {/* ── Custom email row (always shown if no user email, or as "other email" option) ── */}
+            {!userEmail && (
+              <div className="flex gap-2 w-full">
+                <div className="relative flex-1">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                  <input
+                    type="email"
+                    placeholder="Enter your email"
+                    value={customEmail}
+                    onChange={(e) => { setCustomEmail(e.target.value); setCustomError(""); setCustomStatus("idle"); }}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleCustomSubmit(); }}
+                    disabled={customStatus === "success"}
+                    className="w-full pl-9 pr-3 h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 disabled:opacity-60 transition"
+                  />
+                </div>
+                {customStatus === "success"
+                  ? <div className="flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                      <CheckCircle2 className="h-4 w-4" /> Done!
+                    </div>
+                  : <button onClick={handleCustomSubmit} disabled={customStatus === "loading" || !customEmail.trim()}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-semibold hover:bg-slate-700 dark:hover:bg-slate-100 disabled:opacity-50 transition-colors shrink-0">
+                      {customStatus === "loading" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                      Subscribe
+                    </button>
+                }
+              </div>
+            )}
+
+            {/* Custom error for no-user flow */}
+            {!userEmail && customStatus === "error" && (
+              <div className="flex items-center gap-1.5 text-xs text-red-500 dark:text-red-400">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />{customError}
+              </div>
+            )}
           </div>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {!useDifferentEmail ? (
-          <>
-            <div className="flex items-center justify-between gap-4 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-slate-200 dark:bg-slate-700 rounded-full">
-                  <Mail className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Subscribing as</p>
-                  <p className="text-sm font-medium text-slate-900 dark:text-white">{userEmail}</p>
-                </div>
+
+        {/* ── Logged-in sub-info + "other email" toggle ── */}
+        {userEmail && oneClickStatus !== "success" && (
+          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
+            <p className="text-xs text-slate-400 dark:text-slate-500">
+              Subscribes newsletter for{" "}
+              <span className="font-semibold text-slate-600 dark:text-slate-300">{userEmail}</span>
+            </p>
+
+            {!showCustom ? (
+              <button onClick={() => setShowCustom(true)}
+                className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium">
+                Want to subscribe with a different email?
+                <ChevronDown className="h-3.5 w-3.5" />
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <button onClick={() => { setShowCustom(false); setCustomEmail(""); setCustomError(""); setCustomStatus("idle"); }}
+                  className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-medium">
+                  <ChevronUp className="h-3.5 w-3.5" /> Hide
+                </button>
+
+                {customStatus === "success" ? (
+                  <div className="flex items-center gap-2 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span><span className="font-semibold">{customEmail}</span> subscribed!</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                        <input
+                          type="email"
+                          placeholder="Other email address"
+                          value={customEmail}
+                          onChange={(e) => { setCustomEmail(e.target.value); setCustomError(""); setCustomStatus("idle"); }}
+                          onKeyDown={(e) => { if (e.key === "Enter") handleCustomSubmit(); }}
+                          className="w-full pl-9 pr-3 h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition"
+                        />
+                      </div>
+                      <button onClick={handleCustomSubmit}
+                        disabled={customStatus === "loading" || !customEmail.trim()}
+                        className="inline-flex items-center gap-1.5 px-4 h-10 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-semibold hover:bg-slate-700 dark:hover:bg-slate-100 disabled:opacity-50 transition-colors shrink-0">
+                        {customStatus === "loading" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                        Subscribe
+                      </button>
+                    </div>
+                    {customStatus === "error" && (
+                      <div className="flex items-center gap-1.5 text-xs text-red-500 dark:text-red-400">
+                        <AlertCircle className="h-3.5 w-3.5 shrink-0" />{customError}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
-            <Button
-              onClick={handleSubscribe}
-              disabled={isSubscribing}
-              className="w-full bg-brand hover:bg-brand/90"
-            >
-              {isSubscribing ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Subscribing...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Subscribe
-                </>
-              )}
-            </Button>
-            <button
-              onClick={() => setUseDifferentEmail(true)}
-              className="text-xs text-slate-500 dark:text-slate-400 hover:text-brand dark:hover:text-brand underline underline-offset-4"
-            >
-              Want to use a different email?
-            </button>
-          </>
-        ) : (
-          <>
-            <div className="space-y-3">
-              <div>
-                <label htmlFor="custom-email" className="text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5 block">
-                  Email address
-                </label>
-                <Input
-                  id="custom-email"
-                  type="email"
-                  placeholder="your@email.com"
-                  value={customEmail}
-                  onChange={(e) => setCustomEmail(e.target.value)}
-                  className="h-11 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700"
-                  autoFocus
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  onClick={handleSubscribe}
-                  disabled={isSubscribing || !customEmail}
-                  className="flex-1 bg-brand hover:bg-brand/90"
-                >
-                  {isSubscribing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Subscribing...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      Subscribe
-                    </>
-                  )}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleCancel}
-                  disabled={isSubscribing}
-                  className="border-slate-200 dark:border-slate-700"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </>
+            )}
+          </div>
         )}
-      </CardContent>
-    </Card>
+
+        {/* ── Post 1-click success: still offer custom email ── */}
+        {userEmail && oneClickStatus === "success" && !customStatus && (
+          <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+            {!showCustom ? (
+              <button onClick={() => setShowCustom(true)}
+                className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium">
+                Subscribe another email?
+                <ChevronDown className="h-3.5 w-3.5" />
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <button onClick={() => { setShowCustom(false); setCustomEmail(""); setCustomError(""); setCustomStatus("idle"); }}
+                  className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-medium">
+                  <ChevronUp className="h-3.5 w-3.5" /> Hide
+                </button>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+                    <input type="email" placeholder="Another email address" value={customEmail}
+                      onChange={(e) => { setCustomEmail(e.target.value); setCustomError(""); setCustomStatus("idle"); }}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleCustomSubmit(); }}
+                      className="w-full pl-9 pr-3 h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 transition" />
+                  </div>
+                  <button onClick={handleCustomSubmit} disabled={customStatus === "loading" || !customEmail.trim()}
+                    className="inline-flex items-center gap-1.5 px-4 h-10 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-sm font-semibold hover:bg-slate-700 dark:hover:bg-slate-100 disabled:opacity-50 transition-colors shrink-0">
+                    {customStatus === "loading" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                    Subscribe
+                  </button>
+                </div>
+                {customStatus === "success" && (
+                  <div className="flex items-center gap-2 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 className="h-4 w-4" /><span>{customEmail} subscribed!</span>
+                  </div>
+                )}
+                {customStatus === "error" && (
+                  <div className="flex items-center gap-1.5 text-xs text-red-500 dark:text-red-400">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />{customError}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
