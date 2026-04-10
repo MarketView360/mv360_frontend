@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { ExternalLinkWarning, useExternalLinkWarning } from "../news/ExternalLinkWarning";
 import { NewsletterSubscribe } from "./components/NewsletterSubscribe";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -31,22 +33,13 @@ interface Blog {
 
 type Tab = "blog" | "announcements";
 
-// ─── Markdown link parser ────────────────────────────────────────────────────
-type MarkdownPart = { type: "text"; text: string } | { type: "link"; text: string; url: string };
-
-function parseMarkdownLinks(text: string): MarkdownPart[] {
-  const parts: MarkdownPart[] = [];
-  if (!text) return parts;
-  const regex = /\[([^\]]+)\]\s*\(([^)]+)\)/g;
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > lastIndex) parts.push({ type: "text", text: text.slice(lastIndex, match.index) });
-    parts.push({ type: "link", text: match[1], url: match[2] });
-    lastIndex = regex.lastIndex;
-  }
-  if (lastIndex < text.length) parts.push({ type: "text", text: text.slice(lastIndex) });
-  return parts;
+// ─── Markdown Utilities ──────────────────────────────────────────────────────
+function normalizeMarkdown(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(/\\r\\n/g, '\n')
+    .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '\n');
 }
 
 function isInternalUrl(rawUrl: string): boolean {
@@ -56,20 +49,42 @@ function isInternalUrl(rawUrl: string): boolean {
   } catch { return false; }
 }
 
-function RichText({ text, onExternalClick }: { text: string; onExternalClick: (url: string) => void }) {
-  const parts = useMemo(() => parseMarkdownLinks(text), [text]);
-  if (!parts.length) return <>{text}</>;
+function RichText({ text, onExternalClick, isPreview = false }: { text: string; onExternalClick: (url: string) => void; isPreview?: boolean }) {
+  const normalized = useMemo(() => normalizeMarkdown(text), [text]);
+
   return (
-    <>
-      {parts.map((p, i) =>
-        p.type === "text" ? <span key={i}>{p.text}</span> :
-          isInternalUrl(p.url)
-            ? <a key={i} href={p.url} className="text-blue-600 hover:underline">{p.text}</a>
-            : <button key={i} type="button"
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onExternalClick(p.url); }}
-                className="text-blue-600 hover:underline">{p.text}</button>
-      )}
-    </>
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        a: ({ href, children }) => {
+          const url = href || "";
+          if (isInternalUrl(url)) {
+            return (
+              <a href={url} className="text-blue-600 dark:text-blue-400 hover:underline">
+                {children}
+              </a>
+            );
+          }
+          return (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onExternalClick(url);
+              }}
+              className="text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              {children}
+            </button>
+          );
+        },
+        p: ({ children }) => <p className={isPreview ? "" : "mb-4 last:mb-0"}>{children}</p>,
+        // Add more custom renders if needed for bold/italics etc to match styling
+      }}
+    >
+      {normalized}
+    </ReactMarkdown>
   );
 }
 
@@ -164,9 +179,9 @@ function FeaturedCard({ blog, onSelect, onExternalClick }: {
             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors leading-snug line-clamp-3">
               {blog.title}
             </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-3">
-              <RichText text={blog.description} onExternalClick={onExternalClick} />
-            </p>
+            <div className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-3">
+              <RichText text={blog.description} onExternalClick={onExternalClick} isPreview />
+            </div>
           </div>
           <div className="mt-6 flex items-center gap-2 text-sm font-semibold text-blue-600 dark:text-blue-400 group-hover:gap-3 transition-all">
             Read article <ArrowUpRight className="h-4 w-4" />
@@ -214,9 +229,9 @@ function ArticleCard({ blog, onSelect, onExternalClick, index }: {
         <h3 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors leading-snug line-clamp-2">
           {blog.title}
         </h3>
-        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
-          <RichText text={blog.description} onExternalClick={onExternalClick} />
-        </p>
+        <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
+          <RichText text={blog.description} onExternalClick={onExternalClick} isPreview />
+        </div>
         <div className="pt-1 flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 group-hover:gap-2 transition-all">
           Read more <ChevronRight className="h-3.5 w-3.5" />
         </div>
@@ -299,7 +314,7 @@ function ArticleModal({ blog, onClose, onExternalClick }: {
         </div>
 
         {/* Body */}
-        <div className="px-6 sm:px-8 py-6 overflow-y-auto flex-1 text-sm sm:text-base text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+        <div className="px-6 sm:px-8 py-6 overflow-y-auto flex-1 text-sm sm:text-base text-slate-700 dark:text-slate-300 leading-relaxed">
           <RichText text={blog.content || blog.description} onExternalClick={onExternalClick} />
         </div>
 
