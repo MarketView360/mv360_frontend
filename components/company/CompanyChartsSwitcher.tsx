@@ -191,15 +191,27 @@ export function CompanyChartsSwitcher({
   const filteredValuationHistory = useMemo(() => {
     // ... logic ...
     if (!valuationHistory || valuationHistory.length === 0) return [];
-    const map: Record<typeof range, number> = {
+    
+    // Merge price history into valuation history by date
+    const priceMap = new Map<string, number>();
+    priceHistory.forEach((p: PriceHistoryPoint) => {
+      if (p.price != null) priceMap.set(p.date, p.price);
+    });
+    
+    const mergedHistory = valuationHistory.map(v => ({
+      ...v,
+      price: v.price ?? priceMap.get(v.date) ?? null
+    }));
+
+    const map: Record<string, number> = {
       "1Y": 252,
       "3Y": 252 * 3,
       "5Y": 252 * 5,
     };
-    const windowSize = map[range];
-    let filtered = valuationHistory;
-    if (valuationHistory.length > windowSize) {
-      filtered = valuationHistory.slice(-windowSize);
+    const windowSize = map[range] || 252;
+    let filtered = mergedHistory;
+    if (mergedHistory.length > windowSize) {
+      filtered = mergedHistory.slice(-windowSize);
     }
 
     const prices = filtered.map(p => p.price).filter((p): p is number => p !== null);
@@ -247,10 +259,7 @@ export function CompanyChartsSwitcher({
     document.documentElement.classList.contains("dark");
 
   const handleModeChange = (newMode: "price" | "valuations" | "price_pe") => {
-    if (newMode === "price") {
-      setMode("price");
-    }
-    // Coming soon features - do nothing, buttons are disabled
+    setMode(newMode);
   };
 
   const renderChartBody = (heightClass: string) => (
@@ -462,8 +471,8 @@ export function CompanyChartsSwitcher({
             {mode === "price"
               ? "Price & Volume"
               : mode === "valuations"
-                ? "Valuations (Coming Soon)"
-                : "Price & P/E (Coming Soon)"}
+                ? "Valuations"
+                : "Price & P/E"}
           </CardTitle>
           <div className="flex items-center gap-2">
             <div className="inline-flex items-center gap-1 rounded-full bg-slate-100 dark:bg-slate-800 p-0.5 text-xs">
@@ -491,10 +500,9 @@ export function CompanyChartsSwitcher({
                     ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
                     : "text-slate-500 dark:text-slate-400"
                 )}
-                onClick={() => setShowComingSoon(true)}
+                onClick={() => handleModeChange("price_pe")}
               >
                 Price & P/E
-                <span className="text-[9px] bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300">Coming Soon</span>
               </Button>
               <Button
                 type="button"
@@ -506,10 +514,9 @@ export function CompanyChartsSwitcher({
                     ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
                     : "text-slate-500 dark:text-slate-400"
                 )}
-                onClick={() => setShowComingSoon(true)}
+                onClick={() => handleModeChange("valuations")}
               >
                 Valuation
-                <span className="text-[9px] bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300">Coming Soon</span>
               </Button>
             </div>
             <button
