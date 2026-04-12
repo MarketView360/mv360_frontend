@@ -520,11 +520,19 @@ function PricingCard({
     price,
     isAnnual,
     userSubscription,
+    paymentStatus,
+    flagsLoaded,
+    isProcessing,
+    onCheckout,
 }: {
     plan: PricingPlan;
     price: string;
     isAnnual: boolean;
     userSubscription: { tier: string } | null;
+    paymentStatus: PaymentStatus;
+    flagsLoaded: boolean;
+    isProcessing: boolean;
+    onCheckout: () => Promise<void>;
 }) {
     const router = useRouter();
     const isPremium = plan.tier === "premium";
@@ -704,10 +712,30 @@ function PricingCard({
                     >
                         Get Started Free
                     </button>
-                ) : isPremium ? (
-                    // Premium plan: Show waitlist button or upgrade
+                ) : isPremium || isMax ? (
+                    // Premium/Max plan: Check payment status
                     <>
-                        {inWaitlist ? (
+                        {paymentStatus === "enabled" ? (
+                            // Payments enabled - show checkout button
+                            <button
+                                onClick={onCheckout}
+                                disabled={isProcessing}
+                                className="w-full py-2.5 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                                style={{ background: colors.bg }}
+                            >
+                                {isProcessing ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Processing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <CreditCard className="w-4 h-4" />
+                                        Subscribe Now
+                                    </>
+                                )}
+                            </button>
+                        ) : inWaitlist ? (
                             <button
                                 disabled
                                 className="w-full py-2.5 rounded-lg text-sm font-semibold text-white flex items-center justify-center gap-2"
@@ -719,7 +747,7 @@ function PricingCard({
                         ) : (
                             <button
                                 onClick={handleJoinWaitlist}
-                                disabled={waitlistLoading}
+                                disabled={waitlistLoading || !flagsLoaded}
                                 className="w-full py-2.5 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
                                 style={{ background: colors.bg }}
                             >
@@ -727,6 +755,21 @@ function PricingCard({
                                     <>
                                         <Loader2 className="w-4 h-4 animate-spin" />
                                         Joining...
+                                    </>
+                                ) : !flagsLoaded ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Loading...
+                                    </>
+                                ) : paymentStatus === "disabled-paused" || paymentStatus === "disabled" ? (
+                                    <>
+                                        <Clock className="w-4 h-4" />
+                                        Temporarily Unavailable
+                                    </>
+                                ) : paymentStatus === "disabled-coming-soon" ? (
+                                    <>
+                                        <Bell className="w-4 h-4" />
+                                        Join Waitlist
                                     </>
                                 ) : (
                                     <>
@@ -737,13 +780,15 @@ function PricingCard({
                             </button>
                         )}
                         <p className="text-center text-[11px] text-slate-400 dark:text-slate-500 mt-1.5">
-                            {inWaitlist 
+                            {paymentStatus === "enabled"
+                                ? "Secure checkout via Razorpay"
+                                : inWaitlist
                                 ? "We'll notify you when Premium launches!"
                                 : "Be the first to know when we launch"}
                         </p>
                     </>
                 ) : (
-                    // Max plan: Coming soon
+                    // Fallback
                     <>
                         <button
                             disabled
