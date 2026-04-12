@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { MarketBreadth } from "@/components/market/MarketBreadth";
 import { GlobalMarkets } from "@/components/market/GlobalMarkets";
 import { SectorPerformance } from "@/components/market/SectorPerformance";
-import { EconomicCalendar } from "@/components/market/EconomicCalendar";
+import { StockEventsCalendar } from "@/components/market/StockEventsCalendar";
 import MarketOverview from "@/components/MarketOverview";
 import { MarketHeatmapNew } from "@/components/MarketHeatmapNew";
 
@@ -32,10 +32,10 @@ export default function MarketPage() {
           <MarketHeatmapNew />
         </div>
 
-        {/* Secondary Row: Market Breadth + Economic Calendar side by side */}
+        {/* Secondary Row: Market Breadth + Stock Events Calendar side by side */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <MarketBreadth />
-          <EconomicCalendar />
+          <StockEventsCalendar />
         </div>
 
         {/* Sector Performance Section */}
