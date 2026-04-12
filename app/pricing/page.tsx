@@ -720,7 +720,8 @@ function PricingCard({
                 ) : isPremium || isMax ? (
                     // Premium/Max plan: Check payment status
                     <>
-                        {console.log("[PricingCard] paymentStatus:", paymentStatus, "flagsLoaded:", flagsLoaded, "inWaitlist:", inWaitlist)}
+                        {console.log("[PricingCard Render] paymentStatus:", paymentStatus, "flagsLoaded:", flagsLoaded, "inWaitlist:", inWaitlist, "isProcessing:", isProcessing)}
+                        {console.log("[PricingCard Render] paymentStatus === 'enabled':", paymentStatus === "enabled")}
                         {paymentStatus === "enabled" ? (
                             // Payments enabled - show checkout button
                             <button
