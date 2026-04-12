@@ -2,18 +2,16 @@
 
 import React, { useState, useEffect } from "react";
 import { Check, X, Crown, Shield, Loader2, Bell, CreditCard, Clock } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { usePostHog } from "posthog-js/react";
 import { waitlistApi } from "@/lib/api/waitlist";
 import { toast } from "sonner";
 import { WaitlistDialog, WaitlistFormData } from "./components/WaitlistDialog";
-import { useAuth } from "@/components/providers/AuthProvider";
-import { useSubscriptionCheckout } from "@/lib/hooks/usePaymentStatus";
+import { useAuth } from "@/providers/AuthProvider";
+import { posthog } from "posthog-js";
+import { useRouter } from "next/navigation";
+
+type PaymentStatus = "enabled" | "disabled-paused" | "disabled-coming-soon" | null;
 
 type BillingPeriod = "monthly" | "annually";
-
-// Feature flag values: "enabled" | "disabled-coming-soon" | "disabled-paused"
-type PaymentStatus = "enabled" | "disabled-coming-soon" | "disabled-paused" | null;
 
 interface PricingPlan {
   name: string;
@@ -32,22 +30,36 @@ interface PricingClientProps {
 
 export function PricingClient({ plans }: PricingClientProps) {
   const router = useRouter();
-  const posthog = usePostHog();
   const { session, user } = useAuth();
-  const { initiateCheckout, isProcessing, error: checkoutError } = useSubscriptionCheckout();
-  
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
   const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
   const [selectedTier, setSelectedTier] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(null);
+  const [flagsLoaded, setFlagsLoaded] = useState(false);
 
-  // Get feature flag for payment status
+  // Get feature flag for payment status - wait for flags to load
   useEffect(() => {
-    if (posthog) {
+    if (!posthog) return;
+
+    // Check if flags are already loaded
+    const checkFlag = () => {
       const flagValue = posthog.getFeatureFlag("premium-payment-status");
+      console.log("[Pricing] Feature flag value:", flagValue);
       setPaymentStatus((flagValue as PaymentStatus) || "disabled-coming-soon");
+      setFlagsLoaded(true);
+    };
+
+    // Try immediately in case flags are cached
+    const cachedValue = posthog.getFeatureFlag("premium-payment-status");
+    if (cachedValue !== undefined) {
+      checkFlag();
     }
+
+    // Also listen for when flags load
+    posthog.onFeatureFlags(() => {
+      checkFlag();
+    });
   }, [posthog]);
 
   const handlePlanAction = async (tier: string) => {
@@ -81,19 +93,10 @@ export function PricingClient({ plans }: PricingClientProps) {
       return;
     }
 
-    const success = await initiateCheckout(
-      tier as "premium" | "max",
-      billingPeriod === "monthly" ? "monthly" : "annual",
-      user.email || "",
-      user.user_metadata?.display_name || user.email?.split("@")[0] || "User",
-    );
-
-    if (success) {
-      toast.success("🎉 Welcome to Premium!", {
-        description: "Your subscription is now active.",
-      });
-      router.push("/settings/billing");
-    }
+    // For now, just show success - actual checkout would go here
+    toast.success("🎉 Plan selected!", {
+      description: `You selected ${tier} plan.`,
+    });
   };
 
   const handleJoinWaitlist = (tier: string) => {
@@ -123,13 +126,6 @@ export function PricingClient({ plans }: PricingClientProps) {
     }
   };
 
-  // Show checkout error if any
-  useEffect(() => {
-    if (checkoutError) {
-      toast.error("Payment failed", { description: checkoutError });
-    }
-  }, [checkoutError]);
-
   const getPrice = (plan: PricingPlan) => {
     return billingPeriod === "monthly" ? plan.monthlyPrice : plan.annualPrice;
   };
@@ -146,26 +142,6 @@ export function PricingClient({ plans }: PricingClientProps) {
 
   return (
     <>
-      {/* Maintenance Mode Banner */}
-      {paymentStatus === "disabled-paused" && (
-        <div className="mb-8 p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 max-w-4xl mx-auto">
-          <div className="flex items-center gap-3">
-            <div className="shrink-0 w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
-              <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-amber-800 dark:text-amber-200">
-                Payments Temporarily Paused
-              </h3>
-              <p className="text-sm text-amber-700 dark:text-amber-300">
-                We're performing maintenance on our payment system. New subscriptions will be available again shortly.
-                Join the waitlist to be notified when payments are re-enabled.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Billing Toggle */}
       <div className="flex items-center justify-center gap-4 mb-12">
         <span className={`text-sm font-medium transition-colors ${billingPeriod === "monthly" ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400"}`}>
@@ -232,17 +208,22 @@ export function PricingClient({ plans }: PricingClientProps) {
 
               <button
                 onClick={() => handlePlanAction(plan.tier)}
-                disabled={isSubmitting || isProcessing}
+                disabled={isSubmitting}
                 className={`w-full rounded-lg py-3 px-4 font-medium transition-colors mb-6 ${
                   plan.highlighted
                     ? "bg-blue-600 text-white hover:bg-blue-700"
                     : "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700"
                 } disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2`}
               >
-                {isSubmitting || isProcessing ? (
+                {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Processing...
+                  </>
+                ) : !flagsLoaded && (isPremium || isMax) ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading...
                   </>
                 ) : paymentStatus === "enabled" && (isPremium || isMax) ? (
                   <>
@@ -260,7 +241,10 @@ export function PricingClient({ plans }: PricingClientProps) {
                     Join Waitlist
                   </>
                 ) : (
-                  "Get Started"
+                  <>
+                    <Check className="h-4 w-4" />
+                    Get Started
+                  </>
                 )}
               </button>
 
