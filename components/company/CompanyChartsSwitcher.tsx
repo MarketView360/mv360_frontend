@@ -69,36 +69,56 @@ export function CompanyChartsSwitcher({
   const [mounted, setMounted] = useState(false);
   const [isLoadingPrices, setIsLoadingPrices] = useState(false);
   const [currentPriceHistory, setCurrentPriceHistory] = useState<PriceHistoryPoint[] | null>(priceHistory);
+  const [currentValuationHistory, setCurrentValuationHistory] = useState<ValuationHistoryPoint[] | null>(valuationHistory);
   const [showComingSoon, setShowComingSoon] = useState(false);
 
-  // Cache for prefetched price data (stored in memory, survives re-renders)
-  const priceDataCache = React.useRef<Map<string, PriceHistoryPoint[]>>(new Map());
+  // Cache for prefetched chart data (stored in memory, survives re-renders)
+  const chartDataCache = React.useRef<Map<string, { prices: PriceHistoryPoint[], valuations: ValuationHistoryPoint[] }>>(new Map());
   // Track which ticker's data has been prefetched
   const prefetchedTicker = React.useRef<string | null>(null);
   const isPrefetching = React.useRef(false);
 
-  // Fetch prices for the selected range (with caching)
-  const fetchPricesForRange = React.useCallback(async (selectedRange: typeof range, setLoading = true) => {
+  // Fetch chart data for the selected range (with caching)
+  const fetchDataForRange = React.useCallback(async (selectedRange: typeof range, setLoading = true) => {
     if (!ticker) return;
 
     const cacheKey = `${ticker}:${selectedRange}`;
 
     // Check cache first
-    const cached = priceDataCache.current.get(cacheKey);
+    const cached = chartDataCache.current.get(cacheKey);
     if (cached) {
-      setCurrentPriceHistory(cached);
+      setCurrentPriceHistory(cached.prices);
+      setCurrentValuationHistory(cached.valuations);
       return;
     }
 
     if (setLoading) setIsLoadingPrices(true);
     try {
       const rangeParam = selectedRange.toLowerCase();
-      const res = await fetch(`/api/prices/${encodeURIComponent(ticker)}?range=${rangeParam}`, {
-        headers: { "Content-Type": "application/json" },
-      });
-      if (!res.ok) throw new Error(`Failed to fetch prices: ${res.statusText}`);
-      const data = await res.json();
-      const mapped: PriceHistoryPoint[] = (data.prices || []).map((p: any) => ({
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+      
+      // Determine max points needed for valuation history
+      const map: Record<string, number> = { "1Y": 300, "3Y": 800, "5Y": 1500 };
+      const limit = map[selectedRange] || 500;
+
+      const [priceRes, valuationRes] = await Promise.all([
+        fetch(`${backendUrl}/api/prices/${encodeURIComponent(ticker)}?range=${rangeParam}`, {
+          headers: { "Content-Type": "application/json" },
+        }),
+        fetch(`${backendUrl}/api/company/${encodeURIComponent(ticker)}/valuations?limit=${limit}`, {
+          headers: { "Content-Type": "application/json" },
+        })
+      ]);
+
+      if (!priceRes.ok) throw new Error(`Failed to fetch prices: ${priceRes.statusText}`);
+      if (!valuationRes.ok) throw new Error(`Failed to fetch valuations: ${valuationRes.statusText}`);
+      
+      const [priceData, valuationData] = await Promise.all([
+        priceRes.json(),
+        valuationRes.json()
+      ]);
+
+      const mappedPrices: PriceHistoryPoint[] = (priceData.prices || []).map((p: any) => ({
         date: p.date,
         price: p.adj_close ?? p.close ?? 0,
         open: p.open ?? null,
@@ -107,10 +127,19 @@ export function CompanyChartsSwitcher({
         close: p.close ?? null,
         volume: p.volume ?? null,
       }));
-      priceDataCache.current.set(cacheKey, mapped);
-      setCurrentPriceHistory(mapped);
+
+      const mappedValuations: ValuationHistoryPoint[] = (valuationData || []).map((v: any) => ({
+        date: v.date,
+        pe_ratio: v.pe_ratio,
+        forward_pe: v.forward_pe,
+        price: v.price ?? null,
+      }));
+
+      chartDataCache.current.set(cacheKey, { prices: mappedPrices, valuations: mappedValuations });
+      setCurrentPriceHistory(mappedPrices);
+      setCurrentValuationHistory(mappedValuations);
     } catch (err) {
-      console.error("Error fetching prices for range:", err);
+      console.error("Error fetching data for range:", err);
     } finally {
       if (setLoading) setIsLoadingPrices(false);
     }
@@ -120,14 +149,15 @@ export function CompanyChartsSwitcher({
     setRange(newRange);
     // Check cache first - if available, set immediately
     const cacheKey = `${ticker}:${newRange}`;
-    const cached = priceDataCache.current.get(cacheKey);
+    const cached = chartDataCache.current.get(cacheKey);
     if (cached) {
-      setCurrentPriceHistory(cached);
+      setCurrentPriceHistory(cached.prices);
+      setCurrentValuationHistory(cached.valuations);
     } else {
       // Not cached, fetch and show loading
-      fetchPricesForRange(newRange);
+      fetchDataForRange(newRange);
     }
-  }, [fetchPricesForRange, ticker]);
+  }, [fetchDataForRange, ticker]);
 
   // Prefetch extended ranges in background after initial load
   useEffect(() => {
@@ -152,14 +182,23 @@ export function CompanyChartsSwitcher({
 
         // Only prefetch if not already cached for this ticker
         const cacheKey = `${ticker}:${r}`;
-        if (!priceDataCache.current.has(cacheKey)) {
+        if (!chartDataCache.current.has(cacheKey)) {
           const rangeParam = r.toLowerCase();
-          fetch(`/api/prices/${encodeURIComponent(ticker)}?range=${rangeParam}`, {
-            headers: { "Content-Type": "application/json" },
-          })
-            .then(res => res.json())
-            .then(data => {
-              const mapped: PriceHistoryPoint[] = (data.prices || []).map((p: any) => ({
+          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+          
+          const map: Record<string, number> = { "1Y": 300, "3Y": 800, "5Y": 1500 };
+          const limit = map[r] || 500;
+
+          Promise.all([
+            fetch(`${backendUrl}/api/prices/${encodeURIComponent(ticker)}?range=${rangeParam}`, {
+              headers: { "Content-Type": "application/json" },
+            }).then(res => res.json()),
+            fetch(`${backendUrl}/api/company/${encodeURIComponent(ticker)}/valuations?limit=${limit}`, {
+              headers: { "Content-Type": "application/json" },
+            }).then(res => res.json())
+          ])
+            .then(([pData, vData]) => {
+              const mappedPrices: PriceHistoryPoint[] = (pData.prices || []).map((p: any) => ({
                 date: p.date,
                 price: p.adj_close ?? p.close ?? 0,
                 open: p.open ?? null,
@@ -168,11 +207,17 @@ export function CompanyChartsSwitcher({
                 close: p.close ?? null,
                 volume: p.volume ?? null,
               }));
-              priceDataCache.current.set(cacheKey, mapped);
+
+              const mappedValuations: ValuationHistoryPoint[] = (vData || []).map((v: any) => ({
+                date: v.date,
+                pe_ratio: v.pe_ratio,
+                forward_pe: v.forward_pe,
+                price: v.price ?? null,
+              }));
+
+              chartDataCache.current.set(cacheKey, { prices: mappedPrices, valuations: mappedValuations });
             })
-            .catch(() => {
-              // Silently fail - user can still click and fetch on-demand
-            });
+            .catch(err => console.error("Prefetch error:", err));
         }
       }
     };
@@ -186,20 +231,34 @@ export function CompanyChartsSwitcher({
     .filter((m) => m.value != null)
     .map((m) => ({ label: m.label, value: m.value as number }));
 
-  const hasPeHistory = valuationHistory.some((p) => p.pe_ratio != null);
+  const hasPeHistory = (currentValuationHistory || []).some((p) => p.pe_ratio != null);
 
   const filteredValuationHistory = useMemo(() => {
-    // ... logic ...
-    if (!valuationHistory || valuationHistory.length === 0) return [];
-    const map: Record<typeof range, number> = {
+    const pricesForChart = currentPriceHistory || [];
+    const valuationsForChart = currentValuationHistory || [];
+
+    if (valuationsForChart.length === 0) return [];
+    
+    // Merge price history into valuation history by date
+    const priceMap = new Map<string, number>();
+    pricesForChart.forEach((p: PriceHistoryPoint) => {
+      if (p.price != null) priceMap.set(p.date, p.price);
+    });
+    
+    const mergedHistory = valuationsForChart.map(v => ({
+      ...v,
+      price: v.price ?? priceMap.get(v.date) ?? null
+    }));
+
+    const map: Record<string, number> = {
       "1Y": 252,
       "3Y": 252 * 3,
       "5Y": 252 * 5,
     };
-    const windowSize = map[range];
-    let filtered = valuationHistory;
-    if (valuationHistory.length > windowSize) {
-      filtered = valuationHistory.slice(-windowSize);
+    const windowSize = map[range] || 252;
+    let filtered = mergedHistory;
+    if (mergedHistory.length > windowSize) {
+      filtered = mergedHistory.slice(-windowSize);
     }
 
     const prices = filtered.map(p => p.price).filter((p): p is number => p !== null);
@@ -247,10 +306,7 @@ export function CompanyChartsSwitcher({
     document.documentElement.classList.contains("dark");
 
   const handleModeChange = (newMode: "price" | "valuations" | "price_pe") => {
-    if (newMode === "price") {
-      setMode("price");
-    }
-    // Coming soon features - do nothing, buttons are disabled
+    setMode(newMode);
   };
 
   const renderChartBody = (heightClass: string) => (
@@ -462,8 +518,8 @@ export function CompanyChartsSwitcher({
             {mode === "price"
               ? "Price & Volume"
               : mode === "valuations"
-                ? "Valuations (Coming Soon)"
-                : "Price & P/E (Coming Soon)"}
+                ? "Valuations"
+                : "Price & P/E"}
           </CardTitle>
           <div className="flex items-center gap-2">
             <div className="inline-flex items-center gap-1 rounded-full bg-slate-100 dark:bg-slate-800 p-0.5 text-xs">
@@ -491,10 +547,9 @@ export function CompanyChartsSwitcher({
                     ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
                     : "text-slate-500 dark:text-slate-400"
                 )}
-                onClick={() => setShowComingSoon(true)}
+                onClick={() => handleModeChange("price_pe")}
               >
                 Price & P/E
-                <span className="text-[9px] bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300">Coming Soon</span>
               </Button>
               <Button
                 type="button"
@@ -506,10 +561,9 @@ export function CompanyChartsSwitcher({
                     ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-sm"
                     : "text-slate-500 dark:text-slate-400"
                 )}
-                onClick={() => setShowComingSoon(true)}
+                onClick={() => handleModeChange("valuations")}
               >
                 Valuation
-                <span className="text-[9px] bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-300">Coming Soon</span>
               </Button>
             </div>
             <button

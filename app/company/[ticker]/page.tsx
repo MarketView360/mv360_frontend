@@ -201,9 +201,9 @@ const PriceSchema = z.object({
 
 const ValuationHistoryPointSchema = z.object({
   date: z.string(),
-  price: z.number().optional().nullable().transform(val => val ?? null),
-  pe_ratio: z.number().optional().nullable().transform(val => val ?? null),
-  forward_pe: z.number().optional().nullable().transform(val => val ?? null),
+  price: z.coerce.number().optional().nullable().transform(val => val ?? null),
+  pe_ratio: z.coerce.number().optional().nullable().transform(val => val ?? null),
+  forward_pe: z.coerce.number().optional().nullable().transform(val => val ?? null),
 });
 
 const ValuationHistoryResponseSchema = z.array(ValuationHistoryPointSchema);
