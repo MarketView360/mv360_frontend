@@ -13,11 +13,19 @@ import {
     LucideIcon,
     Loader2,
     Bell,
+    CreditCard,
+    Clock,
 } from "lucide-react";
 import { waitlistApi } from "@/lib/api/waitlist";
 import { toast } from "sonner";
 import { WaitlistDialog, WaitlistFormData } from "./components/WaitlistDialog";
 import { useRouter } from "next/navigation";
+import { usePostHog } from "posthog-js/react";
+import { useAuth } from "@/providers/AuthProvider";
+import { useSubscriptionCheckout } from "@/lib/hooks/usePaymentStatus";
+
+// Feature flag values: "enabled" | "disabled-coming-soon" | "disabled-paused"
+type PaymentStatus = "enabled" | "disabled-coming-soon" | "disabled-paused" | null;
 
 type BillingPeriod = "monthly" | "annually";
 
@@ -215,11 +223,47 @@ export default function PricingPage() {
     const [showAllFeatures, setShowAllFeatures] = useState(false);
     const [openFaq, setOpenFaq] = useState<number | null>(null);
     const [userSubscription, setUserSubscription] = useState<{ tier: string } | null>(null);
+    const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(null);
+    const [flagsLoaded, setFlagsLoaded] = useState(false);
+    
+    const posthog = usePostHog();
+    const { session, user } = useAuth();
+    const { initiateCheckout, isProcessing, error: checkoutError } = useSubscriptionCheckout();
 
     const isAnnual = billingPeriod === "annually";
     const savingsPercent = 17;
     const showMaxPlan = process.env.NEXT_PUBLIC_ENABLE_MAX_PLAN === "true";
     const displayedPlans = showMaxPlan ? plans : plans.filter(p => p.tier !== "max");
+
+    // Get feature flag for payment status
+    useEffect(() => {
+        if (!posthog) return;
+
+        const checkFlag = () => {
+            const flagValue = posthog.getFeatureFlag("premium-payment-status");
+            console.log("[Pricing] Feature flag value:", flagValue);
+            setPaymentStatus((flagValue as PaymentStatus) || "disabled-coming-soon");
+            setFlagsLoaded(true);
+        };
+
+        // Try immediately in case flags are cached
+        const cachedValue = posthog.getFeatureFlag("premium-payment-status");
+        if (cachedValue !== undefined) {
+            checkFlag();
+        }
+
+        // Also listen for when flags load
+        posthog.onFeatureFlags(() => {
+            checkFlag();
+        });
+    }, [posthog]);
+
+    // Show checkout error if any
+    useEffect(() => {
+        if (checkoutError) {
+            toast.error("Payment failed", { description: checkoutError });
+        }
+    }, [checkoutError]);
 
     // Fetch user subscription on mount
     useEffect(() => {
@@ -305,6 +349,33 @@ export default function PricingPage() {
                                 price={getPrice(plan)}
                                 isAnnual={isAnnual}
                                 userSubscription={userSubscription}
+                                paymentStatus={paymentStatus}
+                                flagsLoaded={flagsLoaded}
+                                isProcessing={isProcessing}
+                                onCheckout={async () => {
+                                    if (!session || !user) {
+                                        toast.error("Please sign in to continue", {
+                                            description: "You need an account to subscribe.",
+                                            action: {
+                                                label: "Sign In",
+                                                onClick: () => window.location.href = "/auth/login?redirect=/pricing",
+                                            },
+                                        });
+                                        return;
+                                    }
+                                    const success = await initiateCheckout(
+                                        plan.tier as "premium" | "max",
+                                        isAnnual ? "annual" : "monthly",
+                                        user.email || "",
+                                        user.user_metadata?.display_name || user.email?.split("@")[0] || "User",
+                                    );
+                                    if (success) {
+                                        toast.success("🎉 Welcome to Premium!", {
+                                            description: "Your subscription is now active.",
+                                        });
+                                        window.location.href = "/settings/billing";
+                                    }
+                                }}
                             />
                         ))}
                     </div>

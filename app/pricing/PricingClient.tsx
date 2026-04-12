@@ -1,10 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
-import { Check, X, Crown, Shield, Loader2, Bell } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Check, X, Crown, Shield, Loader2, Bell, CreditCard, Clock } from "lucide-react";
 import { waitlistApi } from "@/lib/api/waitlist";
 import { toast } from "sonner";
 import { WaitlistDialog, WaitlistFormData } from "./components/WaitlistDialog";
+import { useAuth } from "@/providers/AuthProvider";
+import { posthog } from "posthog-js";
+import { useRouter } from "next/navigation";
+
+type PaymentStatus = "enabled" | "disabled-paused" | "disabled-coming-soon" | null;
 
 type BillingPeriod = "monthly" | "annually";
 
@@ -24,10 +29,75 @@ interface PricingClientProps {
 }
 
 export function PricingClient({ plans }: PricingClientProps) {
+  const router = useRouter();
+  const { session, user } = useAuth();
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
   const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
   const [selectedTier, setSelectedTier] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(null);
+  const [flagsLoaded, setFlagsLoaded] = useState(false);
+
+  // Get feature flag for payment status - wait for flags to load
+  useEffect(() => {
+    if (!posthog) return;
+
+    // Check if flags are already loaded
+    const checkFlag = () => {
+      const flagValue = posthog.getFeatureFlag("premium-payment-status");
+      console.log("[Pricing] Feature flag value:", flagValue);
+      setPaymentStatus((flagValue as PaymentStatus) || "disabled-coming-soon");
+      setFlagsLoaded(true);
+    };
+
+    // Try immediately in case flags are cached
+    const cachedValue = posthog.getFeatureFlag("premium-payment-status");
+    if (cachedValue !== undefined) {
+      checkFlag();
+    }
+
+    // Also listen for when flags load
+    posthog.onFeatureFlags(() => {
+      checkFlag();
+    });
+  }, [posthog]);
+
+  const handlePlanAction = async (tier: string) => {
+    // Free tier - just redirect to signup/dashboard
+    if (tier === "free") {
+      if (session) {
+        router.push("/dashboard");
+      } else {
+        router.push("/auth/signup");
+      }
+      return;
+    }
+
+    // Check payment status from feature flag
+    if (paymentStatus !== "enabled") {
+      // Show waitlist for coming soon or paused states
+      setSelectedTier(tier);
+      setIsWaitlistOpen(true);
+      return;
+    }
+
+    // Payment is enabled - initiate checkout
+    if (!session || !user) {
+      toast.error("Please sign in to continue", {
+        description: "You need an account to subscribe to a plan.",
+        action: {
+          label: "Sign In",
+          onClick: () => router.push("/auth/login?redirect=/pricing"),
+        },
+      });
+      return;
+    }
+
+    // For now, just show success - actual checkout would go here
+    toast.success("🎉 Plan selected!", {
+      description: `You selected ${tier} plan.`,
+    });
+  };
 
   const handleJoinWaitlist = (tier: string) => {
     setSelectedTier(tier);
@@ -137,7 +207,7 @@ export function PricingClient({ plans }: PricingClientProps) {
               </div>
 
               <button
-                onClick={() => handleJoinWaitlist(plan.tier)}
+                onClick={() => handlePlanAction(plan.tier)}
                 disabled={isSubmitting}
                 className={`w-full rounded-lg py-3 px-4 font-medium transition-colors mb-6 ${
                   plan.highlighted
@@ -150,10 +220,30 @@ export function PricingClient({ plans }: PricingClientProps) {
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Processing...
                   </>
-                ) : (
+                ) : !flagsLoaded && (isPremium || isMax) ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : paymentStatus === "enabled" && (isPremium || isMax) ? (
+                  <>
+                    <CreditCard className="h-4 w-4" />
+                    Subscribe Now
+                  </>
+                ) : paymentStatus === "disabled-paused" && (isPremium || isMax) ? (
+                  <>
+                    <Clock className="h-4 w-4" />
+                    Temporarily Unavailable
+                  </>
+                ) : isPremium || isMax ? (
                   <>
                     <Bell className="h-4 w-4" />
-                    {isPremium || isMax ? "Join Waitlist" : "Get Started"}
+                    Join Waitlist
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-4 w-4" />
+                    Get Started
                   </>
                 )}
               </button>
