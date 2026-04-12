@@ -1,151 +1,504 @@
 "use client";
 
-import { Crown, ArrowRight, Zap, Shield, Sparkles, Mail, Clock } from "lucide-react";
+import { useState } from "react";
+import {
+  Crown,
+  ArrowRight,
+  CreditCard,
+  Calendar,
+  Download,
+  RefreshCw,
+  PauseCircle,
+  PlayCircle,
+  XCircle,
+  CheckCircle,
+  AlertTriangle,
+  Loader2,
+  ExternalLink,
+  Receipt,
+  Clock,
+  Shield,
+  Zap,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import { toast } from "sonner";
+import { usePaymentStatus } from "@/lib/hooks/usePaymentStatus";
+import { useAuth } from "@/components/providers/AuthProvider";
+import { paymentApi, Payment } from "@/lib/api/payment";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function BillingPage() {
-  return (
-    <div className="min-h-[80vh] flex items-center justify-center">
-      <div className="w-full max-w-4xl mx-auto px-4">
-        {/* Hero Section */}
+  const { session } = useAuth();
+  const {
+    subscription,
+    plans,
+    payments,
+    isLoading,
+    error,
+    refetch,
+    isPremium,
+    isMax,
+    isFree,
+    daysUntilExpiry,
+  } = usePaymentStatus();
+
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [cancelImmediately, setCancelImmediately] = useState(false);
+
+  const handlePause = async () => {
+    if (!session?.access_token) return;
+    setActionLoading("pause");
+    try {
+      await paymentApi.pauseSubscription(session.access_token);
+      toast.success("Subscription paused", {
+        description: "You can resume anytime.",
+      });
+      refetch();
+    } catch (err) {
+      toast.error("Failed to pause subscription", {
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleResume = async () => {
+    if (!session?.access_token) return;
+    setActionLoading("resume");
+    try {
+      await paymentApi.resumeSubscription(session.access_token);
+      toast.success("Subscription resumed", {
+        description: "Welcome back!",
+      });
+      refetch();
+    } catch (err) {
+      toast.error("Failed to resume subscription", {
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!session?.access_token) return;
+    setActionLoading("cancel");
+    try {
+      await paymentApi.cancelSubscription(
+        session.access_token,
+        cancelImmediately,
+      );
+      toast.success(
+        cancelImmediately ? "Subscription canceled" : "Subscription will cancel at period end",
+        {
+          description: cancelImmediately
+            ? "You've been downgraded to the free plan."
+            : "You'll retain access until your billing period ends.",
+        },
+      );
+      setShowCancelDialog(false);
+      refetch();
+    } catch (err) {
+      toast.error("Failed to cancel subscription", {
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const formatDate = (dateStr: string | undefined) => {
+    if (!dateStr) return "—";
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  const formatCurrency = (amount: number, currency: string = "USD") => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency,
+    }).format(amount);
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode }> = {
+      active: { variant: "default", icon: <CheckCircle className="h-3 w-3" /> },
+      paused: { variant: "secondary", icon: <PauseCircle className="h-3 w-3" /> },
+      canceled: { variant: "destructive", icon: <XCircle className="h-3 w-3" /> },
+      past_due: { variant: "destructive", icon: <AlertTriangle className="h-3 w-3" /> },
+      expired: { variant: "outline", icon: <Clock className="h-3 w-3" /> },
+    };
+    const config = statusConfig[status] || statusConfig.expired;
+    return (
+      <Badge variant={config.variant} className="gap-1 capitalize">
+        {config.icon}
+        {status.replace("_", " ")}
+      </Badge>
+    );
+  };
+
+  const getPaymentStatusBadge = (status: string) => {
+    const statusConfig: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+      captured: "default",
+      authorized: "secondary",
+      pending: "outline",
+      failed: "destructive",
+      refunded: "secondary",
+    };
+    return (
+      <Badge variant={statusConfig[status] || "outline"} className="capitalize">
+        {status}
+      </Badge>
+    );
+  };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-brand" />
+      </div>
+    );
+  }
+
+  // Free tier / No subscription
+  if (isFree) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="text-center space-y-6 mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand/20 border-2 border-brand">
-            <Clock className="h-4 w-4 text-brand" />
-            <span className="text-sm font-bold text-brand uppercase tracking-wide">
-              Coming Soon
-            </span>
-          </div>
-
-          <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Billing & Subscriptions
-            <span className="block text-brand mt-2">
-              launching soon
-            </span>
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+            Billing & Subscription
           </h1>
-
-          <p className="text-lg font-medium text-slate-700 dark:text-slate-300 max-w-xl mx-auto">
-            We're building something special. Manage your subscription, view invoices,
-            and handle payments — all in one seamless experience.
+          <p className="text-slate-600 dark:text-slate-400">
+            You're currently on the <strong>Free</strong> plan.
           </p>
         </div>
 
-        {/* Feature Cards */}
-        <div className="grid md:grid-cols-3 gap-4 mb-12">
-          <Card className="border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-md">
-            <CardContent className="pt-6 text-center space-y-3">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-brand/20 border-2 border-brand">
-                <Crown className="h-6 w-6 text-brand" />
+        {/* Current Plan Card */}
+        <Card className="mb-8 border-2 border-slate-200 dark:border-slate-700">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Crown className="h-5 w-5 text-slate-400" />
+              Current Plan: Free
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-3 gap-4 mb-6">
+              <div className="flex items-center gap-3 p-4 rounded-lg bg-slate-50 dark:bg-slate-800">
+                <Zap className="h-5 w-5 text-slate-400" />
+                <div>
+                  <p className="text-sm text-slate-500">AI Queries</p>
+                  <p className="font-semibold">Limited</p>
+                </div>
               </div>
-              <h3 className="font-bold text-lg text-slate-900 dark:text-white">
-                Flexible Plans
-              </h3>
-              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                Choose from multiple tiers designed for every type of investor
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-md">
-            <CardContent className="pt-6 text-center space-y-3">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-growth/20 border-2 border-growth">
-                <Shield className="h-6 w-6 text-growth" />
+              <div className="flex items-center gap-3 p-4 rounded-lg bg-slate-50 dark:bg-slate-800">
+                <Shield className="h-5 w-5 text-slate-400" />
+                <div>
+                  <p className="text-sm text-slate-500">Screener Access</p>
+                  <p className="font-semibold">Basic</p>
+                </div>
               </div>
-              <h3 className="font-bold text-lg text-slate-900 dark:text-white">
-                Secure Payments
-              </h3>
-              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                Enterprise-grade security for all your transactions
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-md">
-            <CardContent className="pt-6 text-center space-y-3">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-warning/20 border-2 border-warning">
-                <Zap className="h-6 w-6 text-warning" />
+              <div className="flex items-center gap-3 p-4 rounded-lg bg-slate-50 dark:bg-slate-800">
+                <CreditCard className="h-5 w-5 text-slate-400" />
+                <div>
+                  <p className="text-sm text-slate-500">Price</p>
+                  <p className="font-semibold">$0/month</p>
+                </div>
               </div>
-              <h3 className="font-bold text-lg text-slate-900 dark:text-white">
-                Instant Access
-              </h3>
-              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                Upgrade anytime and get immediate access to premium features
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* What's Coming Section */}
-        <Card className="border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg mb-8">
-          <CardContent className="pt-8 pb-8">
-            <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-brand/20 border-2 border-brand mb-3">
-                <Clock className="h-6 w-6 text-brand" />
-              </div>
-              <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">
-                What's Coming
-              </h2>
             </div>
+            <Link href="/pricing">
+              <Button className="w-full bg-brand hover:bg-brand/90">
+                <Crown className="h-4 w-4 mr-2" />
+                Upgrade to Premium
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
 
-            <div className="grid md:grid-cols-2 gap-4 max-w-2xl mx-auto">
+        {/* What Premium Includes */}
+        <Card className="border-brand/30 bg-brand/5">
+          <CardHeader>
+            <CardTitle className="text-brand">
+              ✨ Unlock Premium Features
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-2 gap-3">
               {[
-                "Monthly & annual subscription plans",
-                "Secure payment processing",
-                "Invoice history & downloads",
-                "Plan upgrades & downgrades",
-                "Automatic billing management",
-                "Refund & cancellation support",
+                "Unlimited AI-powered analysis",
+                "Advanced screener filters",
+                "Priority support",
+                "Custom watchlists",
+                "Export to CSV",
+                "Real-time alerts",
               ].map((feature, idx) => (
-                <div key={idx} className="flex items-center gap-3">
-                  <div className="shrink-0 w-6 h-6 rounded-full bg-growth/20 border-2 border-growth flex items-center justify-center">
-                    <svg className="w-3.5 h-3.5 text-growth" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <span className="text-base font-medium text-slate-800 dark:text-slate-200">{feature}</span>
+                <div key={idx} className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-brand" />
+                  <span className="text-sm">{feature}</span>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
-
-        {/* CTA Section */}
-        <div className="text-center space-y-4 mb-8">
-          <p className="text-base font-medium text-slate-700 dark:text-slate-300">
-            Want to see what premium features await you?
-          </p>
-          <Link href="/pricing">
-            <Button className="bg-brand hover:bg-brand/90 text-white font-bold text-lg px-8 py-6 rounded-xl border-4 border-brand/30 shadow-xl hover:shadow-2xl transition-all">
-              View Pricing Plans
-              <ArrowRight className="h-5 w-5 ml-2" />
-            </Button>
-          </Link>
-        </div>
-
-        {/* Contact Us CTA */}
-        <Card className="border-2 border-brand bg-brand/10 dark:bg-brand/5">
-          <CardContent className="pt-8 pb-8">
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-brand/20 border-2 border-brand mb-4">
-                <Mail className="h-6 w-6 text-brand" />
-              </div>
-              <h3 className="text-xl font-extrabold text-slate-900 dark:text-white mb-3">
-                Want Early Access or Custom Features?
-              </h3>
-              <p className="text-base font-medium text-slate-700 dark:text-slate-300 mb-6 max-w-lg mx-auto">
-                If you'd like to try our premium plan earlier and provide feedback, or need custom features, we'd love to hear from you!
-              </p>
-              <Link href="/contact">
-                <Button className="bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 text-white font-bold px-6 py-4 rounded-lg border-2 border-slate-900 dark:border-white">
-                  <Mail className="h-4 w-4 mr-2" />
-                  Contact Us
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
       </div>
+    );
+  }
+
+  // Active subscription view
+  return (
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+          Billing & Subscription
+        </h1>
+        <Button variant="outline" onClick={() => refetch()} disabled={isLoading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+          Refresh
+        </Button>
+      </div>
+
+      {/* Current Plan */}
+      <Card className="mb-6 border-2 border-brand/30">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Crown className="h-5 w-5 text-brand" />
+              {subscription?.plan?.name || "Premium"}
+            </CardTitle>
+            {subscription && getStatusBadge(subscription.status)}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid md:grid-cols-4 gap-4 mb-6">
+            <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800">
+              <p className="text-sm text-slate-500 mb-1">Billing Period</p>
+              <p className="font-semibold capitalize">
+                {subscription?.plan?.billingPeriod || "Monthly"}
+              </p>
+            </div>
+            <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800">
+              <p className="text-sm text-slate-500 mb-1">Amount</p>
+              <p className="font-semibold">
+                {formatCurrency(subscription?.plan?.amountUsd || 0)}
+                <span className="text-sm font-normal text-slate-500">
+                  /{subscription?.plan?.billingPeriod === "annual" ? "yr" : "mo"}
+                </span>
+              </p>
+            </div>
+            <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800">
+              <p className="text-sm text-slate-500 mb-1">Current Period Ends</p>
+              <p className="font-semibold">
+                {formatDate(subscription?.currentPeriodEnd)}
+              </p>
+            </div>
+            <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800">
+              <p className="text-sm text-slate-500 mb-1">Days Remaining</p>
+              <p className="font-semibold">
+                {daysUntilExpiry !== null ? `${daysUntilExpiry} days` : "—"}
+              </p>
+            </div>
+          </div>
+
+          {/* Warning for canceling at period end */}
+          {subscription?.cancelAtPeriodEnd && (
+            <div className="flex items-center gap-3 p-4 mb-6 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
+              <AlertTriangle className="h-5 w-5 text-yellow-600" />
+              <div>
+                <p className="font-medium text-yellow-800 dark:text-yellow-200">
+                  Subscription Ending
+                </p>
+                <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                  Your subscription will end on {formatDate(subscription.currentPeriodEnd)}.
+                  You can resume to keep your access.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Subscription Actions */}
+          <div className="flex flex-wrap gap-3">
+            {subscription?.status === "active" && !subscription.cancelAtPeriodEnd && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={handlePause}
+                  disabled={actionLoading !== null}
+                >
+                  {actionLoading === "pause" ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <PauseCircle className="h-4 w-4 mr-2" />
+                  )}
+                  Pause Subscription
+                </Button>
+                <Button
+                  variant="outline"
+                  className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
+                  onClick={() => setShowCancelDialog(true)}
+                  disabled={actionLoading !== null}
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  Cancel Subscription
+                </Button>
+              </>
+            )}
+            {subscription?.status === "paused" && (
+              <Button onClick={handleResume} disabled={actionLoading !== null}>
+                {actionLoading === "resume" ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <PlayCircle className="h-4 w-4 mr-2" />
+                )}
+                Resume Subscription
+              </Button>
+            )}
+            {subscription?.cancelAtPeriodEnd && (
+              <Button onClick={handleResume} disabled={actionLoading !== null}>
+                {actionLoading === "resume" ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                Keep Subscription
+              </Button>
+            )}
+            <Link href="/pricing">
+              <Button variant="outline">
+                <ArrowRight className="h-4 w-4 mr-2" />
+                Change Plan
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Payment History */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Receipt className="h-5 w-5" />
+            Payment History
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {payments.length === 0 ? (
+            <p className="text-center text-slate-500 py-8">No payments yet</p>
+          ) : (
+            <div className="divide-y divide-slate-200 dark:divide-slate-700">
+              {payments.map((payment: Payment) => (
+                <div
+                  key={payment.id}
+                  className="flex items-center justify-between py-4"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="h-10 w-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                      <CreditCard className="h-5 w-5 text-slate-500" />
+                    </div>
+                    <div>
+                      <p className="font-medium">
+                        {formatCurrency(payment.amount, payment.currency)}
+                      </p>
+                      <p className="text-sm text-slate-500">
+                        {formatDate(payment.createdAt)}
+                        {payment.cardLast4 && ` • •••• ${payment.cardLast4}`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {getPaymentStatusBadge(payment.status)}
+                    {payment.invoiceUrl && (
+                      <a
+                        href={payment.invoiceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Button variant="ghost" size="sm">
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Cancel Dialog */}
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Subscription?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Choose how you'd like to cancel your subscription.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-4 py-4">
+            <label className="flex items-start gap-3 p-4 rounded-lg border cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800">
+              <input
+                type="radio"
+                name="cancelType"
+                checked={!cancelImmediately}
+                onChange={() => setCancelImmediately(false)}
+                className="mt-1"
+              />
+              <div>
+                <p className="font-medium">Cancel at period end</p>
+                <p className="text-sm text-slate-500">
+                  Keep access until {formatDate(subscription?.currentPeriodEnd)}
+                </p>
+              </div>
+            </label>
+            <label className="flex items-start gap-3 p-4 rounded-lg border cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800">
+              <input
+                type="radio"
+                name="cancelType"
+                checked={cancelImmediately}
+                onChange={() => setCancelImmediately(true)}
+                className="mt-1"
+              />
+              <div>
+                <p className="font-medium">Cancel immediately</p>
+                <p className="text-sm text-slate-500">
+                  Lose access right away (no refund for remaining period)
+                </p>
+              </div>
+            </label>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancel}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={actionLoading === "cancel"}
+            >
+              {actionLoading === "cancel" ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : null}
+              Confirm Cancellation
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
