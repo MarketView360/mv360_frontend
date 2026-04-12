@@ -41,7 +41,7 @@ if (typeof window !== "undefined") {
           'ai-enabled': false,           // Master AI kill switch
           'ai-enable-free': false,        // Free user AI access (default: disabled)
           'show-free-ai-promo-msg': false, // Show promo message to free users
-          'premium-payment-status': 'disabled', // Payments default to disabled
+          'premium-payment-status': 'disabled-paused', // Payments default to paused (valid PaymentStatus)
         },
       },
     });
