@@ -9,7 +9,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { posthog } from "posthog-js";
 import { useRouter } from "next/navigation";
 
-type PaymentStatus = "enabled" | "disabled-paused" | "disabled-coming-soon" | null;
+type PaymentStatus = "enabled" | "disabled-paused" | "disabled-coming-soon" | "disabled";
 
 type BillingPeriod = "monthly" | "annually";
 
@@ -46,7 +46,24 @@ export function PricingClient({ plans }: PricingClientProps) {
     const checkFlag = () => {
       const flagValue = posthog.getFeatureFlag("premium-payment-status");
       console.log("[Pricing] Feature flag value:", flagValue);
-      setPaymentStatus((flagValue as PaymentStatus) || "disabled-coming-soon");
+
+      // Map flag values to internal states
+      // 'enabled' -> enabled (show Razorpay checkout)
+      // 'disabled-paused' -> disabled-paused (show paused message)
+      // 'disabled-coming-soon' -> disabled-coming-soon (show coming soon)
+      // 'disabled' or undefined -> disabled-paused (default to paused)
+      let mappedStatus: PaymentStatus = "disabled-paused";
+      if (flagValue === "enabled") {
+        mappedStatus = "enabled";
+      } else if (flagValue === "disabled-paused") {
+        mappedStatus = "disabled-paused";
+      } else if (flagValue === "disabled-coming-soon") {
+        mappedStatus = "disabled-coming-soon";
+      } else if (flagValue === "disabled") {
+        mappedStatus = "disabled-paused"; // default to paused when disabled
+      }
+
+      setPaymentStatus(mappedStatus);
       setFlagsLoaded(true);
     };
 
@@ -142,6 +159,45 @@ export function PricingClient({ plans }: PricingClientProps) {
 
   return (
     <>
+      {/* Maintenance Mode Banner - shown when disabled */}
+      {(paymentStatus === "disabled-paused" || paymentStatus === "disabled") && flagsLoaded && (
+        <div className="mb-8 p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 max-w-4xl mx-auto">
+          <div className="flex items-center gap-3">
+            <div className="shrink-0 w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
+              <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-amber-800 dark:text-amber-200">
+                Payments Temporarily Paused
+              </h3>
+              <p className="text-sm text-amber-700 dark:text-amber-300">
+                We're performing maintenance on our payment system. New subscriptions will be available again shortly.
+                Join the waitlist to be notified when payments are re-enabled.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Coming Soon Banner */}
+      {paymentStatus === "disabled-coming-soon" && flagsLoaded && (
+        <div className="mb-8 p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 max-w-4xl mx-auto">
+          <div className="flex items-center gap-3">
+            <div className="shrink-0 w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center">
+              <Bell className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-blue-800 dark:text-blue-200">
+                Premium Plans Coming Soon
+              </h3>
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                We're working hard to bring you premium features. Join the waitlist to get early access when we launch.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Billing Toggle */}
       <div className="flex items-center justify-center gap-4 mb-12">
         <span className={`text-sm font-medium transition-colors ${billingPeriod === "monthly" ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400"}`}>
@@ -230,15 +286,15 @@ export function PricingClient({ plans }: PricingClientProps) {
                     <CreditCard className="h-4 w-4" />
                     Subscribe Now
                   </>
-                ) : paymentStatus === "disabled-paused" && (isPremium || isMax) ? (
+                ) : (paymentStatus === "disabled-paused" || paymentStatus === "disabled") && (isPremium || isMax) ? (
                   <>
                     <Clock className="h-4 w-4" />
                     Temporarily Unavailable
                   </>
-                ) : isPremium || isMax ? (
+                ) : paymentStatus === "disabled-coming-soon" && (isPremium || isMax) ? (
                   <>
                     <Bell className="h-4 w-4" />
-                    Join Waitlist
+                    Coming Soon
                   </>
                 ) : (
                   <>

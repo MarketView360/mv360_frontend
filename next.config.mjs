@@ -79,7 +79,7 @@ export default withPostHogConfig(withSentryConfig(nextConfig, {
   projectId: process.env.POSTHOG_PROJECT_ID,
   host: process.env.NEXT_PUBLIC_POSTHOG_HOST,
   sourcemaps: {
-    enabled: !!process.env.POSTHOG_PROJECT_ID && process.env.VERCEL !== '1', // Disable if no project ID or in Vercel CI
+    enabled: false, // Disabled locally - enable in CI with proper POSTHOG config
     releaseName: "marketview360",
     deleteAfterUpload: false,
   },
