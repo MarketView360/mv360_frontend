@@ -241,19 +241,24 @@ export default function PricingPage() {
 
         const checkFlag = () => {
             const flagValue = posthog.getFeatureFlag("premium-payment-status");
-            console.log("[Pricing] Feature flag value:", flagValue);
-            setPaymentStatus((flagValue as PaymentStatus) || "disabled-coming-soon");
+            console.log("[Pricing] Feature flag value:", flagValue, "type:", typeof flagValue);
+            console.log("[Pricing] flagValue === 'enabled':", flagValue === "enabled");
+            const newStatus = (flagValue as PaymentStatus) || "disabled-coming-soon";
+            console.log("[Pricing] Setting paymentStatus to:", newStatus);
+            setPaymentStatus(newStatus);
             setFlagsLoaded(true);
         };
 
         // Try immediately in case flags are cached
         const cachedValue = posthog.getFeatureFlag("premium-payment-status");
+        console.log("[Pricing] Cached flag value:", cachedValue, "type:", typeof cachedValue);
         if (cachedValue !== undefined) {
             checkFlag();
         }
 
         // Also listen for when flags load
         posthog.onFeatureFlags(() => {
+            console.log("[Pricing] onFeatureFlags callback triggered");
             checkFlag();
         });
     }, [posthog]);
