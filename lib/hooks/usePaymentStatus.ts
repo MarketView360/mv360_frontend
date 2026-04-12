@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/components/providers/AuthProvider';
+import { useAuth } from '@/providers/AuthProvider';
 import { paymentApi, Subscription, SubscriptionPlan, Payment } from '@/lib/api/payment';
 
 interface PaymentStatus {

@@ -26,7 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { toast } from "sonner";
 import { usePaymentStatus } from "@/lib/hooks/usePaymentStatus";
-import { useAuth } from "@/components/providers/AuthProvider";
+import { useAuth } from "@/providers/AuthProvider";
 import { paymentApi, Payment } from "@/lib/api/payment";
 import {
   AlertDialog,
