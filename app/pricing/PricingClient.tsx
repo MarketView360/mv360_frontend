@@ -40,12 +40,16 @@ export function PricingClient({ plans }: PricingClientProps) {
 
   // Get feature flag for payment status - wait for flags to load
   useEffect(() => {
-    if (!posthog) return;
+    if (!posthog) {
+      console.warn("[Pricing] PostHog not initialized");
+      return;
+    }
 
     // Check if flags are already loaded
     const checkFlag = () => {
       const flagValue = posthog.getFeatureFlag("premium-payment-status");
       console.log("[Pricing] Feature flag value:", flagValue);
+      console.log("[Pricing] Flag type:", typeof flagValue);
 
       // Map flag values to internal states
       // 'enabled' -> enabled (show Razorpay checkout)
@@ -53,14 +57,21 @@ export function PricingClient({ plans }: PricingClientProps) {
       // 'disabled-coming-soon' -> disabled-coming-soon (show coming soon)
       // 'disabled' or undefined -> disabled-paused (default to paused)
       let mappedStatus: PaymentStatus = "disabled-paused";
+
       if (flagValue === "enabled") {
         mappedStatus = "enabled";
+        console.log("[Pricing] Payments ENABLED - showing checkout");
       } else if (flagValue === "disabled-paused") {
         mappedStatus = "disabled-paused";
+        console.log("[Pricing] Payments PAUSED - showing unavailable");
       } else if (flagValue === "disabled-coming-soon") {
         mappedStatus = "disabled-coming-soon";
-      } else if (flagValue === "disabled") {
+        console.log("[Pricing] Payments COMING SOON - showing waitlist");
+      } else if (flagValue === "disabled" || flagValue === false) {
         mappedStatus = "disabled-paused"; // default to paused when disabled
+        console.log("[Pricing] Payments DISABLED (default) - showing paused");
+      } else {
+        console.warn("[Pricing] Unknown flag value:", flagValue, "- defaulting to disabled-paused");
       }
 
       setPaymentStatus(mappedStatus);
@@ -69,14 +80,22 @@ export function PricingClient({ plans }: PricingClientProps) {
 
     // Try immediately in case flags are cached
     const cachedValue = posthog.getFeatureFlag("premium-payment-status");
+    console.log("[Pricing] Cached flag value:", cachedValue);
     if (cachedValue !== undefined) {
       checkFlag();
+    } else {
+      console.log("[Pricing] No cached flag, waiting for onFeatureFlags callback");
     }
 
     // Also listen for when flags load
-    posthog.onFeatureFlags(() => {
+    const unsubscribe = posthog.onFeatureFlags(() => {
+      console.log("[Pricing] onFeatureFlags callback triggered");
       checkFlag();
     });
+
+    return () => {
+      unsubscribe();
+    };
   }, [posthog]);
 
   const handlePlanAction = async (tier: string) => {
