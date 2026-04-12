@@ -16,13 +16,32 @@ export function StockEventsCalendar() {
     useEffect(() => {
         const fetchEvents = async () => {
             try {
-                // Fetch upcoming events
                 const today = new Date().toISOString().split('T')[0];
                 const nextMonth = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-                const res = await fetch(`${API_URL}/events?from=${today}&to=${nextMonth}&importance=high`);
-                const data = await res.json();
-                
-                // Show top 6 high importance events
+
+                // Try high+medium importance first
+                let res = await fetch(`${API_URL}/events?from=${today}&to=${nextMonth}&importance=high`);
+                let data: StockEvent[] = res.ok ? await res.json() : [];
+
+                if (data.length === 0) {
+                    res = await fetch(`${API_URL}/events?from=${today}&to=${nextMonth}&importance=medium`);
+                    data = res.ok ? await res.json() : [];
+                }
+
+                // Fall back to all events if still empty
+                if (data.length === 0) {
+                    res = await fetch(`${API_URL}/events?from=${today}&to=${nextMonth}`);
+                    data = res.ok ? await res.json() : [];
+                }
+
+                // Sort: high > medium > low, then by date
+                const importanceOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+                data.sort((a, b) => {
+                    const imp = (importanceOrder[a.importance] ?? 2) - (importanceOrder[b.importance] ?? 2);
+                    if (imp !== 0) return imp;
+                    return a.date.localeCompare(b.date);
+                });
+
                 setEvents(data.slice(0, 6));
             } catch (err) {
                 console.error(err);
