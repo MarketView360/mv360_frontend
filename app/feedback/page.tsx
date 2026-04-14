@@ -20,6 +20,8 @@ type FeedbackType = "general" | "feature" | "bug" | "improvement";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 const FEEDBACK_COOLDOWN_MS = 60_000;
+const MAX_MESSAGE_LENGTH = 2000;
+const MAX_SUBJECT_LENGTH = 200;
 
 // Sanitize user input to prevent XSS
 function sanitizeInput(input: string): string {
@@ -138,8 +140,18 @@ export default function FeedbackPage() {
       return;
     }
 
+    if (subjectValidation.sanitized.length > MAX_SUBJECT_LENGTH) {
+      setError(`Subject must be less than ${MAX_SUBJECT_LENGTH} characters.`);
+      return;
+    }
+
     if (messageValidation.sanitized.length < 20) {
       setError("Message must be at least 20 characters.");
+      return;
+    }
+
+    if (messageValidation.sanitized.length > MAX_MESSAGE_LENGTH) {
+      setError(`Message must be less than ${MAX_MESSAGE_LENGTH} characters.`);
       return;
     }
 
@@ -355,9 +367,13 @@ export default function FeedbackPage() {
                       value={subject}
                       onChange={(e) => setSubject(e.target.value)}
                       required
+                      maxLength={MAX_SUBJECT_LENGTH}
                       placeholder="e.g., Feature request for export functionality"
                       className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/50 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                     />
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 text-right">
+                      {subject.length} / {MAX_SUBJECT_LENGTH} chars
+                    </p>
                   </div>
 
                   {/* Message Input */}
@@ -371,6 +387,7 @@ export default function FeedbackPage() {
                       onChange={(e) => setMessage(e.target.value)}
                       required
                       rows={5}
+                      maxLength={MAX_MESSAGE_LENGTH}
                       placeholder="Please provide as much detail as possible..."
                       className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950/50 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none transition-all"
                     />
@@ -379,7 +396,7 @@ export default function FeedbackPage() {
                         Plain text only (HTML not allowed for security).
                       </p>
                       <p className={`text-xs ${message.length > 0 && message.length < 20 ? "text-amber-500" : "text-slate-500 dark:text-slate-400"}`}>
-                        {message.length} / min 20 chars
+                        {message.length} / {MAX_MESSAGE_LENGTH} max
                       </p>
                     </div>
                   </div>
