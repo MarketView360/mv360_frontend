@@ -202,7 +202,7 @@ const faqs = [
     },
     {
         question: "Is my payment information secure?",
-        answer: "Absolutely. We use Stripe for secure payment processing. We never store your card details on our servers.",
+        answer: "Absolutely. We use industry-leading secure payment processing. We never store your card details on our servers.",
     },
     {
         question: "Do you offer student or nonprofit discounts?",
@@ -210,7 +210,7 @@ const faqs = [
     },
     {
         question: "What payment methods do you accept?",
-        answer: "We accept all major credit cards, debit cards, and PayPal through our secure Stripe integration.",
+        answer: "We accept all major credit cards, debit cards, and other popular payment methods through our secure payment processor.",
     },
     {
         question: "Can I get a custom plan for my team?",
