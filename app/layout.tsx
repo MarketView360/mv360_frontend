@@ -51,6 +51,8 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <GlobalStructuredData />
+        {/* Google AdSense Site Verification */}
+        <meta name="google-adsense-account" content="ca-pub-3669621384912065" />
       </head>
       <body
         suppressHydrationWarning
