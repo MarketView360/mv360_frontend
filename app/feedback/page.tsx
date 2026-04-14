@@ -21,6 +21,45 @@ type FeedbackType = "general" | "feature" | "bug" | "improvement";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 const FEEDBACK_COOLDOWN_MS = 60_000;
 
+// Sanitize user input to prevent XSS
+function sanitizeInput(input: string): string {
+  return input
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;")
+    .replace(/\//g, "&#x2F;");
+}
+
+// Validate input - strip dangerous patterns
+function validateInput(input: string): { valid: boolean; sanitized: string } {
+  // Remove null bytes
+  let sanitized = input.replace(/\0/g, "");
+
+  // Limit length (prevent DoS)
+  if (sanitized.length > 10000) {
+    sanitized = sanitized.slice(0, 10000);
+  }
+
+  // Check for script tags or event handlers (basic XSS prevention)
+  const dangerousPatterns = [
+    /<script\b/i,
+    /javascript:/i,
+    /on\w+\s*=/i, // onclick=, onerror=, etc.
+    /data:text\/html/i,
+    /vbscript:/i,
+  ];
+
+  for (const pattern of dangerousPatterns) {
+    if (pattern.test(sanitized)) {
+      return { valid: false, sanitized: "" };
+    }
+  }
+
+  return { valid: true, sanitized };
+}
+
 export default function FeedbackPage() {
   const { user, session } = useAuth();
   const token = session?.access_token || null;
@@ -85,12 +124,21 @@ export default function FeedbackPage() {
       return;
     }
 
-    if (subject.trim().length < 10) {
+    // Validate and sanitize inputs
+    const subjectValidation = validateInput(subject.trim());
+    const messageValidation = validateInput(message.trim());
+
+    if (!subjectValidation.valid || !messageValidation.valid) {
+      setError("Invalid characters detected in input.");
+      return;
+    }
+
+    if (subjectValidation.sanitized.length < 10) {
       setError("Subject must be at least 10 characters.");
       return;
     }
 
-    if (message.trim().length < 20) {
+    if (messageValidation.sanitized.length < 20) {
       setError("Message must be at least 20 characters.");
       return;
     }
@@ -106,8 +154,8 @@ export default function FeedbackPage() {
         },
         body: JSON.stringify({
           type,
-          subject: subject.trim(),
-          message: message.trim(),
+          subject: sanitizeInput(subjectValidation.sanitized),
+          message: sanitizeInput(messageValidation.sanitized),
           ...(rating && { rating }),
         }),
       });
@@ -328,7 +376,7 @@ export default function FeedbackPage() {
                     />
                     <div className="flex justify-between items-center mt-2">
                       <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Markdown is supported.
+                        Plain text only (HTML not allowed for security).
                       </p>
                       <p className={`text-xs ${message.length > 0 && message.length < 20 ? "text-amber-500" : "text-slate-500 dark:text-slate-400"}`}>
                         {message.length} / min 20 chars
