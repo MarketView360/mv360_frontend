@@ -42,6 +42,7 @@ if (typeof window !== "undefined") {
           'ai-enable-free': false,        // Free user AI access (default: disabled)
           'show-free-ai-promo-msg': false, // Show promo message to free users
           'premium-payment-status': 'disabled-paused', // Payments default to paused (valid PaymentStatus)
+          'google-ads-display': 'no-ads', // Google Ads display control (default: no ads)
         },
       },
     });

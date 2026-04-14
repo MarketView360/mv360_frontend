@@ -42,6 +42,9 @@ import {
 } from "@/components/ui/tooltip";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { GoogleAdSlot } from "@/components/GoogleAdSlot";
+import { useProfile } from "@/hooks/useProfile";
+import { useAuth } from "@/providers/AuthProvider";
 
 // For Excel/PDF exports (install: npm install exceljs file-saver jspdf)
 // import * as XLSX from "xlsx"; // Removed for security
@@ -243,6 +246,8 @@ function ResultsPageContent() {
   const offset = Number(sp.get("offset") || 0);
 
   const { session, loading: authLoading } = useAuth();
+  const { profile } = useProfile(session?.access_token || null);
+  const userPlan = profile?.subscription_tier || "free";
 
   // Tier is fetched from database by backend, not from session metadata
   const [backendTier, setBackendTier] = useState<string | null>(null);
@@ -1935,26 +1940,27 @@ function ResultsPageContent() {
                         {rowsToRender.map((r, rowIndex) => {
                           const isAccessible = rowIndex < accessLimit;
                           const isEven = rowIndex % 2 === 0;
+                          const shouldShowAdAfter = (rowIndex + 1) % 5 === 0 && rowIndex < accessLimit;
 
                           return (
-                            <tr
-                              key={`${r.code}-${rowIndex}`}
-                              className={`
-                              transition-all duration-150 group
-                              ${isAccessible
-                                  ? `${isEven
-                                    ? "bg-white dark:bg-slate-900"
-                                    : "bg-slate-50/50 dark:bg-slate-800/30"
-                                  } hover:bg-blue-100/70 dark:hover:bg-slate-700 hover:shadow-sm cursor-pointer`
-                                  : "filter blur-sm select-none pointer-events-none opacity-50 bg-slate-100/30 dark:bg-slate-800/30"
-                                }
-                            `}
-                              onClick={() => {
-                                if (isAccessible && r.code) {
-                                  router.push(`/company/${r.code}`);
-                                }
-                              }}
-                            >
+                            <React.Fragment key={`${r.code}-${rowIndex}`}>
+                              <tr
+                                className={`
+                                transition-all duration-150 group
+                                ${isAccessible
+                                    ? `${isEven
+                                      ? "bg-white dark:bg-slate-900"
+                                      : "bg-slate-50/50 dark:bg-slate-800/30"
+                                    } hover:bg-blue-100/70 dark:hover:bg-slate-700 hover:shadow-sm cursor-pointer`
+                                    : "filter blur-sm select-none pointer-events-none opacity-50 bg-slate-100/30 dark:bg-slate-800/30"
+                                  }
+                              `}
+                                onClick={() => {
+                                  if (isAccessible && r.code) {
+                                    router.push(`/company/${r.code}`);
+                                  }
+                                }}
+                              >
                               {visibleColumns.has("code") && (
                                 <td className="px-4 py-3 font-mono text-sm font-semibold text-blue-600 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300">
                                   {r.code || "—"}
@@ -2219,6 +2225,15 @@ function ResultsPageContent() {
                                 )}
                               </td>
                             </tr>
+                              {/* Ad slot after every 5 rows */}
+                              {shouldShowAdAfter && (
+                                <tr>
+                                  <td colSpan={visibleColumns.size + 1} className="py-2">
+                                    <GoogleAdSlot />
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
                           );
                         })}
                       </tbody>

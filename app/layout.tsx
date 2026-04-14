@@ -92,6 +92,13 @@ export default function RootLayout({
         </ThemeProvider>
         <Analytics />
         <SpeedInsights />
+        {/* Google AdSense Script */}
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3669621384912065"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
         <Script
           id="microsoft-clarity"
           strategy="afterInteractive"
