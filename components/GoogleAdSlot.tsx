@@ -32,8 +32,8 @@ export function GoogleAdSlot() {
   }
 
   return (
-    <div className="my-6 w-full">
-      <div className="relative w-full min-h-[280px] bg-slate-50 dark:bg-slate-800/50 rounded-lg flex items-center justify-center overflow-hidden">
+    <div className="my-4 w-full">
+      <div className="relative w-full min-h-[100px] bg-slate-50 dark:bg-slate-800/50 rounded-lg flex items-center justify-center overflow-hidden">
         <ins
           className="adsbygoogle w-full"
           style={{ display: "block" }}
