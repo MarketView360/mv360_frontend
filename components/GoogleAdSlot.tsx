@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAdsVisible } from "@/hooks/useAdsVisible";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/providers/AuthProvider";
@@ -13,21 +13,53 @@ export function GoogleAdSlot() {
   const { session } = useAuth();
   const { profile } = useProfile(session?.access_token || null);
   const showAd = useAdsVisible(profile?.subscription_tier || "free");
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasAd, setHasAd] = useState(false);
 
   // Load AdSense script after ad becomes visible
   useEffect(() => {
-    if (showAd && typeof window !== "undefined") {
-      // Push ad to AdSense queue
-      try {
-        (window as any).adsbygoogle = (window as any).adsbygoogle || [];
-        (window as any).adsbygoogle.push({});
-      } catch (e) {
-        console.error("AdSense error:", e);
+    if (!showAd || typeof window === "undefined") return;
+
+    // Check if ad slot has content (ad loaded)
+    const checkAdLoaded = () => {
+      const adContainer = document.querySelector('.adsbygoogle');
+      if (adContainer && adContainer.children.length > 0) {
+        setIsLoading(false);
+        setHasAd(true);
       }
+    };
+
+    // Push ad to AdSense queue
+    try {
+      (window as any).adsbygoogle = (window as any).adsbygoogle || [];
+      (window as any).adsbygoogle.push({});
+
+      // Check if ad loads within 2 seconds
+      const timeout = setTimeout(() => {
+        checkAdLoaded();
+      }, 2000);
+
+      // Fallback: hide placeholder after 3 seconds even if no ad loaded
+      const hideTimeout = setTimeout(() => {
+        setIsLoading(false);
+      }, 3000);
+
+      return () => {
+        clearTimeout(timeout);
+        clearTimeout(hideTimeout);
+      };
+    } catch (e) {
+      console.error("AdSense error:", e);
+      setIsLoading(false);
     }
   }, [showAd]);
 
   if (!showAd) {
+    return null;
+  }
+
+  // Don't show placeholder if ad failed to load or timeout expired
+  if (!isLoading && !hasAd) {
     return null;
   }
 
