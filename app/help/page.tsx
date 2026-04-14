@@ -205,15 +205,15 @@ const faqCategories: FAQCategory[] = [
       },
       {
         question: "How do I cancel my subscription?",
-        answer: "Go to Settings > Subscription and click 'Cancel Subscription'. Your access will continue until the end of your current billing period. You can resubscribe anytime."
+        answer: "Go to Settings > Billing and click 'Cancel Subscription'. Your access will continue until the end of your current billing period. You can resubscribe anytime."
       },
       {
         question: "Do you offer refunds?",
-        answer: "We offer a 7-day money-back guarantee for new subscribers. If you're not satisfied within 7 days of your first payment, contact support for a full refund. After this period, refunds are handled on a case-by-case basis."
+        answer: "We offer a 7-day money-back guarantee for new subscribers. You must request a refund within 7 days of your first payment. Refunds are processed within 5-7 business days upon approval."
       },
       {
         question: "Can I switch between plans?",
-        answer: "Yes! You can upgrade or downgrade your plan anytime from Settings > Subscription. Upgrades take effect immediately with prorated billing. Downgrades apply at the next billing cycle."
+        answer: "Yes! You can upgrade or downgrade your plan anytime from Settings > Billing. Upgrades take effect immediately with prorated billing. Downgrades apply at the next billing cycle."
       }
     ]
   }

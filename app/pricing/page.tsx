@@ -194,7 +194,7 @@ const faqs = [
     },
     {
         question: "Do you offer refunds?",
-        answer: "Yes, we offer a 30-day money-back guarantee on all paid plans. If you're not satisfied, contact us for a full refund.",
+        answer: "Yes, we offer a 7-day money-back guarantee. You can request a refund within 7 days of your first payment. Refunds are processed within 5-7 business days upon approval.",
     },
     {
         question: "Can I upgrade or downgrade my plan?",
