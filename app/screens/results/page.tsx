@@ -210,7 +210,6 @@ function getSmartColumns(queryFields: string[]): string[] {
   return Array.from(smartCols);
 }
 
-import { useAuth } from "@/providers/AuthProvider";
 import Link from "next/link";
 import { Lock } from "lucide-react";
 import { AddToWatchlistButton } from "@/components/company/AddToWatchlistButton";
