@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { Globe, ChevronDown, Check } from "lucide-react";
 import type { OnboardingStep1Data } from "@/hooks/useOnboarding";
 
@@ -20,7 +20,7 @@ const COMMON_TIMEZONES = [
   { value: "Europe/Paris", label: "Central European Time", region: "Europe" },
   { value: "Europe/Berlin", label: "Berlin (CET)", region: "Europe" },
   { value: "Asia/Dubai", label: "Dubai (GST)", region: "Middle East" },
-  { value: "Asia/Kolkata", label: "India (IST)", region: "Asia" },
+  { value: "Asia/Kolkata", label: "India (IST)", region: "Asia", aliases: ["Asia/Calcutta"] },
   { value: "Asia/Singapore", label: "Singapore (SGT)", region: "Asia" },
   { value: "Asia/Tokyo", label: "Tokyo (JST)", region: "Asia" },
   { value: "Asia/Shanghai", label: "China (CST)", region: "Asia" },
@@ -33,6 +33,14 @@ export function StepIdentity({ data, setData }: StepIdentityProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
+  // Normalize detected timezone (handle legacy names like Asia/Calcutta → Asia/Kolkata)
+  const normalizedDetectedTimezone = useMemo(() => {
+    const match = COMMON_TIMEZONES.find(
+      (tz) => tz.value === detectedTimezone || tz.aliases?.includes(detectedTimezone)
+    );
+    return match?.value ?? detectedTimezone;
+  }, [detectedTimezone]);
+
   // Auto-generate display name ONLY when user hasn't manually edited it
   useEffect(() => {
     if (!displayNameTouched && data.full_name) {
@@ -40,6 +48,18 @@ export function StepIdentity({ data, setData }: StepIdentityProps) {
       setData((prev) => ({ ...prev, display_name: firstName }));
     }
   }, [data.full_name, displayNameTouched, setData]);
+
+  // Auto-set timezone on mount if not already set
+  useEffect(() => {
+    if (!data.timezone && normalizedDetectedTimezone) {
+      const matchingTz = COMMON_TIMEZONES.find(
+        (tz) => tz.value === normalizedDetectedTimezone || tz.aliases?.includes(normalizedDetectedTimezone)
+      );
+      if (matchingTz) {
+        setData((prev) => ({ ...prev, timezone: matchingTz.value }));
+      }
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -145,7 +165,7 @@ export function StepIdentity({ data, setData }: StepIdentityProps) {
             >
               <Globe className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" />
               <span className="flex-1 text-slate-900 dark:text-white">{currentTimezoneLabel}</span>
-              {data.timezone === detectedTimezone && (
+              {data.timezone === normalizedDetectedTimezone && (
                 <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-400">
                   Auto-detected
                 </span>
@@ -166,7 +186,7 @@ export function StepIdentity({ data, setData }: StepIdentityProps) {
                 <div className="max-h-56 overflow-y-auto py-1">
                   {COMMON_TIMEZONES.map((tz) => {
                     const isSelected = data.timezone === tz.value;
-                    const isDetected = tz.value === detectedTimezone;
+                    const isDetected = tz.value === normalizedDetectedTimezone || tz.aliases?.includes(normalizedDetectedTimezone);
                     return (
                       <button
                         key={tz.value}
