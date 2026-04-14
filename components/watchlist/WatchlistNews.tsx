@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Fragment } from "react";
 import Link from "next/link";
 import { Newspaper, Loader2, ExternalLink, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/providers/AuthProvider";
+import { useProfile } from "@/hooks/useProfile";
+import { useAdsVisible } from "@/hooks/useAdsVisible";
 import type { WatchlistWithItems } from "@/providers/WatchlistProvider";
 
 interface NewsArticle {
@@ -45,6 +48,9 @@ const formatTimeAgo = (dateStr: string): string => {
 export function WatchlistNews({ watchlist }: WatchlistNewsProps) {
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
+  const { session } = useAuth();
+  const { profile } = useProfile(session?.access_token || null);
+  const showAd = useAdsVisible(profile?.subscription_tier || "free");
 
   useEffect(() => {
     if (watchlist.items.length === 0) {
@@ -136,63 +142,85 @@ export function WatchlistNews({ watchlist }: WatchlistNewsProps) {
         </div>
       ) : (
         <div className="divide-y divide-slate-200 dark:divide-slate-800">
-          {news.slice(0, 5).map((article, idx) => (
-            <a
-              key={article.link || idx}
-              href={article.link || article.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
-            >
-              <div className="flex gap-4">
-                {article.image_url && (
-                  <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800">
-                    <img
-                      src={article.image_url}
-                      alt=""
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
+          {news.slice(0, 10).map((article, idx) => {
+            const shouldShowAdAfter = showAd && (idx + 1) % 5 === 0;
+            return (
+              <Fragment key={article.link || idx}>
+                <a
+                  href={article.link || article.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
+                >
+                  <div className="flex gap-4">
+                    {article.image_url && (
+                      <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800">
+                        <img
+                          src={article.image_url}
+                          alt=""
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-slate-900 dark:text-white group-hover:text-brand transition-colors line-clamp-2 mb-1">
+                        {article.title}
+                      </h4>
+                      {(article.summary || article.content) && (
+                        <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 mb-2">
+                          {article.summary || article.content?.substring(0, 150)}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+                        {article.source && <span className="font-medium">{article.source}</span>}
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          <span>{formatTimeAgo(article.date || article.published_at || '')}</span>
+                        </div>
+                        {(article.symbols || article.tickers) && (article.symbols || article.tickers)!.length > 0 && (
+                          <>
+                            <span>•</span>
+                            <div className="flex items-center gap-1">
+                              {(article.symbols || article.tickers)!.slice(0, 3).map((ticker) => (
+                                <Badge key={ticker} variant="secondary" className="text-[10px] px-1 py-0">
+                                  {ticker}
+                                </Badge>
+                              ))}
+                              {(article.symbols || article.tickers)!.length > 3 && (
+                                <span className="text-[10px]">+{(article.symbols || article.tickers)!.length - 3}</span>
+                              )}
+                            </div>
+                          </>
+                        )}
+                        <ExternalLink className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                    </div>
+                  </div>
+                </a>
+                {shouldShowAdAfter && (
+                  <div className="px-6 py-2">
+                    <div className="relative w-full min-h-[100px] bg-slate-50 dark:bg-slate-800/50 rounded-lg flex items-center justify-center overflow-hidden">
+                      <ins
+                        className="adsbygoogle w-full"
+                        style={{ display: "block" }}
+                        data-ad-client="ca-pub-3669621384912065"
+                        data-ad-slot="7770351449"
+                        data-ad-format="fluid"
+                        data-ad-layout-key="-hh-7+2h-1m-4u"
+                        data-full-width-responsive="true"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <p className="text-xs text-slate-400 dark:text-slate-500">Advertisement</p>
+                      </div>
+                    </div>
                   </div>
                 )}
-                <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-slate-900 dark:text-white group-hover:text-brand transition-colors line-clamp-2 mb-1">
-                    {article.title}
-                  </h4>
-                  {(article.summary || article.content) && (
-                    <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 mb-2">
-                      {article.summary || article.content?.substring(0, 150)}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
-                    {article.source && <span className="font-medium">{article.source}</span>}
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      <span>{formatTimeAgo(article.date || article.published_at || '')}</span>
-                    </div>
-                    {(article.symbols || article.tickers) && (article.symbols || article.tickers)!.length > 0 && (
-                      <>
-                        <span>•</span>
-                        <div className="flex items-center gap-1">
-                          {(article.symbols || article.tickers)!.slice(0, 3).map((ticker) => (
-                            <Badge key={ticker} variant="secondary" className="text-[10px] px-1 py-0">
-                              {ticker}
-                            </Badge>
-                          ))}
-                          {(article.symbols || article.tickers)!.length > 3 && (
-                            <span className="text-[10px]">+{(article.symbols || article.tickers)!.length - 3}</span>
-                          )}
-                        </div>
-                      </>
-                    )}
-                    <ExternalLink className="w-3 h-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                </div>
-              </div>
-            </a>
-          ))}
+              </Fragment>
+            );
+          })}
         </div>
       )}
     </div>

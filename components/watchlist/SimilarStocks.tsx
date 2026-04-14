@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, Fragment } from "react";
 import Link from "next/link";
 import { Plus, GitCompareArrows, Loader2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CompanyLogo } from "@/components/company/CompanyLogo";
 import { useWatchlist } from "@/providers/WatchlistProvider";
+import { useAuth } from "@/providers/AuthProvider";
+import { useProfile } from "@/hooks/useProfile";
+import { useAdsVisible } from "@/hooks/useAdsVisible";
 import type { WatchlistWithItems } from "@/providers/WatchlistProvider";
 
 interface PeerMetrics {
@@ -41,8 +44,11 @@ export function SimilarStocks({ watchlist, onAddToComparison }: SimilarStocksPro
   const [loading, setLoading] = useState(true);
   const [addingTicker, setAddingTicker] = useState<string | null>(null);
   const { addToWatchlist } = useWatchlist();
+  const { session } = useAuth();
+  const { profile } = useProfile(session?.access_token || null);
+  const showAd = useAdsVisible(profile?.subscription_tier || "free");
 
-  const watchlistTickers = useMemo(() => 
+  const watchlistTickers = useMemo(() =>
     watchlist.items.map(i => i.ticker.replace(/\.US$/i, '').toUpperCase()),
     [watchlist.items]
   );
@@ -256,79 +262,105 @@ export function SimilarStocks({ watchlist, onAddToComparison }: SimilarStocksPro
                 </tr>
               </thead>
               <tbody>
-                {peers.map((peer, idx) => (
-                  <tr
-                    key={peer.ticker}
-                    className={`${idx % 2 === 0 ? '' : 'bg-slate-50/30 dark:bg-slate-800/10'} hover:bg-slate-100/50 dark:hover:bg-slate-800/30 transition-colors`}
-                  >
-                    <td className="px-3 sm:px-4 py-3">
-                      <Link href={`/company/${peer.ticker}`} className="flex items-center gap-2 group">
-                        <CompanyLogo ticker={peer.ticker} name={peer.name} size="sm" />
-                        <div className="min-w-0">
-                          <div className="font-medium text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">
-                            {peer.ticker}
+                {peers.map((peer, idx) => {
+                  const shouldShowAdAfter = showAd && (idx + 1) % 5 === 0;
+                  return (
+                    <Fragment key={peer.ticker}>
+                      <tr
+                        className={`${idx % 2 === 0 ? '' : 'bg-slate-50/30 dark:bg-slate-800/10'} hover:bg-slate-100/50 dark:hover:bg-slate-800/30 transition-colors`}
+                      >
+                        <td className="px-3 sm:px-4 py-3">
+                          <Link href={`/company/${peer.ticker}`} className="flex items-center gap-2 group">
+                            <CompanyLogo ticker={peer.ticker} name={peer.name} size="sm" />
+                            <div className="min-w-0">
+                              <div className="font-medium text-slate-900 dark:text-white truncate group-hover:text-brand transition-colors">
+                                {peer.ticker}
+                              </div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[100px] sm:max-w-[150px]">
+                                {peer.name}
+                              </div>
+                            </div>
+                          </Link>
+                        </td>
+                        <td className="px-2 sm:px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 text-xs sm:text-sm">
+                          {peer.price != null ? `$${peer.price.toFixed(2)}` : '—'}
+                        </td>
+                        <td className="px-2 sm:px-4 py-3 text-right hidden sm:table-cell">
+                          {peer.refund_1d_p != null ? (
+                            <span className={`font-mono font-semibold text-xs sm:text-sm ${peer.refund_1d_p >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                              {peer.refund_1d_p >= 0 ? '+' : ''}{peer.refund_1d_p.toFixed(2)}%
+                            </span>
+                          ) : '—'}
+                        </td>
+                        <td className="px-2 sm:px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 text-xs sm:text-sm hidden md:table-cell">
+                          {formatMarketCap(peer.market_capitalization)}
+                        </td>
+                        <td className="px-2 sm:px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 text-xs sm:text-sm hidden lg:table-cell">
+                          {peer.pe_ratio != null ? peer.pe_ratio.toFixed(2) : '—'}
+                        </td>
+                        <td className="px-2 sm:px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 text-xs sm:text-sm hidden xl:table-cell">
+                          {peer.forward_pe != null ? peer.forward_pe.toFixed(2) : '—'}
+                        </td>
+                        <td className="px-2 sm:px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 text-xs sm:text-sm hidden xl:table-cell truncate max-w-[100px]">
+                          {peer.sector || '—'}
+                        </td>
+                        <td className="px-2 sm:px-4 py-3">
+                          <div className="flex items-center justify-end gap-1 flex-nowrap">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 shrink-0"
+                              onClick={() => onAddToComparison?.([peer.ticker])}
+                              disabled={!onAddToComparison}
+                              title="Compare"
+                            >
+                              <GitCompareArrows className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 w-7 sm:w-auto sm:px-2 p-0 shrink-0"
+                              onClick={() => handleAddStock(peer.ticker)}
+                              disabled={addingTicker === peer.ticker}
+                              title="Add to watchlist"
+                            >
+                              {addingTicker === peer.ticker ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <>
+                                  <Plus className="w-3.5 h-3.5" />
+                                  <span className="hidden sm:inline ml-1 text-xs">Add</span>
+                                </>
+                              )}
+                            </Button>
                           </div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[100px] sm:max-w-[150px]">
-                            {peer.name}
-                          </div>
-                        </div>
-                      </Link>
-                    </td>
-                    <td className="px-2 sm:px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 text-xs sm:text-sm">
-                      {peer.price != null ? `$${peer.price.toFixed(2)}` : '—'}
-                    </td>
-                    <td className="px-2 sm:px-4 py-3 text-right hidden sm:table-cell">
-                      {peer.refund_1d_p != null ? (
-                        <span className={`font-mono font-semibold text-xs sm:text-sm ${peer.refund_1d_p >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                          {peer.refund_1d_p >= 0 ? '+' : ''}{peer.refund_1d_p.toFixed(2)}%
-                        </span>
-                      ) : '—'}
-                    </td>
-                    <td className="px-2 sm:px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 text-xs sm:text-sm hidden md:table-cell">
-                      {formatMarketCap(peer.market_capitalization)}
-                    </td>
-                    <td className="px-2 sm:px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 text-xs sm:text-sm hidden lg:table-cell">
-                      {peer.pe_ratio != null ? peer.pe_ratio.toFixed(2) : '—'}
-                    </td>
-                    <td className="px-2 sm:px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 text-xs sm:text-sm hidden xl:table-cell">
-                      {peer.forward_pe != null ? peer.forward_pe.toFixed(2) : '—'}
-                    </td>
-                    <td className="px-2 sm:px-4 py-3 text-right font-mono text-slate-700 dark:text-slate-300 text-xs sm:text-sm hidden xl:table-cell truncate max-w-[100px]">
-                      {peer.sector || '—'}
-                    </td>
-                    <td className="px-2 sm:px-4 py-3">
-                      <div className="flex items-center justify-end gap-1 flex-nowrap">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0 shrink-0"
-                          onClick={() => onAddToComparison?.([peer.ticker])}
-                          disabled={!onAddToComparison}
-                          title="Compare"
-                        >
-                          <GitCompareArrows className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 w-7 sm:w-auto sm:px-2 p-0 shrink-0"
-                          onClick={() => handleAddStock(peer.ticker)}
-                          disabled={addingTicker === peer.ticker}
-                          title="Add to watchlist"
-                        >
-                          {addingTicker === peer.ticker ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <>
-                              <Plus className="w-3.5 h-3.5" />
-                              <span className="hidden sm:inline ml-1 text-xs">Add</span>
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                        </td>
+                      </tr>
+                      {shouldShowAdAfter && (
+                        <tr>
+                          <td colSpan={8} className="py-2">
+                            <div className="px-4 sm:px-0">
+                              <div className="relative w-full min-h-[100px] bg-slate-50 dark:bg-slate-800/50 rounded-lg flex items-center justify-center overflow-hidden">
+                                <ins
+                                  className="adsbygoogle w-full"
+                                  style={{ display: "block" }}
+                                  data-ad-client="ca-pub-3669621384912065"
+                                  data-ad-slot="7770351449"
+                                  data-ad-format="fluid"
+                                  data-ad-layout-key="-hh-7+2h-1m-4u"
+                                  data-full-width-responsive="true"
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                  <p className="text-xs text-slate-400 dark:text-slate-500">Advertisement</p>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>
