@@ -7,7 +7,9 @@ import {
   Shield,
   Settings,
   Zap,
-  Key
+  Key,
+  CreditCard,
+  AlertTriangle,
 } from "lucide-react";
 import { HelpClient, FAQCategory } from "./HelpClient";
 
@@ -201,7 +203,11 @@ const faqCategories: FAQCategory[] = [
     faqs: [
       {
         question: "What payment methods do you accept?",
-        answer: "We accept major credit cards (Visa, Mastercard, American Express) and debit cards through our secure payment processor. Additional payment methods may be available in your region."
+        answer: "We accept major credit cards (Visa, Mastercard, American Express), debit cards, UPI (Google Pay, PhonePe, Paytm), and net banking through Razorpay. All transactions are secure and encrypted."
+      },
+      {
+        question: "My payment failed. What should I do?",
+        answer: "Payment failures are usually temporary. Common fixes: try a different payment method (UPI works best), check your card supports online transactions, ensure sufficient funds. Visit our Payment Troubleshooting page for detailed solutions."
       },
       {
         question: "How do I cancel my subscription?",
@@ -214,6 +220,10 @@ const faqCategories: FAQCategory[] = [
       {
         question: "Can I switch between plans?",
         answer: "Yes! You can upgrade or downgrade your plan anytime from Settings > Billing. Upgrades take effect immediately with prorated billing. Downgrades apply at the next billing cycle."
+      },
+      {
+        question: "Money was deducted but payment shows failed?",
+        answer: "This sometimes happens when the bank processes payment but verification fails. Wait 5-10 minutes — banks usually auto-refund. If not refunded after 24 hours, contact support with your payment reference ID."
       }
     ]
   }
@@ -244,7 +254,11 @@ export default function HelpCenterPage() {
         </div>
 
         {/* Quick Links */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-12">
+          <Link href="/help/billing" className="flex flex-col items-center p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-red-300 dark:hover:border-red-700 transition-colors group">
+            <AlertTriangle className="h-6 w-6 text-red-500 dark:text-red-400 mb-2 group-hover:scale-110 transition-transform" />
+            <span className="text-sm font-medium text-slate-900 dark:text-white">Payment Issues</span>
+          </Link>
           <Link href="/contact" className="flex flex-col items-center p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700 transition-colors group">
             <MessageSquare className="h-6 w-6 text-blue-600 dark:text-blue-400 mb-2 group-hover:scale-110 transition-transform" />
             <span className="text-sm font-medium text-slate-900 dark:text-white">Contact Us</span>
