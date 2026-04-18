@@ -172,5 +172,5 @@ export function trackPricingPageViewed(currentTier: string | null) {
   });
 }
 
-// Re-export the hook from a separate file to avoid circular dependencies
-export { usePostHogClient } from './posthog-hooks';
+// Note: usePostHogClient hook is available from '@/lib/posthog-hooks' directly
+// Import it there to avoid circular dependency issues with posthog-js/react

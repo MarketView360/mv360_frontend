@@ -23,7 +23,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/providers/AuthProvider";
 import { useSubscriptionCheckout } from "@/lib/hooks/usePaymentStatus";
-import { trackPricingPageViewed, trackSubscriptionInitiated, usePostHogClient } from "@/lib/posthog";
+import { trackPricingPageViewed, trackSubscriptionInitiated } from "@/lib/posthog";
+// Don't import usePostHogClient to avoid circular dependency - use window.posthog directly
 
 // Feature flag values: "enabled" | "disabled-coming-soon" | "disabled-paused"
 type PaymentStatus = "enabled" | "disabled-coming-soon" | "disabled-paused" | null;
@@ -225,8 +226,22 @@ export default function PricingPage() {
     const [openFaq, setOpenFaq] = useState<number | null>(null);
     const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(null);
     const [flagsLoaded, setFlagsLoaded] = useState(false);
+    const [posthogReady, setPosthogReady] = useState(false);
 
-    const posthog = usePostHogClient();
+    // Get posthog from window to avoid circular dependency issues with usePostHogClient hook
+    useEffect(() => {
+        const checkPosthog = () => {
+            if (typeof window !== 'undefined' && (window as any).posthog) {
+                setPosthogReady(true);
+            }
+        };
+        checkPosthog();
+        // Also check after a short delay in case it's loading
+        const timer = setTimeout(checkPosthog, 100);
+        return () => clearTimeout(timer);
+    }, []);
+
+    const posthog = posthogReady ? (window as any).posthog : null;
     const { session, user } = useAuth();
     const { initiateCheckout, isProcessing, error: checkoutError } = useSubscriptionCheckout();
 
