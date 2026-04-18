@@ -19,12 +19,12 @@ import {
   Loader2,
   DollarSign,
   Clock,
-  Features,
+  List,
   Bug,
-  Support,
-  Alternative,
-  Temporary,
-  Sad,
+  Headphones,
+  ArrowLeftRight,
+  Hourglass,
+  Frown,
   Meh,
   Smile,
   ThumbsUp,
@@ -35,13 +35,13 @@ import { cn } from "@/lib/utils";
 // Predefined cancellation reasons
 const CANCELLATION_REASONS = [
   { id: "price", label: "Price is too high", icon: DollarSign },
-  { id: "not_using", label: "Not using the features enough", icon: Features },
-  { id: "found_alternative", label: "Found a better alternative", icon: Alternative },
+  { id: "not_using", label: "Not using the features enough", icon: List },
+  { id: "found_alternative", label: "Found a better alternative", icon: ArrowLeftRight },
   { id: "missing_features", label: "Missing features I need", icon: Bug },
   { id: "technical_issues", label: "Technical issues or bugs", icon: Bug },
-  { id: "support_issues", label: "Support didn't meet expectations", icon: Support },
-  { id: "temporary_pause", label: "Temporary pause (will return)", icon: Temporary },
-  { id: "moving_platform", label: "Moving to different platform", icon: Alternative },
+  { id: "support_issues", label: "Support didn't meet expectations", icon: Headphones },
+  { id: "temporary_pause", label: "Temporary pause (will return)", icon: Hourglass },
+  { id: "moving_platform", label: "Moving to different platform", icon: ArrowLeftRight },
 ];
 
 interface CancellationFeedbackDialogProps {
@@ -299,7 +299,7 @@ export function CancellationFeedbackDialog({
                       )}
                     >
                       {score <= 2 ? (
-                        <Sad className="h-5 w-5" />
+                        <Frown className="h-5 w-5" />
                       ) : score === 3 ? (
                         <Meh className="h-5 w-5" />
                       ) : (
