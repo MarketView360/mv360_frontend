@@ -375,10 +375,10 @@ export default function PricingPage() {
                                         user.user_metadata?.display_name || user.email?.split("@")[0] || "User",
                                     );
                                     if (success) {
-                                        toast.success("🎉 Welcome to Premium!", {
-                                            description: "Your subscription is now active.",
-                                        });
-                                        window.location.href = "/settings/billing";
+                                        // Redirect to celebration success page
+                                        const tierParam = plan.tier;
+                                        const periodParam = isAnnual ? "annual" : "monthly";
+                                        window.location.href = `/settings/billing/success?plan=${encodeURIComponent(plan.name)}&tier=${tierParam}&period=${periodParam}`;
                                     }
                                 }}
                             />

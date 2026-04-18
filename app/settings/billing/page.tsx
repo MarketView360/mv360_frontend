@@ -5,20 +5,17 @@ import {
   Crown,
   ArrowRight,
   CreditCard,
-  Calendar,
-  Download,
   RefreshCw,
-  PauseCircle,
-  PlayCircle,
   XCircle,
   CheckCircle,
   AlertTriangle,
   Loader2,
-  ExternalLink,
   Receipt,
   Clock,
   Shield,
   Zap,
+  Download,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,7 +24,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { usePaymentStatus } from "@/lib/hooks/usePaymentStatus";
 import { useAuth } from "@/providers/AuthProvider";
-import { paymentApi, Payment } from "@/lib/api/payment";
+import { Payment } from "@/lib/api/payment";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -58,46 +55,11 @@ export default function BillingPage() {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [cancelImmediately, setCancelImmediately] = useState(false);
 
-  const handlePause = async () => {
-    if (!session?.access_token) return;
-    setActionLoading("pause");
-    try {
-      await paymentApi.pauseSubscription(session.access_token);
-      toast.success("Subscription paused", {
-        description: "You can resume anytime.",
-      });
-      refetch();
-    } catch (err) {
-      toast.error("Failed to pause subscription", {
-        description: err instanceof Error ? err.message : "Please try again.",
-      });
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleResume = async () => {
-    if (!session?.access_token) return;
-    setActionLoading("resume");
-    try {
-      await paymentApi.resumeSubscription(session.access_token);
-      toast.success("Subscription resumed", {
-        description: "Welcome back!",
-      });
-      refetch();
-    } catch (err) {
-      toast.error("Failed to resume subscription", {
-        description: err instanceof Error ? err.message : "Please try again.",
-      });
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
   const handleCancel = async () => {
     if (!session?.access_token) return;
     setActionLoading("cancel");
     try {
+      const { paymentApi } = await import("@/lib/api/payment");
       await paymentApi.cancelSubscription(
         session.access_token,
         cancelImmediately,
@@ -114,6 +76,27 @@ export default function BillingPage() {
       refetch();
     } catch (err) {
       toast.error("Failed to cancel subscription", {
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleResumeCancelled = async () => {
+    // This is for "Keep Subscription" when cancel_at_period_end is true
+    // We need to call resume which removes the cancel flag
+    if (!session?.access_token) return;
+    setActionLoading("resume");
+    try {
+      const { paymentApi } = await import("@/lib/api/payment");
+      await paymentApi.resumeSubscription(session.access_token);
+      toast.success("Subscription restored", {
+        description: "Your subscription will continue as normal.",
+      });
+      refetch();
+    } catch (err) {
+      toast.error("Failed to restore subscription", {
         description: err instanceof Error ? err.message : "Please try again.",
       });
     } finally {
@@ -138,12 +121,12 @@ export default function BillingPage() {
   };
 
   const getStatusBadge = (status: string) => {
-    const statusConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode }> = {
-      active: { variant: "default", icon: <CheckCircle className="h-3 w-3" /> },
-      paused: { variant: "secondary", icon: <PauseCircle className="h-3 w-3" /> },
-      canceled: { variant: "destructive", icon: <XCircle className="h-3 w-3" /> },
-      past_due: { variant: "destructive", icon: <AlertTriangle className="h-3 w-3" /> },
-      expired: { variant: "outline", icon: <Clock className="h-3 w-3" /> },
+    const statusConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; icon: React.ReactNode; color: string }> = {
+      active: { variant: "default", icon: <CheckCircle className="h-3 w-3" />, color: "text-green-600" },
+      paused: { variant: "secondary", icon: <Clock className="h-3 w-3" />, color: "text-yellow-600" },
+      canceled: { variant: "destructive", icon: <XCircle className="h-3 w-3" />, color: "text-red-600" },
+      past_due: { variant: "destructive", icon: <AlertTriangle className="h-3 w-3" />, color: "text-red-600" },
+      expired: { variant: "outline", icon: <Clock className="h-3 w-3" />, color: "text-slate-500" },
     };
     const config = statusConfig[status] || statusConfig.expired;
     return (
@@ -187,7 +170,7 @@ export default function BillingPage() {
             Billing & Subscription
           </h1>
           <p className="text-slate-600 dark:text-slate-400">
-            You're currently on the <strong>Free</strong> plan.
+            You&apos;re currently on the <strong className="text-slate-900 dark:text-white">Free</strong> plan.
           </p>
         </div>
 
@@ -321,37 +304,36 @@ export default function BillingPage() {
           {subscription?.cancelAtPeriodEnd && (
             <div className="flex items-center gap-3 p-4 mb-6 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
               <AlertTriangle className="h-5 w-5 text-yellow-600" />
-              <div>
+              <div className="flex-1">
                 <p className="font-medium text-yellow-800 dark:text-yellow-200">
                   Subscription Ending
                 </p>
                 <p className="text-sm text-yellow-700 dark:text-yellow-300">
                   Your subscription will end on {formatDate(subscription.currentPeriodEnd)}.
-                  You can resume to keep your access.
                 </p>
               </div>
+              <Button
+                size="sm"
+                onClick={handleResumeCanceled}
+                disabled={actionLoading !== null}
+              >
+                {actionLoading === "resume" ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                Keep Subscription
+              </Button>
             </div>
           )}
 
-          {/* Subscription Actions */}
+          {/* Subscription Actions - NO PAUSE, just Cancel */}
           <div className="flex flex-wrap gap-3">
             {subscription?.status === "active" && !subscription.cancelAtPeriodEnd && (
               <>
                 <Button
                   variant="outline"
-                  onClick={handlePause}
-                  disabled={actionLoading !== null}
-                >
-                  {actionLoading === "pause" ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <PauseCircle className="h-4 w-4 mr-2" />
-                  )}
-                  Pause Subscription
-                </Button>
-                <Button
-                  variant="outline"
-                  className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
+                  className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
                   onClick={() => setShowCancelDialog(true)}
                   disabled={actionLoading !== null}
                 >
@@ -361,23 +343,11 @@ export default function BillingPage() {
               </>
             )}
             {subscription?.status === "paused" && (
-              <Button onClick={handleResume} disabled={actionLoading !== null}>
+              <Button onClick={handleResumeCanceled} disabled={actionLoading !== null}>
                 {actionLoading === "resume" ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <PlayCircle className="h-4 w-4 mr-2" />
-                )}
+                ) : null}
                 Resume Subscription
-              </Button>
-            )}
-            {subscription?.cancelAtPeriodEnd && (
-              <Button onClick={handleResume} disabled={actionLoading !== null}>
-                {actionLoading === "resume" ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                )}
-                Keep Subscription
               </Button>
             )}
             <Link href="/pricing">
@@ -419,6 +389,7 @@ export default function BillingPage() {
                       <p className="text-sm text-slate-500">
                         {formatDate(payment.createdAt)}
                         {payment.cardLast4 && ` • •••• ${payment.cardLast4}`}
+                        {payment.cardBrand && ` (${payment.cardBrand})`}
                       </p>
                     </div>
                   </div>
@@ -429,9 +400,12 @@ export default function BillingPage() {
                         href={payment.invoiceUrl}
                         target="_blank"
                         rel="noopener noreferrer"
+                        className="text-brand hover:text-brand/80"
                       >
                         <Button variant="ghost" size="sm">
-                          <Download className="h-4 w-4" />
+                          <Download className="h-4 w-4 mr-1" />
+                          Invoice
+                          <ExternalLink className="h-3 w-3 ml-1" />
                         </Button>
                       </a>
                     )}
@@ -449,37 +423,37 @@ export default function BillingPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel Subscription?</AlertDialogTitle>
             <AlertDialogDescription>
-              Choose how you'd like to cancel your subscription.
+              Choose how you&apos;d like to cancel your subscription.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-4 py-4">
-            <label className="flex items-start gap-3 p-4 rounded-lg border cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800">
+            <label className="flex items-start gap-3 p-4 rounded-lg border cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
               <input
                 type="radio"
                 name="cancelType"
                 checked={!cancelImmediately}
                 onChange={() => setCancelImmediately(false)}
-                className="mt-1"
+                className="mt-1 accent-brand"
               />
               <div>
-                <p className="font-medium">Cancel at period end</p>
-                <p className="text-sm text-slate-500">
-                  Keep access until {formatDate(subscription?.currentPeriodEnd)}
+                <p className="font-medium text-slate-900 dark:text-white">Cancel at period end</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Keep access until {formatDate(subscription?.currentPeriodEnd)}. No immediate changes.
                 </p>
               </div>
             </label>
-            <label className="flex items-start gap-3 p-4 rounded-lg border cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800">
+            <label className="flex items-start gap-3 p-4 rounded-lg border border-red-200 dark:border-red-800 cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
               <input
                 type="radio"
                 name="cancelType"
                 checked={cancelImmediately}
                 onChange={() => setCancelImmediately(true)}
-                className="mt-1"
+                className="mt-1 accent-red-500"
               />
               <div>
-                <p className="font-medium">Cancel immediately</p>
-                <p className="text-sm text-slate-500">
-                  Lose access right away (no refund for remaining period)
+                <p className="font-medium text-red-700 dark:text-red-400">Cancel immediately</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Lose access right away. No refund for remaining period.
                 </p>
               </div>
             </label>
