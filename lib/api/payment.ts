@@ -292,6 +292,41 @@ export const paymentApi = {
       throw new Error(error.message || 'Failed to delete payment method');
     }
   },
+
+  // ===================== INVOICES =====================
+
+  /**
+   * Get invoice URL for a payment
+   */
+  async getInvoiceUrl(token: string, paymentId: string): Promise<{ invoiceUrl: string | null; invoiceId: string | null }> {
+    const response = await fetch(`${API_URL}/payment/invoice/${paymentId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      if (response.status === 404) return { invoiceUrl: null, invoiceId: null };
+      throw new Error('Failed to fetch invoice');
+    }
+    return response.json();
+  },
+
+  /**
+   * Generate invoice for a payment
+   */
+  async generateInvoice(token: string, paymentId: string): Promise<{ invoiceUrl: string; invoiceId: string }> {
+    const response = await fetch(`${API_URL}/payment/invoice/${paymentId}/generate`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || 'Failed to generate invoice');
+    }
+    return response.json();
+  },
 };
 
 /**

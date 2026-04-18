@@ -142,11 +142,8 @@ export default function SubscriptionFailedPage() {
 
     setLoading(false);
 
-    // Must be logged in
-    if (!session) {
-      router.replace("/auth/login?redirect=/pricing");
-      return;
-    }
+    // Don't redirect - show error info even if not logged in
+    // User can retry after logging in
   }, [authLoading, session, router]);
 
   // Get guidance for this specific error
@@ -200,7 +197,8 @@ export default function SubscriptionFailedPage() {
     );
   }
 
-  if (!session) return null;
+  // Show login prompt if not authenticated
+  const showLoginPrompt = !session;
 
   const severityColors = {
     high: "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800",
@@ -297,26 +295,45 @@ export default function SubscriptionFailedPage() {
 
             {/* Quick Actions */}
             <div className="grid sm:grid-cols-2 gap-3">
-              <Button
-                onClick={handleRetry}
-                disabled={retrying}
-                className="bg-brand hover:bg-brand/90"
-              >
-                {retrying ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                )}
-                Try Again
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleCheckStatus}
-                disabled={retrying}
-              >
-                <Clock className="h-4 w-4 mr-2" />
-                Check Payment Status
-              </Button>
+              {showLoginPrompt ? (
+                <>
+                  <Link href="/auth/login?redirect=/pricing">
+                    <Button className="w-full bg-brand hover:bg-brand/90">
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Log In to Retry
+                    </Button>
+                  </Link>
+                  <Link href="/help/billing">
+                    <Button variant="outline" className="w-full">
+                      <HelpCircle className="h-4 w-4 mr-2" />
+                      Payment Help
+                    </Button>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Button
+                    onClick={handleRetry}
+                    disabled={retrying}
+                    className="bg-brand hover:bg-brand/90"
+                  >
+                    {retrying ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                    )}
+                    Try Again
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleCheckStatus}
+                    disabled={retrying}
+                  >
+                    <Clock className="h-4 w-4 mr-2" />
+                    Check Payment Status
+                  </Button>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>

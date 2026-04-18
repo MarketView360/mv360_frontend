@@ -60,6 +60,7 @@ export default function BillingPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [cancelImmediately, setCancelImmediately] = useState(false);
+  const [loadingInvoices, setLoadingInvoices] = useState<Record<string, boolean>>({});
 
   const isLoading = paymentLoading || profileLoading;
 
@@ -124,6 +125,39 @@ export default function BillingPage() {
       });
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleGetInvoice = async (paymentId: string) => {
+    if (!session?.access_token) return;
+    setLoadingInvoices((prev) => ({ ...prev, [paymentId]: true }));
+    try {
+      const { paymentApi } = await import("@/lib/api/payment");
+      const result = await paymentApi.getInvoiceUrl(session.access_token, paymentId);
+
+      if (result.invoiceUrl) {
+        window.open(result.invoiceUrl, "_blank");
+      } else {
+        // Try to generate invoice
+        try {
+          const generated = await paymentApi.generateInvoice(session.access_token, paymentId);
+          window.open(generated.invoiceUrl, "_blank");
+          toast.success("Invoice generated", {
+            description: "Your invoice has been generated and is ready to download.",
+          });
+          refetch(); // Refresh to get updated invoice URL
+        } catch (genErr) {
+          toast.error("Invoice not available", {
+            description: "Invoice could not be generated. Please contact support.",
+          });
+        }
+      }
+    } catch (err) {
+      toast.error("Failed to fetch invoice", {
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
+    } finally {
+      setLoadingInvoices((prev) => ({ ...prev, [paymentId]: false }));
     }
   };
 
@@ -524,19 +558,21 @@ export default function BillingPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     {getPaymentStatusBadge(payment.status)}
-                    {payment.invoiceUrl && (
-                      <a
-                        href={payment.invoiceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-brand hover:text-brand/80"
+                    {payment.status === "captured" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleGetInvoice(payment.id)}
+                        disabled={loadingInvoices[payment.id]}
                       >
-                        <Button variant="ghost" size="sm">
+                        {loadingInvoices[payment.id] ? (
+                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                        ) : (
                           <Download className="h-4 w-4 mr-1" />
-                          Invoice
-                          <ExternalLink className="h-3 w-3 ml-1" />
-                        </Button>
-                      </a>
+                        )}
+                        Invoice
+                        {payment.invoiceUrl && <ExternalLink className="h-3 w-3 ml-1" />}
+                      </Button>
                     )}
                     {payment.razorpayPaymentId && (
                       <Button

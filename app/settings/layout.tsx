@@ -50,9 +50,10 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
   const { user, loading } = useAuth();
 
   // Redirect unauthenticated users to sign in
+  // Exception: billing failed page - show error info even if not logged in
   useEffect(() => {
-    if (!loading && !user) {
-      router.push("/auth/signin?redirect=" + encodeURIComponent(pathname));
+    if (!loading && !user && !pathname.includes('/billing/failed')) {
+      router.push("/auth/login?redirect=" + encodeURIComponent(pathname));
     }
   }, [user, loading, router, pathname]);
 
@@ -68,14 +69,23 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
     );
   }
 
-  // Don't render settings if not authenticated
-  if (!user) {
+  // Don't render settings if not authenticated (except for failed page)
+  if (!user && !pathname.includes('/billing/failed')) {
     return (
       <div className="min-h-full bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Shield className="h-12 w-12 text-slate-400" />
           <p className="text-slate-500 dark:text-slate-400">Please sign in to access settings</p>
         </div>
+      </div>
+    );
+  }
+
+  // For failed page without auth, just render the child without sidebar
+  if (!user && pathname.includes('/billing/failed')) {
+    return (
+      <div className="min-h-full bg-slate-50 dark:bg-slate-950">
+        {children}
       </div>
     );
   }
