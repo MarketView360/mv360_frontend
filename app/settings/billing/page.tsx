@@ -30,16 +30,12 @@ import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/providers/AuthProvider";
 import { Payment } from "@/lib/api/payment";
 import { PaymentMethodsCard } from "@/components/billing/PaymentMethodsCard";
+import { CancellationFeedbackDialog, CancellationFeedback } from "@/components/billing/CancellationFeedbackDialog";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  trackBillingPageViewed,
+  trackSubscriptionCancelled,
+  trackSubscriptionResumed,
+} from "@/lib/posthog";
 
 export default function BillingPage() {
   const { session } = useAuth();
@@ -59,10 +55,16 @@ export default function BillingPage() {
 
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
-  const [cancelImmediately, setCancelImmediately] = useState(false);
   const [loadingInvoices, setLoadingInvoices] = useState<Record<string, boolean>>({});
 
   const isLoading = paymentLoading || profileLoading;
+
+  // Track billing page view
+  useEffect(() => {
+    if (!isLoading) {
+      trackBillingPageViewed(effectiveTier);
+    }
+  }, [isLoading, effectiveTier]);
 
   // Determine actual tier from BOTH sources
   // Profile tier may be set manually (gifted, admin upgrade)
@@ -81,15 +83,27 @@ export default function BillingPage() {
   // Is this a manual/gifted subscription? (no Razorpay subscription but premium tier)
   const isManualOrGifted = !hasActiveSubscription && isEffectivePremium;
 
-  const handleCancel = async () => {
+  const handleCancelWithFeedback = async (feedback: CancellationFeedback, cancelImmediately: boolean) => {
     if (!session?.access_token) return;
     setActionLoading("cancel");
     try {
       const { paymentApi } = await import("@/lib/api/payment");
-      await paymentApi.cancelSubscription(
+
+      // Save feedback and cancel subscription
+      await paymentApi.cancelWithFeedback(
         session.access_token,
+        feedback,
         cancelImmediately,
       );
+
+      // Track PostHog event
+      trackSubscriptionCancelled(
+        effectiveTier,
+        cancelImmediately,
+        feedback.reasons,
+        feedback.satisfactionScore,
+      );
+
       toast.success(
         cancelImmediately ? "Subscription canceled" : "Subscription will cancel at period end",
         {
@@ -115,6 +129,10 @@ export default function BillingPage() {
     try {
       const { paymentApi } = await import("@/lib/api/payment");
       await paymentApi.resumeSubscription(session.access_token);
+
+      // Track PostHog event
+      trackSubscriptionResumed(effectiveTier);
+
       toast.success("Subscription restored", {
         description: "Your subscription will continue as normal.",
       });
@@ -486,12 +504,23 @@ export default function BillingPage() {
                     Cancel Subscription
                   </Button>
                 )}
-                <Link href="/pricing">
-                  <Button variant="outline">
-                    <ArrowRight className="h-4 w-4 mr-2" />
-                    Change Plan
-                  </Button>
-                </Link>
+                {/* Only show upgrade options, not "Change Plan" for same tier */}
+                {effectiveTier === "free" && (
+                  <Link href="/pricing">
+                    <Button variant="outline">
+                      <Crown className="h-4 w-4 mr-2" />
+                      Upgrade to Premium
+                    </Button>
+                  </Link>
+                )}
+                {effectiveTier === "premium" && process.env.NEXT_PUBLIC_ENABLE_MAX_PLAN === "true" && (
+                  <Link href="/pricing">
+                    <Button variant="outline">
+                      <Crown className="h-4 w-4 mr-2" />
+                      Upgrade to Max
+                    </Button>
+                  </Link>
+                )}
               </div>
             </>
           ) : (
@@ -591,62 +620,19 @@ export default function BillingPage() {
         </CardContent>
       </Card>
 
-      {/* Cancel Dialog */}
-      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Subscription?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Choose how you&apos;d like to cancel your subscription.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="space-y-4 py-4">
-            <label className="flex items-start gap-3 p-4 rounded-lg border cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-              <input
-                type="radio"
-                name="cancelType"
-                checked={!cancelImmediately}
-                onChange={() => setCancelImmediately(false)}
-                className="mt-1 accent-brand"
-              />
-              <div>
-                <p className="font-medium text-slate-900 dark:text-white">Cancel at period end</p>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Keep access until {formatDate(subscription?.currentPeriodEnd)}. No immediate changes.
-                </p>
-              </div>
-            </label>
-            <label className="flex items-start gap-3 p-4 rounded-lg border border-red-200 dark:border-red-800 cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-              <input
-                type="radio"
-                name="cancelType"
-                checked={cancelImmediately}
-                onChange={() => setCancelImmediately(true)}
-                className="mt-1 accent-red-500"
-              />
-              <div>
-                <p className="font-medium text-red-700 dark:text-red-400">Cancel immediately</p>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Lose access right away. No refund for remaining period.
-                </p>
-              </div>
-            </label>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleCancel}
-              className="bg-red-600 hover:bg-red-700"
-              disabled={actionLoading === "cancel"}
-            >
-              {actionLoading === "cancel" ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : null}
-              Confirm Cancellation
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Cancel Dialog with Feedback */}
+      <CancellationFeedbackDialog
+        open={showCancelDialog}
+        onOpenChange={setShowCancelDialog}
+        onCancel={handleCancelWithFeedback}
+        subscriptionInfo={{
+          tier: effectiveTier,
+          billingPeriod: subscription?.plan?.billingPeriod || "monthly",
+          daysRemaining: daysUntilExpiry || undefined,
+          currentPeriodEnd: subscription?.currentPeriodEnd,
+        }}
+        loading={actionLoading === "cancel"}
+      />
     </div>
   );
 }

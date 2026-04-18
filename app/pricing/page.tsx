@@ -23,6 +23,7 @@ import { useRouter } from "next/navigation";
 import { usePostHog } from "posthog-js/react";
 import { useAuth } from "@/providers/AuthProvider";
 import { useSubscriptionCheckout } from "@/lib/hooks/usePaymentStatus";
+import { trackPricingPageViewed, trackSubscriptionInitiated } from "@/lib/posthog";
 
 // Feature flag values: "enabled" | "disabled-coming-soon" | "disabled-paused"
 type PaymentStatus = "enabled" | "disabled-coming-soon" | "disabled-paused" | null;
@@ -222,18 +223,26 @@ export default function PricingPage() {
     const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
     const [showAllFeatures, setShowAllFeatures] = useState(false);
     const [openFaq, setOpenFaq] = useState<number | null>(null);
-    const [userSubscription, setUserSubscription] = useState<{ tier: string } | null>(null);
     const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(null);
     const [flagsLoaded, setFlagsLoaded] = useState(false);
-    
+
     const posthog = usePostHog();
     const { session, user } = useAuth();
     const { initiateCheckout, isProcessing, error: checkoutError } = useSubscriptionCheckout();
+
+    // Get user's tier from session metadata or default to free
+    const userTier = user?.user_metadata?.subscription_tier || session?.user?.user_metadata?.subscription_tier || null;
+    const isAuthenticated = !!session && !!user;
 
     const isAnnual = billingPeriod === "annually";
     const savingsPercent = 17;
     const showMaxPlan = process.env.NEXT_PUBLIC_ENABLE_MAX_PLAN === "true";
     const displayedPlans = showMaxPlan ? plans : plans.filter(p => p.tier !== "max");
+
+    // Track pricing page view
+    useEffect(() => {
+        trackPricingPageViewed(userTier);
+    }, [userTier]);
 
     // Get feature flag for payment status
     useEffect(() => {
@@ -270,28 +279,6 @@ export default function PricingPage() {
         }
     }, [checkoutError]);
 
-    // Fetch user subscription on mount
-    useEffect(() => {
-        async function fetchSubscription() {
-            try {
-                const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
-                const response = await fetch(`${BACKEND_URL}/api/profile/subscription`, {
-                    credentials: "include",
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    setUserSubscription(data);
-                }
-            } catch (error) {
-                // User not logged in or error fetching subscription - that's fine
-                console.debug("Could not fetch subscription:", error);
-            }
-        }
-
-        fetchSubscription();
-    }, []);
-
     const getPrice = (plan: PricingPlan) => {
         if (plan.tier === "free") return "$0";
         if (isAnnual) {
@@ -312,6 +299,16 @@ export default function PricingPage() {
                     <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
                         Start free, upgrade anytime. No credit card required.
                     </p>
+
+                    {/* Hint for authenticated users */}
+                    {isAuthenticated && (
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">
+                            To manage your current subscription, visit the{" "}
+                            <Link href="/settings/billing" className="text-brand hover:underline">
+                                Billing page
+                            </Link>
+                        </p>
+                    )}
 
                     {/* Billing Toggle */}
                     <div className="inline-flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-full">
@@ -353,7 +350,8 @@ export default function PricingPage() {
                                 plan={plan}
                                 price={getPrice(plan)}
                                 isAnnual={isAnnual}
-                                userSubscription={userSubscription}
+                                userTier={userTier}
+                                isAuthenticated={isAuthenticated}
                                 paymentStatus={paymentStatus}
                                 flagsLoaded={flagsLoaded}
                                 isProcessing={isProcessing}
@@ -368,6 +366,15 @@ export default function PricingPage() {
                                         });
                                         return;
                                     }
+
+                                    // Track subscription initiated event
+                                    const amount = isAnnual ? plan.annualPrice : plan.monthlyPrice;
+                                    trackSubscriptionInitiated(
+                                        plan.tier,
+                                        isAnnual ? "annual" : "monthly",
+                                        amount,
+                                    );
+
                                     // initiateCheckout handles redirect to success/failure pages
                                     await initiateCheckout(
                                         plan.tier as "premium" | "max",
@@ -519,7 +526,8 @@ function PricingCard({
     plan,
     price,
     isAnnual,
-    userSubscription,
+    userTier,
+    isAuthenticated,
     paymentStatus,
     flagsLoaded,
     isProcessing,
@@ -528,7 +536,8 @@ function PricingCard({
     plan: PricingPlan;
     price: string;
     isAnnual: boolean;
-    userSubscription: { tier: string } | null;
+    userTier: string | null;
+    isAuthenticated: boolean;
     paymentStatus: PaymentStatus;
     flagsLoaded: boolean;
     isProcessing: boolean;
@@ -538,7 +547,7 @@ function PricingCard({
     const isPremium = plan.tier === "premium";
     const isMax = plan.tier === "max";
     const isFree = plan.tier === "free";
-    const isCurrentPlan = userSubscription?.tier === plan.tier;
+    const isCurrentPlan = userTier === plan.tier;
     const colors = TIER_COLORS[plan.tier];
 
     // Waitlist state for premium plan
@@ -546,19 +555,16 @@ function PricingCard({
     const [inWaitlist, setInWaitlist] = useState(false);
     const [waitlistChecked, setWaitlistChecked] = useState(false);
     const [showWaitlistDialog, setShowWaitlistDialog] = useState(false);
-    
-    // User is logged in if we have subscription data (even if it's free tier)
-    const isLoggedIn = userSubscription !== null;
 
-    // Check waitlist status on mount for premium plan ONLY if logged in
+    // Check waitlist status on mount for premium plan ONLY if authenticated
     useEffect(() => {
-        if (isPremium && isLoggedIn) {
+        if (isPremium && isAuthenticated) {
             checkWaitlistStatus();
-        } else if (isPremium && !isLoggedIn) {
+        } else if (isPremium && !isAuthenticated) {
             // Not logged in, mark as checked so UI renders
             setWaitlistChecked(true);
         }
-    }, [isPremium, isLoggedIn]);
+    }, [isPremium, isAuthenticated]);
 
     const checkWaitlistStatus = async () => {
         try {
@@ -574,17 +580,17 @@ function PricingCard({
     };
 
     const handleJoinWaitlist = async () => {
-        // If not logged in, show dialog
-        if (!isLoggedIn) {
+        // If not authenticated, show dialog
+        if (!isAuthenticated) {
             setShowWaitlistDialog(true);
             return;
         }
 
-        // If logged in, join directly
+        // If authenticated, join directly
         setWaitlistLoading(true);
         try {
             const result = await waitlistApi.joinPremium();
-            
+
             if (result.success) {
                 setInWaitlist(true);
                 if (result.alreadyInList) {
@@ -697,26 +703,56 @@ function PricingCard({
 
                 {/* CTA */}
                 {isCurrentPlan ? (
-                    // Current plan badge
-                    <button
-                        disabled
-                        className="w-full py-2.5 rounded-lg text-sm font-semibold border-2 text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 cursor-default"
-                        style={{ borderColor: colors.accent }}
-                    >
-                        Current Plan
-                    </button>
+                    // Current plan - show Manage button
+                    isAuthenticated ? (
+                        <Link href="/settings/billing">
+                            <button
+                                className="w-full py-2.5 rounded-lg text-sm font-semibold border-2 text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                                style={{ borderColor: colors.accent }}
+                            >
+                                Manage Plan
+                            </button>
+                        </Link>
+                    ) : (
+                        // Free tier for unauthenticated users
+                        <button
+                            onClick={() => router.push("/auth/signup")}
+                            className="w-full py-2.5 rounded-lg text-sm font-semibold border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                        >
+                            Get Started Free
+                        </button>
+                    )
                 ) : isFree ? (
+                    // Free plan for authenticated premium users - show as downgrade option
+                    isAuthenticated ? (
+                        <button
+                            disabled
+                            className="w-full py-2.5 rounded-lg text-sm font-semibold border border-slate-300 dark:border-slate-600 text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-700/50 cursor-not-allowed"
+                        >
+                            Downgrade at Billing
+                        </button>
+                    ) : (
+                        // Free plan for unauthenticated
+                        <button
+                            onClick={() => router.push("/auth/signup")}
+                            className="w-full py-2.5 rounded-lg text-sm font-semibold border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                        >
+                            Get Started Free
+                        </button>
+                    )
+                ) : (isPremium || isMax) && !isAuthenticated ? (
+                    // Premium/Max for unauthenticated users - Get Started
                     <button
-                        onClick={() => router.push("/auth/signup")}
-                        className="w-full py-2.5 rounded-lg text-sm font-semibold border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                        onClick={() => router.push("/auth/login?redirect=/pricing")}
+                        className="w-full py-2.5 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                        style={{ background: colors.bg }}
                     >
-                        Get Started Free
+                        <CreditCard className="w-4 h-4" />
+                        Get Started
                     </button>
-                ) : isPremium || isMax ? (
-                    // Premium/Max plan: Check payment status
+                ) : (isPremium || isMax) && isAuthenticated ? (
+                    // Premium/Max for authenticated users
                     <>
-                        {console.log("[PricingCard Render] paymentStatus:", paymentStatus, "flagsLoaded:", flagsLoaded, "inWaitlist:", inWaitlist, "isProcessing:", isProcessing)}
-                        {console.log("[PricingCard Render] paymentStatus === 'enabled':", paymentStatus === "enabled")}
                         {paymentStatus === "enabled" ? (
                             // Payments enabled - show checkout button
                             <button
@@ -733,7 +769,9 @@ function PricingCard({
                                 ) : (
                                     <>
                                         <CreditCard className="w-4 h-4" />
-                                        Subscribe Now
+                                        {userTier === "premium" && isMax ? "Upgrade to Max" :
+                                         userTier === "max" && isPremium ? "Downgrade" :
+                                         "Subscribe Now"}
                                     </>
                                 )}
                             </button>

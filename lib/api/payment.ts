@@ -327,6 +327,66 @@ export const paymentApi = {
     }
     return response.json();
   },
+
+  // ===================== CANCELLATION FEEDBACK =====================
+
+  /**
+   * Save cancellation feedback
+   */
+  async saveCancellationFeedback(
+    token: string,
+    feedback: {
+      reasons: string[];
+      customReason?: string;
+      satisfactionScore?: number;
+      wouldReturn?: boolean;
+      additionalComments?: string;
+    },
+  ): Promise<{ success: boolean; feedbackId: string }> {
+    const response = await fetch(`${API_URL}/payment/cancellation-feedback`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(feedback),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || 'Failed to save feedback');
+    }
+    return response.json();
+  },
+
+  /**
+   * Cancel subscription with feedback
+   */
+  async cancelWithFeedback(
+    token: string,
+    feedback: {
+      reasons: string[];
+      customReason?: string;
+      satisfactionScore?: number;
+      wouldReturn?: boolean;
+      additionalComments?: string;
+    },
+    cancelImmediately: boolean,
+    reason?: string,
+  ): Promise<Subscription> {
+    const response = await fetch(`${API_URL}/payment/subscription/cancel-with-feedback`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ feedback, cancelImmediately, reason }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || 'Failed to cancel subscription');
+    }
+    return response.json();
+  },
 };
 
 /**
