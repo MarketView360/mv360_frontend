@@ -592,7 +592,7 @@ export default function BillingPage() {
           <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Need help with billing?</p>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">We usually respond within a few hours.</p>
         </div>
-        <a href="mailto:support@yourdomain.com" className="shrink-0">
+        <a href="mailto:support@marketview360.io" className="shrink-0">
           <Button
             variant="outline" size="sm"
             className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium"
