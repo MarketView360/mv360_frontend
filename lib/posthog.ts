@@ -1,23 +1,5 @@
 'use client';
 
-import { usePostHog } from 'posthog-js/react';
-import { useCallback } from 'react';
-
-/**
- * Hook for using PostHog analytics
- * @example
- * ```tsx
- * const posthog = usePostHogClient();
- *
- * const handlePurchase = () => {
- *   posthog?.capture('purchase_completed', { amount: 99, currency: 'USD' });
- * };
- * ```
- */
-export function usePostHogClient() {
-  return usePostHog();
-}
-
 /**
  * Capture a PostHog event
  * @param eventName - The name of the event to capture
@@ -189,3 +171,6 @@ export function trackPricingPageViewed(currentTier: string | null) {
     current_tier: currentTier || 'unauthenticated',
   });
 }
+
+// Re-export the hook from a separate file to avoid circular dependencies
+export { usePostHogClient } from './posthog-hooks';
