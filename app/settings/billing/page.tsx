@@ -29,6 +29,7 @@ import { usePaymentStatus } from "@/lib/hooks/usePaymentStatus";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/providers/AuthProvider";
 import { Payment } from "@/lib/api/payment";
+import { PaymentMethodsCard } from "@/components/billing/PaymentMethodsCard";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -282,6 +283,9 @@ export default function BillingPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Payment Methods (for free users to pre-add) */}
+        <PaymentMethodsCard />
       </div>
     );
   }
@@ -472,6 +476,9 @@ export default function BillingPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Payment Methods */}
+      <PaymentMethodsCard />
 
       {/* Payment History */}
       <Card>

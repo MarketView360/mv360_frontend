@@ -43,6 +43,29 @@ export interface Payment {
   createdAt: string;
 }
 
+export interface PaymentMethod {
+  id: string;
+  userId: string;
+  razorpayPaymentMethodId?: string;
+  razorpayTokenId?: string;
+  methodType: 'card' | 'upi' | 'netbanking' | 'wallet' | 'other';
+  cardLast4?: string;
+  cardBrand?: string;
+  cardIssuer?: string;
+  cardType?: string;
+  cardExpiryMonth?: number;
+  cardExpiryYear?: number;
+  upiVpa?: string;
+  bankName?: string;
+  bankCode?: string;
+  walletProvider?: string;
+  isDefault: boolean;
+  isActive: boolean;
+  lastUsedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CreateSubscriptionResponse {
   subscriptionId: string;
   razorpaySubscriptionId: string;
@@ -200,6 +223,74 @@ export const paymentApi = {
       throw new Error('Failed to fetch payment history');
     }
     return response.json();
+  },
+
+  // ===================== PAYMENT METHODS =====================
+
+  /**
+   * Get all payment methods for the user
+   */
+  async getPaymentMethods(token: string): Promise<PaymentMethod[]> {
+    const response = await fetch(`${API_URL}/payment/methods`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      throw new Error('Failed to fetch payment methods');
+    }
+    return response.json();
+  },
+
+  /**
+   * Get the default payment method
+   */
+  async getDefaultPaymentMethod(token: string): Promise<PaymentMethod | null> {
+    const response = await fetch(`${API_URL}/payment/methods/default`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      if (response.status === 404) return null;
+      throw new Error('Failed to fetch default payment method');
+    }
+    return response.json();
+  },
+
+  /**
+   * Set a payment method as default
+   */
+  async setDefaultPaymentMethod(token: string, paymentMethodId: string): Promise<PaymentMethod> {
+    const response = await fetch(`${API_URL}/payment/methods/default`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ paymentMethodId }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || 'Failed to set default payment method');
+    }
+    return response.json();
+  },
+
+  /**
+   * Delete a payment method
+   */
+  async deletePaymentMethod(token: string, paymentMethodId: string): Promise<void> {
+    const response = await fetch(`${API_URL}/payment/methods/${paymentMethodId}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || 'Failed to delete payment method');
+    }
   },
 };
 
