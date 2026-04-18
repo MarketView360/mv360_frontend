@@ -10,12 +10,12 @@ import {
     RefreshCw,
     ChevronDown,
     ChevronUp,
-    LucideIcon,
     Loader2,
     Bell,
     CreditCard,
     Clock,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { waitlistApi } from "@/lib/api/waitlist";
 import { toast } from "sonner";
 import { WaitlistDialog, WaitlistFormData } from "./components/WaitlistDialog";
