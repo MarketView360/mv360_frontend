@@ -127,6 +127,9 @@ export function useSubscriptionCheckout() {
           billingPeriod,
         );
 
+        // Construct plan name for UI
+        const planName = `${tier.charAt(0).toUpperCase() + tier.slice(1)} ${billingPeriod}`;
+
         // Open Razorpay checkout
         return new Promise((resolve) => {
           openRazorpayCheckout({
@@ -134,7 +137,7 @@ export function useSubscriptionCheckout() {
             razorpaySubscriptionId: subscriptionData.razorpaySubscriptionId,
             userEmail,
             userName,
-            planName: `${tier.charAt(0).toUpperCase() + tier.slice(1)} ${billingPeriod}`,
+            planName,
             onSuccess: async (paymentId, subscriptionId, signature) => {
               try {
                 // Verify payment on backend
@@ -145,16 +148,24 @@ export function useSubscriptionCheckout() {
                   signature,
                 );
                 setIsProcessing(false);
+                // Redirect to success page with payment details
+                window.location.href = `/settings/billing/success?plan=${encodeURIComponent(tier.charAt(0).toUpperCase() + tier.slice(1))}&tier=${tier}&period=${billingPeriod}&payment_id=${paymentId}`;
                 resolve(true);
               } catch (verifyError) {
                 setError('Payment verification failed. Please contact support.');
                 setIsProcessing(false);
+                // Redirect to failed page
+                window.location.href = `/settings/billing/failed?error_code=VERIFICATION_FAILED&error_description=${encodeURIComponent('Payment verification failed')}&plan=${encodeURIComponent(planName)}&payment_id=${paymentId}`;
                 resolve(false);
               }
             },
             onError: (err) => {
-              setError(err?.description || 'Payment failed. Please try again.');
+              const errorCode = err?.code || err?.reason || '';
+              const errorDesc = err?.description || 'Payment failed. Please try again.';
+              setError(errorDesc);
               setIsProcessing(false);
+              // Redirect to failed page
+              window.location.href = `/settings/billing/failed?error_code=${encodeURIComponent(errorCode)}&error_description=${encodeURIComponent(errorDesc)}&plan=${encodeURIComponent(planName)}`;
               resolve(false);
             },
             onClose: () => {

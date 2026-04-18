@@ -368,18 +368,13 @@ export default function PricingPage() {
                                         });
                                         return;
                                     }
-                                    const success = await initiateCheckout(
+                                    // initiateCheckout handles redirect to success/failure pages
+                                    await initiateCheckout(
                                         plan.tier as "premium" | "max",
                                         isAnnual ? "annual" : "monthly",
                                         user.email || "",
                                         user.user_metadata?.display_name || user.email?.split("@")[0] || "User",
                                     );
-                                    if (success) {
-                                        // Redirect to celebration success page
-                                        const tierParam = plan.tier;
-                                        const periodParam = isAnnual ? "annual" : "monthly";
-                                        window.location.href = `/settings/billing/success?plan=${encodeURIComponent(plan.name)}&tier=${tierParam}&period=${periodParam}`;
-                                    }
                                 }}
                             />
                         ))}

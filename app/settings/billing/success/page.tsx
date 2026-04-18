@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useAuth } from "@/providers/AuthProvider";
+import { useProfile } from "@/hooks/useProfile";
 import {
   Crown,
   Sparkles,
@@ -23,13 +25,40 @@ import { confetti } from "@/lib/confetti";
 export default function SubscriptionSuccessPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { session, loading: authLoading } = useAuth();
+  const { profile, loading: profileLoading } = useProfile(session?.access_token || null);
+
   const [isAnimating, setIsAnimating] = useState(true);
+  const [verified, setVerified] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const planName = searchParams.get("plan") || "Premium";
   const tier = searchParams.get("tier") || "premium";
   const billingPeriod = searchParams.get("period") || "monthly";
+  const paymentId = searchParams.get("payment_id");
 
+  // Verify user has premium access
   useEffect(() => {
+    if (authLoading || profileLoading) return;
+
+    // Must be logged in
+    if (!session) {
+      router.replace("/auth/login?redirect=/settings/billing/success");
+      return;
+    }
+
+    // Must have premium tier (either from subscription or profile)
+    const profileTier = profile?.subscription_tier || "free";
+    if (profileTier === "free" && !searchParams.get("skip_verify")) {
+      // If user is still free tier, redirect to billing
+      // This prevents direct access without actual payment
+      setError("Your subscription may still be processing. Please wait or contact support.");
+      setVerified(false);
+      return;
+    }
+
+    setVerified(true);
+
     // Trigger confetti animation
     confetti({
       particleCount: 100,
@@ -54,7 +83,7 @@ export default function SubscriptionSuccessPage() {
     }, 250);
 
     setIsAnimating(false);
-  }, []);
+  }, [authLoading, profileLoading, session, profile, router, searchParams]);
 
   const tierFeatures = {
     premium: [
@@ -74,6 +103,47 @@ export default function SubscriptionSuccessPage() {
   };
 
   const features = tierFeatures[tier as "premium" | "max"] || tierFeatures.premium;
+
+  // Loading state
+  if (authLoading || profileLoading || isAnimating) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-brand" />
+      </div>
+    );
+  }
+
+  // Error state - not verified
+  if (error) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center px-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="p-6 text-center">
+            <Clock className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+            <h1 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+              Subscription Processing
+            </h1>
+            <p className="text-slate-600 dark:text-slate-400 mb-6">
+              {error}
+            </p>
+            <div className="flex gap-3 justify-center">
+              <Link href="/settings/billing">
+                <Button variant="outline">Check Billing</Button>
+              </Link>
+              <Link href="/pricing">
+                <Button>Try Again</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Not logged in - will redirect
+  if (!session) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex items-center justify-center px-4 py-12">
@@ -95,6 +165,12 @@ export default function SubscriptionSuccessPage() {
           <p className="text-lg text-slate-600 dark:text-slate-400">
             Your subscription is now active. Thank you for joining MarketView360!
           </p>
+
+          {paymentId && (
+            <p className="text-xs text-slate-400 mt-2 font-mono">
+              Payment ID: {paymentId}
+            </p>
+          )}
         </div>
 
         {/* Success Card */}
