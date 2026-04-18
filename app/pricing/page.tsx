@@ -20,6 +20,7 @@ import { waitlistApi } from "@/lib/api/waitlist";
 import { toast } from "sonner";
 import { WaitlistDialog, WaitlistFormData } from "./components/WaitlistDialog";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { usePostHog } from "posthog-js/react";
 import { useAuth } from "@/providers/AuthProvider";
 import { useSubscriptionCheckout } from "@/lib/hooks/usePaymentStatus";
