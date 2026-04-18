@@ -706,13 +706,12 @@ function PricingCard({
                 {isCurrentPlan ? (
                     // Current plan - show Manage button
                     isAuthenticated ? (
-                        <Link href="/settings/billing">
-                            <button
-                                className="w-full py-2.5 rounded-lg text-sm font-semibold border-2 text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                                style={{ borderColor: colors.accent }}
-                            >
-                                Manage Plan
-                            </button>
+                        <Link
+                            href="/settings/billing"
+                            className="block w-full py-2.5 rounded-lg text-sm font-semibold border-2 text-center text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                            style={{ borderColor: colors.accent }}
+                        >
+                            Manage Plan
                         </Link>
                     ) : (
                         // Free tier for unauthenticated users
