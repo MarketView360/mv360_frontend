@@ -17,7 +17,6 @@ import {
   CheckCircle,
   ChevronDown,
   ChevronUp,
-  Banknote,
   ShieldCheck,
   Clock,
 } from "lucide-react";
@@ -33,23 +32,23 @@ const PAYMENT_ERROR_GUIDANCE: Record<string, {
   severity: "high" | "medium" | "low";
 }> = {
   PAYMENT_DECLINED: {
-    title: "Payment Declined by Bank",
-    description: "Your bank rejected this transaction. This is common and usually easy to fix.",
+    title: "Payment Declined by Card Issuer",
+    description: "Your card issuer rejected this transaction. This is common and usually easy to fix.",
     solutions: [
-      "Check if your card has sufficient funds",
+      "Check if your card has sufficient available credit/balance",
       "Verify your card details are correct (number, expiry, CVV)",
-      "Try a different payment method (another card, UPI, net banking)",
-      "Contact your bank to authorize international/online transactions",
+      "Try a different card (Visa or Mastercard work best)",
+      "Contact your card issuer to authorize the transaction",
     ],
     severity: "high",
   },
   INSUFFICIENT_FUNDS: {
     title: "Insufficient Funds",
-    description: "Your account doesn't have enough balance for this payment.",
+    description: "Your card doesn't have enough available balance for this payment.",
     solutions: [
-      "Add funds to your account and try again",
+      "Check your available credit/balance and try again",
       "Use a different card with sufficient balance",
-      "Try UPI or net banking with a funded account",
+      "Contact your card issuer if you believe this is an error",
     ],
     severity: "high",
   },
@@ -84,11 +83,11 @@ const PAYMENT_ERROR_GUIDANCE: Record<string, {
   },
   TRANSACTION_FORBIDDEN: {
     title: "Transaction Not Permitted",
-    description: "Your bank doesn't allow this type of transaction.",
+    description: "Your card issuer doesn't allow this type of transaction.",
     solutions: [
-      "Contact your bank to enable online/international transactions",
-      "Try a different card that allows online payments",
-      "Use UPI which typically has fewer restrictions",
+      "Contact your card issuer to enable online transactions",
+      "Try a different card (Visa or Mastercard have fewer restrictions)",
+      "Ask your card issuer to whitelist MarketView360",
     ],
     severity: "high",
   },
@@ -96,9 +95,9 @@ const PAYMENT_ERROR_GUIDANCE: Record<string, {
     title: "Authentication Failed",
     description: "The payment verification step failed.",
     solutions: [
-      "Make sure you complete the OTP/authentication step from your bank",
-      "Check that your card supports online authentication (3D Secure)",
-      "Try again and carefully complete all authentication prompts",
+      "Complete the 3D Secure authentication step from your card issuer",
+      "Check that your card supports online authentication",
+      "Try again and carefully follow all authentication prompts",
     ],
     severity: "medium",
   },
@@ -155,8 +154,8 @@ export default function SubscriptionFailedPage() {
     title: "Payment Failed",
     description: errorDesc,
     solutions: [
-      "Try again with the same payment method",
-      "Use a different payment method (card, UPI, net banking)",
+      "Try again with the same card",
+      "Use a different card (Visa or Mastercard recommended)",
       "Contact support if the issue persists",
     ],
     severity: "medium",
@@ -335,31 +334,34 @@ export default function SubscriptionFailedPage() {
               <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
                 <div className="flex items-center gap-2 mb-2">
                   <CreditCard className="h-4 w-4 text-blue-500" />
-                  <span className="font-medium text-sm">Credit Card</span>
+                  <span className="font-medium text-sm">Visa</span>
                 </div>
                 <p className="text-xs text-slate-500">
-                  Visa, Mastercard, Rupay. Make sure international payments are enabled.
+                  Widely accepted with high success rate and reliable support.
                 </p>
               </div>
               <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
                 <div className="flex items-center gap-2 mb-2">
-                  <Banknote className="h-4 w-4 text-green-500" />
-                  <span className="font-medium text-sm">UPI</span>
+                  <CreditCard className="h-4 w-4 text-orange-500" />
+                  <span className="font-medium text-sm">Mastercard</span>
                 </div>
                 <p className="text-xs text-slate-500">
-                  Google Pay, PhonePe, Paytm. Usually fewer restrictions.
+                  Excellent compatibility and global acceptance.
                 </p>
               </div>
               <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800">
                 <div className="flex items-center gap-2 mb-2">
-                  <ShieldCheck className="h-4 w-4 text-purple-500" />
-                  <span className="font-medium text-sm">Net Banking</span>
+                  <CreditCard className="h-4 w-4 text-green-500" />
+                  <span className="font-medium text-sm">American Express</span>
                 </div>
                 <p className="text-xs text-slate-500">
-                  Direct bank transfer. Good backup option.
+                  Full Amex support with premium card benefits.
                 </p>
               </div>
             </div>
+            <p className="text-xs text-slate-500 mt-4">
+              While regional cards may work, Visa, Mastercard, and American Express offer the best reliability.
+            </p>
           </CardContent>
         </Card>
 

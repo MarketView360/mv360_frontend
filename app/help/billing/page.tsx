@@ -16,13 +16,13 @@ const paymentFAQs = [
     question: "Why was my payment declined?",
     answer: `Payment declines usually happen for one of these reasons:
 
-1. **Insufficient funds** - Make sure your account has enough balance
-2. **International transactions blocked** - Many Indian banks block international payments by default. Contact your bank to enable this.
+1. **Insufficient funds** - Make sure your card has enough available credit/balance
+2. **Card security flags** - Your bank may have flagged this as an unusual transaction
 3. **Card limits** - Your card may have a daily/monthly spending limit
 4. **Incorrect details** - Double-check your card number, expiry date, and CVV
-5. **3D Secure failure** - You may have missed the OTP/authentication step from your bank
+5. **3D Secure failure** - You may have missed the authentication step from your card issuer
 
-**Solution:** Try a different payment method like UPI (Google Pay, PhonePe) which typically has fewer restrictions.`,
+**Solution:** Try a different card (Visa or Mastercard typically work best) or contact your bank to authorize the transaction.`,
   },
   {
     question: "My payment failed but money was deducted. What should I do?",
@@ -43,39 +43,39 @@ const paymentFAQs = [
     answer: `You can retry payment anytime:
 
 1. Go to Pricing page and click Subscribe again
-2. Use a different payment method if the same one fails repeatedly
+2. Use a different card if the same one fails repeatedly
 3. Wait 30 minutes if you see "Too many attempts" error
 
 **Tips for successful retry:**
 - Clear your browser cache before retrying
-- Use UPI instead of card if card payments keep failing
-- Make sure you complete all authentication steps (OTP, 3D Secure)`,
+- Try a Visa or Mastercard if other cards keep failing
+- Make sure you complete all authentication steps (3D Secure)`,
   },
   {
     question: "Which payment methods work best?",
-    answer: `We accept multiple payment methods through Razorpay:
+    answer: `We accept major credit and debit cards through our secure payment processor:
 
 **Recommended (most reliable):**
-- **UPI** - Google Pay, PhonePe, Paytm, BHIM
-- **Credit Cards** - Visa, Mastercard (ensure international payments enabled)
+- **Visa** - Widely accepted, high success rate
+- **Mastercard** - Excellent compatibility and reliability
+- **American Express** - Full support for Amex cards
 
 **Also supported:**
-- **Debit Cards** - Most major Indian banks
-- **Net Banking** - HDFC, ICICI, SBI, Axis, and 50+ banks
-- **Wallets** - Paytm, Mobikwik, Amazon Pay
+- **Discover** - US-based card network
+- **Other major card networks** - Most international cards work fine
 
-**Pro tip:** UPI payments have the highest success rate for Indian users since they don't require international transaction approval.`,
+**Note:** While some regional cards (like Rupay) may work, Visa, Mastercard, and American Express offer the best reliability and support. For optimal experience, we recommend using one of these major card providers.`,
   },
   {
     question: "I'm getting 'Transaction Forbidden' error. What does this mean?",
-    answer: `This error means your bank doesn't allow this type of transaction. This is common with some banks.
+    answer: `This error means your card issuer doesn't allow this type of transaction.
 
 **Fix:**
-1. Contact your bank's customer support
-2. Ask them to enable "online transactions" or "international transactions" for your card
-3. Most banks can enable this instantly via phone/app
+1. Contact your card issuer's customer support
+2. Ask them to enable "online transactions" for your card
+3. Most banks can enable this instantly via phone or online banking
 
-**Alternative:** Use UPI instead - it typically bypasses these restrictions.`,
+**Alternative:** Try a different card (Visa or Mastercard have fewer restrictions).`,
   },
   {
     question: "Payment is stuck on 'processing' or 'pending'",
@@ -108,15 +108,15 @@ const paymentFAQs = [
 - You'll receive a confirmation email once processed`,
   },
   {
-    question: "My bank is asking for OTP but I didn't receive it",
-    answer: `This is a bank-side issue. Try these steps:
+    question: "My card issuer is asking for verification but I didn't receive it",
+    answer: `This is a card issuer issue. Try these steps:
 
-1. Check if your mobile number is registered with your bank
-2. Wait 2-3 minutes - sometimes OTPs take time
-3. Check your SMS app - OTPs may be in a separate "transactions" folder
-4. If still no OTP, cancel the payment and:
-   - Try UPI (uses app authentication instead of SMS)
-   - Or contact your bank to fix SMS delivery`,
+1. Check if your phone number/email is registered with your card issuer
+2. Wait 2-3 minutes - sometimes verification codes take time to arrive
+3. Check your SMS and email for the verification code
+4. If still no verification code:
+   - Contact your card issuer to fix notification delivery
+   - Or try a different card that has working notifications`,
   },
 ];
 

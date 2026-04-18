@@ -203,11 +203,11 @@ const faqCategories: FAQCategory[] = [
     faqs: [
       {
         question: "What payment methods do you accept?",
-        answer: "We accept major credit cards (Visa, Mastercard, American Express), debit cards, UPI (Google Pay, PhonePe, Paytm), and net banking through Razorpay. All transactions are secure and encrypted."
+        answer: "We accept major credit and debit cards including Visa, Mastercard, American Express, and Discover. All transactions are processed securely through our PCI-DSS certified payment gateway. Visa and Mastercard offer the best reliability."
       },
       {
         question: "My payment failed. What should I do?",
-        answer: "Payment failures are usually temporary. Common fixes: try a different payment method (UPI works best), check your card supports online transactions, ensure sufficient funds. Visit our Payment Troubleshooting page for detailed solutions."
+        answer: "Payment failures are usually temporary. Common fixes: try a different card (Visa or Mastercard recommended), check your card supports online transactions, ensure sufficient available credit/balance. Visit our Payment Troubleshooting page for detailed solutions."
       },
       {
         question: "How do I cancel my subscription?",
@@ -223,7 +223,7 @@ const faqCategories: FAQCategory[] = [
       },
       {
         question: "Money was deducted but payment shows failed?",
-        answer: "This sometimes happens when the bank processes payment but verification fails. Wait 5-10 minutes — banks usually auto-refund. If not refunded after 24 hours, contact support with your payment reference ID."
+        answer: "This sometimes happens when the card issuer processes payment but verification fails. Wait 5-10 minutes — most banks auto-refund. If not refunded after 24 hours, contact support with your payment reference ID."
       }
     ]
   }
