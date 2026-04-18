@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/providers/AuthProvider";
@@ -123,6 +123,18 @@ const PAYMENT_ERROR_GUIDANCE: Record<string, {
 };
 
 export default function SubscriptionFailedPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+        <Loader2 className="h-8 w-8 animate-spin text-brand" />
+      </div>
+    }>
+      <SubscriptionFailedContent />
+    </Suspense>
+  );
+}
+
+function SubscriptionFailedContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { session, loading: authLoading } = useAuth();
