@@ -21,10 +21,9 @@ import { toast } from "sonner";
 import { WaitlistDialog, WaitlistFormData } from "./components/WaitlistDialog";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { usePostHog } from "posthog-js/react";
 import { useAuth } from "@/providers/AuthProvider";
 import { useSubscriptionCheckout } from "@/lib/hooks/usePaymentStatus";
-import { trackPricingPageViewed, trackSubscriptionInitiated } from "@/lib/posthog";
+import { trackPricingPageViewed, trackSubscriptionInitiated, usePostHogClient } from "@/lib/posthog";
 
 // Feature flag values: "enabled" | "disabled-coming-soon" | "disabled-paused"
 type PaymentStatus = "enabled" | "disabled-coming-soon" | "disabled-paused" | null;
@@ -227,7 +226,7 @@ export default function PricingPage() {
     const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(null);
     const [flagsLoaded, setFlagsLoaded] = useState(false);
 
-    const posthog = usePostHog();
+    const posthog = usePostHogClient();
     const { session, user } = useAuth();
     const { initiateCheckout, isProcessing, error: checkoutError } = useSubscriptionCheckout();
 
