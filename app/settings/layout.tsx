@@ -50,15 +50,16 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
   const { user, loading } = useAuth();
 
   // Redirect unauthenticated users to sign in
-  // Exception: billing failed page - show error info even if not logged in
+  // Exception: billing failed/success pages - handle auth internally
   useEffect(() => {
-    if (!loading && !user && !pathname.includes('/billing/failed')) {
+    if (!loading && !user && !pathname.includes('/billing/failed') && !pathname.includes('/billing/success')) {
       router.push("/auth/login?redirect=" + encodeURIComponent(pathname));
     }
   }, [user, loading, router, pathname]);
 
   // Show loading state while checking auth
-  if (loading) {
+  // Exception: billing pages handle their own loading states
+  if (loading && !pathname.includes('/billing/failed') && !pathname.includes('/billing/success')) {
     return (
       <div className="min-h-full bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -69,8 +70,8 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
     );
   }
 
-  // Don't render settings if not authenticated (except for failed page)
-  if (!user && !pathname.includes('/billing/failed')) {
+  // Don't render settings if not authenticated (except for billing pages)
+  if (!user && !pathname.includes('/billing/failed') && !pathname.includes('/billing/success')) {
     return (
       <div className="min-h-full bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -81,8 +82,8 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
     );
   }
 
-  // For failed page without auth, just render the child without sidebar
-  if (!user && pathname.includes('/billing/failed')) {
+  // For billing pages without auth, render child without sidebar
+  if (!user && (pathname.includes('/billing/failed') || pathname.includes('/billing/success'))) {
     return (
       <div className="min-h-full bg-slate-50 dark:bg-slate-950">
         {children}

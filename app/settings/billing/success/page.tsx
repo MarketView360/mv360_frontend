@@ -26,40 +26,23 @@ export default function SubscriptionSuccessPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { session, loading: authLoading } = useAuth();
-  const { profile, loading: profileLoading } = useProfile(session?.access_token || null);
+  const { profile, loading: profileLoading, refetch } = useProfile(session?.access_token || null);
 
   const [isAnimating, setIsAnimating] = useState(true);
   const [verified, setVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPreliminary, setShowPreliminary] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
 
   const planName = searchParams.get("plan") || "Premium";
   const tier = searchParams.get("tier") || "premium";
   const billingPeriod = searchParams.get("period") || "monthly";
   const paymentId = searchParams.get("payment_id");
 
-  // Verify user has premium access
+  // Show preliminary success immediately based on URL params
+  // This prevents "logged out" feeling while auth loads
   useEffect(() => {
-    if (authLoading || profileLoading) return;
-
-    // Must be logged in
-    if (!session) {
-      router.replace("/auth/login?redirect=/settings/billing/success");
-      return;
-    }
-
-    // Must have premium tier (either from subscription or profile)
-    const profileTier = profile?.subscription_tier || "free";
-    if (profileTier === "free" && !searchParams.get("skip_verify")) {
-      // If user is still free tier, redirect to billing
-      // This prevents direct access without actual payment
-      setError("Your subscription may still be processing. Please wait or contact support.");
-      setVerified(false);
-      return;
-    }
-
-    setVerified(true);
-
-    // Trigger confetti animation
+    // Trigger confetti animation immediately on page load
     confetti({
       particleCount: 100,
       spread: 70,
@@ -83,7 +66,46 @@ export default function SubscriptionSuccessPage() {
     }, 250);
 
     setIsAnimating(false);
-  }, [authLoading, profileLoading, session, profile, router, searchParams]);
+  }, []);
+
+  // Verify user has premium access (after auth loads)
+  useEffect(() => {
+    if (authLoading || profileLoading) return;
+
+    setShowPreliminary(false);
+
+    // If not logged in, wait a bit and retry before redirecting
+    if (!session) {
+      if (retryCount < 3) {
+        setRetryCount(retryCount + 1);
+        // Wait 2 seconds and retry - session might still be loading from localStorage
+        setTimeout(() => {
+          // Force re-check by not doing anything - useEffect will re-run
+        }, 2000);
+        return;
+      }
+      // After retries, redirect to login
+      router.replace("/auth/login?redirect=/settings/billing/success");
+      return;
+    }
+
+    // Must have premium tier (either from subscription or profile)
+    const profileTier = profile?.subscription_tier || "free";
+    if (profileTier === "free" && !searchParams.get("skip_verify")) {
+      // If user is still free tier, try to refetch profile
+      if (retryCount < 2) {
+        setRetryCount(retryCount + 1);
+        refetch();
+        return;
+      }
+      // Show processing message instead of redirecting
+      setError("Your subscription may still be processing. Please wait a moment or check your billing page.");
+      setVerified(false);
+      return;
+    }
+
+    setVerified(true);
+  }, [authLoading, profileLoading, session, profile, router, searchParams, retryCount, refetch]);
 
   const tierFeatures = {
     premium: [
@@ -104,10 +126,53 @@ export default function SubscriptionSuccessPage() {
 
   const features = tierFeatures[tier as "premium" | "max"] || tierFeatures.premium;
 
-  // Loading state
+  // Loading state with preliminary success UI
+  if ((authLoading || profileLoading || isAnimating) && showPreliminary) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex items-center justify-center px-4 py-12">
+        <div className="max-w-lg w-full">
+          {/* Show success UI immediately */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full mb-6 shadow-lg shadow-amber-200 dark:shadow-amber-900/30 animate-bounce">
+              <Crown className="h-10 w-10 text-white" />
+            </div>
+
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <Sparkles className="h-5 w-5 text-amber-500 animate-pulse" />
+              <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white">
+                Welcome to {planName}!
+              </h1>
+              <Sparkles className="h-5 w-5 text-amber-500 animate-pulse" />
+            </div>
+
+            <p className="text-lg text-slate-600 dark:text-slate-400">
+              Your subscription is being activated...
+            </p>
+
+            {paymentId && (
+              <p className="text-xs text-slate-400 mt-2 font-mono">
+                Payment ID: {paymentId}
+              </p>
+            )}
+          </div>
+
+          <Card className="border-2 border-amber-200 dark:border-amber-800 shadow-xl">
+            <CardContent className="p-6 text-center">
+              <Loader2 className="h-8 w-8 animate-spin text-brand mx-auto mb-4" />
+              <p className="text-slate-600 dark:text-slate-400">
+                Verifying your subscription...
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Full loading spinner if not showing preliminary
   if (authLoading || profileLoading || isAnimating) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
         <Loader2 className="h-8 w-8 animate-spin text-brand" />
       </div>
     );
@@ -141,9 +206,7 @@ export default function SubscriptionSuccessPage() {
   }
 
   // Not logged in - will redirect
-  if (!session) {
-    return null;
-  }
+  if (!session) return null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex items-center justify-center px-4 py-12">
