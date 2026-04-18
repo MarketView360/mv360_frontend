@@ -26,6 +26,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { GoogleAdInline } from "@/components/GoogleAdSlot";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
@@ -171,6 +172,9 @@ export default function StockCalendarPage() {
                         </CardContent>
                     </Card>
                 </div>
+
+                {/* Ad Placement - Between search bar and main content */}
+                <GoogleAdInline />
 
                 {/* Main Content Area */}
                 {loading && events.length === 0 ? (

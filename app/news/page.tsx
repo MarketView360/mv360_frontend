@@ -8,6 +8,7 @@ import { ScrollToTopFab } from "./ScrollToTopFab";
 import { SortOption } from "./NewsFilters";
 import { BreakingNewsCarousel } from "@/components/news/BreakingNewsCarousel";
 import { NewsSidebar } from "@/components/news/NewsSidebar";
+import { GoogleAdSidebar, GoogleAdInFeed } from "@/components/GoogleAdSlot";
 
 export default function NewsPage() {
   const [sort, setSort] = useState<SortOption>("latest");
@@ -25,9 +26,13 @@ export default function NewsPage() {
             <Suspense fallback={<NewsSkeleton />}>
               <NewsGrid sort={sort} />
             </Suspense>
+            {/* In-feed ad after the news grid */}
+            <GoogleAdInFeed />
           </div>
-          <aside className="hidden lg:block lg:col-span-1">
+          <aside className="hidden lg:block lg:col-span-1 space-y-6">
             <NewsSidebar />
+            {/* Sticky sidebar ad below news sidebar */}
+            <GoogleAdSidebar sticky />
           </aside>
         </div>
       </section>

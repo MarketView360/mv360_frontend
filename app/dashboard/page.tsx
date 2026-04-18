@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/providers/AuthProvider";
 import { UsageIndicator, FeatureBadge, PaywallOverlay } from "@/components/paywall";
+import { GoogleAdSlot } from "@/components/GoogleAdSlot";
 
 export default function DashboardPage() {
     const { user } = useAuth();
@@ -85,6 +86,9 @@ export default function DashboardPage() {
                     );
                 })}
             </div>
+
+            {/* Ad Placement - Between quick stats and widget grid */}
+            <GoogleAdSlot />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Watchlists Widget */}

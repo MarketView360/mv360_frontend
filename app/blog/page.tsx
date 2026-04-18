@@ -13,6 +13,7 @@ import { ExternalLinkWarning, useExternalLinkWarning } from "../news/ExternalLin
 import { NewsletterSubscribe } from "./components/NewsletterSubscribe";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { GoogleAdSlot, GoogleAdInFeed } from "@/components/GoogleAdSlot";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -518,6 +519,9 @@ export default function BlogPage() {
               </section>
             )}
 
+            {/* Ad Placement - Between featured and article grid */}
+            <GoogleAdSlot />
+
             {/* Article grid */}
             {rest.length > 0 && (
               <section>
@@ -533,6 +537,7 @@ export default function BlogPage() {
         )}
 
         {/* Newsletter */}
+        <GoogleAdInFeed />
         <NewsletterSubscribe />
       </div>
 

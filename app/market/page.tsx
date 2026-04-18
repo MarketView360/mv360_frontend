@@ -7,6 +7,7 @@ import { SectorPerformance } from "@/components/market/SectorPerformance";
 import { StockEventsCalendar } from "@/components/market/StockEventsCalendar";
 import MarketOverview from "@/components/MarketOverview";
 import { MarketHeatmapNew } from "@/components/MarketHeatmapNew";
+import { GoogleAdSlot, GoogleAdInline } from "@/components/GoogleAdSlot";
 
 export default function MarketPage() {
   const [refreshToken] = useState<number>(0);
@@ -32,6 +33,9 @@ export default function MarketPage() {
           <MarketHeatmapNew />
         </div>
 
+        {/* Ad Placement - After heatmap, before market breadth */}
+        <GoogleAdInline />
+
         {/* Secondary Row: Market Breadth + Stock Events Calendar side by side */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <MarketBreadth />
@@ -42,6 +46,9 @@ export default function MarketPage() {
         <div>
           <SectorPerformance />
         </div>
+
+        {/* Ad Placement - After sector performance, before overview */}
+        <GoogleAdSlot />
 
         {/* Overview: Indices, Movers, News stacked */}
         <div>

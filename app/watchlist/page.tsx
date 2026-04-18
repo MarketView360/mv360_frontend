@@ -48,6 +48,7 @@ import { WatchlistExportDialog } from "@/components/watchlist/WatchlistExportDia
 import { WatchlistImportDialog } from "@/components/watchlist/WatchlistImportDialog";
 import { cleanTicker } from "@/lib/watchlist-utils";
 import { toast } from "sonner";
+import { GoogleAdSlot } from "@/components/GoogleAdSlot";
 
 export default function WatchlistPage() {
   return (
@@ -618,6 +619,9 @@ function WatchlistPageContent() {
                       onSelectionChange={setSelectedTickers}
                       onStockDataChange={setStockMetrics}
                     />
+
+                    {/* Ad Placement - Below stock table, before comparison section */}
+                    <GoogleAdSlot />
 
                     {/* Comparison Charts Section */}
                     {showCompare && compareTickers.length > 0 && (

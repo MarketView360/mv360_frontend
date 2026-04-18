@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import MarketOverview from "@/components/MarketOverview";
 import SearchBar from "@/components/SearchBar";
 import { PopularStocksCarousel } from "@/components/home/PopularStocksCarousel";
+import { GoogleAdInline } from "@/components/GoogleAdSlot";
 
 export default async function Home() {
   return (
@@ -92,6 +93,9 @@ export default async function Home() {
           <PopularStocksCarousel />
         </div>
       </section>
+
+      {/* Ad Placement - Between US Stocks and Market Overview */}
+      <GoogleAdInline />
 
       {/* Market Overview Section */}
       <section className="w-full py-16 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800">

@@ -34,6 +34,7 @@ import { FiftyTwoWeekRange } from "@/components/company/FiftyTwoWeekRange";
 import { NewsFeed, type NewsArticle } from "@/components/company/NewsFeed";
 import { PeerComparison } from "@/components/company/PeerComparison";
 import { UsdValue } from "@/components/company/UsdValue";
+import { GoogleAdInline, GoogleAdSlot } from "@/components/GoogleAdSlot";
 
 // --- Types & Interfaces ---
 
@@ -526,6 +527,9 @@ async function CompanyContent({ ticker }: { ticker: string }) {
           {/* Portfolio Position Card - Only shows if user owns this stock */}
           <PositionCard ticker={ticker} />
 
+          {/* Ad Placement - Between hero and main content */}
+          <GoogleAdInline />
+
           {/* Main Grid */}
           <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
             {/* Left Column - Main Content */}
@@ -566,6 +570,8 @@ async function CompanyContent({ ticker }: { ticker: string }) {
             {/* Right Sidebar */}
             <div className="space-y-6">
               <CompanyProfile data={data} />
+              {/* Ad in sidebar between Company Profile and Analyst Ratings */}
+              <GoogleAdSlot />
               <AnalystRatings metrics={data.analystData} />
             </div>
           </div>

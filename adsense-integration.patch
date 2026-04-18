@@ -1,0 +1,957 @@
+diff --git a/app/blog/page.tsx b/app/blog/page.tsx
+index 01b1e05..57237a1 100644
+--- a/app/blog/page.tsx
++++ b/app/blog/page.tsx
+@@ -13,6 +13,7 @@ import { ExternalLinkWarning, useExternalLinkWarning } from "../news/ExternalLin
+ import { NewsletterSubscribe } from "./components/NewsletterSubscribe";
+ import ReactMarkdown from "react-markdown";
+ import remarkGfm from "remark-gfm";
++import { GoogleAdSlot, GoogleAdInFeed } from "@/components/GoogleAdSlot";
+ 
+ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+ 
+@@ -518,6 +519,9 @@ export default function BlogPage() {
+               </section>
+             )}
+ 
++            {/* Ad Placement - Between featured and article grid */}
++            <GoogleAdSlot />
++
+             {/* Article grid */}
+             {rest.length > 0 && (
+               <section>
+@@ -533,6 +537,7 @@ export default function BlogPage() {
+         )}
+ 
+         {/* Newsletter */}
++        <GoogleAdInFeed />
+         <NewsletterSubscribe />
+       </div>
+ 
+diff --git a/app/calendar/page.tsx b/app/calendar/page.tsx
+index 6f09543..751c157 100644
+--- a/app/calendar/page.tsx
++++ b/app/calendar/page.tsx
+@@ -26,6 +26,7 @@ import {
+     SelectTrigger,
+     SelectValue,
+ } from "@/components/ui/select";
++import { GoogleAdInline } from "@/components/GoogleAdSlot";
+ 
+ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+ 
+@@ -172,6 +173,9 @@ export default function StockCalendarPage() {
+                     </Card>
+                 </div>
+ 
++                {/* Ad Placement - Between search bar and main content */}
++                <GoogleAdInline />
++
+                 {/* Main Content Area */}
+                 {loading && events.length === 0 ? (
+                     <div className="flex flex-col items-center justify-center py-32 space-y-4">
+diff --git a/app/company/[ticker]/page.tsx b/app/company/[ticker]/page.tsx
+index 09ff8bf..7441d65 100644
+--- a/app/company/[ticker]/page.tsx
++++ b/app/company/[ticker]/page.tsx
+@@ -34,6 +34,7 @@ import { FiftyTwoWeekRange } from "@/components/company/FiftyTwoWeekRange";
+ import { NewsFeed, type NewsArticle } from "@/components/company/NewsFeed";
+ import { PeerComparison } from "@/components/company/PeerComparison";
+ import { UsdValue } from "@/components/company/UsdValue";
++import { GoogleAdInline, GoogleAdSlot } from "@/components/GoogleAdSlot";
+ 
+ // --- Types & Interfaces ---
+ 
+@@ -526,6 +527,9 @@ async function CompanyContent({ ticker }: { ticker: string }) {
+           {/* Portfolio Position Card - Only shows if user owns this stock */}
+           <PositionCard ticker={ticker} />
+ 
++          {/* Ad Placement - Between hero and main content */}
++          <GoogleAdInline />
++
+           {/* Main Grid */}
+           <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+             {/* Left Column - Main Content */}
+@@ -566,6 +570,8 @@ async function CompanyContent({ ticker }: { ticker: string }) {
+             {/* Right Sidebar */}
+             <div className="space-y-6">
+               <CompanyProfile data={data} />
++              {/* Ad in sidebar between Company Profile and Analyst Ratings */}
++              <GoogleAdSlot />
+               <AnalystRatings metrics={data.analystData} />
+             </div>
+           </div>
+diff --git a/app/dashboard/page.tsx b/app/dashboard/page.tsx
+index f549fc4..d375014 100644
+--- a/app/dashboard/page.tsx
++++ b/app/dashboard/page.tsx
+@@ -13,6 +13,7 @@ import {
+ } from "lucide-react";
+ import { useAuth } from "@/providers/AuthProvider";
+ import { UsageIndicator, FeatureBadge, PaywallOverlay } from "@/components/paywall";
++import { GoogleAdSlot } from "@/components/GoogleAdSlot";
+ 
+ export default function DashboardPage() {
+     const { user } = useAuth();
+@@ -86,6 +87,9 @@ export default function DashboardPage() {
+                 })}
+             </div>
+ 
++            {/* Ad Placement - Between quick stats and widget grid */}
++            <GoogleAdSlot />
++
+             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                 {/* Watchlists Widget */}
+                 <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+diff --git a/app/market/page.tsx b/app/market/page.tsx
+index 7a70991..6bb62ed 100644
+--- a/app/market/page.tsx
++++ b/app/market/page.tsx
+@@ -7,6 +7,7 @@ import { SectorPerformance } from "@/components/market/SectorPerformance";
+ import { StockEventsCalendar } from "@/components/market/StockEventsCalendar";
+ import MarketOverview from "@/components/MarketOverview";
+ import { MarketHeatmapNew } from "@/components/MarketHeatmapNew";
++import { GoogleAdSlot, GoogleAdInline } from "@/components/GoogleAdSlot";
+ 
+ export default function MarketPage() {
+   const [refreshToken] = useState<number>(0);
+@@ -32,6 +33,9 @@ export default function MarketPage() {
+           <MarketHeatmapNew />
+         </div>
+ 
++        {/* Ad Placement - After heatmap, before market breadth */}
++        <GoogleAdInline />
++
+         {/* Secondary Row: Market Breadth + Stock Events Calendar side by side */}
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+           <MarketBreadth />
+@@ -43,6 +47,9 @@ export default function MarketPage() {
+           <SectorPerformance />
+         </div>
+ 
++        {/* Ad Placement - After sector performance, before overview */}
++        <GoogleAdSlot />
++
+         {/* Overview: Indices, Movers, News stacked */}
+         <div>
+           <MarketOverview refreshToken={refreshToken} />
+diff --git a/app/news/[slug]/page.tsx b/app/news/[slug]/page.tsx
+index 5837f31..8d2b69e 100644
+--- a/app/news/[slug]/page.tsx
++++ b/app/news/[slug]/page.tsx
+@@ -33,6 +33,7 @@ import { useAuth } from "@/providers/AuthProvider";
+ import { useQuota } from "@/hooks/useQuota";
+ import { aiApi } from "@/lib/api/ai";
+ import { toast } from "sonner";
++import { GoogleAdSlot, GoogleAdInline } from "@/components/GoogleAdSlot";
+ 
+ interface ArticleData {
+   title: string;
+@@ -510,6 +511,9 @@ Please provide a concise summary of this news article.[/REASONING]`;
+         </div>
+       </div>
+ 
++      {/* Ad Placement - Between featured image and article content */}
++      <GoogleAdInline />
++
+       {/* Article Content */}
+       <article className="mx-auto max-w-4xl px-4 md:px-6 py-8">
+         {/* Link warning banner */}
+@@ -599,6 +603,9 @@ Please provide a concise summary of this news article.[/REASONING]`;
+           </div>
+         )}
+ 
++        {/* Ad Placement - After article content, before source attribution */}
++        <GoogleAdSlot />
++
+         {/* Source attribution */}
+         <div className="mt-8 p-6 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+diff --git a/app/news/page.tsx b/app/news/page.tsx
+index 6ab8e09..3e28e47 100644
+--- a/app/news/page.tsx
++++ b/app/news/page.tsx
+@@ -8,6 +8,7 @@ import { ScrollToTopFab } from "./ScrollToTopFab";
+ import { SortOption } from "./NewsFilters";
+ import { BreakingNewsCarousel } from "@/components/news/BreakingNewsCarousel";
+ import { NewsSidebar } from "@/components/news/NewsSidebar";
++import { GoogleAdSidebar, GoogleAdInFeed } from "@/components/GoogleAdSlot";
+ 
+ export default function NewsPage() {
+   const [sort, setSort] = useState<SortOption>("latest");
+@@ -25,9 +26,13 @@ export default function NewsPage() {
+             <Suspense fallback={<NewsSkeleton />}>
+               <NewsGrid sort={sort} />
+             </Suspense>
++            {/* In-feed ad after the news grid */}
++            <GoogleAdInFeed />
+           </div>
+-          <aside className="hidden lg:block lg:col-span-1">
++          <aside className="hidden lg:block lg:col-span-1 space-y-6">
+             <NewsSidebar />
++            {/* Sticky sidebar ad below news sidebar */}
++            <GoogleAdSidebar sticky />
+           </aside>
+         </div>
+       </section>
+diff --git a/app/page.tsx b/app/page.tsx
+index 397a045..767c8a6 100644
+--- a/app/page.tsx
++++ b/app/page.tsx
+@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
+ import MarketOverview from "@/components/MarketOverview";
+ import SearchBar from "@/components/SearchBar";
+ import { PopularStocksCarousel } from "@/components/home/PopularStocksCarousel";
++import { GoogleAdInline } from "@/components/GoogleAdSlot";
+ 
+ export default async function Home() {
+   return (
+@@ -93,6 +94,9 @@ export default async function Home() {
+         </div>
+       </section>
+ 
++      {/* Ad Placement - Between US Stocks and Market Overview */}
++      <GoogleAdInline />
++
+       {/* Market Overview Section */}
+       <section className="w-full py-16 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800">
+         <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-12">
+diff --git a/app/screens/page.tsx b/app/screens/page.tsx
+index 0348c11..fbdc6c1 100644
+--- a/app/screens/page.tsx
++++ b/app/screens/page.tsx
+@@ -20,6 +20,7 @@ import { SaveScreenDialog } from "@/components/SaveScreenDialog";
+ import { useSavedScreens } from "@/hooks/useSavedScreens";
+ import { useAuth } from "@/providers/AuthProvider";
+ import { toast } from "sonner";
++import { GoogleAdSlot } from "@/components/GoogleAdSlot";
+ 
+ export default function ScreensPage() {
+   return (
+@@ -186,6 +187,9 @@ function ScreensPageContent() {
+           <ScreenerQueryBuilder value={query} onChange={setQuery} onSaveClick={() => setShowSaveDialog(true)} />
+         </div>
+ 
++        {/* Ad Placement - Between query builder and community card */}
++        <GoogleAdSlot />
++
+         {/* Community Card */}
+         <div className="mt-8">
+           <Card className="border-slate-200 dark:border-slate-800 border-dashed shadow-none bg-slate-50/50 dark:bg-slate-900/50">
+diff --git a/app/watchlist/page.tsx b/app/watchlist/page.tsx
+index 6d21771..bd99908 100644
+--- a/app/watchlist/page.tsx
++++ b/app/watchlist/page.tsx
+@@ -48,6 +48,7 @@ import { WatchlistExportDialog } from "@/components/watchlist/WatchlistExportDia
+ import { WatchlistImportDialog } from "@/components/watchlist/WatchlistImportDialog";
+ import { cleanTicker } from "@/lib/watchlist-utils";
+ import { toast } from "sonner";
++import { GoogleAdSlot } from "@/components/GoogleAdSlot";
+ 
+ export default function WatchlistPage() {
+   return (
+@@ -619,6 +620,9 @@ function WatchlistPageContent() {
+                       onStockDataChange={setStockMetrics}
+                     />
+ 
++                    {/* Ad Placement - Below stock table, before comparison section */}
++                    <GoogleAdSlot />
++
+                     {/* Comparison Charts Section */}
+                     {showCompare && compareTickers.length > 0 && (
+                       <EnhancedStockCompare
+diff --git a/components/GoogleAdSlot.tsx b/components/GoogleAdSlot.tsx
+index 570b890..b88632a 100644
+--- a/components/GoogleAdSlot.tsx
++++ b/components/GoogleAdSlot.tsx
+@@ -1,45 +1,54 @@
+ "use client";
+ 
+-import { useEffect, useState } from "react";
++import { useEffect, useState, useCallback } from "react";
+ import { useAdsVisible } from "@/hooks/useAdsVisible";
+ import { useProfile } from "@/hooks/useProfile";
+ import { useAuth } from "@/providers/AuthProvider";
+ 
++// Ad slot IDs for different placements - these map to Google AdSense
++const AD_SLOTS = {
++  // Primary inline ad (between content sections)
++  inline: "7770351449",
++  // Sidebar ad (right column)
++  sidebar: "7770351449",
++  // In-feed ad (within news grid / card lists)
++  inFeed: "7770351449",
++  // Compact ad (tighter spaces)
++  compact: "7770351449",
++  // Horizontal banner (full-width between major sections)
++  banner: "7770351449",
++} as const;
++
++type AdSlotType = keyof typeof AD_SLOTS;
++
+ /**
+- * Google AdSlot component for fluid inline ads
+- * Automatically handles visibility based on feature flags and user tier
++ * Shared hook to push an ad to the AdSense queue and track loading state
+  */
+-export function GoogleAdSlot() {
+-  const { session } = useAuth();
+-  const { profile } = useProfile(session?.access_token || null);
+-  const showAd = useAdsVisible(profile?.subscription_tier || "free");
++function useAdPush(showAd: boolean) {
+   const [isLoading, setIsLoading] = useState(true);
+   const [hasAd, setHasAd] = useState(false);
+ 
+-  // Load AdSense script after ad becomes visible
+   useEffect(() => {
+     if (!showAd || typeof window === "undefined") return;
+ 
+-    // Check if ad slot has content (ad loaded)
+     const checkAdLoaded = () => {
+-      const adContainer = document.querySelector('.adsbygoogle');
+-      if (adContainer && adContainer.children.length > 0) {
+-        setIsLoading(false);
+-        setHasAd(true);
+-      }
++      const containers = document.querySelectorAll('.adsbygoogle');
++      containers.forEach((container) => {
++        if (container.children.length > 0) {
++          setIsLoading(false);
++          setHasAd(true);
++        }
++      });
+     };
+ 
+-    // Push ad to AdSense queue
+     try {
+       (window as any).adsbygoogle = (window as any).adsbygoogle || [];
+       (window as any).adsbygoogle.push({});
+ 
+-      // Check if ad loads within 2 seconds
+       const timeout = setTimeout(() => {
+         checkAdLoaded();
+       }, 2000);
+ 
+-      // Fallback: hide placeholder after 3 seconds even if no ad loaded
+       const hideTimeout = setTimeout(() => {
+         setIsLoading(false);
+       }, 3000);
+@@ -54,75 +63,215 @@ export function GoogleAdSlot() {
+     }
+   }, [showAd]);
+ 
+-  if (!showAd) {
+-    return null;
+-  }
++  return { isLoading, hasAd };
++}
++
++/**
++ * Base ad slot wrapper - handles visibility, loading state, and AdSense push
++ */
++function AdSlotWrapper({
++  showAd,
++  isLoading,
++  hasAd,
++  children,
++  className = "",
++}: {
++  showAd: boolean;
++  isLoading: boolean;
++  hasAd: boolean;
++  children: React.ReactNode;
++  className?: string;
++}) {
++  if (!showAd) return null;
++  if (!isLoading && !hasAd) return null;
++
++  return <div className={className}>{children}</div>;
++}
++
++// ─────────────────────────────────────────────────────────────
++// PUBLIC AD COMPONENTS
++// ─────────────────────────────────────────────────────────────
+ 
+-  // Don't show placeholder if ad failed to load or timeout expired
+-  if (!isLoading && !hasAd) {
+-    return null;
+-  }
++/**
++ * GoogleAdSlot - Primary inline ad for between content sections
++ * Fluid layout that fills the available width naturally
++ */
++export function GoogleAdSlot() {
++  const { session } = useAuth();
++  const { profile } = useProfile(session?.access_token || null);
++  const showAd = useAdsVisible(profile?.subscription_tier || "free");
++  const { isLoading, hasAd } = useAdPush(showAd);
+ 
+   return (
+-    <div className="my-4 w-full">
+-      <div className="relative w-full min-h-[100px] bg-slate-50 dark:bg-slate-800/50 rounded-lg flex items-center justify-center overflow-hidden">
++    <AdSlotWrapper
++      showAd={showAd}
++      isLoading={isLoading}
++      hasAd={hasAd}
++      className="my-6 w-full"
++    >
++      <div className="relative w-full min-h-[100px] bg-slate-50 dark:bg-slate-800/50 rounded-lg flex items-center justify-center overflow-hidden border border-slate-100 dark:border-slate-700/50">
+         <ins
+           className="adsbygoogle w-full"
+           style={{ display: "block" }}
+           data-ad-client="ca-pub-3669621384912065"
+-          data-ad-slot="7770351449"
++          data-ad-slot={AD_SLOTS.inline}
+           data-ad-format="fluid"
+           data-ad-layout-key="-hh-7+2h-1m-4u"
+           data-full-width-responsive="true"
+         />
+-        {/* Loading placeholder while ad loads */}
+         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+-          <p className="text-xs text-slate-400 dark:text-slate-500">Advertisement</p>
++          <p className="text-[10px] uppercase tracking-widest text-slate-300 dark:text-slate-600">Advertisement</p>
+         </div>
+       </div>
+-    </div>
++    </AdSlotWrapper>
+   );
+ }
+ 
+ /**
+- * Compact ad slot variant for tighter spaces
++ * GoogleAdSlotCompact - Compact ad variant for tighter spaces
++ * Smaller vertical footprint with subtle styling
+  */
+ export function GoogleAdSlotCompact() {
+   const { session } = useAuth();
+   const { profile } = useProfile(session?.access_token || null);
+   const showAd = useAdsVisible(profile?.subscription_tier || "free");
+-
+-  useEffect(() => {
+-    if (showAd && typeof window !== "undefined") {
+-      try {
+-        (window as any).adsbygoogle = (window as any).adsbygoogle || [];
+-        (window as any).adsbygoogle.push({});
+-      } catch (e) {
+-        console.error("AdSense error:", e);
+-      }
+-    }
+-  }, [showAd]);
+-
+-  if (!showAd) {
+-    return null;
+-  }
++  const { isLoading, hasAd } = useAdPush(showAd);
+ 
+   return (
+-    <div className="my-4 w-full">
+-      <div className="relative w-full min-h-[100px] bg-slate-50 dark:bg-slate-800/50 rounded-lg flex items-center justify-center overflow-hidden">
++    <AdSlotWrapper
++      showAd={showAd}
++      isLoading={isLoading}
++      hasAd={hasAd}
++      className="my-3 w-full"
++    >
++      <div className="relative w-full min-h-[90px] bg-slate-50/80 dark:bg-slate-800/30 rounded-lg flex items-center justify-center overflow-hidden">
+         <ins
+           className="adsbygoogle w-full"
+           style={{ display: "block" }}
+           data-ad-client="ca-pub-3669621384912065"
+-          data-ad-slot="7770351449"
++          data-ad-slot={AD_SLOTS.compact}
+           data-ad-format="fluid"
+           data-ad-layout-key="-hh-7+2h-1m-4u"
+           data-full-width-responsive="true"
+         />
+         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+-          <p className="text-xs text-slate-400 dark:text-slate-500">Advertisement</p>
++          <p className="text-[10px] uppercase tracking-widest text-slate-300 dark:text-slate-600">Ad</p>
++        </div>
++      </div>
++    </AdSlotWrapper>
++  );
++}
++
++/**
++ * GoogleAdInline - Horizontal banner ad between major page sections
++ * Designed to blend naturally as a section divider
++ * Uses the "auto" format for horizontal leaderboard-style ads
++ */
++export function GoogleAdInline() {
++  const { session } = useAuth();
++  const { profile } = useProfile(session?.access_token || null);
++  const showAd = useAdsVisible(profile?.subscription_tier || "free");
++  const { isLoading, hasAd } = useAdPush(showAd);
++
++  return (
++    <AdSlotWrapper
++      showAd={showAd}
++      isLoading={isLoading}
++      hasAd={hasAd}
++      className="w-full"
++    >
++      <div className="py-4">
++        <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-12">
++          <div className="relative w-full min-h-[90px] bg-slate-50 dark:bg-slate-800/40 rounded-xl flex items-center justify-center overflow-hidden border border-slate-100 dark:border-slate-700/40">
++            <ins
++              className="adsbygoogle w-full"
++              style={{ display: "block" }}
++              data-ad-client="ca-pub-3669621384912065"
++              data-ad-slot={AD_SLOTS.banner}
++              data-ad-format="auto"
++              data-full-width-responsive="true"
++            />
++            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
++              <p className="text-[10px] uppercase tracking-widest text-slate-300 dark:text-slate-600">Advertisement</p>
++            </div>
++          </div>
++        </div>
++      </div>
++    </AdSlotWrapper>
++  );
++}
++
++/**
++ * GoogleAdSidebar - Ad designed for sidebar placement
++ * Vertical format that fits naturally in side columns
++ * Can be made sticky for persistent visibility while scrolling
++ */
++export function GoogleAdSidebar({ sticky = false }: { sticky?: boolean }) {
++  const { session } = useAuth();
++  const { profile } = useProfile(session?.access_token || null);
++  const showAd = useAdsVisible(profile?.subscription_tier || "free");
++  const { isLoading, hasAd } = useAdPush(showAd);
++
++  if (!showAd) return null;
++  if (!isLoading && !hasAd) return null;
++
++  return (
++    <div className={sticky ? "sticky top-20" : ""}>
++      <div className="w-full min-h-[250px] bg-slate-50 dark:bg-slate-800/40 rounded-xl flex items-center justify-center overflow-hidden border border-slate-100 dark:border-slate-700/40">
++        <ins
++          className="adsbygoogle w-full"
++          style={{ display: "block" }}
++          data-ad-client="ca-pub-3669621384912065"
++          data-ad-slot={AD_SLOTS.sidebar}
++          data-ad-format="vertical"
++          data-full-width-responsive="true"
++        />
++        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
++          <p className="text-[10px] uppercase tracking-widest text-slate-300 dark:text-slate-600">Advertisement</p>
+         </div>
+       </div>
+     </div>
+   );
+ }
++
++/**
++ * GoogleAdInFeed - Ad that blends into card grids and news feeds
++ * Mimics the card style of surrounding content for seamless integration
++ * Designed to appear between cards in grid layouts
++ */
++export function GoogleAdInFeed() {
++  const { session } = useAuth();
++  const { profile } = useProfile(session?.access_token || null);
++  const showAd = useAdsVisible(profile?.subscription_tier || "free");
++  const { isLoading, hasAd } = useAdPush(showAd);
++
++  return (
++    <AdSlotWrapper
++      showAd={showAd}
++      isLoading={isLoading}
++      hasAd={hasAd}
++      className="w-full"
++    >
++      <div className="w-full bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
++        <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
++          <span className="text-[10px] uppercase tracking-widest text-slate-300 dark:text-slate-600 font-medium">Sponsored</span>
++          <span className="text-[9px] text-slate-300 dark:text-slate-600">Ad</span>
++        </div>
++        <div className="w-full min-h-[120px] bg-slate-50/50 dark:bg-slate-800/30 flex items-center justify-center overflow-hidden">
++          <ins
++            className="adsbygoogle w-full"
++            style={{ display: "block" }}
++            data-ad-client="ca-pub-3669621384912065"
++            data-ad-slot={AD_SLOTS.inFeed}
++            data-ad-format="fluid"
++            data-ad-layout-key="-6t+7c+2r-1m-4u"
++            data-full-width-responsive="true"
++          />
++          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
++            <p className="text-[10px] text-slate-300 dark:text-slate-600">Loading ad...</p>
++          </div>
++        </div>
++      </div>
++    </AdSlotWrapper>
++  );
++}
+diff --git a/lib/adsControl.ts b/lib/adsControl.ts
+index 6160484..05db9a8 100644
+--- a/lib/adsControl.ts
++++ b/lib/adsControl.ts
+@@ -2,29 +2,70 @@ import posthog from "posthog-js";
+ 
+ export type UserPlan = "free" | "premium" | "max";
+ 
+-// Core pages where ads should appear (when flag is set to show-core-pages-*)
+-const CORE_PAGE_PATHS = ["/screens", "/market", "/news"];
++// Pages where ads should appear for free users (comprehensive coverage)
++const CORE_PAGE_PATHS = [
++  "/screens",
++  "/market",
++  "/news",
++  "/watchlist",
++  "/calendar",
++  "/dashboard",
++];
++
++// Pages where ads should NEVER appear (premium/immersive experiences)
++const EXCLUDED_PAGE_PATHS = [
++  "/ai",           // Immersive AI chat - no interruptions
++  "/portfolio",    // Premium-only feature
++  "/settings",     // User settings - no ads
++  "/profile",      // User profile - no ads
++  "/pricing",      // Pricing page - don't distract from conversion
++  "/auth",         // Auth pages - no ads
++  "/onboarding",   // Onboarding flow - no interruptions
++  "/help",         // Help/support - no ads
++  "/contact",      // Contact page - no ads
++  "/about",        // About page - no ads
++  "/feedback",     // Feedback - no ads
++  "/api",          // API routes
++];
+ 
+ /**
+- * Check if the current pathname is a core page
++ * Check if the current pathname is a core page where ads can appear
+  */
+ function isCorePage(pathname: string): boolean {
+   if (CORE_PAGE_PATHS.includes(pathname)) return true;
+-  // Match screener results pages: /screens/[id]
++  // Match screener results pages: /screens/[id] or /screens/results
+   if (/^\/screens\/.+/.test(pathname)) return true;
++  // Match company pages: /company/[ticker]
++  if (/^\/company\/.+/.test(pathname)) return true;
++  // Match news article pages: /news/[slug]
++  if (/^\/news\/[^/]+$/.test(pathname)) return true;
++  // Home page
++  if (pathname === "/") return true;
++  // Blog page
++  if (pathname === "/blog") return true;
+   return false;
+ }
+ 
++/**
++ * Check if the page is explicitly excluded from showing ads
++ */
++function isExcludedPage(pathname: string): boolean {
++  return EXCLUDED_PAGE_PATHS.some(excluded => pathname.startsWith(excluded));
++}
++
+ /**
+  * Determine if ads should be shown based on feature flag, page, and user plan
+  */
+ export function shouldShowAds(pathname: string, userPlan: UserPlan): boolean {
++  // Never show ads on excluded pages regardless of flag
++  if (isExcludedPage(pathname)) return false;
++
+   const variant = posthog.getFeatureFlag("google-ads-display") as string | undefined;
+   const isFreeUser = userPlan === "free";
+ 
+   switch (variant) {
+     case "show-all-pages-all-users":
+-      return true;
++      return !isExcludedPage(pathname);
+ 
+     case "show-core-pages-all-users":
+       return isCorePage(pathname);
+@@ -33,14 +74,15 @@ export function shouldShowAds(pathname: string, userPlan: UserPlan): boolean {
+       return false;
+ 
+     case "show-all-pages-free-users":
+-      return isFreeUser;
++      return isFreeUser && !isExcludedPage(pathname);
+ 
+     case "show-core-pages-free-users":
+       return isFreeUser && isCorePage(pathname);
+ 
+     default:
+-      // Safe fallback - no ads if flag is unavailable or unknown variant
+-      return false;
++      // Safe fallback - default behavior for free users on core pages
++      // This ensures ads show even if PostHog flag isn't loaded yet
++      return isFreeUser && isCorePage(pathname);
+   }
+ }
+ 
+diff --git a/package-lock.json b/package-lock.json
+index 7990e54..7c6c5f7 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -2449,17 +2449,6 @@
+         }
+       }
+     },
+-    "node_modules/@nuxt/cli/node_modules/commander": {
+-      "version": "13.1.0",
+-      "resolved": "https://registry.npmjs.org/commander/-/commander-13.1.0.tgz",
+-      "integrity": "sha512-/rFeCpNJQbhSZjGVwO9RFV3xPqbnERS8MmIQzCtD/zl6gpJuV/bMLuN92oG3F7d8oDEHHRrujSXNUr8fpjntKw==",
+-      "license": "MIT",
+-      "optional": true,
+-      "peer": true,
+-      "engines": {
+-        "node": ">=18"
+-      }
+-    },
+     "node_modules/@nuxt/devalue": {
+       "version": "2.0.2",
+       "resolved": "https://registry.npmjs.org/@nuxt/devalue/-/devalue-2.0.2.tgz",
+diff --git a/yarn.lock b/yarn.lock
+index 313f380..ba2c0e1 100644
+--- a/yarn.lock
++++ b/yarn.lock
+@@ -306,10 +306,10 @@
+   dependencies:
+     tslib "^2.4.0"
+ 
+-"@esbuild/win32-x64@0.27.3":
++"@esbuild/linux-x64@0.27.3":
+   version "0.27.3"
+-  resolved "https://registry.npmjs.org/@esbuild/win32-x64/-/win32-x64-0.27.3.tgz"
+-  integrity sha512-4uJGhsxuptu3OcpVAzli+/gWusVGwZZHTlS63hh++ehExkVT8SgiEf7/uC/PclrPPkLhZqGgCTjd0VWLo6xMqA==
++  resolved "https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-0.27.3.tgz"
++  integrity sha512-Czi8yzXUWIQYAtL/2y6vogER8pvcsOsk5cpwL4Gk5nJqH5UZiVByIY8Eorm5R13gq+DQKYg0+JyQoytLQas4dA==
+ 
+ "@eslint-community/eslint-utils@^4.8.0", "@eslint-community/eslint-utils@^4.9.1":
+   version "4.9.1"
+@@ -503,10 +503,29 @@
+   resolved "https://registry.npmjs.org/@img/colour/-/colour-1.1.0.tgz"
+   integrity sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ==
+ 
+-"@img/sharp-win32-x64@0.34.5":
++"@img/sharp-libvips-linux-x64@1.2.4":
++  version "1.2.4"
++  resolved "https://registry.npmjs.org/@img/sharp-libvips-linux-x64/-/sharp-libvips-linux-x64-1.2.4.tgz"
++  integrity sha512-tJxiiLsmHc9Ax1bz3oaOYBURTXGIRDODBqhveVHonrHJ9/+k89qbLl0bcJns+e4t4rvaNBxaEZsFtSfAdquPrw==
++
++"@img/sharp-libvips-linuxmusl-x64@1.2.4":
++  version "1.2.4"
++  resolved "https://registry.npmjs.org/@img/sharp-libvips-linuxmusl-x64/-/sharp-libvips-linuxmusl-x64-1.2.4.tgz"
++  integrity sha512-+LpyBk7L44ZIXwz/VYfglaX/okxezESc6UxDSoyo2Ks6Jxc4Y7sGjpgU9s4PMgqgjj1gZCylTieNamqA1MF7Dg==
++
++"@img/sharp-linux-x64@0.34.5":
++  version "0.34.5"
++  resolved "https://registry.npmjs.org/@img/sharp-linux-x64/-/sharp-linux-x64-0.34.5.tgz"
++  integrity sha512-MEzd8HPKxVxVenwAa+JRPwEC7QFjoPWuS5NZnBt6B3pu7EG2Ge0id1oLHZpPJdn3OQK+BQDiw9zStiHBTJQQQQ==
++  optionalDependencies:
++    "@img/sharp-libvips-linux-x64" "1.2.4"
++
++"@img/sharp-linuxmusl-x64@0.34.5":
+   version "0.34.5"
+-  resolved "https://registry.npmjs.org/@img/sharp-win32-x64/-/sharp-win32-x64-0.34.5.tgz"
+-  integrity sha512-+29YMsqY2/9eFEiW93eqWnuLcWcufowXewwSNIT6UwZdUUCrM3oFjMWH/Z6/TMmb4hlFenmfAVbpWeup2jryCw==
++  resolved "https://registry.npmjs.org/@img/sharp-linuxmusl-x64/-/sharp-linuxmusl-x64-0.34.5.tgz"
++  integrity sha512-Jg8wNT1MUzIvhBFxViqrEhWDGzqymo3sV7z7ZsaWbZNDLXRJZoRGrjulp60YYtV4wfY8VIKcWidjojlLcWrd8Q==
++  optionalDependencies:
++    "@img/sharp-libvips-linuxmusl-x64" "1.2.4"
+ 
+ "@ioredis/commands@1.5.1":
+   version "1.5.1"
+@@ -623,10 +642,15 @@
+   dependencies:
+     fast-glob "3.3.1"
+ 
+-"@next/swc-win32-x64-msvc@16.2.1":
++"@next/swc-linux-x64-gnu@16.2.1":
++  version "16.2.1"
++  resolved "https://registry.npmjs.org/@next/swc-linux-x64-gnu/-/swc-linux-x64-gnu-16.2.1.tgz"
++  integrity sha512-HQm7SrHRELJ30T1TSmT706IWovFFSRGxfgUkyWJZF/RKBMdbdRWJuFrcpDdE5vy9UXjFOx6L3mRdqH04Mmx0hg==
++
++"@next/swc-linux-x64-musl@16.2.1":
+   version "16.2.1"
+-  resolved "https://registry.npmjs.org/@next/swc-win32-x64-msvc/-/swc-win32-x64-msvc-16.2.1.tgz"
+-  integrity sha512-qvU+3a39Hay+ieIztkGSbF7+mccbbg1Tk25hc4JDylf8IHjYmY/Zm64Qq1602yPyQqvie+vf5T/uPwNxDNIoeg==
++  resolved "https://registry.npmjs.org/@next/swc-linux-x64-musl/-/swc-linux-x64-musl-16.2.1.tgz"
++  integrity sha512-aV2iUaC/5HGEpbBkE+4B8aHIudoOy5DYekAKOMSHoIYQ66y/wIVeaRx8MS2ZMdxe/HIXlMho4ubdZs/J8441Tg==
+ 
+ "@nodelib/fs.scandir@2.1.5":
+   version "2.1.5"
+@@ -1358,25 +1382,50 @@
+   dependencies:
+     "@opentelemetry/core" "^2.0.0"
+ 
+-"@oxc-minify/binding-win32-x64-msvc@0.112.0":
++"@oxc-minify/binding-linux-x64-gnu@0.112.0":
++  version "0.112.0"
++  resolved "https://registry.npmjs.org/@oxc-minify/binding-linux-x64-gnu/-/binding-linux-x64-gnu-0.112.0.tgz"
++  integrity sha512-2MSCnEPLk9ddSouMhJo78Xy2/JbYC80OYzWdR4yWTGSULsgH3d1VXg73DSwFL8vU7Ad9oK10DioBY2ww7sQTEg==
++
++"@oxc-minify/binding-linux-x64-musl@0.112.0":
++  version "0.112.0"
++  resolved "https://registry.npmjs.org/@oxc-minify/binding-linux-x64-musl/-/binding-linux-x64-musl-0.112.0.tgz"
++  integrity sha512-HAPfmQKlkVi97/zRonVE9t/kKUG3ni+mOuU1Euw+3s37KwUuOJjmcwXdclVgXKBlTkCGO0FajPwW5dAJeIXCCw==
++
++"@oxc-parser/binding-linux-x64-gnu@0.112.0":
+   version "0.112.0"
+-  resolved "https://registry.npmjs.org/@oxc-minify/binding-win32-x64-msvc/-/binding-win32-x64-msvc-0.112.0.tgz"
+-  integrity sha512-LML2Gld6VY8/+7a3VH4k1qngsBXvTkXgbmYgSYwaElqtiQiYaAcXfi0XKOUGe3k3GbBK4juAGixC31CrdFHAQw==
++  resolved "https://registry.npmjs.org/@oxc-parser/binding-linux-x64-gnu/-/binding-linux-x64-gnu-0.112.0.tgz"
++  integrity sha512-jKwO7ZLNkjxwg7FoCLw+fJszooL9yXRZsDN0AQ1AQUTWq1l8GH/2e44k68N3fcP19jl8O8jGpqLAZcQTYk6skA==
+ 
+-"@oxc-parser/binding-win32-x64-msvc@0.112.0":
++"@oxc-parser/binding-linux-x64-musl@0.112.0":
+   version "0.112.0"
+-  resolved "https://registry.npmjs.org/@oxc-parser/binding-win32-x64-msvc/-/binding-win32-x64-msvc-0.112.0.tgz"
+-  integrity sha512-oGHluohzmVFAuQrkEnl1OXAxMz2aYmimxUqIgKXpBgbr7PvFv0doELB273sX+5V3fKeggohKg1A2Qq21W9Z9cQ==
++  resolved "https://registry.npmjs.org/@oxc-parser/binding-linux-x64-musl/-/binding-linux-x64-musl-0.112.0.tgz"
++  integrity sha512-TYqnuKV/p3eOc+N61E0961nA7DC+gaCeJ3+V2LcjJdTwFMdikqWL6uVk1jlrpUCBrozHDATVUKDZYH7r4FQYjQ==
+ 
+ "@oxc-project/types@^0.112.0":
+   version "0.112.0"
+   resolved "https://registry.npmjs.org/@oxc-project/types/-/types-0.112.0.tgz"
+   integrity sha512-m6RebKHIRsax2iCwVpYW2ErQwa4ywHJrE4sCK3/8JK8ZZAWOKXaRJFl/uP51gaVyyXlaS4+chU1nSCdzYf6QqQ==
+ 
+-"@oxc-transform/binding-win32-x64-msvc@0.112.0":
++"@oxc-transform/binding-linux-x64-gnu@0.112.0":
+   version "0.112.0"
+-  resolved "https://registry.npmjs.org/@oxc-transform/binding-win32-x64-msvc/-/binding-win32-x64-msvc-0.112.0.tgz"
+-  integrity sha512-FRKYlY959QeqRPx9kXs0HjU2xuXPT1cdF+vvA200D9uAX/KLcC34MwRqUKTYml4kCc2Vf/P2pBR9cQuBm3zECQ==
++  resolved "https://registry.npmjs.org/@oxc-transform/binding-linux-x64-gnu/-/binding-linux-x64-gnu-0.112.0.tgz"
++  integrity sha512-ST1MDT+TlOyZ1c5btrGinRSUW2Jf4Pa+0gdKwsyjDSOC3dxy2ZNkN3mosTf4ywc3J+mxfYKqtjs7zSwHz03ILA==
++
++"@oxc-transform/binding-linux-x64-musl@0.112.0":
++  version "0.112.0"
++  resolved "https://registry.npmjs.org/@oxc-transform/binding-linux-x64-musl/-/binding-linux-x64-musl-0.112.0.tgz"
++  integrity sha512-ISQoA3pD4cyTGpf9sXXeerH6pL2L6EIpdy6oAy2ttkswyVFDyQNVOVIGIdLZDgbpmqGljxZnWqt/J/N68pQaig==
++
++"@parcel/watcher-linux-x64-glibc@2.5.6":
++  version "2.5.6"
++  resolved "https://registry.npmjs.org/@parcel/watcher-linux-x64-glibc/-/watcher-linux-x64-glibc-2.5.6.tgz"
++  integrity sha512-kbT5wvNQlx7NaGjzPFu8nVIW1rWqV780O7ZtkjuWaPUgpv2NMFpjYERVi0UYj1msZNyCzGlaCWEtzc+exjMGbQ==
++
++"@parcel/watcher-linux-x64-musl@2.5.6":
++  version "2.5.6"
++  resolved "https://registry.npmjs.org/@parcel/watcher-linux-x64-musl/-/watcher-linux-x64-musl-2.5.6.tgz"
++  integrity sha512-1JRFeC+h7RdXwldHzTsmdtYR/Ku8SylLgTU/reMuqdVD7CtLwf0VR1FqeprZ0eHQkO0vqsbvFLXUmYm/uNKJBg==
+ 
+ "@parcel/watcher-wasm@^2.4.1":
+   version "2.5.6"
+@@ -1387,11 +1436,6 @@
+     napi-wasm "^1.1.0"
+     picomatch "^4.0.3"
+ 
+-"@parcel/watcher-win32-x64@2.5.6":
+-  version "2.5.6"
+-  resolved "https://registry.npmjs.org/@parcel/watcher-win32-x64/-/watcher-win32-x64-2.5.6.tgz"
+-  integrity sha512-hbQlYcCq5dlAX9Qx+kFb0FHue6vbjlf0FrNzSKdYK2APUf7tGfGxQCk2ihEREmbR6ZMc0MVAD5RIX/41gpUzTw==
+-
+ "@parcel/watcher@^2.1.0", "@parcel/watcher@^2.4.1":
+   version "2.5.6"
+   resolved "https://registry.npmjs.org/@parcel/watcher/-/watcher-2.5.6.tgz"
+@@ -2086,15 +2130,15 @@
+     estree-walker "^2.0.2"
+     picomatch "^4.0.2"
+ 
+-"@rollup/rollup-win32-x64-gnu@4.59.0":
++"@rollup/rollup-linux-x64-gnu@4.59.0":
+   version "4.59.0"
+-  resolved "https://registry.npmjs.org/@rollup/rollup-win32-x64-gnu/-/rollup-win32-x64-gnu-4.59.0.tgz"
+-  integrity sha512-laBkYlSS1n2L8fSo1thDNGrCTQMmxjYY5G0WFWjFFYZkKPjsMBsgJfGf4TLxXrF6RyhI60L8TMOjBMvXiTcxeA==
++  resolved "https://registry.npmjs.org/@rollup/rollup-linux-x64-gnu/-/rollup-linux-x64-gnu-4.59.0.tgz"
++  integrity sha512-3AHmtQq/ppNuUspKAlvA8HtLybkDflkMuLK4DPo77DfthRb71V84/c4MlWJXixZz4uruIH4uaa07IqoAkG64fg==
+ 
+-"@rollup/rollup-win32-x64-msvc@4.59.0":
++"@rollup/rollup-linux-x64-musl@4.59.0":
+   version "4.59.0"
+-  resolved "https://registry.npmjs.org/@rollup/rollup-win32-x64-msvc/-/rollup-win32-x64-msvc-4.59.0.tgz"
+-  integrity sha512-2HRCml6OztYXyJXAvdDXPKcawukWY2GpR5/nxKp4iBgiO3wcoEGkAaqctIbZcNB6KlUQBIqt8VYkNSj2397EfA==
++  resolved "https://registry.npmjs.org/@rollup/rollup-linux-x64-musl/-/rollup-linux-x64-musl-4.59.0.tgz"
++  integrity sha512-2UdiwS/9cTAx7qIUZB/fWtToJwvt0Vbo0zmnYt7ED35KPg13Q0ym1g442THLC7VyI6JfYTP4PiSOWyoMdV2/xg==
+ 
+ "@rtsao/scc@^1.1.0":
+   version "1.1.0"
+@@ -2160,10 +2204,10 @@
+     glob "^13.0.6"
+     magic-string "~0.30.8"
+ 
+-"@sentry/cli-win32-x64@2.58.5":
++"@sentry/cli-linux-x64@2.58.5":
+   version "2.58.5"
+-  resolved "https://registry.npmjs.org/@sentry/cli-win32-x64/-/cli-win32-x64-2.58.5.tgz"
+-  integrity sha512-IZf+XIMiQwj+5NzqbOQfywlOitmCV424Vtf9c+ep61AaVScUFD1TSrQbOcJJv5xGxhlxNOMNgMeZhdexdzrKZg==
++  resolved "https://registry.npmjs.org/@sentry/cli-linux-x64/-/cli-linux-x64-2.58.5.tgz"
++  integrity sha512-rP04494RSmt86xChkQ+ecBNRYSPbyXc4u0IA7R7N1pSLCyO74e5w5Al+LnAq35cMfVbZgz5Sm0iGLjyiUu4I1g==
+ 
+ "@sentry/cli@^2.58.5":
+   version "2.58.5"
+@@ -2393,10 +2437,15 @@
+     source-map-js "^1.2.1"
+     tailwindcss "4.1.17"
+ 
+-"@tailwindcss/oxide-win32-x64-msvc@4.1.17":
++"@tailwindcss/oxide-linux-x64-gnu@4.1.17":
+   version "4.1.17"
+-  resolved "https://registry.npmjs.org/@tailwindcss/oxide-win32-x64-msvc/-/oxide-win32-x64-msvc-4.1.17.tgz"
+-  integrity sha512-SKWM4waLuqx0IH+FMDUw6R66Hu4OuTALFgnleKbqhgGU30DY20NORZMZUKgLRjQXNN2TLzKvh48QXTig4h4bGw==
++  resolved "https://registry.npmjs.org/@tailwindcss/oxide-linux-x64-gnu/-/oxide-linux-x64-gnu-4.1.17.tgz"
++  integrity sha512-M3XZuORCGB7VPOEDH+nzpJ21XPvK5PyjlkSFkFziNHGLc5d6g3di2McAAblmaSUNl8IOmzYwLx9NsE7bplNkwQ==
++
++"@tailwindcss/oxide-linux-x64-musl@4.1.17":
++  version "4.1.17"
++  resolved "https://registry.npmjs.org/@tailwindcss/oxide-linux-x64-musl/-/oxide-linux-x64-musl-4.1.17.tgz"
++  integrity sha512-k7f+pf9eXLEey4pBlw+8dgfJHY4PZ5qOUFDyNf7SI6lHjQ9Zt7+NcscjpwdCEbYi6FI5c2KDTDWyf2iHcCSyyQ==
+ 
+ "@tailwindcss/oxide@4.1.17":
+   version "4.1.17"
+@@ -2776,10 +2825,15 @@
+     hookable "^6.0.1"
+     unhead "2.1.12"
+ 
+-"@unrs/resolver-binding-win32-x64-msvc@1.11.1":
++"@unrs/resolver-binding-linux-x64-gnu@1.11.1":
++  version "1.11.1"
++  resolved "https://registry.npmjs.org/@unrs/resolver-binding-linux-x64-gnu/-/resolver-binding-linux-x64-gnu-1.11.1.tgz"
++  integrity sha512-C3ZAHugKgovV5YvAMsxhq0gtXuwESUKc5MhEtjBpLoHPLYM+iuwSj3lflFwK3DPm68660rZ7G8BMcwSro7hD5w==
++
++"@unrs/resolver-binding-linux-x64-musl@1.11.1":
+   version "1.11.1"
+-  resolved "https://registry.npmjs.org/@unrs/resolver-binding-win32-x64-msvc/-/resolver-binding-win32-x64-msvc-1.11.1.tgz"
+-  integrity sha512-lrW200hZdbfRtztbygyaq/6jP6AKE8qQN2KvPcJ+x7wiD038YtnYtZ82IMNJ69GJibV7bwL3y9FgK+5w/pYt6g==
++  resolved "https://registry.npmjs.org/@unrs/resolver-binding-linux-x64-musl/-/resolver-binding-linux-x64-musl-1.11.1.tgz"
++  integrity sha512-rV0YSoyhK2nZ4vEswT/QwqzqQXw5I6CjoaYMOX0TqBlWhojUf8P94mvI7nuJTeaCkkds3QE4+zS8Ko+GdXuZtA==
+ 
+ "@vercel/analytics@^2.0.0":
+   version "2.0.0"
+@@ -4017,12 +4071,7 @@ commander@^11.1.0:
+   resolved "https://registry.npmjs.org/commander/-/commander-11.1.0.tgz"
+   integrity sha512-yPVavfyCcRhmorC7rWlkHn15b4wDVgVmBA7kV4QVBsF7kv/9TKJAbAXVTxvTnwP8HHKjRCJDClKbciiYS7p0DQ==
+ 
+-commander@^13.1.0:
+-  version "13.1.0"
+-  resolved "https://registry.npmjs.org/commander/-/commander-13.1.0.tgz"
+-  integrity sha512-/rFeCpNJQbhSZjGVwO9RFV3xPqbnERS8MmIQzCtD/zl6gpJuV/bMLuN92oG3F7d8oDEHHRrujSXNUr8fpjntKw==
+-
+-commander@^2.20.0:
++commander@^13.1.0, commander@^2.20.0:
+   version "2.20.3"
+   resolved "https://registry.npmjs.org/commander/-/commander-2.20.3.tgz"
+   integrity sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==
+@@ -6570,10 +6619,15 @@ lie@~3.3.0:
+   dependencies:
+     immediate "~3.0.5"
+ 
+-lightningcss-win32-x64-msvc@1.30.2:
++lightningcss-linux-x64-gnu@1.30.2:
++  version "1.30.2"
++  resolved "https://registry.npmjs.org/lightningcss-linux-x64-gnu/-/lightningcss-linux-x64-gnu-1.30.2.tgz"
++  integrity sha512-Cfd46gdmj1vQ+lR6VRTTadNHu6ALuw2pKR9lYq4FnhvgBc4zWY1EtZcAc6EffShbb1MFrIPfLDXD6Xprbnni4w==
++
++lightningcss-linux-x64-musl@1.30.2:
+   version "1.30.2"
+-  resolved "https://registry.npmjs.org/lightningcss-win32-x64-msvc/-/lightningcss-win32-x64-msvc-1.30.2.tgz"
+-  integrity sha512-5g1yc73p+iAkid5phb4oVFMB45417DkRevRbt/El/gKXJk4jid+vPFF/AXbxn05Aky8PapwzZrdJShv5C0avjw==
++  resolved "https://registry.npmjs.org/lightningcss-linux-x64-musl/-/lightningcss-linux-x64-musl-1.30.2.tgz"
++  integrity sha512-XJaLUUFXb6/QG2lGIW6aIk6jKdtjtcffUT0NKvIqhSBY3hh9Ch+1LCeH80dR9q9LBjG3ewbDjnumefsLsP6aiA==
+ 
+ lightningcss@^1.21.0, lightningcss@1.30.2:
+   version "1.30.2"

@@ -33,6 +33,7 @@ import { useAuth } from "@/providers/AuthProvider";
 import { useQuota } from "@/hooks/useQuota";
 import { aiApi } from "@/lib/api/ai";
 import { toast } from "sonner";
+import { GoogleAdSlot, GoogleAdInline } from "@/components/GoogleAdSlot";
 
 interface ArticleData {
   title: string;
@@ -510,6 +511,9 @@ Please provide a concise summary of this news article.[/REASONING]`;
         </div>
       </div>
 
+      {/* Ad Placement - Between featured image and article content */}
+      <GoogleAdInline />
+
       {/* Article Content */}
       <article className="mx-auto max-w-4xl px-4 md:px-6 py-8">
         {/* Link warning banner */}
@@ -598,6 +602,9 @@ Please provide a concise summary of this news article.[/REASONING]`;
             </div>
           </div>
         )}
+
+        {/* Ad Placement - After article content, before source attribution */}
+        <GoogleAdSlot />
 
         {/* Source attribution */}
         <div className="mt-8 p-6 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">

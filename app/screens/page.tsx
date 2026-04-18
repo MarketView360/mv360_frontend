@@ -20,6 +20,7 @@ import { SaveScreenDialog } from "@/components/SaveScreenDialog";
 import { useSavedScreens } from "@/hooks/useSavedScreens";
 import { useAuth } from "@/providers/AuthProvider";
 import { toast } from "sonner";
+import { GoogleAdSlot } from "@/components/GoogleAdSlot";
 
 export default function ScreensPage() {
   return (
@@ -185,6 +186,9 @@ function ScreensPageContent() {
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm transition-all duration-300">
           <ScreenerQueryBuilder value={query} onChange={setQuery} onSaveClick={() => setShowSaveDialog(true)} />
         </div>
+
+        {/* Ad Placement - Between query builder and community card */}
+        <GoogleAdSlot />
 
         {/* Community Card */}
         <div className="mt-8">
