@@ -59,13 +59,6 @@ export default function BillingPage() {
 
   const isLoading = paymentLoading || profileLoading;
 
-  // Track billing page view
-  useEffect(() => {
-    if (!isLoading) {
-      trackBillingPageViewed(effectiveTier);
-    }
-  }, [isLoading, effectiveTier]);
-
   // Determine actual tier from BOTH sources
   // Profile tier may be set manually (gifted, admin upgrade)
   // Subscription is from Razorpay payment flow
@@ -82,6 +75,13 @@ export default function BillingPage() {
 
   // Is this a manual/gifted subscription? (no Razorpay subscription but premium tier)
   const isManualOrGifted = !hasActiveSubscription && isEffectivePremium;
+
+  // Track billing page view — effectiveTier is now defined above before this useEffect
+  useEffect(() => {
+    if (!isLoading) {
+      trackBillingPageViewed(effectiveTier);
+    }
+  }, [isLoading, effectiveTier]);
 
   const handleCancelWithFeedback = async (feedback: CancellationFeedback, cancelImmediately: boolean) => {
     if (!session?.access_token) return;
